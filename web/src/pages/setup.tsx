@@ -27,6 +27,10 @@ import {
   type Transport,
 } from '@/lib/setup-guide'
 
+/** The selected tab is tinted and outlined in the accent colour, so it can't be mistaken for the others. */
+const TAB =
+  'gap-2 px-4 text-sm data-active:border-primary/60 data-active:bg-primary/15 data-active:font-semibold data-active:text-foreground dark:data-active:border-primary/60 dark:data-active:bg-primary/20'
+
 function Block({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
   return (
     <section aria-label={title} className="space-y-3">
@@ -211,10 +215,10 @@ export function SetupPage() {
           <p className="text-sm text-muted-foreground">Fix the address in step 1 and the steps will appear here.</p>
         ) : (
           <Tabs value={media} onValueChange={(v) => setMedia(v as MediaServer)}>
-            <TabsList>
+            <TabsList className="w-full gap-1 p-1 group-data-horizontal/tabs:h-11">
               {MEDIA_SERVERS.map((m) => (
-                <TabsTrigger key={m.id} value={m.id}>
-                  <img src={`${import.meta.env.BASE_URL}${m.icon}`} alt="" aria-hidden="true" className="size-4 rounded-sm" draggable={false} />
+                <TabsTrigger key={m.id} value={m.id} className={TAB}>
+                  <img src={`${import.meta.env.BASE_URL}${m.icon}`} alt="" aria-hidden="true" className="size-5 rounded-sm" draggable={false} />
                   {m.label}
                 </TabsTrigger>
               ))}

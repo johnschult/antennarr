@@ -318,6 +318,17 @@ describe('SetupPage media server icons', () => {
     for (const src of Object.values(icons)) expect(src).not.toMatch(/^https?:/)
   })
 
+  it('marks which tab is selected, and moves the mark when you pick another', async () => {
+    renderWithApp(<SetupPage />, makeState())
+    const user = await typeHost('box.lan')
+    const selected = () => screen.getAllByRole('tab').filter((t) => t.hasAttribute('data-active')).map((t) => t.textContent)
+    expect(selected()).toEqual(['Plex'])
+    await user.click(screen.getByRole('tab', { name: 'Emby' }))
+    expect(selected()).toEqual(['Emby'])
+    expect(screen.getByRole('tab', { name: 'Emby' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Plex' })).toHaveAttribute('aria-selected', 'false')
+  })
+
   it('keeps the tab names readable without the icons', async () => {
     renderWithApp(<SetupPage />, makeState())
     await typeHost('box.lan')
