@@ -26,8 +26,13 @@ The **Release** workflow then:
 
 Pull requests that change the `Dockerfile` or the workflow build the image without pushing it.
 
-## The first time
+## After a release
 
-GitHub makes a newly published package private. After the first release, open the package's settings
-(github.com/johnschult?tab=packages → *antennarr* → *Package settings*) and change its visibility to **Public**,
-or nobody but you can pull it.
+Check that the image can be pulled without logging in, from a machine that isn't signed in to GitHub:
+
+```sh
+docker pull ghcr.io/johnschult/antennarr:2026.10.0
+```
+
+The first release (2026.10.0) was public straight away. If a package ever starts out private, open its settings
+(github.com/johnschult?tab=packages → *antennarr* → *Package settings*) and change its visibility to **Public**.
