@@ -125,7 +125,7 @@ export function transportSteps(t: Transport, address: string): string[] {
     case 'internet':
       return [
         'Antennarr has no passwords: it only checks the address a request comes from. Anyone who can reach the port and is on the allowlist can use your tuner. A VPN or Tailscale is much safer.',
-        'If you do this anyway, forward only the Antennarr port on your router to this machine, and allow only the viewer’s public address (the firewall rules below).',
+        'If you do this anyway, forward only the Antennarr port on your router to this machine, and allow only the viewer’s public address in your firewall (step 4).',
         'Use your public address or a dynamic-DNS name as the address, and check it from outside your network.',
       ]
   }
