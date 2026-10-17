@@ -1,0 +1,597 @@
+<!doctype html>
+<!--
+  PROTOTYPE — throwaway. Antennarr UI mockup.
+  Question: what should the Antennarr web UI look like?
+  Three structurally different app shells + dashboards, switchable via ?variant=A|B|C
+  (bottom bar or ←/→ keys). Viewers / Setup wizard / Settings pages are shared across variants.
+  All data is fake and in-memory. Open this file directly in a browser.
+-->
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Antennarr (prototype)</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'], mono: ['JetBrains Mono', 'ui-monospace', 'monospace'] } } },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+<style>
+  body { background: #09090b; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 8px; }
+  @keyframes pulse-dot { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  .live-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+</style>
+</head>
+<body class="text-zinc-100 font-sans antialiased">
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* ───────────────────────── fake data ───────────────────────── */
+const TUNER = {
+  name: "Steve's FLEX 4K", model: 'HDFX-4K', deviceId: '10A1B2C3', ip: '192.168.1.132', prevIp: '192.168.1.98',
+  firmware: '20250815', tuners: 4, market: 'Green Bay, WI', online: true, lastSeen: '2s ago',
+};
+const SETTINGS_DEFAULT = { mode: 'tsnet', advertise: 'http://antennarr-steve.tail1234.ts.net:5004', reserve: 1, sharerOs: 'rhel', port: 5004 };
+const CHANNELS = [
+  { num: '2.1', call: 'WBAY', net: 'ABC' }, { num: '5.1', call: 'WFRV', net: 'CBS' }, { num: '11.1', call: 'WLUK', net: 'FOX' },
+  { num: '26.1', call: 'WGBA', net: 'NBC' }, { num: '38.1', call: 'WPNE', net: 'PBS' }, { num: '32.1', call: 'WCWF', net: 'CW' },
+];
+const VIEWERS = [
+  { id: 'john', name: 'John', server: 'tower', media: 'Plex', plex: true, addr: '100.67.117.32', via: 'Tailscale', limit: 2, inUse: 1, status: 'connected', lastSeen: 'now', streamsToday: 6, gbToday: 18.4 },
+  { id: 'mom', name: "Mom & Dad", server: 'den-nas', media: 'Jellyfin', plex: false, addr: '100.88.12.4', via: 'Tailscale', limit: 1, inUse: 0, status: 'idle', lastSeen: '3h ago', streamsToday: 1, gbToday: 2.1 },
+  { id: 'cabin', name: 'Cabin', server: 'cabin-pi', media: 'Channels', plex: false, addr: '10.8.0.6', via: 'WireGuard', limit: 1, inUse: 0, status: 'pending', lastSeen: 'never', streamsToday: 0, gbToday: 0 },
+];
+// slot owner: 'local' | viewer id | 'reserved' | null
+const SLOTS = [
+  { n: 0, owner: 'local', who: 'Living Room TV (HDHomeRun app)', ch: CHANNELS[3], mbps: 12.8, since: '42m' },
+  { n: 1, owner: 'john', who: 'John · tower (Plex DVR)', ch: CHANNELS[1], mbps: 14.2, since: '18m', recording: 'Packers Postgame' },
+  { n: 2, owner: null },
+  { n: 3, owner: 'reserved' },
+];
+const ALERTS = [
+  { t: '09:12', kind: 'ok', text: 'John (tower) started recording 5.1 WFRV — Packers Postgame' },
+  { t: '08:47', kind: 'warn', text: 'Cabin hit its limit (1/1) — stream refused with 503' },
+  { t: 'Oct 13', kind: 'info', text: 'Tuner moved 192.168.1.98 → 192.168.1.132 — followed automatically (DeviceID 10A1B2C3)' },
+  { t: 'Oct 14', kind: 'err', text: 'Tuner offline for 2h 11m (no response to discover or ARP)' },
+];
+const BW = [3, 4, 4, 12, 14, 14, 27, 27, 26, 13, 13, 0, 0, 14, 14, 15, 27, 28, 27, 14, 14, 13, 27, 27];
+
+/* ───────────────────────── tiny UI kit (shadcn-ish) ───────────────────────── */
+const cx = (...a) => a.filter(Boolean).join(' ');
+const Card = ({ className, children }) => <div className={cx('rounded-xl border border-zinc-800 bg-zinc-900/50 shadow-sm', className)}>{children}</div>;
+const CardHead = ({ title, desc, right }) => (
+  <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
+    <div><h3 className="text-sm font-semibold tracking-tight">{title}</h3>{desc && <p className="text-xs text-zinc-400 mt-0.5">{desc}</p>}</div>{right}
+  </div>
+);
+const Badge = ({ tone = 'zinc', children }) => {
+  const t = { zinc: 'bg-zinc-800 text-zinc-300 border-zinc-700', green: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20', red: 'bg-red-500/10 text-red-400 border-red-500/20', cyan: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20', violet: 'bg-violet-500/10 text-violet-300 border-violet-500/20', orange: 'bg-orange-500/10 text-orange-300 border-orange-500/20' }[tone];
+  return <span className={cx('inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium', t)}>{children}</span>;
+};
+const Button = ({ variant = 'default', size = 'md', className, ...p }) => {
+  const v = { default: 'bg-zinc-100 text-zinc-900 hover:bg-white', outline: 'border border-zinc-700 hover:bg-zinc-800', ghost: 'hover:bg-zinc-800 text-zinc-300', accent: 'bg-cyan-500 text-zinc-950 hover:bg-cyan-400' }[variant];
+  const s = { sm: 'h-7 px-2.5 text-xs', md: 'h-9 px-3.5 text-sm' }[size];
+  return <button {...p} className={cx('inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors', v, s, className)} />;
+};
+const Dot = ({ tone = 'green', live }) => <span className={cx('inline-block h-2 w-2 rounded-full', live && 'live-dot', { green: 'bg-emerald-400', amber: 'bg-amber-400', red: 'bg-red-400', zinc: 'bg-zinc-500', cyan: 'bg-cyan-400' }[tone])} />;
+const Meter = ({ value, max, tone = 'cyan' }) => (
+  <div className="flex gap-1">{Array.from({ length: max }).map((_, i) => <div key={i} className={cx('h-1.5 flex-1 rounded-full', i < value ? { cyan: 'bg-cyan-400', amber: 'bg-amber-400' }[tone] : 'bg-zinc-800')} />)}</div>
+);
+
+const PATHS = {
+  antenna: 'M8 2l4 6 4-6M12 8v2M4 10h16v10H4zM8 14h5',
+  home: 'M3 11l9-7 9 7v9H3z',
+  users: 'M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M17 11a3 3 0 100-6M22 21v-1a5 5 0 00-4-4.9',
+  wand: 'M15 4V2M15 10V8M11 6H9M21 6h-2M18 3l-1.5 1.5M18 9l-1.5-1.5M3 21l12-12',
+  gear: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z',
+  tv: 'M2 7h20v12H2zM7 3l5 4 5-4',
+  bell: 'M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0',
+  copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+  check: 'M20 6L9 17l-5-5',
+  plus: 'M12 5v14M5 12h14',
+  rec: 'M12 12m-4 0a4 4 0 108 0 4 4 0 10-8 0',
+  chevL: 'M15 18l-6-6 6-6', chevR: 'M9 18l6-6-6-6',
+  wifi: 'M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0M12 19.5h.01M2 9a15 15 0 0120 0',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+};
+const Icon = ({ name, className = 'h-4 w-4' }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}><path d={PATHS[name]} /></svg>
+);
+const Logo = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="14" width="22" height="15" rx="3" fill="#0e7490" />
+    <rect x="8" y="17" width="16" height="9" rx="1.5" fill="#082f49" />
+    <path d="M16 14L9 4M16 14l7-10" stroke="#67e8f9" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="9" cy="4" r="2.2" fill="#67e8f9" /><circle cx="23" cy="4" r="2.2" fill="#67e8f9" />
+  </svg>
+);
+
+const Sparkline = ({ data, h = 48, className }) => {
+  const max = 32, w = 300;
+  const pts = data.map((v, i) => [(i / (data.length - 1)) * w, h - (v / max) * (h - 4) - 2]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={cx('w-full', className)} style={{ height: h }}>
+      <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#22d3ee" stopOpacity=".35" /><stop offset="1" stopColor="#22d3ee" stopOpacity="0" /></linearGradient></defs>
+      <path d={`${d} L${w} ${h} L0 ${h} Z`} fill="url(#g)" /><path d={d} stroke="#22d3ee" strokeWidth="1.5" fill="none" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+};
+
+const slotMeta = (s) => {
+  if (s.owner === 'local') return { label: 'Local', tone: 'violet', bar: 'bg-violet-500' };
+  if (s.owner === 'reserved') return { label: 'Owner reserve', tone: 'zinc', bar: 'bg-zinc-700' };
+  if (!s.owner) return { label: 'Free', tone: 'green', bar: 'bg-zinc-800' };
+  return { label: VIEWERS.find((v) => v.id === s.owner)?.name, tone: 'cyan', bar: 'bg-cyan-500' };
+};
+const alertTone = { ok: 'green', warn: 'amber', info: 'cyan', err: 'red' };
+const totalMbps = SLOTS.reduce((a, s) => a + (s.mbps || 0), 0);
+const remoteMbps = SLOTS.filter((s) => s.owner && !['local', 'reserved'].includes(s.owner)).reduce((a, s) => a + s.mbps, 0);
+
+/* ───────────────────────── shared pages ───────────────────────── */
+function ViewersPage({ go }) {
+  return (
+    <div className="space-y-4">
+      <PageTitle title="Viewers" desc="Who can use your tuner, from where, and how many tuners each gets." right={<Button variant="accent" onClick={() => go('setup')}><Icon name="plus" />Invite viewer</Button>} />
+      <Card>
+        <table className="w-full text-sm">
+          <thead className="text-xs text-zinc-400 border-b border-zinc-800">
+            <tr className="[&>th]:text-left [&>th]:font-medium [&>th]:px-5 [&>th]:py-3"><th>Viewer</th><th>Media server</th><th>Address</th><th className="w-48">Tuners</th><th>Today</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-800/70">
+            {VIEWERS.map((v) => (
+              <tr key={v.id} className="hover:bg-zinc-800/30 [&>td]:px-5 [&>td]:py-3.5">
+                <td><div className="flex items-center gap-3"><Avatar name={v.name} /><div><div className="font-medium">{v.name}</div><div className="text-xs text-zinc-500">{v.server}</div></div></div></td>
+                <td><div className="flex items-center gap-1.5">{v.media}{v.plex && <Badge tone="orange">Plex-linked</Badge>}</div></td>
+                <td><div className="font-mono text-xs">{v.addr}</div><div className="text-xs text-zinc-500">{v.via}</div></td>
+                <td><div className="flex items-center gap-3"><div className="flex-1"><Meter value={v.inUse} max={v.limit} /></div><span className="text-xs text-zinc-400 tabular-nums">{v.inUse}/{v.limit}</span></div></td>
+                <td className="text-xs text-zinc-400 tabular-nums">{v.streamsToday} streams · {v.gbToday} GB</td>
+                <td>{v.status === 'connected' ? <Badge tone="green"><Dot live />Connected</Badge> : v.status === 'idle' ? <Badge>Idle · {v.lastSeen}</Badge> : <Badge tone="amber">Waiting for first contact</Badge>}</td>
+                <td className="text-right"><Button variant="ghost" size="sm" onClick={() => go('setup')}>Setup guide</Button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+      <p className="text-xs text-zinc-500 flex items-center gap-1.5"><Icon name="shield" className="h-3.5 w-3.5" />Only allowlisted addresses can reach Antennarr. Over-limit requests get a 503, the same as a busy tuner, so media servers handle it cleanly.</p>
+    </div>
+  );
+}
+
+const OS = { unraid: 'Unraid', debian: 'Debian / Ubuntu', rhel: 'RHEL / Fedora', synology: 'Synology' };
+const TRANSPORT = { tsnet: 'Built-in Tailscale', tailscale: 'Tailscale on host', wireguard: 'WireGuard / VPN', lan: 'Same LAN' };
+const MEDIA = { Plex: 'Plex', Jellyfin: 'Jellyfin', Channels: 'Channels DVR', Emby: 'Emby' };
+
+function genCommands({ os, transport, media, legacy, settings, viewer }) {
+  const addrHost = transport === 'tsnet' ? 'antennarr-steve.tail1234.ts.net' : transport === 'wireguard' ? '10.8.0.1' : transport === 'lan' ? '192.168.1.20' : '100.109.224.87';
+  const port = settings.port, addr = `${addrHost}:${port}`, src = viewer.addr;
+  const sharer = transport === 'tsnet'
+    ? [{ c: '# Nothing to open — Antennarr is its own tailnet node.\n# Share it with the viewer: Tailscale admin → Machines → antennarr-steve → Share…', note: 'Tailnet ACLs control access; no host firewall rules needed.' }]
+    : settings.sharerOs === 'rhel'
+      ? [{ c: `sudo firewall-cmd --permanent --zone=public \\\n  --add-rich-rule='rule family=ipv4 source address=${src}/32 port port=${port} protocol=tcp accept'\nsudo firewall-cmd --reload`, note: '--permanent survives reboots.' }]
+      : [{ c: `sudo ufw allow from ${src} to any port ${port} proto tcp`, note: 'ufw rules persist automatically.' }];
+  const viewerCmds = [];
+  if (transport === 'tailscale') viewerCmds.push({ c: `tailscale status | grep homelab   # sharer should be listed\ntailscale ping 100.109.224.87`, note: 'Both machines must be on the same tailnet (or the sharer node shared with you).' });
+  if (transport === 'tsnet') viewerCmds.push({ c: `tailscale ping antennarr-steve`, note: 'Accept the shared node in your Tailscale admin first.' });
+  if (transport === 'wireguard') viewerCmds.push({ c: `# In your WireGuard peer config for the sharer, make sure:\nAllowedIPs = 10.8.0.1/32\nsudo wg show`, note: 'Only the Antennarr address needs routing — not the sharer\'s whole LAN.' });
+  if (transport === 'lan') viewerCmds.push({ c: `# No routing needed.`, note: '' });
+  if (legacy) {
+    const rules = `TUNER=192.168.1.132; RELAY=${addrHost}
+for p in 80 5004; do
+  iptables -t nat -C PREROUTING -d $TUNER -p tcp --dport $p -j DNAT --to-destination $RELAY:${port} 2>/dev/null || \\
+  iptables -t nat -I PREROUTING -d $TUNER -p tcp --dport $p -j DNAT --to-destination $RELAY:${port}
+  iptables -t nat -C OUTPUT -d $TUNER -p tcp --dport $p -j DNAT --to-destination $RELAY:${port} 2>/dev/null || \\
+  iptables -t nat -I OUTPUT -d $TUNER -p tcp --dport $p -j DNAT --to-destination $RELAY:${port}
+done
+iptables -t nat -C POSTROUTING -d $RELAY -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -d $RELAY -j MASQUERADE`;
+    const persist = { unraid: 'Save as User Script "antennarr-dnat", schedule: At Startup of Array (and Custom */5 to self-heal).', debian: 'sudo apt install iptables-persistent && sudo netfilter-persistent save', rhel: 'Save as /usr/local/sbin/antennarr-dnat.sh + a oneshot systemd unit (After=network-online.target).', synology: 'Control Panel → Task Scheduler → Triggered Task (Boot-up, root) → paste the script.' }[os];
+    viewerCmds.push({ c: rules, note: `Legacy only: your DVR still points at the tuner's LAN IP. Persist: ${persist}`, warn: true });
+  }
+  const mediaSteps = {
+    Plex: `Settings → Live TV & DVR → Set Up Plex DVR →\n"Don't see your HDHomeRun device? Enter its network address manually" → ${addr}`,
+    Jellyfin: `Dashboard → Live TV → Tuner Devices → + → HDHomeRun → URL: http://${addr}`,
+    Channels: `Settings → Sources → Add Source → HDHomeRun → Manual: http://${addr}`,
+    Emby: `Settings → Live TV → Add TV Source → HDHomeRun → http://${addr}`,
+  }[media];
+  const verify = [{ c: `curl -s http://${addr}/discover.json | jq '{FriendlyName, TunerCount, BaseURL}'`, out: `{\n  "FriendlyName": "Steve's FLEX 4K (via Antennarr)",\n  "TunerCount": ${viewer.limit},\n  "BaseURL": "http://${addr}"\n}` },
+    { c: `curl -s http://${addr}/auto/v5.1 --max-time 5 -o /dev/null -w '%{http_code} %{size_download}\\n'`, out: `200 9384012` }];
+  const rollback = [
+    transport === 'tsnet' ? { c: '# Tailscale admin → Machines → antennarr-steve → Sharing → Revoke' } : settings.sharerOs === 'rhel'
+      ? { c: `sudo firewall-cmd --permanent --zone=public \\\n  --remove-rich-rule='rule family=ipv4 source address=${src}/32 port port=${port} protocol=tcp accept'\nsudo firewall-cmd --reload` } : { c: `sudo ufw delete allow from ${src} to any port ${port} proto tcp` },
+    ...(legacy ? [{ c: `for p in 80 5004; do\n  iptables -t nat -D PREROUTING -d 192.168.1.132 -p tcp --dport $p -j DNAT --to-destination ${addrHost}:${port}\n  iptables -t nat -D OUTPUT -d 192.168.1.132 -p tcp --dport $p -j DNAT --to-destination ${addrHost}:${port}\ndone\niptables -t nat -D POSTROUTING -d ${addrHost} -j MASQUERADE` }] : []),
+  ];
+  return { sharer, viewer: viewerCmds, media: mediaSteps, verify, rollback, addr };
+}
+
+function CodeBlock({ code, note, warn, out }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className={cx('rounded-lg border overflow-hidden', warn ? 'border-amber-500/30' : 'border-zinc-800')}>
+      <div className="relative bg-zinc-950">
+        <pre className="font-mono text-[12.5px] leading-relaxed text-zinc-200 p-4 pr-20 overflow-x-auto whitespace-pre">{code}</pre>
+        <Button size="sm" variant="outline" className="absolute top-2.5 right-2.5 bg-zinc-900" onClick={() => { navigator.clipboard?.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1400); }}>
+          <Icon name={copied ? 'check' : 'copy'} className="h-3.5 w-3.5" />{copied ? 'Copied' : 'Copy'}
+        </Button>
+      </div>
+      {out && <div className="border-t border-zinc-800 bg-zinc-900/60 px-4 py-2.5"><div className="text-[11px] uppercase tracking-wide text-zinc-500 mb-1">Expected output</div><pre className="font-mono text-xs text-emerald-300/90 whitespace-pre">{out}</pre></div>}
+      {note && <div className={cx('px-4 py-2 text-xs border-t', warn ? 'bg-amber-500/5 text-amber-300/90 border-amber-500/20' : 'bg-zinc-900/60 text-zinc-400 border-zinc-800')}>{note}</div>}
+    </div>
+  );
+}
+
+const Seg = ({ value, onChange, options }) => (
+  <div className="inline-flex flex-wrap gap-1 rounded-lg bg-zinc-900 border border-zinc-800 p-1">
+    {Object.entries(options).map(([k, l]) => (
+      <button key={k} onClick={() => onChange(k)} className={cx('px-3 h-8 rounded-md text-sm transition-colors', value === k ? 'bg-zinc-100 text-zinc-900 font-medium shadow' : 'text-zinc-400 hover:text-zinc-100')}>{l}</button>
+    ))}
+  </div>
+);
+
+function SetupPage({ settings }) {
+  const [viewerId, setViewerId] = useState('john');
+  const [os, setOs] = useState('unraid');
+  const [transport, setTransport] = useState(settings.mode === 'tsnet' ? 'tsnet' : 'tailscale');
+  const [media, setMedia] = useState('Plex');
+  const [legacy, setLegacy] = useState(false);
+  const [tab, setTab] = useState('sharer');
+  const [connected, setConnected] = useState(false);
+  const viewer = VIEWERS.find((v) => v.id === viewerId);
+  const cmds = genCommands({ os, transport, media, legacy, settings, viewer });
+  const tabs = { sharer: 'Your server', viewer: `${viewer.name}'s server`, media: MEDIA[media], verify: 'Verify', rollback: 'Rollback' };
+  return (
+    <div className="space-y-4">
+      <PageTitle title="Setup guide" desc="Copy-paste commands tailored to each viewer. Antennarr never runs anything on their machine." />
+      <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-4">
+        <Card className="p-5 space-y-5 h-fit">
+          <Field label="Viewer"><select value={viewerId} onChange={(e) => { setViewerId(e.target.value); setConnected(false); }} className="w-full h-9 rounded-md bg-zinc-950 border border-zinc-800 px-2 text-sm">{VIEWERS.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.server}</option>)}</select></Field>
+          <Field label="Their server OS"><Seg value={os} onChange={setOs} options={OS} /></Field>
+          <Field label="How they'll connect"><Seg value={transport} onChange={setTransport} options={TRANSPORT} /></Field>
+          <Field label="Media server"><Seg value={media} onChange={setMedia} options={MEDIA} /></Field>
+          <label className="flex items-start gap-3 rounded-lg border border-zinc-800 p-3 cursor-pointer hover:bg-zinc-800/30">
+            <input type="checkbox" checked={legacy} onChange={(e) => setLegacy(e.target.checked)} className="mt-1 accent-cyan-400" />
+            <span><span className="text-sm font-medium">Existing DVR points at the tuner's LAN IP</span><span className="block text-xs text-zinc-400 mt-0.5">Adds a DNAT fallback. Prefer re-adding the tuner by the Antennarr address instead.</span></span>
+          </label>
+          <div className={cx('rounded-lg border p-4 flex items-center gap-3', connected ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-zinc-800 bg-zinc-950')}>
+            {connected ? <div className="h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-400 grid place-items-center"><Icon name="check" /></div> : <div className="h-8 w-8 rounded-full border-2 border-zinc-700 border-t-cyan-400 animate-spin" />}
+            <div className="flex-1"><div className="text-sm font-medium">{connected ? `${viewer.server} connected` : `Waiting for ${viewer.server}…`}</div><div className="text-xs text-zinc-400">{connected ? `discover.json fetched from ${viewer.addr} just now` : 'Turns green when their media server first reaches Antennarr'}</div></div>
+            {!connected && <Button size="sm" variant="ghost" onClick={() => setConnected(true)}>simulate</Button>}
+          </div>
+        </Card>
+        <Card className="overflow-hidden">
+          <div className="flex border-b border-zinc-800 px-2 overflow-x-auto">
+            {Object.entries(tabs).map(([k, l], i) => (
+              <button key={k} onClick={() => setTab(k)} className={cx('px-4 py-3 text-sm whitespace-nowrap border-b-2 -mb-px flex items-center gap-2', tab === k ? 'border-cyan-400 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200')}>
+                <span className={cx('h-5 w-5 rounded-full text-[11px] grid place-items-center', tab === k ? 'bg-cyan-400 text-zinc-950' : 'bg-zinc-800')}>{i + 1}</span>{l}
+              </button>
+            ))}
+          </div>
+          <div className="p-5 space-y-3">
+            {tab === 'sharer' && <><Hint>Run on <b>your</b> machine (homelab · {OS[settings.sharerOs]}). Allows {viewer.name} ({viewer.addr}) to reach Antennarr on port {settings.port}.</Hint>{cmds.sharer.map((b, i) => <CodeBlock key={i} code={b.c} note={b.note} />)}</>}
+            {tab === 'viewer' && <><Hint>Send these to {viewer.name}, or run them yourself if you admin {viewer.server} ({OS[os]}).</Hint>{cmds.viewer.map((b, i) => <CodeBlock key={i} code={b.c} note={b.note} warn={b.warn} />)}</>}
+            {tab === 'media' && <><Hint>Add the tuner in {MEDIA[media]} by address. It'll show up as <b>Steve's FLEX 4K (via Antennarr)</b> with {viewer.limit} tuner{viewer.limit > 1 ? 's' : ''}.</Hint><CodeBlock code={cmds.media} /></>}
+            {tab === 'verify' && <><Hint>Run on {viewer.server}. If these pass, the media server will work.</Hint>{cmds.verify.map((b, i) => <CodeBlock key={i} code={b.c} out={b.out} />)}</>}
+            {tab === 'rollback' && <><Hint>Undo everything above.</Hint>{cmds.rollback.map((b, i) => <CodeBlock key={i} code={b.c} />)}</>}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+const Hint = ({ children }) => <p className="text-sm text-zinc-400">{children}</p>;
+const Field = ({ label, children }) => <div className="space-y-2"><div className="text-xs font-medium text-zinc-400 uppercase tracking-wide">{label}</div>{children}</div>;
+
+function SettingsPage({ settings, setSettings }) {
+  const set = (k) => (v) => setSettings({ ...settings, [k]: v });
+  return (
+    <div className="space-y-4 max-w-3xl">
+      <PageTitle title="Settings" />
+      <Card><CardHead title="Network mode" desc="How viewers reach Antennarr. Networking is yours — Antennarr just listens." />
+        <div className="px-5 pb-5 grid sm:grid-cols-2 gap-3">
+          {[['plain', 'Plain port', 'Listen on :5004 on the host. Bring your own LAN / VPN / Tailscale.'], ['tsnet', 'Built-in Tailscale', 'Antennarr joins your tailnet as its own node. No firewall rules.']].map(([k, t, d]) => (
+            <button key={k} onClick={() => set('mode')(k)} className={cx('text-left rounded-lg border p-4 transition-colors', settings.mode === k ? 'border-cyan-400/60 bg-cyan-400/5' : 'border-zinc-800 hover:bg-zinc-800/30')}>
+              <div className="flex items-center justify-between"><span className="font-medium text-sm">{t}</span>{settings.mode === k && <Badge tone="cyan">Active</Badge>}</div><p className="text-xs text-zinc-400 mt-1">{d}</p>
+            </button>
+          ))}
+        </div>
+        {settings.mode === 'tsnet' && <div className="mx-5 mb-5 rounded-lg bg-zinc-950 border border-zinc-800 p-3 text-xs flex items-center gap-2"><Dot live />Node <span className="font-mono">antennarr-steve</span> · 100.101.7.22 · shared with 2 users</div>}
+      </Card>
+      <Card><CardHead title="Advertised URL" desc="The address written into lineup.json. Leave blank to use whatever host the viewer connected with." />
+        <div className="px-5 pb-5"><input value={settings.advertise} onChange={(e) => set('advertise')(e.target.value)} className="w-full h-9 rounded-md bg-zinc-950 border border-zinc-800 px-3 font-mono text-sm" /></div>
+      </Card>
+      <Card><CardHead title="Owner reserve" desc="Tuners always kept free for your own TVs and apps. Remote viewers get a 503 instead." right={<span className="text-2xl font-semibold tabular-nums">{settings.reserve}<span className="text-sm text-zinc-500"> / {TUNER.tuners}</span></span>} />
+        <div className="px-5 pb-5"><input type="range" min="0" max="3" value={settings.reserve} onChange={(e) => set('reserve')(+e.target.value)} className="w-full accent-cyan-400" /></div>
+      </Card>
+      <Card><CardHead title="Plex" desc="Sign in to use Plex for dashboard login and verified viewer invites." right={<Badge tone="orange">Linked · sseljan</Badge>} /></Card>
+    </div>
+  );
+}
+
+const PageTitle = ({ title, desc, right }) => (
+  <div className="flex items-end justify-between gap-4 mb-2"><div><h1 className="text-xl font-semibold tracking-tight">{title}</h1>{desc && <p className="text-sm text-zinc-400 mt-1">{desc}</p>}</div>{right}</div>
+);
+const Avatar = ({ name, size = 'h-8 w-8' }) => {
+  const hue = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360;
+  return <div className={cx(size, 'rounded-full grid place-items-center text-xs font-semibold shrink-0')} style={{ background: `hsl(${hue} 50% 25%)`, color: `hsl(${hue} 80% 80%)` }}>{name.split(' ').map((w) => w[0]).join('').slice(0, 2)}</div>;
+};
+
+/* ───────────────────────── Variant A: Sidebar app (Tracearr-like) ───────────────────────── */
+function VariantA({ page, go, settings, setSettings }) {
+  const nav = [['dashboard', 'Dashboard', 'home'], ['viewers', 'Viewers', 'users'], ['tuners', 'Tuners', 'tv'], ['setup', 'Setup guide', 'wand'], ['activity', 'Activity', 'activity'], ['settings', 'Settings', 'gear']];
+  return (
+    <div className="flex min-h-screen">
+      <aside className="w-60 shrink-0 border-r border-zinc-800 bg-zinc-950 flex flex-col">
+        <div className="flex items-center gap-2.5 px-5 h-16"><Logo /><span className="font-semibold tracking-tight text-lg">Antennarr</span></div>
+        <nav className="px-3 space-y-0.5 flex-1">
+          {nav.map(([k, l, i]) => (
+            <button key={k} onClick={() => go(k)} className={cx('w-full flex items-center gap-3 rounded-md px-3 h-9 text-sm', page === k ? 'bg-zinc-800/80 text-zinc-50 font-medium' : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900')}>
+              <Icon name={i} />{l}{k === 'activity' && <span className="ml-auto h-5 min-w-5 px-1.5 rounded-full bg-amber-500/15 text-amber-400 text-[11px] grid place-items-center">1</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="m-3 rounded-lg border border-zinc-800 p-3 text-xs">
+          <div className="flex items-center gap-2"><Dot live /><span className="font-medium">{TUNER.name}</span></div>
+          <div className="text-zinc-500 mt-1 font-mono">{TUNER.ip}</div>
+        </div>
+      </aside>
+      <main className="flex-1 min-w-0">
+        <header className="h-16 border-b border-zinc-800 flex items-center justify-between px-8">
+          <div className="text-sm text-zinc-400">homelab · <span className="text-zinc-200">{settings.mode === 'tsnet' ? 'Built-in Tailscale' : 'Plain port :5004'}</span></div>
+          <div className="flex items-center gap-3"><Button variant="ghost" size="sm"><Icon name="bell" /></Button><Avatar name="Steve S" /></div>
+        </header>
+        <div className="p-8">
+          {page === 'dashboard' && <DashA go={go} settings={settings} />}
+          {page === 'viewers' && <ViewersPage go={go} />}
+          {page === 'setup' && <SetupPage settings={settings} />}
+          {page === 'settings' && <SettingsPage settings={settings} setSettings={setSettings} />}
+          {page === 'tuners' && <TunersPage />}
+          {page === 'activity' && <ActivityPage />}
+        </div>
+      </main>
+    </div>
+  );
+}
+function DashA({ go, settings }) {
+  const stats = [
+    ['Tuners in use', `${SLOTS.filter((s) => s.owner && s.owner !== 'reserved').length} / ${TUNER.tuners}`, `${settings.reserve} reserved for you`],
+    ['Remote streams', '1', `${remoteMbps.toFixed(1)} Mbps upload`],
+    ['Viewers', `${VIEWERS.length}`, '1 connected · 1 pending'],
+    ['Uptime (7d)', '97.4%', '1 outage · Oct 14'],
+  ];
+  return (
+    <div className="space-y-6">
+      <PageTitle title="Dashboard" desc={`${TUNER.name} · ${TUNER.market}`} />
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        {stats.map(([l, v, s]) => <Card key={l} className="p-5"><div className="text-xs text-zinc-400">{l}</div><div className="text-2xl font-semibold mt-1 tabular-nums">{v}</div><div className="text-xs text-zinc-500 mt-1">{s}</div></Card>)}
+      </div>
+      <div className="grid xl:grid-cols-3 gap-4">
+        <Card className="xl:col-span-2">
+          <CardHead title="Tuner slots" desc="Live — local use is read from the tuner's status.json" right={<Badge tone="green"><Dot live />Online · {TUNER.lastSeen}</Badge>} />
+          <div className="px-5 pb-5 space-y-2.5">
+            {SLOTS.map((s) => { const m = slotMeta(s); return (
+              <div key={s.n} className="flex items-center gap-4 rounded-lg border border-zinc-800 bg-zinc-950/50 px-4 py-3">
+                <div className="text-xs text-zinc-500 w-12 font-mono">tuner{s.n}</div>
+                <div className={cx('h-9 w-1 rounded-full', m.bar)} />
+                {s.ch ? (<>
+                  <div className="w-24"><div className="font-semibold tabular-nums">{s.ch.num}</div><div className="text-xs text-zinc-400">{s.ch.call} · {s.ch.net}</div></div>
+                  <div className="flex-1 min-w-0"><div className="text-sm truncate">{s.who}</div><div className="text-xs text-zinc-500 flex items-center gap-1.5">{s.recording && <><span className="h-1.5 w-1.5 rounded-full bg-red-500 live-dot" />Recording “{s.recording}” · </>}{s.since}</div></div>
+                  <div className="text-right"><div className="text-sm tabular-nums">{s.mbps} <span className="text-zinc-500 text-xs">Mbps</span></div></div>
+                  <Badge tone={m.tone}>{m.label}</Badge>
+                </>) : (<><div className="flex-1 text-sm text-zinc-500">{s.owner === 'reserved' ? 'Held free for your own devices' : 'Available'}</div><Badge tone={m.tone}>{m.label}</Badge></>)}
+              </div>
+            ); })}
+          </div>
+        </Card>
+        <Card>
+          <CardHead title="Activity" right={<Button variant="ghost" size="sm" onClick={() => go('activity')}>All</Button>} />
+          <div className="px-5 pb-5 space-y-3">
+            {ALERTS.map((a, i) => <div key={i} className="flex gap-3 text-sm"><div className="pt-1.5"><Dot tone={alertTone[a.kind]} /></div><div><div className="text-zinc-200 leading-snug">{a.text}</div><div className="text-xs text-zinc-500 mt-0.5">{a.t}</div></div></div>)}
+          </div>
+        </Card>
+      </div>
+      <div className="grid xl:grid-cols-3 gap-4">
+        <Card className="xl:col-span-2">
+          <CardHead title="Upload bandwidth (24h)" desc="MPEG-TS from your tuner to remote viewers" right={<span className="text-sm tabular-nums text-zinc-300">peak 28 Mbps</span>} />
+          <div className="px-5 pb-4"><Sparkline data={BW} h={110} /><div className="flex justify-between text-[11px] text-zinc-500 mt-1"><span>10:00</span><span>16:00</span><span>22:00</span><span>04:00</span><span>now</span></div></div>
+        </Card>
+        <Card>
+          <CardHead title="Viewers" right={<Button variant="ghost" size="sm" onClick={() => go('viewers')}>Manage</Button>} />
+          <div className="px-5 pb-5 space-y-4">
+            {VIEWERS.map((v) => <div key={v.id} className="flex items-center gap-3"><Avatar name={v.name} /><div className="flex-1 min-w-0"><div className="text-sm font-medium flex items-center gap-1.5">{v.name}{v.plex && <Badge tone="orange">Plex</Badge>}</div><div className="mt-1.5"><Meter value={v.inUse} max={v.limit} /></div></div><span className="text-xs text-zinc-400 tabular-nums">{v.inUse}/{v.limit}</span></div>)}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+function TunersPage() {
+  return (
+    <div className="space-y-4">
+      <PageTitle title="Tuners" desc="Found by DeviceID — Antennarr follows the tuner when its IP changes." right={<Button variant="outline">Rescan network</Button>} />
+      <Card className="p-5 grid sm:grid-cols-2 xl:grid-cols-4 gap-5 text-sm">
+        {[['Device', `${TUNER.name}`], ['Model', TUNER.model], ['DeviceID', TUNER.deviceId], ['Address', `${TUNER.ip} (was ${TUNER.prevIp})`], ['Firmware', TUNER.firmware], ['Tuners', TUNER.tuners], ['Guide market', TUNER.market], ['Discovery', 'UDP 65001 broadcast ✓']].map(([k, v]) => <div key={k}><div className="text-xs text-zinc-500">{k}</div><div className="font-medium mt-0.5 font-mono text-[13px]">{v}</div></div>)}
+      </Card>
+      <Card><CardHead title="Lineup" desc={`${CHANNELS.length} channels · rewritten to the Antennarr address`} />
+        <div className="px-5 pb-5 grid sm:grid-cols-2 xl:grid-cols-3 gap-2">{CHANNELS.map((c) => <div key={c.num} className="flex items-center gap-3 rounded-lg border border-zinc-800 px-3 py-2.5"><span className="font-semibold tabular-nums w-12">{c.num}</span><span className="text-sm">{c.call}</span><Badge>{c.net}</Badge></div>)}</div>
+      </Card>
+    </div>
+  );
+}
+function ActivityPage() {
+  return (<div className="space-y-4"><PageTitle title="Activity" /><Card className="divide-y divide-zinc-800">{[...ALERTS, ...ALERTS].map((a, i) => <div key={i} className="px-5 py-3.5 flex items-center gap-4 text-sm"><Dot tone={alertTone[a.kind]} /><span className="flex-1">{a.text}</span><span className="text-xs text-zinc-500">{a.t}</span></div>)}</Card></div>);
+}
+
+/* ───────────────────────── Variant B: Top-nav "control room" ───────────────────────── */
+function VariantB({ page, go, settings, setSettings }) {
+  const nav = [['dashboard', 'Live'], ['viewers', 'Viewers'], ['setup', 'Setup'], ['tuners', 'Tuner'], ['settings', 'Settings']];
+  return (
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_#0e2a33_0%,_#09090b_55%)]">
+      <header className="sticky top-0 z-10 backdrop-blur bg-zinc-950/60 border-b border-zinc-800/60">
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center gap-8">
+          <div className="flex items-center gap-2"><Logo size={24} /><span className="font-semibold">Antennarr</span></div>
+          <nav className="flex gap-1">{nav.map(([k, l]) => <button key={k} onClick={() => go(k)} className={cx('px-3 h-8 rounded-full text-sm', page === k ? 'bg-zinc-100 text-zinc-900 font-medium' : 'text-zinc-400 hover:text-zinc-100')}>{l}</button>)}</nav>
+          <div className="ml-auto flex items-center gap-2 text-xs text-zinc-400"><Dot live />{TUNER.name} · <span className="font-mono">{TUNER.ip}</span></div>
+        </div>
+      </header>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {page === 'dashboard' && <DashB settings={settings} />}
+        {page === 'viewers' && <ViewersPage go={go} />}
+        {page === 'setup' && <SetupPage settings={settings} />}
+        {page === 'settings' && <SettingsPage settings={settings} setSettings={setSettings} />}
+        {page === 'tuners' && <TunersPage />}
+        {page === 'activity' && <ActivityPage />}
+      </div>
+    </div>
+  );
+}
+function DashB({ settings }) {
+  return (
+    <div className="space-y-8">
+      <div className="flex items-end justify-between">
+        <div><div className="text-xs uppercase tracking-[0.2em] text-cyan-300/80">On air now</div><h1 className="text-3xl font-semibold tracking-tight mt-1">2 of 4 tuners live</h1><p className="text-zinc-400 mt-1">1 remote · 1 local · {settings.reserve} held for you · {totalMbps.toFixed(0)} Mbps total</p></div>
+        <div className="w-72"><div className="text-xs text-zinc-500 mb-1 text-right">upload · 24h</div><Sparkline data={BW} h={56} /></div>
+      </div>
+      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {SLOTS.map((s) => { const m = slotMeta(s); const live = !!s.ch; return (
+          <div key={s.n} className={cx('relative rounded-2xl border p-5 h-64 flex flex-col overflow-hidden', live ? 'border-zinc-700 bg-zinc-900/80' : 'border-dashed border-zinc-800 bg-zinc-950/40')}>
+            {live && <div className="absolute inset-0 opacity-[0.07] bg-[repeating-linear-gradient(0deg,#fff_0px,#fff_1px,transparent_1px,transparent_3px)] pointer-events-none" />}
+            <div className="flex items-center justify-between"><span className="text-xs font-mono text-zinc-500">TUNER {s.n + 1}</span><Badge tone={m.tone}>{m.label}</Badge></div>
+            {live ? (<>
+              <div className="mt-auto"><div className="text-5xl font-bold tabular-nums tracking-tight">{s.ch.num}</div><div className="text-lg text-zinc-300">{s.ch.call} <span className="text-zinc-500">{s.ch.net}</span></div></div>
+              <div className="mt-4 pt-3 border-t border-zinc-800 text-xs text-zinc-400 flex items-center justify-between"><span className="truncate">{s.who.split(' (')[0]}</span><span className="tabular-nums">{s.mbps} Mbps</span></div>
+              {s.recording && <div className="absolute top-12 left-5 flex items-center gap-1.5 text-xs text-red-300"><span className="h-2 w-2 rounded-full bg-red-500 live-dot" />REC · {s.recording}</div>}
+            </>) : (
+              <div className="m-auto text-center text-zinc-500 text-sm">{s.owner === 'reserved' ? <><Icon name="shield" className="h-6 w-6 mx-auto mb-2" />Held for your TVs</> : <><Icon name="antenna" className="h-6 w-6 mx-auto mb-2" />Ready</>}</div>
+            )}
+          </div>
+        ); })}
+      </div>
+      <div className="grid lg:grid-cols-2 gap-6">
+        <section><h2 className="text-sm font-semibold mb-3">Viewers</h2>
+          <div className="space-y-2">{VIEWERS.map((v) => <div key={v.id} className="flex items-center gap-4 rounded-xl bg-zinc-900/60 border border-zinc-800 px-4 py-3"><Avatar name={v.name} size="h-10 w-10" /><div className="flex-1"><div className="font-medium">{v.name} <span className="text-zinc-500 font-normal text-sm">· {v.media} on {v.server}</span></div><div className="text-xs text-zinc-500">{v.via} · {v.lastSeen}</div></div><div className="flex gap-1">{Array.from({ length: v.limit }).map((_, i) => <div key={i} className={cx('h-6 w-3 rounded-sm', i < v.inUse ? 'bg-cyan-400' : 'bg-zinc-800')} />)}</div></div>)}</div>
+        </section>
+        <section><h2 className="text-sm font-semibold mb-3">Timeline</h2>
+          <ol className="relative border-l border-zinc-800 ml-2 space-y-5">{ALERTS.map((a, i) => <li key={i} className="pl-5 relative"><span className={cx('absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full ring-4 ring-zinc-950', { ok: 'bg-emerald-400', warn: 'bg-amber-400', info: 'bg-cyan-400', err: 'bg-red-400' }[a.kind])} /><div className="text-sm">{a.text}</div><div className="text-xs text-zinc-500">{a.t}</div></li>)}</ol>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────── Variant C: Viewer-centric split / command bar ───────────────────────── */
+function VariantC({ page, go, settings, setSettings }) {
+  const nav = [['dashboard', 'home'], ['viewers', 'users'], ['setup', 'wand'], ['tuners', 'tv'], ['activity', 'list'], ['settings', 'gear']];
+  return (
+    <div className="flex min-h-screen bg-zinc-950">
+      <aside className="w-16 shrink-0 border-r border-zinc-900 flex flex-col items-center py-4 gap-2">
+        <Logo size={30} /><div className="h-4" />
+        {nav.map(([k, i]) => <button key={k} title={k} onClick={() => go(k)} className={cx('h-10 w-10 rounded-xl grid place-items-center', page === k ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900')}><Icon name={i} className="h-5 w-5" /></button>)}
+      </aside>
+      <main className="flex-1 min-w-0">
+        <div className="h-14 border-b border-zinc-900 flex items-center px-6 gap-4">
+          <div className="flex-1 max-w-md h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center px-3 text-sm text-zinc-500">Search viewers, channels, events… <span className="ml-auto text-[11px] border border-zinc-700 rounded px-1.5">⌘K</span></div>
+          <div className="ml-auto flex items-center gap-4 text-xs">{['tuner', 'proxy', settings.mode === 'tsnet' ? 'tailnet' : 'port 5004'].map((s) => <span key={s} className="flex items-center gap-1.5 text-zinc-400"><Dot live />{s}</span>)}</div>
+        </div>
+        <div className="p-6">
+          {page === 'dashboard' && <DashC settings={settings} go={go} />}
+          {page === 'viewers' && <ViewersPage go={go} />}
+          {page === 'setup' && <SetupPage settings={settings} />}
+          {page === 'settings' && <SettingsPage settings={settings} setSettings={setSettings} />}
+          {page === 'tuners' && <TunersPage />}
+          {page === 'activity' && <ActivityPage />}
+        </div>
+      </main>
+    </div>
+  );
+}
+function DashC({ settings, go }) {
+  const [sel, setSel] = useState('john');
+  const v = VIEWERS.find((x) => x.id === sel);
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
+      <div className="space-y-6">
+        <div>
+          <div className="flex items-center justify-between mb-2"><h2 className="text-sm font-semibold">Capacity</h2><span className="text-xs text-zinc-500">{TUNER.name} · {TUNER.tuners} tuners</span></div>
+          <div className="flex h-14 rounded-xl overflow-hidden border border-zinc-800">
+            {SLOTS.map((s) => { const m = slotMeta(s); return <div key={s.n} className={cx('flex-1 flex items-center justify-center text-xs font-medium border-r border-zinc-950 last:border-0', s.owner === 'local' ? 'bg-violet-500/25 text-violet-200' : s.owner === 'reserved' ? 'bg-[repeating-linear-gradient(45deg,#18181b_0,#18181b_6px,#27272a_6px,#27272a_12px)] text-zinc-400' : s.owner ? 'bg-cyan-500/25 text-cyan-100' : 'bg-zinc-900 text-zinc-500')}>{m.label}{s.ch && <span className="ml-1.5 opacity-70">· {s.ch.num}</span>}</div>; })}
+          </div>
+          <div className="flex gap-4 mt-2 text-xs text-zinc-500"><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-cyan-500/60" />remote</span><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-violet-500/60" />local (status.json)</span><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-zinc-600" />owner reserve ({settings.reserve})</span></div>
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold mb-2">Viewers</h2>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {VIEWERS.map((x) => (
+              <button key={x.id} onClick={() => setSel(x.id)} className={cx('text-left rounded-xl border p-4 transition-colors', sel === x.id ? 'border-cyan-400/50 bg-cyan-400/5' : 'border-zinc-800 hover:bg-zinc-900')}>
+                <div className="flex items-center gap-2.5"><Avatar name={x.name} /><div className="min-w-0"><div className="font-medium text-sm truncate">{x.name}</div><div className="text-xs text-zinc-500">{x.media}</div></div>{x.status === 'connected' && <span className="ml-auto"><Dot live /></span>}</div>
+                <div className="mt-4 flex items-end justify-between"><span className="text-2xl font-semibold tabular-nums">{x.inUse}<span className="text-sm text-zinc-500">/{x.limit}</span></span><span className="text-xs text-zinc-500">{x.gbToday} GB today</span></div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <Card><CardHead title="Bandwidth" desc="Remote upload, last 24h" /><div className="px-5 pb-5"><Sparkline data={BW} h={90} /></div></Card>
+      </div>
+      <aside className="space-y-4">
+        <Card className="p-5">
+          <div className="flex items-center gap-3"><Avatar name={v.name} size="h-11 w-11" /><div><div className="font-semibold">{v.name}</div><div className="text-xs text-zinc-500">{v.server} · {v.media}</div></div>{v.plex && <span className="ml-auto"><Badge tone="orange">Plex-linked</Badge></span>}</div>
+          <dl className="mt-5 grid grid-cols-2 gap-y-3 text-sm">
+            <dt className="text-zinc-500">Address</dt><dd className="font-mono text-xs text-right">{v.addr}</dd>
+            <dt className="text-zinc-500">Via</dt><dd className="text-right">{v.via}</dd>
+            <dt className="text-zinc-500">Tuner limit</dt><dd className="text-right">{v.limit}</dd>
+            <dt className="text-zinc-500">Last seen</dt><dd className="text-right">{v.lastSeen}</dd>
+          </dl>
+          <div className="mt-5 flex gap-2"><Button variant="outline" size="sm" className="flex-1" onClick={() => go('setup')}>Setup guide</Button><Button variant="outline" size="sm" className="flex-1">Edit limits</Button></div>
+        </Card>
+        <Card>
+          <CardHead title="Event log" />
+          <div className="px-5 pb-5 font-mono text-[12px] space-y-2">{ALERTS.map((a, i) => <div key={i} className="flex gap-3"><span className="text-zinc-600 w-12 shrink-0">{a.t}</span><span className={{ ok: 'text-emerald-300', warn: 'text-amber-300', info: 'text-cyan-300', err: 'text-red-300' }[a.kind]}>{a.text}</span></div>)}</div>
+        </Card>
+      </aside>
+    </div>
+  );
+}
+
+/* ───────────────────────── switcher + app ───────────────────────── */
+const VARIANTS = [['A', 'Sidebar app (Tracearr-like)', VariantA], ['B', 'Control room', VariantB], ['C', 'Viewer-centric split', VariantC]];
+const getParam = (k, d) => new URLSearchParams(location.search).get(k) || d;
+function setParam(k, v) { const p = new URLSearchParams(location.search); p.set(k, v); history.replaceState(null, '', '?' + p.toString()); }
+
+function PrototypeSwitcher({ current, onChange }) {
+  const idx = VARIANTS.findIndex((v) => v[0] === current);
+  const step = (d) => onChange(VARIANTS[(idx + d + VARIANTS.length) % VARIANTS.length][0]);
+  useEffect(() => {
+    const h = (e) => { if (e.target.closest('input,textarea,select,[contenteditable]')) return; if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1); };
+    window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h);
+  });
+  return (
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-full bg-fuchsia-600 text-white shadow-2xl shadow-fuchsia-900/50 px-1.5 py-1.5 text-sm font-medium">
+      <button onClick={() => step(-1)} className="h-8 w-8 rounded-full hover:bg-white/15 grid place-items-center"><Icon name="chevL" /></button>
+      <span className="px-2 min-w-56 text-center">PROTOTYPE · {current} ({VARIANTS[idx][1]})</span>
+      <button onClick={() => step(1)} className="h-8 w-8 rounded-full hover:bg-white/15 grid place-items-center"><Icon name="chevR" /></button>
+    </div>
+  );
+}
+
+function App() {
+  const [variant, setVariant] = useState(getParam('variant', 'A'));
+  const [page, setPage] = useState(getParam('page', 'dashboard'));
+  const [settings, setSettings] = useState(SETTINGS_DEFAULT);
+  const go = (p) => { setPage(p); setParam('page', p); window.scrollTo(0, 0); };
+  const change = (v) => { setVariant(v); setParam('variant', v); };
+  const V = (VARIANTS.find((x) => x[0] === variant) || VARIANTS[0])[2];
+  return <><V page={page} go={go} settings={settings} setSettings={setSettings} /><PrototypeSwitcher current={variant} onChange={change} /></>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
