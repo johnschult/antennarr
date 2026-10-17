@@ -36,6 +36,62 @@ describe('useLiveState', () => {
     expect(result.current.connected).toBe(false)
   })
 
+  describe('when the browser gives up on the stream', () => {
+    beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }))
+    afterEach(() => vi.useRealTimers())
+
+    it('opens a new one, slower each time, and goes back to quick retries once it works', async () => {
+      const { result } = renderHook(() => useLiveState(), { wrapper })
+      expect(FakeEventSource.instances).toHaveLength(1)
+
+      act(() => FakeEventSource.last().fail(true))
+      expect(result.current.connected).toBe(false)
+      act(() => void vi.advanceTimersByTime(2_999))
+      expect(FakeEventSource.instances).toHaveLength(1) // not yet
+      act(() => void vi.advanceTimersByTime(1))
+      expect(FakeEventSource.instances).toHaveLength(2)
+
+      act(() => FakeEventSource.last().fail(true)) // still refused: wait twice as long
+      act(() => void vi.advanceTimersByTime(5_999))
+      expect(FakeEventSource.instances).toHaveLength(2)
+      act(() => void vi.advanceTimersByTime(1))
+      expect(FakeEventSource.instances).toHaveLength(3)
+
+      act(() => FakeEventSource.last().open())
+      expect(result.current.connected).toBe(true)
+      act(() => FakeEventSource.last().fail(true)) // after a success the wait starts over
+      act(() => void vi.advanceTimersByTime(3_000))
+      expect(FakeEventSource.instances).toHaveLength(4)
+    })
+
+    it('never waits more than 15 seconds', () => {
+      renderHook(() => useLiveState(), { wrapper })
+      for (let i = 0; i < 8; i++) {
+        act(() => FakeEventSource.last().fail(true))
+        act(() => void vi.advanceTimersByTime(15_000))
+      }
+      const n = FakeEventSource.instances.length
+      act(() => FakeEventSource.last().fail(true))
+      act(() => void vi.advanceTimersByTime(15_000))
+      expect(FakeEventSource.instances).toHaveLength(n + 1)
+    })
+
+    it("leaves the browser's own retries alone when it has not given up", () => {
+      renderHook(() => useLiveState(), { wrapper })
+      act(() => FakeEventSource.last().fail()) // a lost connection: the browser reconnects itself
+      act(() => void vi.advanceTimersByTime(60_000))
+      expect(FakeEventSource.instances).toHaveLength(1)
+    })
+
+    it('stops trying when the page goes away', () => {
+      const { unmount } = renderHook(() => useLiveState(), { wrapper })
+      act(() => FakeEventSource.last().fail(true))
+      unmount()
+      act(() => void vi.advanceTimersByTime(60_000))
+      expect(FakeEventSource.instances).toHaveLength(1)
+    })
+  })
+
   it('replaces the state with each event pushed by the server', async () => {
     const { result } = renderHook(() => useLiveState(), { wrapper })
     await waitFor(() => expect(result.current.state?.devices[0].summary.inUse).toBe(2))

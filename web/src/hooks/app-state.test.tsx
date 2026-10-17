@@ -67,6 +67,27 @@ describe('AppStateProvider', () => {
   })
 })
 
+describe('being refused while the page is open', () => {
+  it('goes back to the sign-in screen instead of showing stale numbers', async () => {
+    let allowed = true
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        'GET /state': () => (allowed ? { body: makeState() } : { status: 403, body: { error: 'admin only' } }),
+        'GET /auth/status': () => ({ body: { plexEnabled: true, signedIn: null, admin: false } }),
+      }).fn,
+    )
+    mount()
+    expect(await screen.findByText('Steve FLEX 4K polling')).toBeInTheDocument()
+
+    allowed = false // the server restarted and forgot the sign-in
+    act(() => FakeEventSource.last().fail(true)) // the stream is refused too, so the page falls back to polling
+    expect(await screen.findByText("This address can't open the admin page", {}, { timeout: 8000 })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Sign in with/ })).toBeInTheDocument()
+    expect(screen.queryByText('Steve FLEX 4K polling')).not.toBeInTheDocument()
+  }, 15000)
+})
+
 describe('signing in with Plex', () => {
   const forbidden = { status: 403, body: { error: 'admin only' } }
   const authOn = { 'GET /auth/status': () => ({ body: { plexEnabled: true, signedIn: null, admin: false } }) }

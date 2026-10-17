@@ -13,8 +13,11 @@ import { STATE_KEY, useLiveState } from './use-live-state'
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const { state, connected, error, isLoading } = useLiveState()
 
-  if (!state) {
-    return <Splash error={isLoading ? undefined : error} />
+  // Refused while the page is open (a Plex sign-in ended, say): go back to the
+  // sign-in screen rather than sit on stale numbers.
+  const refused = error instanceof ApiError && error.status === 403
+  if (!state || refused) {
+    return <Splash error={isLoading && !refused ? undefined : error} />
   }
   return <AppContext.Provider value={{ state, connected }}>{children}</AppContext.Provider>
 }

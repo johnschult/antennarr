@@ -16,6 +16,7 @@ export class FakeEventSource {
   onopen: (() => void) | null = null
   onerror: (() => void) | null = null
   closed = false
+  readyState = 0 // 0 connecting, 1 open, 2 closed (the browser gave up)
   private listeners = new Map<string, Listener[]>()
 
   readonly url: string
@@ -32,9 +33,12 @@ export class FakeEventSource {
   }
   // ---- test controls ----
   open() {
+    this.readyState = 1
     this.onopen?.()
   }
-  fail() {
+  /** The connection dropped. With giveUp, the browser won't retry (it got an error reply). */
+  fail(giveUp = false) {
+    this.readyState = giveUp ? 2 : 0
     this.onerror?.()
   }
   emit(type: string, data: unknown) {
