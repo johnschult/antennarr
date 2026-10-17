@@ -172,16 +172,21 @@ export function Shell() {
             {state.version}
           </a>
         </span>
-        <a
-          href={REPO_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Antennarr on GitHub"
-          title="Antennarr on GitHub"
-          className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
-        >
-          <GithubIcon className="size-5" />
-        </a>
+        <div className="flex items-center gap-1">
+          <a href={state.docsUrl} target="_blank" rel="noopener noreferrer" className="rounded-md px-2 py-1 underline-offset-2 hover:bg-muted hover:text-foreground">
+            Help
+          </a>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Antennarr on GitHub"
+            title="Antennarr on GitHub"
+            className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
+          >
+            <GithubIcon className="size-5" />
+          </a>
+        </div>
       </footer>
     </div>
   )

@@ -68,6 +68,17 @@ Images are published for `amd64` and `arm64`. To build one yourself: `docker bui
 Releases are numbered by calendar, `YYYY.MM.PATCH` (for example `2026.10.0`), and the image is tagged with that number as well as `latest`.
 The app shows its version in the footer, linked to the release notes; `antennarr -version` prints it. See [docs/RELEASING.md](docs/RELEASING.md).
 
+## Documentation
+
+The full documentation is in [docs/](docs/README.md):
+[getting started](docs/getting-started.md),
+[networking](docs/networking.md) (Tailscale, a VPN, the same network, firewalls),
+[media servers](docs/media-servers.md) (Plex, Jellyfin, Emby),
+[configuration](docs/configuration.md),
+[security](docs/security.md),
+[troubleshooting](docs/troubleshooting.md) and the [API](docs/api.md).
+The app's **Help** link, at the bottom of its web page, opens the docs for the version you are running.
+
 ## Security
 
 **HDHomeRun tuners have no authentication, and neither do their streams.** Antennarr's protection is the address a request comes from.
@@ -148,7 +159,7 @@ The design notes, including what is built and what is planned, are in [docs/DESI
 
 ## Roadmap
 
-Planned, roughly in this order: Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuner page. Contributions and bug reports are welcome.
+Planned, roughly in this order: Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuner page. Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

@@ -1,0 +1,123 @@
+# Configuration
+
+Antennarr is configured with a **settings file** (JSON), which you can edit by hand or change from the web page, and a few **command-line flags**.
+
+- Changes made in the web page are saved to the settings file at once, and take effect at once (except the list of devices, see below).
+- The file is read strictly: **a key it doesn't know is an error**, not silently ignored, so a typo can't quietly open access. If the file is wrong, Antennarr says why and doesn't start (or, if it is already running and you reload, keeps the settings it has).
+- The file is saved atomically and with permissions that only its owner can read.
+- Send the process `SIGHUP` (`docker kill -s HUP antennarr`) to read the file again after editing it by hand. Changing `devices` needs a restart; everything else is picked up by the reload.
+
+## An example
+
+```json
+{
+  "devices": [
+    { "name": "antenna", "listen": ":5004", "tuner": "192.168.1.50", "id": "10C03B06" }
+  ],
+  "viewers": [
+    { "name": "Mom", "addresses": ["100.64.0.7"], "limit": 1 }
+  ],
+  "sharedCap": 0,
+  "ownerReserve": 1,
+  "admin": ["100.64.0.0/10"],
+  "labels": { "antenna": "Living room antenna" },
+  "firmwareCheck": true,
+  "guide": true,
+  "plex": { "enabled": false, "admins": [] }
+}
+```
+
+## Settings
+
+### `devices`
+
+The tuners to front. Each looks like its own HDHomeRun to media servers, on its own port. If you leave `devices` out, Antennarr runs one device described by the command-line flags.
+
+| Key | Meaning |
+|---|---|
+| `name` | A stable key: 1–40 letters, digits, `.`, `_` or `-`. It is used in settings, limits and URLs, so don't change it. |
+| `listen` | Where media servers reach this device: `:5004` (every address) or `127.0.0.1:5004`. Each device needs its own port. |
+| `tuner` | The tuner's address, as a host or URL (`192.168.1.50`). Where to look first. |
+| `id` | The tuner's DeviceID: exactly 8 hex digits. With it, Antennarr finds the tuner again if its address changes. If you leave it out, it is learned from the tuner the first time Antennarr reaches it. You need `tuner`, `id`, or both. |
+| `streamPort` | The tuner's streaming port. Default `5004`. |
+| `advertise` | The base URL handed to media servers, for example `http://antennarr.example.com:5004`. By default it is whatever host the client used to connect, which is right in almost every case. |
+| `reportId` | A different DeviceID (8 hex digits) to show media servers instead of the tuner's own. Use it when a media server already knows the real tuner and would merge the two. |
+| `ownerReserve`, `sharedCap` | Override the top-level values below for this device. |
+
+### `viewers`
+
+Who you share with. With **no viewers, the tuner is open to anyone who can reach it** (and so are the admin pages).
+
+| Key | Meaning |
+|---|---|
+| `name` | Required, and unique. |
+| `addresses` | At least one. Single addresses or ranges: `100.64.0.7`, `10.8.0.0/24`, `fd7a:115c::/48`. The address their requests come from, as Antennarr sees it. If ranges overlap, the most specific one wins. An address can't be listed for two viewers. |
+| `limit` | How many tuners they may use at once, on each device. `0` pauses them. |
+| `limits` | Overrides `limit` for particular devices, by device name: `{ "antenna": 2 }`. Needs `devices` to be declared in the file. |
+
+### Everything else
+
+| Key | Meaning |
+|---|---|
+| `sharedCap` | The most tuners *all* viewers together may use on a device. `0` means no cap. |
+| `ownerReserve` | Tuners always kept free for your own devices (default `1`), **in addition to** any your own devices are using at the moment. |
+| `admin` | Extra addresses (single or ranges) allowed to open the admin pages. Loopback is always allowed once a viewer exists. |
+| `labels` | Display names, by device name: `{ "antenna": "Living room antenna" }`, up to 60 characters. This is also what media servers are told the tuner is called, and it changes live. |
+| `firmwareCheck` | Look at SiliconDust's firmware changelog every 12 hours (default `true`). |
+| `guide` | Read SiliconDust's programme guide so Live tiles can show the channel logo and what's on (default `true`). |
+| `plex` | Sign in to the admin pages with a Plex account. `enabled`, the allowed `admins` (each with an `id` and a `name`, at most 50), and a `clientId` Antennarr creates and keeps for you. See [Security](security.md). |
+
+## How the limits work
+
+Limits count **tuners, not particular tuners**. Your own TVs take whichever tuner is free, so Antennarr can't pin a viewer to one.
+
+For a viewer on a device (call the tuner's real number of tuners *N*):
+
+- **What the viewer is told** (`TunerCount` in `discover.json`): the least of *N − ownerReserve*, the `sharedCap` (if set) and the viewer's `limit`, never below zero. A DVR plans recordings around it.
+- **When a stream is refused:** a request for a channel gets a **503** if any of these is true:
+  - the viewer is already using their `limit` (`viewer-limit`);
+  - the viewers together are already using the `sharedCap` (`shared-cap`);
+  - the tuners in use by all viewers, plus this one, plus the ones your own devices are using (read from the tuner's own status), would leave fewer than `ownerReserve` free (`owner-reserve`);
+  - the tuner is offline (`tuner-offline`).
+- A request from an address that isn't a viewer gets a **403** (`not-allowed`).
+
+The reason is in the `X-Antennarr-Reason` response header, and each refusal is noted (at most once a minute per viewer, device and reason) in the Live page's timeline. A stream already running is never cut off to make room.
+
+Example, with a 4-tuner device, `ownerReserve: 1` and one of *your* TVs watching: viewers can have at most 4 − 1 − 1 = 2 tuners at that moment. The Live page shows the tuner being held for you as **Reserved**.
+
+## Command-line flags
+
+| Flag | Meaning |
+|---|---|
+| `-config PATH` | The settings file. Without one, anyone who can reach a port may use the tuner, and settings can't be saved. If the file doesn't exist yet it is created the first time you change something. |
+| `-tuner HOST` | A tuner's address, to run one device without a settings file. |
+| `-tuner-id ID` | A tuner's DeviceID to search for if its address changes. |
+| `-listen ADDR` | Where to listen (default `:5004`). |
+| `-stream-port PORT` | The tuner's streaming port (default `5004`). |
+| `-advertise URL` | The base URL handed to clients (default: the host they connected with). |
+| `-report-id ID` | Report this DeviceID to clients instead of the tuner's own. |
+| `-poll DURATION` | How often to check the tuners (default `5s`). |
+| `-firmware-url URL` | Read the firmware changelog from here instead of SiliconDust's page (for a mirror, or testing). |
+| `-version` | Print the version and exit. |
+
+`-tuner`, `-tuner-id`, `-listen`, `-stream-port`, `-advertise` and `-report-id` describe a device, so they can't be combined with `devices` in the settings file. Put those settings in the file.
+
+`antennarr discover [-wait 3s] [host …]` lists the HDHomeRun tuners it can find (a broadcast on your network, and a scan of the nearby subnet), one per line: DeviceID, address, number of tuners.
+Add host addresses to look at those instead.
+
+## Files Antennarr keeps
+
+- **The settings file** (the one you pass to `-config`): everything above.
+- **`<settings file name without .json>.sessions.json`**, beside it: who is signed in with Plex, so a restart doesn't sign you out. Only a hash of each session is stored, never the session itself or your Plex token. It is created only if Plex sign-in is used, and only when there is a settings file.
+
+Back both up with your other configuration. There is no database, and nothing else is kept. Logs go to standard error (`docker logs antennarr`).
+
+## What it checks on its own
+
+| What | How often | Notes |
+|---|---|---|
+| The tuners | every 5 seconds (`-poll`) | After 3 failures in a row a tuner is shown offline, and Antennarr starts searching for it by DeviceID (at most every 30 seconds), using a broadcast and a scan of the nearby subnet. |
+| Firmware changelog | every 12 hours | Only when `firmwareCheck` is on. |
+| Programme guide | every 6 hours | Only when `guide` is on. About 3.5 MB for a FLEX 4K. |
+
+A restart begins again at the address in the settings file, and finds the tuner by its DeviceID. Antennarr doesn't write a new address back into the file. Update `tuner` yourself, and reserve the address in your router, to skip the search.

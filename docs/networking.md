@@ -1,0 +1,83 @@
+# Networking
+
+Antennarr just listens on a port. How a viewer's media server reaches that port is up to you, and there are four common ways.
+The **Setup** page in the web app writes out the steps for each, with your addresses filled in.
+
+Two ideas to keep in mind:
+
+- **Viewers are identified by the address their requests come from**, as Antennarr sees it. That is what you list in *Viewers*. After Tailscale or a VPN, it is the viewer's address on that network, not their home address.
+- **HDHomeRun tuners have no passwords**, and neither does Antennarr's tuner side: the list of allowed addresses is the protection. Keep the port off the open internet. See [Security](security.md).
+
+## Tailscale (recommended)
+
+[Tailscale](https://tailscale.com) is the easiest way: nothing is opened to the internet, and the addresses don't change.
+
+1. Put Tailscale on the machine running Antennarr and on the viewer's media server, signed in to the same tailnet. If they are on different tailnets, share the Antennarr machine with the viewer's tailnet from the Tailscale admin console (*Machines → ⋯ → Share*).
+2. On the Antennarr machine, `tailscale ip -4` prints its Tailscale address (it looks like `100.x.y.z`). The Setup page shows it for you when Antennarr is running on the machine itself. In Docker, use host networking, or it can't see it.
+3. In Antennarr, add the **viewer's** Tailscale address under *Viewers*. (On the viewer's machine, `tailscale ip -4`.)
+4. The viewer adds the tuner in their media server as `<Antennarr's Tailscale address>:5004`. See [Media servers](media-servers.md).
+
+If you can reach it with `tailscale ping` but not with a web browser or `curl`, check two things: your Tailscale access controls might not allow that port, and the machine's firewall (below) may be blocking it.
+
+## Another VPN (WireGuard, ZeroTier, Netbird…)
+
+The same idea. Both machines join the VPN. The viewer adds the Antennarr machine's address *on the VPN*, and you list the viewer's address on the VPN under *Viewers*.
+
+## The same network
+
+If both servers are on one LAN, there is nothing to set up. Use the Antennarr machine's LAN address, and list the viewer's LAN address.
+
+## Over the internet (not recommended)
+
+Anyone who can reach the port and whose address is on your list can use your tuner. A VPN or Tailscale is much safer. If you do it anyway:
+
+- forward **only** Antennarr's port on your router to the machine;
+- list only the viewer's public address under *Viewers*, and allow only that address in the machine's firewall;
+- use your public address or a dynamic DNS name, and test from *outside* your network.
+
+Their public address changes when their ISP changes it, which is a good reason not to do this.
+
+## The machine's firewall
+
+If the machine running Antennarr has a firewall that blocks the port, viewers' connections time out. They don't get a "refused" message, they just hang. Allow each viewer's address to reach Antennarr's port, and only that.
+The **Setup** page shows the commands. It offers `ufw`, `firewalld` and `iptables`, and it opens the firewall step by itself when it can tell `ufw` or `firewalld` is switched on.
+
+```sh
+# ufw
+sudo ufw allow from 100.64.0.7 to any port 5004 proto tcp
+# firewalld (add each without --permanent too to apply it immediately, with no reload)
+sudo firewall-cmd --permanent --zone=public --add-rich-rule='rule family="ipv4" source address="100.64.0.7/32" port port="5004" protocol="tcp" accept'
+sudo firewall-cmd --reload
+# iptables (lost on reboot unless you save it)
+sudo iptables -I INPUT -p tcp -s 100.64.0.7 --dport 5004 -j ACCEPT
+```
+
+Antennarr can't read your firewall's rules (that takes root), and testing from the machine to itself says nothing, so it can only tell which firewall is switched on. It cannot tell you whether the port is blocked.
+To test a rule, use `curl` from the viewer's machine.
+
+On firewalld, a Tailscale interface normally falls in the default zone, so the rule above applies to it. If the machine runs Docker, adding rules without `--permanent` and without `--reload` avoids a reload that can disturb Docker's own rules.
+
+## If Antennarr runs in Docker
+
+Use host networking (`network_mode: host`). Without it, Antennarr:
+
+- sees every request as coming from Docker's gateway address, so the allowlist can't tell viewers apart;
+- can't find the tuner with a broadcast;
+- can't tell its own streams from your own TVs' (it compares addresses with the tuner's idea of who is watching).
+
+A consequence of host networking: published ports (`ports:`) don't apply, so set the listening port with `listen` in the settings file.
+Antennarr inside a container can't see the host's firewall either, so the Setup page's firewall detection stays off.
+
+## Checking each step
+
+From the viewer's machine, in this order:
+
+```sh
+tailscale ping <antennarr address>            # is the machine reachable? (Tailscale only)
+curl -i http://<antennarr address>:5004/discover.json
+```
+
+- A timeout means the connection never arrived: a firewall, or the wrong network or address.
+- `403` with `X-Antennarr-Reason: not-allowed` means it arrived and Antennarr doesn't recognise the sender's address. The log shows the address it saw. Add that.
+- `502 tuner unreachable` means it got through and the tuner is offline.
+- `200` with your tuner's name and Antennarr's address means it works.

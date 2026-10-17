@@ -172,6 +172,8 @@ export interface AppState {
   /** This build's version ("2026.10.0", or "dev") and its page on GitHub. */
   version: string
   versionUrl: string
+  /** The documentation as it was at this version. */
+  docsUrl: string
 }
 
 export interface ViewerInput {

@@ -77,6 +77,7 @@ export function makeState(over: Partial<AppState> = {}): AppState {
     editable: true,
     version: '2026.10.0',
     versionUrl: 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0',
+    docsUrl: 'https://github.com/johnschult/antennarr/blob/v2026.10.0/docs/README.md',
     ...over,
   }
 }
