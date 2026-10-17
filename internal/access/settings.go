@@ -106,6 +106,10 @@ type Settings struct {
 	// FirmwareCheck turns on looking at SiliconDust's firmware changelog (one
 	// request to their website every 12 hours). Unset means on.
 	FirmwareCheck *bool `json:"firmwareCheck,omitempty"`
+	// Guide turns on reading SiliconDust's programme guide, so tiles can show
+	// the channel's logo and what is on. It sends the tuner's DeviceAuth to
+	// SiliconDust. Unset means on.
+	Guide *bool `json:"guide,omitempty"`
 }
 
 // PlexEnabled reports whether signing in with Plex is switched on (off by default).
@@ -125,6 +129,9 @@ func (s Settings) PlexAdmin(id int64) (PlexAccount, bool) {
 
 // FirmwareCheckEnabled reports whether the firmware check is on (the default).
 func (s Settings) FirmwareCheckEnabled() bool { return s.FirmwareCheck == nil || *s.FirmwareCheck }
+
+// GuideEnabled reports whether the programme guide is on (the default).
+func (s Settings) GuideEnabled() bool { return s.Guide == nil || *s.Guide }
 
 // DefaultSettings is open access with one tuner held back for the owner.
 func DefaultSettings() Settings {
@@ -165,6 +172,10 @@ func (s Settings) Clone() Settings {
 	if s.FirmwareCheck != nil {
 		b := *s.FirmwareCheck
 		out.FirmwareCheck = &b
+	}
+	if s.Guide != nil {
+		b := *s.Guide
+		out.Guide = &b
 	}
 	if s.Plex != nil {
 		pl := *s.Plex

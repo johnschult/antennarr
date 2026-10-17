@@ -19,6 +19,7 @@ import (
 	"github.com/johnschult/antennarr/internal/api"
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/firmware"
+	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/plexauth"
 	"github.com/johnschult/antennarr/internal/proxy"
@@ -50,6 +51,11 @@ type Config struct {
 	// firmware changelog is read; they exist for tests.
 	FirmwareURL      string
 	FirmwareInterval time.Duration
+	// GuideURL and GuideIconBase override where the programme guide and
+	// channel logos come from; they exist for tests, which must never reach
+	// SiliconDust.
+	GuideURL      string
+	GuideIconBase string
 	// PlexURL and PlexAuthURL override plex.tv's addresses, for tests.
 	PlexURL, PlexAuthURL string
 }
@@ -68,6 +74,7 @@ type Server struct {
 	hub      *live.Hub
 	devices  []*device
 	firmware *firmware.Checker
+	guide    *guide.Service
 	plex     *plexauth.Auth
 
 	mu        sync.Mutex
@@ -105,6 +112,12 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		OnChange: func() { s.hub.Notify(); s.announceFirmware() },
 	})
 
+	s.guide = guide.NewService(guide.Config{
+		URL: cfg.GuideURL, IconBase: cfg.GuideIconBase, Logger: cfg.Log,
+		Enabled:  func() bool { return policy.Settings().GuideEnabled() },
+		OnChange: s.hub.Notify,
+	})
+
 	var apiDevices []api.Device
 	for _, d := range cfg.Devices {
 		base, err := cfg.Locate(ctx, d.Tuner, d.ID)
@@ -114,9 +127,10 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		log := cfg.Log.With("device", d.Name)
 		mon := tuner.NewMonitor(tuner.Config{
 			Name: d.Name, BaseURL: base, ID: d.ID, StreamPort: d.StreamPort,
-			Interval: cfg.Poll, OnChange: func() { s.hub.Notify(); s.announceFirmware() }, Logger: log,
+			Interval: cfg.Poll, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() }, Logger: log,
 		})
 		policy.AddDevice(d.Name, mon, mon)
+		s.guide.Watch(d.Name, mon.DeviceAuth)
 		s.devices = append(s.devices, &device{cfg: d, mon: mon})
 		apiDevices = append(apiDevices, api.Device{Name: d.Name, Listen: d.Listen, Mon: mon})
 		log.Info("device ready", "listen", d.Listen, "tuner", base, "tunerID", strings.ToUpper(d.ID))
@@ -144,7 +158,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Devices: apiDevices, Firmware: s.firmware, Pol: policy, Store: store, Hub: s.hub, Log: cfg.Log,
+		Devices: apiDevices, Firmware: s.firmware, Guide: s.guide, Pol: policy, Store: store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -203,6 +217,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 
 	go s.firmware.Run(ctx)
+	go s.guide.Run(ctx)
 
 	servers := make([]*http.Server, len(s.devices))
 	errc := make(chan error, len(s.devices))

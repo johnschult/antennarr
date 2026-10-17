@@ -106,6 +106,17 @@ type Monitor struct {
 	st         State
 	fails      int
 	lastSearch time.Time
+	// deviceAuth is the tuner's token for SiliconDust's guide service. It is
+	// kept out of State on purpose, so it can't end up in an API response.
+	deviceAuth string
+}
+
+// DeviceAuth is the tuner's token for SiliconDust's guide service, as last
+// reported in discover.json; empty until the tuner has been reached.
+func (m *Monitor) DeviceAuth() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.deviceAuth
 }
 
 const maxEvents = 50
@@ -213,6 +224,7 @@ func (m *Monitor) poll(ctx context.Context) {
 }
 
 type discoverDoc struct {
+	DeviceAuth       string
 	FriendlyName     string
 	ModelNumber      string
 	DeviceID         string
@@ -279,6 +291,7 @@ func (m *Monitor) check(ctx context.Context, base string) error {
 	wasOnline := m.st.Online
 	m.st.FriendlyName, m.st.Model, m.st.TunerCount = d.FriendlyName, d.ModelNumber, d.TunerCount
 	m.st.Firmware = Firmware{Name: d.FirmwareName, Version: d.FirmwareVersion, UpgradeAvailable: d.UpgradeAvailable}
+	m.deviceAuth = d.DeviceAuth
 	m.st.LastSeen = time.Now()
 	if statusErr == nil {
 		m.st.Slots = slotsFrom(raw, local)

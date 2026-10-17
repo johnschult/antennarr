@@ -557,3 +557,33 @@ func TestRefusalNotesUseTheNameTheOwnerGave(t *testing.T) {
 		t.Errorf("notes = %q (a device with a name uses it; one without uses its key)", notes.notes)
 	}
 }
+
+func TestTheGuideIsOnUnlessSwitchedOff(t *testing.T) {
+	off, on := false, true
+	if !(Settings{}).GuideEnabled() || !DefaultSettings().GuideEnabled() {
+		t.Error("the guide should default to on")
+	}
+	if (Settings{Guide: &off}).GuideEnabled() || !(Settings{Guide: &on}).GuideEnabled() {
+		t.Error("an explicit choice should win")
+	}
+	s := Settings{Guide: &off}
+	c := s.Clone()
+	*c.Guide = true
+	if *s.Guide {
+		t.Error("clone shares the pointer")
+	}
+	path := filepath.Join(t.TempDir(), "a.json")
+	if err := SaveSettings(path, Settings{Guide: &off}); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := LoadSettings(path)
+	if err != nil || got.GuideEnabled() {
+		t.Errorf("a saved 'off' came back on: %+v %v", got, err)
+	}
+	if err := SaveSettings(path, DefaultSettings()); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); strings.Contains(string(b), `"guide"`) {
+		t.Errorf("an unset choice should not be written: %s", b)
+	}
+}

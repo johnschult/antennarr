@@ -28,6 +28,7 @@ type fakeTuner struct {
 	mu          sync.Mutex
 	fw, upgrade string // firmware version it reports, and a newer one it says exists
 	id, name    string
+	channel     string // if set, tuner0 reports someone watching this channel
 	api         *httptest.Server
 	stream      *httptest.Server
 	streamPort  string
@@ -61,11 +62,18 @@ func newFakeTuner(t *testing.T, id, name string) *fakeTuner {
 			if upgrade != "" {
 				extra = fmt.Sprintf(`,"UpgradeAvailable":%q`, upgrade)
 			}
-			fmt.Fprintf(w, `{"FriendlyName":%q,"ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":%q,"DeviceID":%q,"TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"%s}`, name, fw, id, extra)
+			fmt.Fprintf(w, `{"DeviceAuth":"S3CR3T-DEVICE-AUTH","FriendlyName":%q,"ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":%q,"DeviceID":%q,"TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"%s}`, name, fw, id, extra)
 		case "/lineup.json":
 			fmt.Fprintf(w, `[{"GuideNumber":"5.1","GuideName":"WFRV","URL":"http://%s/auto/v5.1"}]`, "127.0.0.1:"+f.streamPort)
 		case "/status.json":
-			io.WriteString(w, `[{"Resource":"tuner0"},{"Resource":"tuner1"},{"Resource":"tuner2"},{"Resource":"tuner3"}]`)
+			f.mu.Lock()
+			ch := f.channel
+			f.mu.Unlock()
+			first := `{"Resource":"tuner0"}`
+			if ch != "" {
+				first = fmt.Sprintf(`{"Resource":"tuner0","VctNumber":%q,"VctName":"WXIA","TargetIP":"192.168.1.77","NetworkRate":9000000}`, ch)
+			}
+			io.WriteString(w, `[`+first+`,{"Resource":"tuner1"},{"Resource":"tuner2"},{"Resource":"tuner3"}]`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -130,6 +138,14 @@ func start(t *testing.T, s access.Settings, devices []access.Device, tuners ...*
 // startWith is start, reading the firmware changelog from fwURL.
 func startWith(t *testing.T, s access.Settings, devices []access.Device, fwURL string, tuners ...*fakeTuner) *rig {
 	t.Helper()
+	return startFull(t, s, devices, fwURL, "", tuners...)
+}
+
+// startFull is startWith, also reading the programme guide from guideURL (and
+// logos from the same server). With no guideURL the guide is off, so a test
+// can never reach SiliconDust.
+func startFull(t *testing.T, s access.Settings, devices []access.Device, fwURL, guideURL string, tuners ...*fakeTuner) *rig {
+	t.Helper()
 	r := &rig{addr: map[string]string{}, logs: &lockedBuf{}, done: make(chan error, 1)}
 	lns := map[string]net.Listener{}
 	for _, d := range devices {
@@ -145,7 +161,11 @@ func startWith(t *testing.T, s access.Settings, devices []access.Device, fwURL s
 		off := false
 		s.FirmwareCheck = &off
 	}
-	srv, err := New(ctx, Config{
+	if s.Guide == nil && guideURL == "" {
+		off := false
+		s.Guide = &off
+	}
+	srv, err := New(ctx, Config{GuideURL: guideURL + "/api/xmltv", GuideIconBase: guideURL,
 		Settings: s, Devices: devices, Poll: 50 * time.Millisecond, Locate: locateFrom(tuners...),
 		Log: slog.New(slog.NewTextHandler(r.logs, nil)), Listeners: lns, FirmwareURL: fwURL,
 	})

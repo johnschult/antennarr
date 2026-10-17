@@ -16,6 +16,7 @@ import (
 
 	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/firmware"
+	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/httpx"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/tuner"
@@ -32,10 +33,12 @@ type API struct {
 	Devices []Device
 	// Firmware reads SiliconDust's changelog; nil means no firmware checking.
 	Firmware *firmware.Checker
-	Pol      *access.Policy
-	Store    *access.Store
-	Hub      *live.Hub
-	Log      *slog.Logger
+	// Guide reads SiliconDust's programme guide; nil means no guide.
+	Guide *guide.Service
+	Pol   *access.Policy
+	Store *access.Store
+	Hub   *live.Hub
+	Log   *slog.Logger
 	// KeepAlive is how often an idle event stream gets a comment line, so
 	// proxies don't drop it. Zero means 20s.
 	KeepAlive time.Duration
@@ -67,6 +70,7 @@ func (a *API) Handler() http.Handler {
 		{"viewers/{name}", map[string]http.HandlerFunc{"PUT": a.replaceViewer, "DELETE": a.deleteViewer}},
 		{"settings", map[string]http.HandlerFunc{"GET": a.getSettings, "PATCH": a.patchSettings}},
 		{"devices/{name}", map[string]http.HandlerFunc{"PATCH": a.patchDevice}},
+		{"devices/{name}/guide/{channel}/icon", map[string]http.HandlerFunc{"GET": a.channelIcon}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
 	}
@@ -109,6 +113,7 @@ type SettingsDoc struct {
 	OwnerReserve  int      `json:"ownerReserve"`
 	Admin         []string `json:"admin"`
 	FirmwareCheck bool     `json:"firmwareCheck"`
+	Guide         bool     `json:"guide"`
 	Plex          PlexDoc  `json:"plex"`
 }
 
@@ -131,6 +136,9 @@ type DeviceDoc struct {
 	OwnerReserve int             `json:"ownerReserve"`
 	SharedCap    int             `json:"sharedCap"`
 	Firmware     firmware.Status `json:"firmware"`
+	// Guide is what the programme guide says about each channel being watched
+	// right now, by channel number. Empty when the guide is off or unknown.
+	Guide map[string]guide.Entry `json:"guide"`
 }
 
 // State is everything the dashboard shows.
@@ -157,6 +165,18 @@ func (a *API) deviceDoc(d Device, streams []access.Active) DeviceDoc {
 			Model: t.Model, FirmwareName: t.Firmware.Name, Version: t.Firmware.Version, UpgradeAvailable: t.Firmware.UpgradeAvailable,
 		}),
 		Summary: Summary{Total: t.TunerCount, InUse: total, Remote: via, Local: total - via, Reserved: reserve, Free: free},
+	}
+	doc.Guide = map[string]guide.Entry{}
+	if a.Guide != nil && a.Pol.Settings().GuideEnabled() {
+		now := time.Now()
+		for _, sl := range t.Slots {
+			if !sl.InUse || sl.Channel == "" {
+				continue
+			}
+			if e, ok := a.Guide.Lookup(d.Name, sl.Channel, now); ok {
+				doc.Guide[sl.Channel] = e
+			}
+		}
 	}
 	for _, s := range streams {
 		if s.Device == d.Name {
@@ -186,6 +206,7 @@ func (a *API) state() State {
 		Settings: SettingsDoc{
 			Mode: a.Pol.Mode(), SharedCap: set.SharedCap, OwnerReserve: set.OwnerReserve, Admin: nonNil(set.Admin),
 			FirmwareCheck: set.FirmwareCheckEnabled(),
+			Guide:         set.GuideEnabled(),
 			Plex:          plexDoc(set),
 		},
 		Editable: a.Store.Editable(),
@@ -396,6 +417,7 @@ type settingsPatch struct {
 	OwnerReserve  *int      `json:"ownerReserve"`
 	Admin         *[]string `json:"admin"`
 	FirmwareCheck *bool     `json:"firmwareCheck"`
+	Guide         *bool     `json:"guide"`
 	PlexEnabled   *bool     `json:"plexEnabled"`
 }
 
@@ -418,6 +440,10 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 			b := *in.FirmwareCheck
 			s.FirmwareCheck = &b
 		}
+		if in.Guide != nil {
+			b := *in.Guide
+			s.Guide = &b
+		}
 		if in.PlexEnabled != nil {
 			if s.Plex == nil {
 				s.Plex = &access.PlexSettings{}
@@ -432,6 +458,9 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.FirmwareCheck != nil && *in.FirmwareCheck && a.Firmware != nil {
 		a.Firmware.Kick() // switched on: look now rather than at the next interval
+	}
+	if in.Guide != nil && *in.Guide && a.Guide != nil {
+		a.Guide.Kick()
 	}
 	writeJSON(w, http.StatusOK, a.settingsDoc())
 }
@@ -578,3 +607,25 @@ func writeJSON(w http.ResponseWriter, code int, v any)          { httpx.WriteJSO
 func writeErr(w http.ResponseWriter, code int, msg string)      { httpx.WriteErr(w, code, msg) }
 func decode(w http.ResponseWriter, r *http.Request, v any) bool { return httpx.Decode(w, r, v) }
 func guardWrites(next http.Handler) http.Handler                { return httpx.GuardWrites(next) }
+
+// channelIcon serves a channel's logo, fetched through Antennarr so the
+// browser never contacts SiliconDust. Only a channel the guide knows has one;
+// the address it is fetched from comes from the guide, never from this request.
+func (a *API) channelIcon(w http.ResponseWriter, r *http.Request) {
+	if a.Guide == nil || !a.Pol.Settings().GuideEnabled() {
+		writeErr(w, http.StatusNotFound, "the guide is off")
+		return
+	}
+	body, typ, err := a.Guide.Icon(r.Context(), r.PathValue("name"), r.PathValue("channel"))
+	switch {
+	case errors.Is(err, guide.ErrNoIcon):
+		writeErr(w, http.StatusNotFound, "no logo for that channel")
+	case err != nil:
+		writeErr(w, http.StatusBadGateway, err.Error())
+	default:
+		w.Header().Set("Content-Type", typ)
+		w.Header().Set("Cache-Control", "private, max-age=86400")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		_, _ = w.Write(body)
+	}
+}

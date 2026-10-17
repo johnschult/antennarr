@@ -105,6 +105,17 @@ Built. Antennarr tells you when SiliconDust has released firmware for a tuner. I
 - Not every release is for every model, and notes are scoped in prose ("ATSC3 models:", "HDHR5-2DT/4DT:", "All models:"). A release counts as **update available** only when a note in it is plainly for this model; if the only match is a scope that isn't recognised it is a **possible update**; `TECH`/`DEV` narrow a scope. If the model isn't recognised at all, every note is shown. If the page's layout changes, the parser fails loudly and the status is "unknown" with the reason, never a guess.
 - New releases are announced once in the device's timeline; the Tuner page shows what changed, when the page was last read, and a Check now button.
 
+## Guide
+
+Built. Live tiles and the Tuner page's table show each watched channel's logo, and the tiles show what is on.
+
+- Source: SiliconDust's guide for the tuner, `https://api.hdhomerun.com/api/xmltv?DeviceAuth=<the tuner's own DeviceAuth>`, which the tuner reports in `discover.json`. About 3.5 MB, ~85 channels and three days of listings for a FLEX 4K. Read every 6 hours (conditional requests, size-capped, kept if a refresh fails). Devices that share a tuner share one fetch.
+- Channels are matched to the tuner's lineup by `<lcn>` (the channel number, `11.1`), not by the guide's own ids.
+- The DeviceAuth stays on the server: it is never in the API output or the logs (tested), and error text from failed fetches has the URL stripped.
+- Logos are fetched by Antennarr, only from `img.hdhomerun.com`, only as plain images (SVG is refused), cached in memory, and served from `/antennarr/api/devices/{name}/guide/{channel}/icon`. The browser never contacts SiliconDust, so the strict CSP stays as it is.
+- The switch is Settings > Updates > Show what's on (default on). While off, nothing is sent to SiliconDust. Turning it on, or a tuner appearing, fetches a guide that has never been read or has gone stale, and nothing else.
+- Not done: a full guide page, and serving the guide to viewers (Jellyfin and Channels can read XMLTV; Plex gets its guide from Plex).
+
 ## Sign in with Plex
 
 Built. Off by default; switched on in Settings > Access. An admin can open the web UI from a listed address (loopback or `admin` CIDRs) or by signing in with an allowed Plex account, so it works from anywhere the port is reachable.

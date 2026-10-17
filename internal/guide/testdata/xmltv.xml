@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<tv source-info-url="https://www.hdhomerun.com/" source-info-name="HDHomeRun">
+	<channel id="US19587.hdhomerun.com">
+		<display-name>WXIADT</display-name>
+		<display-name>11.1 WXIADT</display-name>
+		<display-name>NBC</display-name>
+		<lcn>11.1</lcn>
+		<icon src="https://img.hdhomerun.com/channels/US19587.png" width="360" height="270"/>
+	</channel>
+	<channel id="US102035.hdhomerun.com">
+		<display-name>WPBADT</display-name>
+		<display-name>8.1 WPBADT</display-name>
+		<lcn>8.1</lcn>
+		<icon src="https://evil.example/logo.png" width="360" height="270"/>
+	</channel>
+	<channel id="US1.hdhomerun.com">
+		<display-name>NoNumber</display-name>
+	</channel>
+	<programme start="20261017160000 +0000" stop="20261017173000 +0000" channel="US19587.hdhomerun.com">
+		<title>Already Over</title>
+	</programme>
+	<programme start="20261017173000 +0000" stop="20261017180000 +0000" channel="US19587.hdhomerun.com">
+		<title>Rosie's Rules</title>
+		<sub-title>The Catrina Mystery</sub-title>
+		<desc lang="en">For the Day of the Dead celebration.</desc>
+		<category>Series</category>
+		<icon src="https://img.hdhomerun.com/titles/C22744932ENOGRU.jpg" width="360" height="270"/>
+		<episode-num system="onscreen">S01E32</episode-num>
+	</programme>
+	<programme start="20261017180000 +0000" stop="20261017190000 +0000" channel="US19587.hdhomerun.com">
+		<title>Evening News</title>
+	</programme>
+	<programme start="20261017173000 +0000" stop="20261017180000 +0000" channel="US102035.hdhomerun.com">
+		<title>Other Channel</title>
+	</programme>
+	<programme start="20261017173000 +0000" stop="20261017180000 +0000" channel="UNKNOWN.hdhomerun.com">
+		<title>Ghost</title>
+	</programme>
+	<programme start="garbage" stop="20261017180000 +0000" channel="US19587.hdhomerun.com">
+		<title>Bad Time</title>
+	</programme>
+</tv>
