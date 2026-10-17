@@ -29,7 +29,7 @@ export function Shell() {
   const one = devices.length === 1 ? devices[0] : null
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,color-mix(in_oklch,var(--accent)_22%,var(--background))_0%,var(--background)_60%)]">
+    <div className="flex min-h-dvh flex-col bg-[radial-gradient(ellipse_at_top,color-mix(in_oklch,var(--accent)_22%,var(--background))_0%,var(--background)_60%)]">
       <header className="sticky top-0 z-10 border-b border-border/60 bg-background/70 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:gap-8 sm:px-6">
           {/* The text lines up with the TV's body, not the antenna ears above it. */}
@@ -96,11 +96,11 @@ export function Shell() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-8 sm:px-6">
         <Banners state={state} />
         <Outlet />
       </main>
-      <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 pb-8 text-xs text-muted-foreground sm:px-6">
+      <footer className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 pb-8 text-xs text-muted-foreground sm:px-6">
         <span>
           Antennarr{' '}
           <a href={state.versionUrl} target="_blank" rel="noopener noreferrer" data-testid="version" className="font-mono underline-offset-2 hover:text-foreground hover:underline">

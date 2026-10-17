@@ -52,6 +52,17 @@ describe('Shell footer', () => {
     expect(gh.querySelector('svg')).toHaveAttribute('aria-hidden', 'true') // the link's name comes from the label, not the drawing
   })
 
+  it('keeps the footer at the bottom of a short page: the page is a full-height column and the content takes the spare room', () => {
+    mount()
+    const footer = screen.getByRole('contentinfo')
+    const page = footer.parentElement!
+    expect(page.className).toMatch(/\bflex\b/)
+    expect(page.className).toMatch(/flex-col/)
+    expect(page.className).toMatch(/min-h-dvh/)
+    expect(screen.getByRole('main').className).toMatch(/flex-1/)
+    expect(page.lastElementChild).toBe(footer) // after the main area, so it ends up under it
+  })
+
   it('opens both in a new tab, without handing the page to the other site', () => {
     mount()
     for (const link of [screen.getByTestId('version'), screen.getByRole('link', { name: 'Antennarr on GitHub' })]) {
