@@ -17,7 +17,7 @@ The setup it replaces is a friend's HDHomeRun shared with the user's Plex. It's 
 
 **Antennarr**: over-the-air TV plus the -arr family. It's deliberately not "Tunarr", which is an existing, popular project that also emulates an HDHomeRun. A quick search found no other "Antennarr"; check GitHub, Docker Hub and Unraid Community Apps before committing.
 
-Logo direction: rabbit-ear antennas on a TV, with dot tips as a nod to Tailscale, without copying Tailscale's mark. The mockup has a placeholder.
+Logo direction: rabbit-ear antennas on a TV, with dot tips as a nod to Tailscale, without copying Tailscale's mark. The logos are in `docs/brand/`.
 
 ## Core (works on any network)
 
@@ -74,7 +74,7 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 - Charts: shadcn charts (Recharts), not Highcharts, because of Highcharts' licensing.
 - The SPA is embedded in the Go binary with `embed`, giving one container and one port.
 
-**Chosen layout: "Control room"** (variant B in `mockup/index.html`):
+**Chosen layout: "Control room"** (chosen from a throwaway HTML mockup, since removed):
 
 - **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Setup, Tuner, Settings). Tuner name, IP and a live dot on the right.
 - **Hero:** a short "On air now" summary ("2 of 4 tuners live", remote/local/reserved, total Mbps), with a 24h upload sparkline beside it.
