@@ -1,8 +1,10 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot, updateAvailable } from '@/test/fixtures'
+import { mockPhone } from '@/test/match-media'
 import { renderWithApp } from '@/test/render'
 import { channelIconUrl } from '@/lib/api'
+import { formatMbps } from '@/lib/format'
 import { TunerPage } from './tuner'
 
 describe('TunerPage', () => {
@@ -94,5 +96,62 @@ describe('TunerPage channel logos', () => {
   it('shows no logos when the guide is off or empty', () => {
     renderWithApp(<TunerPage />, makeState())
     expect(screen.queryByRole('img', { name: /logo/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('TunerPage on a phone', () => {
+  const slotCard = (resource: string) => within(screen.getByRole('list', { name: 'Tuners' })).getByText(resource).closest('li')!
+
+  it('shows each tuner as a card instead of a table that would scroll sideways', () => {
+    mockPhone(true)
+    renderWithApp(<TunerPage />, makeState())
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Tuners' })).getAllByRole('listitem')).toHaveLength(4)
+  })
+
+  it('shows who has a tuner, its signal and its rate, and just "idle" for a free one', () => {
+    mockPhone(true)
+    const s = makeState()
+    s.devices[0].tuner.slots = [
+      { ...localSlot(0), signalStrength: 96, signalQuality: 82 },
+      { ...remoteSlot(1), signalStrength: 100 },
+      idleSlot(2),
+      idleSlot(3),
+    ]
+    renderWithApp(<TunerPage />, s)
+    const local = within(slotCard('tuner0'))
+    expect(local.getByText('2.1 WBAY')).toBeInTheDocument()
+    expect(local.getByText('192.168.1.77')).toBeInTheDocument()
+    expect(local.getByText('96% / 82%')).toBeInTheDocument()
+    expect(local.getByText(formatMbps(12_800_000))).toBeInTheDocument()
+    expect(within(slotCard('tuner1')).getByText('Antennarr')).toBeInTheDocument()
+    expect(within(slotCard('tuner1')).getByText('100% / 0%')).toBeInTheDocument()
+    expect(within(slotCard('tuner2')).getByText('idle')).toBeInTheDocument()
+    expect(within(slotCard('tuner2')).queryByText('Used by')).not.toBeInTheDocument()
+  })
+
+  it('keeps the channel logo', () => {
+    mockPhone(true)
+    const s = makeState()
+    s.devices[0].guide = { '5.1': { name: 'WFRV', icon: true } }
+    renderWithApp(<TunerPage />, s)
+    expect(within(slotCard('tuner1')).getByRole('img', { name: /logo/ })).toHaveAttribute('src', channelIconUrl('antenna', '5.1'))
+  })
+
+  it('says so when the tuner has reported nothing yet', () => {
+    mockPhone(true)
+    const s = makeState()
+    s.devices[0].tuner.slots = []
+    renderWithApp(<TunerPage />, s)
+    expect(screen.getByText('No tuner data yet.')).toBeInTheDocument()
+  })
+
+  it('switches between the card list and the table as the window is resized', () => {
+    const viewport = mockPhone(true)
+    renderWithApp(<TunerPage />, makeState())
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    act(() => viewport.set(false))
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Tuners' })).not.toBeInTheDocument()
   })
 })

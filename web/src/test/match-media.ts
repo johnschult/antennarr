@@ -25,3 +25,27 @@ export function mockColorScheme(initialDark: boolean) {
     listenerCount: () => listeners.size,
   }
 }
+
+/**
+ * Make the window phone-sized (or not) for tests of the layouts that switch at the
+ * `md` breakpoint. Answers only the phone query; other queries don't match.
+ */
+export function mockPhone(initial: boolean) {
+  let phone = initial
+  const listeners = new Set<() => void>()
+  vi.stubGlobal('matchMedia', (q: string) => ({
+    get matches() {
+      return q === '(max-width: 767px)' && phone
+    },
+    media: q,
+    addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+    removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
+  }))
+  window.matchMedia = globalThis.matchMedia
+  return {
+    set(next: boolean) {
+      phone = next
+      listeners.forEach((fn) => fn())
+    },
+  }
+}
