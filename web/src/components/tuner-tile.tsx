@@ -1,5 +1,6 @@
 import { Antenna, Crown } from 'lucide-react'
 import { ChannelLogo } from '@/components/channel-logo'
+import { SignalMeter } from '@/components/signal-meter'
 import { Sparkline } from '@/components/sparkline'
 import { Badge } from '@/components/ui/badge'
 import { useHistory } from '@/hooks/use-history'
@@ -49,7 +50,7 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
       data-testid="tuner-tile"
       data-owner={owner.kind}
       className={cn(
-        'relative flex h-64 flex-col overflow-hidden rounded-2xl border p-5',
+        'relative flex h-[17rem] flex-col overflow-hidden rounded-2xl border p-5',
         live ? 'border-border bg-card/70' : 'border-dashed border-border bg-muted/30',
         dimmed && 'opacity-50',
       )}
@@ -83,6 +84,11 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
             {/* keyed so a different channel or a different viewer is a new stream with a new line */}
             <StreamSparkline key={`${slot.channel}|${slot.targetIP}|${owner.kind}`} bps={slot.bitsPerSecond} tick={tick} />
           </div>
+          {slot.signalStrength !== undefined && (
+            <div className="mt-2" data-testid="tile-signal">
+              <SignalMeter strength={slot.signalStrength} quality={slot.signalQuality} />
+            </div>
+          )}
           <div className="mt-2 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
             <span className="truncate">{where(tile)}</span>
             <span className="tabular-nums">{formatMbps(slot.bitsPerSecond)}</span>

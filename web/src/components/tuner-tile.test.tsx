@@ -161,4 +161,48 @@ describe('TunerTile', () => {
     expect(document.querySelectorAll('svg.lucide-crown')).toHaveLength(1)
     expect(within(screen.getByTestId('tuner-tile')).getByText('Held for your TVs').parentElement!.querySelector('svg.lucide-antenna')).not.toBeNull()
   })
+
+  describe('signal', () => {
+    const withSignal = (strength?: number, quality?: number) =>
+      tile({ slot: { ...remoteSlot(0), signalStrength: strength, signalQuality: quality }, owner: { kind: 'remote' } })
+
+    it('shows strength and quality as percentages', () => {
+      render(<TunerTile tile={withSignal(92, 88)} />)
+      const meter = within(screen.getByTestId('tile-signal'))
+      expect(meter.getByTestId('signal-signal')).toHaveTextContent('Signal92%')
+      expect(meter.getByTestId('signal-quality')).toHaveTextContent('Quality88%')
+      expect(meter.getByRole('group')).toHaveAccessibleName('Signal strength 92%, quality 88%')
+    })
+
+    it('colours each by how good it is', () => {
+      render(<TunerTile tile={withSignal(95, 60)} />)
+      expect(screen.getByTestId('signal-signal')).toHaveAttribute('data-tone', 'good')
+      expect(screen.getByTestId('signal-quality')).toHaveAttribute('data-tone', 'fair')
+    })
+
+    it('says poor reception is poor', () => {
+      render(<TunerTile tile={withSignal(20, 10)} />)
+      expect(screen.getByTestId('signal-signal')).toHaveAttribute('data-tone', 'poor')
+      expect(screen.getByTestId('signal-quality')).toHaveAttribute('data-tone', 'poor')
+    })
+
+    it('shows only strength when the tuner gives no quality', () => {
+      render(<TunerTile tile={withSignal(70, undefined)} />)
+      expect(screen.getByTestId('signal-signal')).toHaveTextContent('70%')
+      expect(screen.queryByTestId('signal-quality')).not.toBeInTheDocument()
+    })
+
+    it('keeps odd readings within 0 to 100', () => {
+      render(<TunerTile tile={withSignal(140, -5)} />)
+      expect(screen.getByTestId('signal-signal')).toHaveTextContent('100%')
+      expect(screen.getByTestId('signal-quality')).toHaveTextContent('0%')
+    })
+
+    it('is left out when the tuner reports no signal, and on idle tuners', () => {
+      const { rerender } = render(<TunerTile tile={withSignal(undefined, undefined)} />)
+      expect(screen.queryByTestId('tile-signal')).not.toBeInTheDocument()
+      rerender(<TunerTile tile={tile({ owner: { kind: 'free' } })} />)
+      expect(screen.queryByTestId('tile-signal')).not.toBeInTheDocument()
+    })
+  })
 })
