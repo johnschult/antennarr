@@ -53,6 +53,15 @@ A viewer then adds the tuner to their media server as `<this machine>:5004`, for
 
 Without `-config`, Antennarr runs with defaults and can't save changes made in the UI. With it, the file is created the first time you change something, and from then on changes are saved to it. It is read again when the process gets `SIGHUP`. The tuner on the command line stays a flag until you move it into the file's `devices` (see below).
 
+### Docker
+
+```sh
+docker build -t antennarr https://github.com/johnschult/antennarr.git#main
+```
+
+Or copy [docker-compose.example.yml](docker-compose.example.yml) next to your `antennarr.json` and run `docker compose up -d --build`.
+It uses host networking, which Antennarr needs to recognise its own streams and to offer your Tailscale and LAN addresses on the Setup page.
+
 ## Security
 
 **HDHomeRun tuners have no authentication, and neither do their streams.** Antennarr's protection is the address a request comes from.
@@ -133,7 +142,7 @@ The design notes, including what is built and what is planned, are in [docs/DESI
 
 ## Roadmap
 
-Planned, roughly in this order: a container image, Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuner page. Contributions and bug reports are welcome.
+Planned, roughly in this order: a published container image, Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuner page. Contributions and bug reports are welcome.
 
 ## License
 

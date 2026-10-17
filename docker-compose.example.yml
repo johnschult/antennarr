@@ -1,0 +1,16 @@
+# Copy this next to an antennarr.json (see the README) and run: docker compose up -d --build
+#
+# Host networking is recommended. Antennarr tells its own streams from your local
+# ones by address, and offers your Tailscale and LAN addresses on the Setup page,
+# and both need to see the machine's real network.
+services:
+  antennarr:
+    build: https://github.com/johnschult/antennarr.git#main
+    container_name: antennarr
+    network_mode: host
+    restart: unless-stopped
+    # Run as a user that owns ./config, so the settings and sign-ins can be saved.
+    user: "1000:1000"
+    command: ["-config", "/config/antennarr.json"]
+    volumes:
+      - ./config:/config

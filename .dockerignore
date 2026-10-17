@@ -1,0 +1,8 @@
+.git
+.claude
+bin
+docs
+*.test
+web/node_modules
+internal/ui/dist/*
+!internal/ui/dist/.gitkeep
