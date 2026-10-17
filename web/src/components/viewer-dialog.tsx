@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useEdits } from '@/hooks/mutations'
+import { deviceTitle } from '@/lib/device'
 import { parseAddresses } from '@/lib/format'
 import type { DeviceState, Viewer, ViewerInput } from '@/lib/types'
 
@@ -62,7 +63,7 @@ function ViewerForm({ viewer, devices, onDone }: { viewer?: Viewer; devices: Dev
     for (const d of devices) {
       const raw = (overrides[d.name] ?? '').trim()
       if (raw === '') continue
-      if (!isCount(raw)) return setError(`The limit for ${d.name} must be 0 or more.`)
+      if (!isCount(raw)) return setError(`The limit for ${deviceTitle(d)} must be 0 or more.`)
       limits[d.name] = Number(raw)
     }
     if (several) input.limits = limits // an empty object clears any earlier overrides
@@ -121,7 +122,7 @@ function ViewerForm({ viewer, devices, onDone }: { viewer?: Viewer; devices: Dev
           {devices.map((d) => (
             <div key={d.name} className="flex items-center gap-3">
               <Label htmlFor={`viewer-limit-${d.name}`} className="w-28 shrink-0">
-                Tuners on {d.name}
+                Tuners on {deviceTitle(d)}
               </Label>
               <Input
                 id={`viewer-limit-${d.name}`}

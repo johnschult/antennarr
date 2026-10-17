@@ -35,3 +35,17 @@ export function parseAddresses(text: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean)
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** Firmware versions are dates: "20260326" -> "26 Mar 2026". Anything else is returned as it came. */
+export function firmwareDate(version: string | undefined): string {
+  const m = /^(\d{4})(\d{2})(\d{2})$/.exec(version ?? '')
+  if (!m) return version || 'unknown'
+  const month = Number(m[2])
+  if (month < 1 || month > 12) return version as string
+  return `${Number(m[3])} ${MONTHS[month - 1]} ${m[1]}`
+}
+
+/** The Go side sends its zero time for "never". */
+export const isNever = (iso: string | null | undefined): boolean => !iso || iso.startsWith('0001-')

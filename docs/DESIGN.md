@@ -1,6 +1,6 @@
 # Antennarr: design notes
 
-Status: design only, no code yet. Last updated 2026-10-17.
+Status: working. The proxy, discovery, limits, several devices, the JSON API and the web UI are built and tested against a real FLEX 4K; see "Where things stand" at the end. Last updated 2026-10-17.
 
 Antennarr is a self-hosted app for sharing an HDHomeRun tuner with remote Plex, Jellyfin, Channels or Emby servers, and for keeping track of who uses it.
 
@@ -89,6 +89,40 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 ## Status data
 
 Tuner health and last-seen IP; tuners in use by viewer vs. local; current channel per stream; bandwidth (MPEG-TS is roughly 8–19 Mbps per stream on the sharer's upload); events for limit hits, IP changes and offline periods.
+
+## Several devices
+
+Built. Devices are declared in the settings file (`devices`), each looking like its own HDHomeRun to media servers on its own port, with its own monitor following the tuner by DeviceID. Viewers and the allowlist are shared; stream counts, the shared cap and the owner reserve are per device (with per-device overrides of the defaults), and a viewer's limit can be overridden per device. Running with just `-tuner` or `-tuner-id` is the same thing with one device. A pool mode (several devices behind one virtual tuner, with failover) is still a later option; it needs the lineups to match.
+
+A device's `name` is a stable key (settings, limits, URLs); what people see is its **display name** (`labels`), which is also what media servers are told the tuner is called, and which changes live.
+
+## Firmware
+
+Built. Antennarr tells you when SiliconDust has released firmware for a tuner. It never installs anything.
+
+- Versions are dates (`20260326`), so comparing is plain string comparison. The tuner reports its own version (`FirmwareVersion`) and, if it knows of a newer one, `UpgradeAvailable`; when present, the tuner's own word wins.
+- Otherwise Antennarr reads SiliconDust's public changelog page (HTML only, no feed) once every 12 hours with a conditional request. Nothing about you or your tuners is sent. The check can be switched off in Settings, and nothing is fetched while it is off.
+- Not every release is for every model, and notes are scoped in prose ("ATSC3 models:", "HDHR5-2DT/4DT:", "All models:"). A release counts as **update available** only when a note in it is plainly for this model; if the only match is a scope that isn't recognised it is a **possible update**; `TECH`/`DEV` narrow a scope. If the model isn't recognised at all, every note is shown. If the page's layout changes, the parser fails loudly and the status is "unknown" with the reason, never a guess.
+- New releases are announced once in the device's timeline; the Tuner page shows what changed, when the page was last read, and a Check now button.
+
+## Where things stand
+
+Built and tested (Go, with the race detector; UI, with Vitest):
+
+- the rewriting proxy, DeviceID discovery (UDP broadcast and an HTTP scan), the monitor and its events;
+- the allowlist, per-viewer and per-device limits, the shared cap and the owner reserve, advertised `TunerCount`;
+- several devices, display names, firmware checking;
+- the settings file (atomic saves, reload on SIGHUP), the JSON API and the live event stream;
+- the web UI: Live, Viewers, Tuner, Settings (grouped sections and rows), a light / dark / system theme, and a placeholder Setup page.
+
+Next, roughly in this order. Each is a real piece of work, not a tweak:
+
+1. **Sign in with Plex.** Admin login to the web UI with a Plex account (the plex.tv PIN flow, done by the server so the Plex token never reaches the browser and is thrown away once the account is identified), authorised by an allowlist of Plex account IDs. Additive to the existing address-based admin access, so it can be used from anywhere the port is reachable. Later: Plex-verified viewer enrollment, where an invite link leads to a Plex sign-in and the viewer's server addresses are read from plex.tv and allowlisted.
+2. **Tailscale, set up from the web UI.** An optional built-in tailnet node (tsnet): enable it, sign in with a link or an auth key, see the node's name and address, and have viewers identified by their tailnet identity instead of an IP. Needs no firewall rules on the host.
+3. **Manage tuners from the UI.** Renaming is done. Adding and removing tuners, and changing a tuner's address, port or DeviceID, need listeners to be opened and closed while running (or an honest "applies on restart").
+4. **The setup guide generator** (above): per-viewer commands for firewall, routing and the media server, with verify and rollback steps, replacing the placeholder Setup page.
+5. **Cutover:** replace the socat relay and the viewer-side DNAT that serve a friend's tuner today.
+6. **Redesign the Tuner page.** It wastes space: a big facts grid and a full-width tuner table that is mostly empty cells when idle. A denser layout, with the details as compact rows (like Settings), tuners shown as a strip rather than a table, and firmware alongside, would use the page better, especially with several tuners.
 
 ## Notes
 

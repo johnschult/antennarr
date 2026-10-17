@@ -1,8 +1,16 @@
 import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { makeState, makeTwoDeviceState } from '@/test/fixtures'
+import { makeState, makeTwoDeviceState, updateAvailable } from '@/test/fixtures'
 import { renderWithApp } from '@/test/render'
 import { LivePage } from './live'
+
+
+function named() {
+  const s = makeTwoDeviceState()
+  s.devices[0].label = 'Living room antenna'
+  s.devices[1].label = 'Cable box'
+  return s
+}
 
 describe('LivePage', () => {
   it('summarises what is on air', () => {
@@ -110,5 +118,44 @@ describe('LivePage', () => {
       expect(screen.queryByRole('region', { name: /Tuners on/ })).not.toBeInTheDocument()
       for (const item of screen.getAllByRole('listitem')) expect(item).not.toHaveTextContent('antenna')
     })
+  })
+
+  describe('with names the owner chose', () => {
+    it('uses them for the sections, the viewer rows and the timeline', () => {
+      renderWithApp(<LivePage />, named())
+      expect(screen.getByRole('region', { name: 'Tuners on Living room antenna' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Tuners on Cable box' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Tuners on antenna' })).not.toBeInTheDocument()
+
+      const row = screen.getByText('John', { selector: 'div.font-medium' }).closest('div.flex.items-center.gap-4') as HTMLElement
+      expect(within(row).getByRole('img', { name: 'Living room antenna: 1 of 2 tuners in use' })).toBeInTheDocument()
+      expect(within(row).getByRole('img', { name: 'Cable box: 0 of 2 tuners in use' })).toBeInTheDocument()
+
+      const items = screen.getAllByRole('listitem')
+      expect(items[0]).toHaveTextContent('Living room antenna')
+      expect(items[1]).toHaveTextContent('Cable box')
+    })
+  })
+
+  describe('firmware', () => {
+    it("flags a tuner that has an update, and only that one", () => {
+      const s = makeTwoDeviceState()
+      s.devices[0].firmware = updateAvailable
+      renderWithApp(<LivePage />, s)
+      expect(within(screen.getByRole('region', { name: 'Tuners on antenna' })).getByRole('link', { name: /Firmware update/ })).toHaveAttribute('href', '/tuner')
+      expect(within(screen.getByRole('region', { name: 'Tuners on cable' })).queryByRole('link')).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows the name of a single tuner once it has been named, and nothing extra before', () => {
+    const s = makeState()
+    s.devices[0].label = 'Living room antenna'
+    const { unmount } = renderWithApp(<LivePage />, s)
+    expect(screen.getByRole('region', { name: 'Tuners on Living room antenna' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Living room antenna/ })).toBeInTheDocument()
+    unmount()
+    renderWithApp(<LivePage />, makeState())
+    expect(screen.getByRole('region', { name: 'Tuners' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 2, name: /antenna/ })).not.toBeInTheDocument()
   })
 })

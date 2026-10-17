@@ -62,4 +62,12 @@ describe('Banners', () => {
     show(s)
     expect(screen.getByRole('status')).toHaveTextContent('Anyone who can reach these ports can use your tuners.')
   })
+
+  it('names offline tuners by the name the owner gave them', () => {
+    const s = makeTwoDeviceState()
+    s.devices[1].label = 'Cable box'
+    s.devices[1].tuner.online = false
+    show(s)
+    expect(screen.getByRole('status')).toHaveTextContent('A tuner is offline: Cable box.')
+  })
 })

@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useApp } from '@/hooks/app-context'
+import { FirmwareSection } from '@/components/firmware'
+import { deviceTitle } from '@/lib/device'
 import { formatMbps, timeAgo } from '@/lib/format'
 import type { DeviceState } from '@/lib/types'
 
@@ -10,7 +12,7 @@ export function TunerPage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{several ? 'Tuners' : 'Tuner'}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{several ? 'Tuners' : (state.devices[0].label ?? 'Tuner')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Antennarr follows a tuner if its address changes.</p>
       </div>
       {state.devices.map((d) => (
@@ -32,8 +34,8 @@ function DeviceDetails({ device, showName }: { device: DeviceState; showName: bo
   ]
 
   return (
-    <section aria-label={showName ? device.name : undefined} className="space-y-4">
-      {showName && <h2 className="text-lg font-semibold tracking-tight">{device.name}</h2>}
+    <section aria-label={showName ? deviceTitle(device) : undefined} className="space-y-4">
+      {showName && <h2 className="text-lg font-semibold tracking-tight">{deviceTitle(device)}</h2>}
 
       <dl className="grid gap-5 rounded-xl border border-border bg-card/70 p-5 text-sm sm:grid-cols-2 xl:grid-cols-3">
         {facts.map(([k, v]) => (
@@ -49,6 +51,8 @@ function DeviceDetails({ device, showName }: { device: DeviceState; showName: bo
           </dd>
         </div>
       </dl>
+
+      <FirmwareSection device={device} />
 
       <div className="rounded-xl border border-border bg-card/70">
         <Table>

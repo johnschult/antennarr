@@ -330,4 +330,56 @@ describe('ViewersPage', () => {
       expect(within(row('OnePaused')).queryByText('Paused')).not.toBeInTheDocument()
     })
   })
+
+  describe('with names the owner chose', () => {
+    it('labels each device by its name in the table and in the dialog', async () => {
+      vi.stubGlobal('fetch', stubFetch({}).fn)
+      const s = makeTwoDeviceState()
+      s.devices[1].label = 'Cable box'
+      const user = userEvent.setup()
+      renderWithApp(<ViewersPage />, s)
+
+      expect(within(row('John')).getByText('Cable box')).toBeInTheDocument()
+      expect(within(row('John')).getByText('antenna')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Edit John' }))
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByLabelText('Tuners on Cable box')).toHaveValue(2)
+      // ...but limits are still saved under the device's key, which never changes.
+      expect(within(dialog).getByLabelText('Tuners on antenna')).toBeInTheDocument()
+    })
+
+    it('saves limits under the key, whatever the tuner is called', async () => {
+      const { fn, calls } = stubFetch({ 'POST /viewers': () => ({ status: 201, body: {} }), 'GET /state': () => ({ body: makeState() }) })
+      vi.stubGlobal('fetch', fn)
+      const s = makeTwoDeviceState()
+      s.devices[1].label = 'Cable box'
+      const user = userEvent.setup()
+      renderWithApp(<ViewersPage />, s)
+
+      await user.click(screen.getByRole('button', { name: /Add viewer/ }))
+      const dialog = await screen.findByRole('dialog')
+      await user.type(within(dialog).getByLabelText('Name'), 'Guest')
+      await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.9')
+      await user.type(within(dialog).getByLabelText('Tuners on Cable box'), '3')
+      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      await waitFor(() => expect(calls.find((c) => c.method === 'POST')).toBeDefined())
+      expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({ limits: { cable: 3 } })
+    })
+
+    it('uses the name in the per-device error', async () => {
+      vi.stubGlobal('fetch', stubFetch({}).fn)
+      const s = makeTwoDeviceState()
+      s.devices[1].label = 'Cable box'
+      const user = userEvent.setup()
+      renderWithApp(<ViewersPage />, s)
+      await user.click(screen.getByRole('button', { name: /Add viewer/ }))
+      const dialog = await screen.findByRole('dialog')
+      await user.type(within(dialog).getByLabelText('Name'), 'X')
+      await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.8')
+      await user.type(within(dialog).getByLabelText('Tuners on Cable box'), '-2')
+      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('The limit for Cable box must be 0 or more.')
+    })
+  })
 })

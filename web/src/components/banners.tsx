@@ -1,6 +1,7 @@
 import { AlertTriangle, WifiOff } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
+import { deviceTitle } from '@/lib/device'
 import type { AppState } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -32,7 +33,7 @@ export function Banners({ state }: { state: AppState }) {
           {several ? (
             <>
               <strong>{offline.length === 1 ? 'A tuner is offline' : `${offline.length} tuners are offline`}:</strong>{' '}
-              {offline.map((d) => d.name).join(', ')}.
+              {offline.map(deviceTitle).join(', ')}.
             </>
           ) : (
             <>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { duration, formatMbps, parseAddresses, timeAgo } from './format'
+import { duration, firmwareDate, formatMbps, isNever, parseAddresses, timeAgo } from './format'
 
 const now = new Date('2026-10-17T12:00:00Z')
 
@@ -41,5 +41,29 @@ describe('parseAddresses', () => {
     expect(parseAddresses('100.67.117.32\n10.8.0.0/24, 10.9.0.6  \n\n')).toEqual(['100.67.117.32', '10.8.0.0/24', '10.9.0.6'])
     expect(parseAddresses('')).toEqual([])
     expect(parseAddresses(' , ,\n')).toEqual([])
+  })
+})
+
+describe('firmwareDate', () => {
+  it('turns a date-version into a readable date', () => {
+    expect(firmwareDate('20260326')).toBe('26 Mar 2026')
+    expect(firmwareDate('20250101')).toBe('1 Jan 2025')
+    expect(firmwareDate('20071209')).toBe('9 Dec 2007')
+  })
+  it('returns anything else as it came, and says "unknown" for nothing', () => {
+    expect(firmwareDate('v1.2')).toBe('v1.2')
+    expect(firmwareDate('20261340')).toBe('20261340') // month 13
+    expect(firmwareDate('')).toBe('unknown')
+    expect(firmwareDate(undefined)).toBe('unknown')
+  })
+})
+
+describe('isNever', () => {
+  it('recognises "never" in its several forms', () => {
+    expect(isNever(undefined)).toBe(true)
+    expect(isNever(null)).toBe(true)
+    expect(isNever('')).toBe(true)
+    expect(isNever('0001-01-01T00:00:00Z')).toBe(true) // Go's zero time
+    expect(isNever('2026-10-17T09:00:00Z')).toBe(false)
   })
 })

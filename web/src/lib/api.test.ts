@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, addViewer, deleteViewer, getState, patchDevice, patchSettings, replaceViewer } from './api'
+import { ApiError, addViewer, checkFirmware, deleteViewer, getState, patchDevice, patchSettings, replaceViewer } from './api'
 import { stubFetch } from '@/test/render'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -65,5 +65,19 @@ describe('api client', () => {
     vi.stubGlobal('fetch', fn)
     await patchDevice('my box', { ownerReserve: 0, sharedCap: 2 })
     expect(calls).toEqual([{ method: 'PATCH', url: expect.stringContaining('/devices/my%20box'), body: { ownerReserve: 0, sharedCap: 2 } }])
+  })
+
+  it('asks the server to read the changelog now', async () => {
+    const { fn, calls } = stubFetch({ 'POST /firmware/check': () => ({ body: { checkedAt: '2026-10-17T10:00:00Z' } }) })
+    vi.stubGlobal('fetch', fn)
+    await expect(checkFirmware()).resolves.toEqual({ checkedAt: '2026-10-17T10:00:00Z' })
+    expect(calls).toEqual([{ method: 'POST', url: expect.stringContaining('/firmware/check'), body: undefined }])
+  })
+
+  it('passes a rename through as a label', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }) })
+    vi.stubGlobal('fetch', fn)
+    await patchDevice('antenna', { label: 'Antenna (Steve)' })
+    expect(calls[0].body).toEqual({ label: 'Antenna (Steve)' })
   })
 })

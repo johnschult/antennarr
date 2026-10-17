@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useApp } from '@/hooks/app-context'
 import { timeAgo } from '@/lib/format'
+import { deviceTitle } from '@/lib/device'
 import { limitFor } from '@/lib/slots'
 import type { Viewer } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -71,7 +72,7 @@ export function ViewersPage() {
                         const inUse = v.inUseByDevice?.[d.name] ?? 0
                         return (
                           <div key={d.name} className="flex items-center gap-3">
-                            {several && <span className="w-16 truncate text-xs text-muted-foreground">{d.name}</span>}
+                            {several && <span className="w-16 truncate text-xs text-muted-foreground">{deviceTitle(d)}</span>}
                             <div className="flex gap-1" aria-hidden="true">
                               {Array.from({ length: limit }).map((_, i) => (
                                 <div key={i} className={cn('h-4 w-2 rounded-sm', i < inUse ? 'bg-cyan-400' : 'bg-muted')} />

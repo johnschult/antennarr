@@ -47,4 +47,22 @@ describe('App routes', () => {
     // the header shows dots, not one tuner's name (the page below does name each device)
     expect(within(screen.getByRole('banner')).queryByText(/Steve FLEX 4K/)).not.toBeInTheDocument()
   })
+
+  it('names a tuner by its chosen name in the header dots', () => {
+    const s = makeTwoDeviceState()
+    s.devices[1].label = 'Cable box'
+    s.devices[1].tuner.online = false
+    renderWithApp(<App />, s)
+    expect(screen.getByTitle('Cable box: offline')).toBeInTheDocument()
+    expect(screen.getByTitle('antenna: online')).toBeInTheDocument()
+  })
+
+  it("shows a single tuner's chosen name in the header instead of the model's", () => {
+    const s = makeState()
+    s.devices[0].label = 'Living room antenna'
+    renderWithApp(<App />, s)
+    const header = within(screen.getByRole('banner'))
+    expect(header.getByText(/Living room antenna/)).toBeInTheDocument()
+    expect(header.queryByText(/Steve FLEX 4K/)).not.toBeInTheDocument()
+  })
 })

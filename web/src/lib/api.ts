@@ -49,3 +49,6 @@ export const deleteViewer = (name: string, allowOpen = false) =>
 export const patchSettings = (p: SettingsPatch) => request<Settings>('PATCH', '/settings', p)
 export const patchDevice = (name: string, p: DevicePatch) =>
   request<DeviceState>('PATCH', `/devices/${encodeURIComponent(name)}`, p)
+
+/** Read SiliconDust's changelog now. The new status arrives over the event stream. */
+export const checkFirmware = () => request<{ checkedAt: string }>('POST', '/firmware/check')

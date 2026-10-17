@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot } from '@/test/fixtures'
+import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot, updateAvailable } from '@/test/fixtures'
 import { renderWithApp } from '@/test/render'
 import { TunerPage } from './tuner'
 
@@ -52,5 +52,29 @@ describe('TunerPage', () => {
     expect(within(cable).getByText('HDHR5-4DT')).toBeInTheDocument()
     expect(within(antenna).getAllByRole('row')).toHaveLength(5) // header + 4 tuners
     expect(within(cable).getAllByRole('row')).toHaveLength(3) // header + 2 tuners
+  })
+
+  it('titles each section with the name the owner chose, and shows its firmware', () => {
+    const s = makeTwoDeviceState()
+    s.devices[0].label = 'Living room antenna'
+    s.devices[0].firmware = updateAvailable
+    renderWithApp(<TunerPage />, s)
+    const antenna = screen.getByRole('region', { name: 'Living room antenna' })
+    expect(within(antenna).getByRole('heading', { name: 'Living room antenna' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Firmware — Living room antenna' })).toBeInTheDocument()
+    expect(screen.getByText('Update available · 26 Mar 2026')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Firmware — cable' })).toBeInTheDocument()
+  })
+
+  it('shows the firmware section for a single tuner without naming it', () => {
+    renderWithApp(<TunerPage />, makeState())
+    expect(screen.getByRole('region', { name: 'Firmware' })).toBeInTheDocument()
+  })
+
+  it('titles the page with the name given to a single tuner', () => {
+    const s = makeState()
+    s.devices[0].label = 'Living room antenna'
+    renderWithApp(<TunerPage />, s)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Living room antenna')
   })
 })

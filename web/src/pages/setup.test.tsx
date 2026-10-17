@@ -26,4 +26,12 @@ describe('SetupPage (placeholder)', () => {
     expect(screen.getByText('cable')).toBeInTheDocument()
     expect(screen.getByText(/adds each tuner/)).toBeInTheDocument()
   })
+
+  it('labels each address with the name the owner chose', () => {
+    const s = makeTwoDeviceState()
+    s.devices[0].label = 'Living room antenna'
+    renderWithApp(<SetupPage />, s)
+    expect(screen.getByText('Living room antenna')).toBeInTheDocument()
+    expect(screen.queryByText('antenna')).not.toBeInTheDocument()
+  })
 })

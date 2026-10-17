@@ -1,8 +1,10 @@
+import { FirmwareBadge } from '@/components/firmware'
 import { TunerTile } from '@/components/tuner-tile'
 import { Sparkline } from '@/components/sparkline'
 import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/hooks/app-context'
 import { useHistory } from '@/hooks/use-history'
+import { deviceTitle } from '@/lib/device'
 import { formatMbps, timeAgo } from '@/lib/format'
 import { buildTiles, limitFor } from '@/lib/slots'
 import type { DeviceState, EventKind, TunerEvent, Viewer } from '@/lib/types'
@@ -36,7 +38,7 @@ export function LivePage() {
 
   // Events from every device, newest first, tagged with where they happened.
   const events: (TunerEvent & { device: string })[] = devices
-    .flatMap((d) => d.tuner.events.map((e) => ({ ...e, device: d.name })))
+    .flatMap((d) => d.tuner.events.map((e) => ({ ...e, device: deviceTitle(d) })))
     .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
 
   return (
@@ -59,7 +61,7 @@ export function LivePage() {
       </div>
 
       {devices.map((d) => (
-        <DeviceSection key={d.name} device={d} showHeader={several} />
+        <DeviceSection key={d.name} device={d} showHeader={several || !!d.label} />
       ))}
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -105,17 +107,18 @@ export function LivePage() {
 function DeviceSection({ device, showHeader }: { device: DeviceState; showHeader: boolean }) {
   const { tuner, summary } = device
   return (
-    <section aria-label={showHeader ? `Tuners on ${device.name}` : 'Tuners'} className="space-y-3">
+    <section aria-label={showHeader ? `Tuners on ${deviceTitle(device)}` : 'Tuners'} className="space-y-3">
       {showHeader && (
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <span className={cn('size-2 rounded-full', tuner.online ? 'bg-emerald-400' : 'bg-red-400')} />
-            {device.name}
+            {deviceTitle(device)}
           </h2>
           <span className="text-sm text-muted-foreground">
             {tuner.friendlyName ?? 'Tuner'} · {summary.inUse} of {summary.total} live
           </span>
           <span className="font-mono text-xs text-muted-foreground">{tuner.baseURL.replace(/^https?:\/\//, '')}</span>
+          <FirmwareBadge status={device.firmware} />
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -146,8 +149,8 @@ function ViewerRow({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
           const inUse = v.inUseByDevice?.[d.name] ?? 0
           return (
             <div key={d.name} className="flex items-center gap-2">
-              {several && <span className="text-xs text-muted-foreground">{d.name}</span>}
-              <div className="flex gap-1" role="img" aria-label={`${several ? `${d.name}: ` : ''}${inUse} of ${limit} tuners in use`}>
+              {several && <span className="text-xs text-muted-foreground">{deviceTitle(d)}</span>}
+              <div className="flex gap-1" role="img" aria-label={`${several ? `${deviceTitle(d)}: ` : ''}${inUse} of ${limit} tuners in use`}>
                 {Array.from({ length: limit }).map((_, i) => (
                   <div key={i} className={cn('h-6 w-3 rounded-sm', i < inUse ? 'bg-cyan-400' : 'bg-muted')} />
                 ))}

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addViewer, deleteViewer, patchDevice, patchSettings, replaceViewer } from '@/lib/api'
+import { addViewer, checkFirmware, deleteViewer, patchDevice, patchSettings, replaceViewer } from '@/lib/api'
 import type { DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
 
@@ -48,5 +48,13 @@ export function useEdits() {
       void refresh()
     },
   })
-  return { add, replace, remove, settings, device }
+  const firmware = useMutation({
+    mutationFn: () => checkFirmware(),
+    onSuccess: () => {
+      toast.success("Read SiliconDust's changelog")
+      void refresh()
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not check for firmware'),
+  })
+  return { add, replace, remove, settings, device, firmware }
 }

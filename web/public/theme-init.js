@@ -8,7 +8,7 @@
       pref === 'dark' || ((pref !== 'light') && window.matchMedia('(prefers-color-scheme: dark)').matches)
     document.documentElement.classList.toggle('dark', dark)
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
-  } catch (e) {
+  } catch {
     /* no storage: the provider sets the theme once the app loads */
   }
 })()

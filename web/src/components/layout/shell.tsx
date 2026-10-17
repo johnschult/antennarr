@@ -3,6 +3,7 @@ import { Banners } from '@/components/banners'
 import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { useApp } from '@/hooks/app-context'
+import { deviceTitle } from '@/lib/device'
 import { cn } from '@/lib/utils'
 
 const nav = [
@@ -49,14 +50,14 @@ export function Shell() {
             {one ? (
               <span className="flex items-center gap-1.5" title={one.tuner.online ? 'Tuner online' : 'Tuner offline'}>
                 <span className={cn('size-2 rounded-full', one.tuner.online ? 'bg-emerald-400' : 'bg-red-400')} />
-                {one.tuner.friendlyName ?? 'Tuner'} · <span className="font-mono">{one.tuner.baseURL.replace(/^https?:\/\//, '')}</span>
+                {one.label ?? one.tuner.friendlyName ?? 'Tuner'} · <span className="font-mono">{one.tuner.baseURL.replace(/^https?:\/\//, '')}</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5">
                 {devices.map((d) => (
                   <span
                     key={d.name}
-                    title={`${d.name}: ${d.tuner.online ? 'online' : 'offline'}`}
+                    title={`${deviceTitle(d)}: ${d.tuner.online ? 'online' : 'offline'}`}
                     className={cn('size-2 rounded-full', d.tuner.online ? 'bg-emerald-400' : 'bg-red-400')}
                   />
                 ))}

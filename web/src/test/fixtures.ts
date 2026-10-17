@@ -1,4 +1,4 @@
-import type { AppState, DeviceState, Slot, Viewer } from '@/lib/types'
+import type { AppState, DeviceState, FirmwareStatus, Slot, Viewer } from '@/lib/types'
 
 export const idleSlot = (n: number): Slot => ({ resource: `tuner${n}`, inUse: false, viaAntennarr: false })
 
@@ -15,6 +15,18 @@ export const john: Viewer = {
 }
 export const mom: Viewer = { name: 'Mom', addresses: ['10.8.0.0/24'], limit: 1, inUse: 0, inUseByDevice: {}, lastSeen: null }
 
+export const upToDate: FirmwareStatus = {
+  state: 'up-to-date', current: '20260326', latest: '20260326', updates: [], modelRecognised: true, checkedAt: '2026-10-17T09:00:00Z',
+}
+
+export const updateAvailable: FirmwareStatus = {
+  state: 'update-available', current: '20250815', latest: '20260326', modelRecognised: true, checkedAt: '2026-10-17T09:00:00Z',
+  updates: [
+    { version: '20260326', certain: true, notes: [{ scope: 'ATSC3 models', text: 'Security update.' }] },
+    { version: '20260313', certain: true, notes: [{ scope: 'All models', text: 'Upgrade TLS root certificates.' }, { text: 'A line with no scope.' }] },
+  ],
+}
+
 /** The antenna box: 4 tuners, one local, one of John's, one reserved, one free. */
 export function makeDevice(over: Partial<DeviceState> = {}): DeviceState {
   return {
@@ -22,7 +34,7 @@ export function makeDevice(over: Partial<DeviceState> = {}): DeviceState {
     listen: ':5004',
     tuner: {
       name: 'antenna', online: true, id: '10ABCC87', friendlyName: 'Steve FLEX 4K', model: 'HDFX-4K', baseURL: 'http://192.168.1.132',
-      tunerCount: 4, slots: [localSlot(0), remoteSlot(1), idleSlot(2), idleSlot(3)],
+      tunerCount: 4, firmware: { name: 'hdhomerun_dvr_atsc3', version: '20260326' }, slots: [localSlot(0), remoteSlot(1), idleSlot(2), idleSlot(3)],
       lastSeen: '2026-10-17T10:04:58Z', since: '2026-10-17T08:00:00Z',
       events: [
         { time: '2026-10-17T08:00:00Z', kind: 'ok', text: 'Tuner online at http://192.168.1.132' },
@@ -33,6 +45,7 @@ export function makeDevice(over: Partial<DeviceState> = {}): DeviceState {
     summary: { total: 4, inUse: 2, remote: 1, local: 1, reserved: 1, free: 2 },
     ownerReserve: 1,
     sharedCap: 0,
+    firmware: upToDate,
     ...over,
   }
 }
@@ -44,7 +57,7 @@ export function makeCableDevice(over: Partial<DeviceState> = {}): DeviceState {
     listen: ':5005',
     tuner: {
       name: 'cable', online: true, id: '1111AAA2', friendlyName: 'Cable HDHR', model: 'HDHR5-4DT', baseURL: 'http://192.168.1.133',
-      tunerCount: 2, slots: [idleSlot(0), idleSlot(1)], lastSeen: '2026-10-17T10:04:58Z', since: '2026-10-17T08:00:00Z',
+      tunerCount: 2, firmware: { name: 'hdhomerun5_dvbt', version: '20260326' }, slots: [idleSlot(0), idleSlot(1)], lastSeen: '2026-10-17T10:04:58Z', since: '2026-10-17T08:00:00Z',
       events: [{ time: '2026-10-17T08:05:00Z', kind: 'ok', text: 'Tuner online at http://192.168.1.133' }],
     },
     streams: [],
@@ -59,7 +72,7 @@ export function makeState(over: Partial<AppState> = {}): AppState {
     time: '2026-10-17T10:05:00Z',
     devices: [makeDevice()],
     viewers: [john, mom],
-    settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [] },
+    settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true },
     editable: true,
     ...over,
   }
