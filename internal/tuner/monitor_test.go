@@ -342,3 +342,82 @@ func TestStatusHandler(t *testing.T) {
 		t.Errorf("POST status = %d, want 405", rec.Code)
 	}
 }
+
+func TestOnChangeFiresAfterPollAndNote(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	defer f.Close()
+	var n atomic.Int32
+	m := NewMonitor(Config{BaseURL: f.URL, ID: "10ABCC87", Find: neverFind, OnChange: func() { n.Add(1) }})
+
+	m.Poll(context.Background())
+	if n.Load() != 1 {
+		t.Errorf("after a poll: %d calls, want 1", n.Load())
+	}
+	f.Close()
+	m.Poll(context.Background()) // a failing poll is a change too (the UI may want to say so)
+	if n.Load() != 2 {
+		t.Errorf("after a failed poll: %d calls, want 2", n.Load())
+	}
+	m.Note("warn", "hello")
+	if n.Load() != 3 {
+		t.Errorf("after Note: %d calls, want 3", n.Load())
+	}
+	ev := m.Snapshot().Events
+	if last := ev[len(ev)-1]; last.Kind != "warn" || last.Text != "hello" {
+		t.Errorf("last event = %+v", last)
+	}
+}
+
+func TestKickPollsEarly(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	defer f.Close()
+	// An interval so long that only a kick can produce a second poll.
+	var polls atomic.Int32
+	m := NewMonitor(Config{BaseURL: f.URL, ID: "10ABCC87", Interval: time.Hour, Find: neverFind,
+		OnChange: func() { polls.Add(1) }})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go m.Run(ctx)
+
+	waitFor := func(n int32) bool {
+		deadline := time.Now().Add(3 * time.Second)
+		for polls.Load() < n && time.Now().Before(deadline) {
+			time.Sleep(10 * time.Millisecond)
+		}
+		return polls.Load() >= n
+	}
+	if !waitFor(1) {
+		t.Fatal("no initial poll")
+	}
+
+	f.setStatus(`[{"Resource":"tuner0","VctNumber":"5.1","TargetIP":"192.168.1.77"},{"Resource":"tuner1"}]`)
+	for i := 0; i < 20; i++ { // a burst of kicks
+		m.Kick()
+	}
+	if !waitFor(2) {
+		t.Fatal("kick did not trigger a poll")
+	}
+	if total, _ := m.Snapshot().InUse(); total != 1 {
+		t.Errorf("the early poll did not pick up the change: %d in use", total)
+	}
+	time.Sleep(2 * kickDelay)
+	if n := polls.Load(); n > 3 {
+		t.Errorf("20 kicks caused %d polls, want them collapsed", n)
+	}
+}
+
+func TestKickNeverBlocks(t *testing.T) {
+	m := NewMonitor(Config{Find: neverFind})
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 1000; i++ {
+			m.Kick() // nobody is running the loop
+		}
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Kick blocked")
+	}
+}

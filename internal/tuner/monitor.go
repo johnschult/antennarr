@@ -77,7 +77,10 @@ type Config struct {
 	Failures   int           // consecutive failures before searching, default 3
 	Find       Finder        // default: UDP discovery, then a /24 HTTP scan
 	LocalIPs   func() []string
-	Logger     *slog.Logger
+	// OnChange, if set, is called after every poll and every Note, so a UI can
+	// refresh. It must not block.
+	OnChange func()
+	Logger   *slog.Logger
 }
 
 // Monitor polls the tuner and tracks where it lives.
@@ -85,6 +88,8 @@ type Monitor struct {
 	cfg    Config
 	client *http.Client
 	log    *slog.Logger
+
+	kick chan struct{}
 
 	mu         sync.RWMutex
 	st         State
@@ -110,7 +115,7 @@ func NewMonitor(cfg Config) *Monitor {
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
 	}
-	m := &Monitor{cfg: cfg, client: &http.Client{Timeout: 3 * time.Second}, log: cfg.Logger}
+	m := &Monitor{cfg: cfg, client: &http.Client{Timeout: 3 * time.Second}, log: cfg.Logger, kick: make(chan struct{}, 1)}
 	m.st = State{ID: strings.ToUpper(cfg.ID), BaseURL: discovery.NormalizeBase(cfg.BaseURL), Since: time.Now()}
 	if cfg.Find == nil {
 		m.cfg.Find = m.defaultFind
@@ -151,13 +156,41 @@ func (m *Monitor) Run(ctx context.Context) {
 			return
 		case <-t.C:
 			m.Poll(ctx)
+		case <-m.kick:
+			// Something probably just changed on the tuner (a stream started
+			// or ended). Give it a moment to register, then look right away
+			// instead of waiting out the interval. Kicks arriving meanwhile
+			// collapse into this one.
+			select {
+			case <-time.After(kickDelay):
+			case <-ctx.Done():
+				return
+			}
+			m.Poll(ctx)
 		}
+	}
+}
+
+const kickDelay = 400 * time.Millisecond
+
+// Kick asks Run for an early poll. It never blocks.
+func (m *Monitor) Kick() {
+	select {
+	case m.kick <- struct{}{}:
+	default:
 	}
 }
 
 // Poll does one health check, and one search if the tuner has been gone long
 // enough.
 func (m *Monitor) Poll(ctx context.Context) {
+	m.poll(ctx)
+	if m.cfg.OnChange != nil {
+		m.cfg.OnChange()
+	}
+}
+
+func (m *Monitor) poll(ctx context.Context) {
 	base := m.Snapshot().BaseURL
 	if err := m.check(ctx, base); err != nil {
 		m.fail(ctx, err)
@@ -307,6 +340,9 @@ func (m *Monitor) Note(kind, text string) {
 	m.mu.Lock()
 	m.addEvent(kind, text)
 	m.mu.Unlock()
+	if m.cfg.OnChange != nil {
+		m.cfg.OnChange()
+	}
 }
 
 // addEvent records an event; m.mu must be held.

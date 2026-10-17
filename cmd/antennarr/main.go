@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/antennarr/internal/api"
 	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
 )
@@ -48,8 +50,9 @@ func main() {
 		os.Exit(2)
 	}
 
+	hub := live.NewHub()
 	mon := tuner.NewMonitor(tuner.Config{
-		BaseURL: base, ID: *tunerID, StreamPort: *streamPort, Interval: *poll, Logger: log,
+		BaseURL: base, ID: *tunerID, StreamPort: *streamPort, Interval: *poll, OnChange: hub.Notify, Logger: log,
 	})
 	go mon.Run(ctx)
 
@@ -72,14 +75,22 @@ func main() {
 	if len(settings.Viewers) == 0 {
 		log.Warn("no viewers configured: anyone who can reach this port can use the tuner", "ownerReserve", settings.OwnerReserve)
 	}
+	// A stream starting or ending changes the tuner's own status too: tell the
+	// dashboards now, and have the monitor look again straight away.
+	policy.SetOnChange(func() { hub.Notify(); mon.Kick() })
 	go reloadOnHUP(ctx, *configPath, policy, log)
 
 	mux := http.NewServeMux()
 	mux.Handle("/antennarr/status", policy.AdminOnly(tuner.StatusHandler(mon)))
 	mux.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
+	mux.Handle(api.Prefix, policy.AdminOnly((&api.API{
+		Mon: mon, Pol: policy, Store: access.NewStore(*configPath, policy), Hub: hub, Log: log,
+	}).Handler()))
 	mux.Handle("/", proxy.New(proxy.Config{Upstream: mon, Policy: policy, Advertise: *advertise, DeviceID: *reportID, Logger: log}))
 
-	srv := &http.Server{Addr: *listen, Handler: mux}
+	// No overall timeouts: streams run for hours. Only the header read is
+	// bounded, so a stalled client can't hold a connection open for free.
+	srv := &http.Server{Addr: *listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)

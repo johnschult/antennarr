@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/netip"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,6 +32,7 @@ type Active struct {
 	Viewer  string    `json:"viewer"`
 	Client  string    `json:"client"`
 	Path    string    `json:"path"`
+	Channel string    `json:"channel,omitempty"` // e.g. "5.1", when the path names one
 	Started time.Time `json:"started"`
 }
 
@@ -57,6 +59,8 @@ type Policy struct {
 	next     uint64
 	active   map[uint64]*Active
 	lastNote map[string]time.Time
+	lastSeen map[string]time.Time // by viewer name
+	onChange func()
 }
 
 // openViewer stands in for everyone while no viewers are configured.
@@ -74,8 +78,25 @@ func NewPolicy(s Settings, mon StateSource, notes Notifier, log *slog.Logger) (*
 	}
 	return &Policy{
 		mon: mon, notes: notes, log: log, now: time.Now, cfg: cfg,
-		active: map[uint64]*Active{}, lastNote: map[string]time.Time{},
+		active: map[uint64]*Active{}, lastNote: map[string]time.Time{}, lastSeen: map[string]time.Time{},
 	}, nil
+}
+
+// SetOnChange registers a func called (without locks held) whenever streams
+// start or end or the settings change. It must not block.
+func (p *Policy) SetOnChange(f func()) {
+	p.mu.Lock()
+	p.onChange = f
+	p.mu.Unlock()
+}
+
+func (p *Policy) changed() {
+	p.mu.Lock()
+	f := p.onChange
+	p.mu.Unlock()
+	if f != nil {
+		f()
+	}
 }
 
 // Update swaps in new settings. Streams already running are left alone.
@@ -87,6 +108,7 @@ func (p *Policy) Update(s Settings) error {
 	p.mu.Lock()
 	p.cfg = cfg
 	p.mu.Unlock()
+	p.changed()
 	return nil
 }
 
@@ -147,7 +169,10 @@ func (p *Policy) identify(r *http.Request) (parsedViewer, bool) {
 
 func (p *Policy) Authorize(r *http.Request) error {
 	p.mu.Lock()
-	_, ok := p.identify(r)
+	v, ok := p.identify(r)
+	if ok && len(p.cfg.viewers) > 0 {
+		p.lastSeen[v.Name] = p.now()
+	}
 	p.mu.Unlock()
 	if !ok {
 		return &proxy.Denied{Code: http.StatusForbidden, Reason: ReasonNotAllowed, Text: "this address is not allowed to use this tuner"}
@@ -218,9 +243,10 @@ func (p *Policy) Stream(r *http.Request) (func(), error) {
 	}
 
 	p.next++
-	a := &Active{ID: p.next, Viewer: v.Name, Client: r.RemoteAddr, Path: r.URL.Path, Started: p.now()}
+	a := &Active{ID: p.next, Viewer: v.Name, Client: r.RemoteAddr, Path: r.URL.Path, Channel: channelFromPath(r.URL.Path), Started: p.now()}
 	p.active[a.ID] = a
 	p.mu.Unlock()
+	p.changed()
 
 	var once sync.Once
 	return func() {
@@ -228,8 +254,58 @@ func (p *Policy) Stream(r *http.Request) (func(), error) {
 			p.mu.Lock()
 			delete(p.active, a.ID)
 			p.mu.Unlock()
+			p.changed()
 		})
 	}, nil
+}
+
+// channelFromPath pulls "5.1" out of /auto/v5.1 or /tuner0/v5.1. Streams
+// tuned by frequency (/auto/ch...) have no channel number.
+func channelFromPath(path string) string {
+	i := strings.LastIndex(path, "/")
+	seg := path[i+1:]
+	if len(seg) > 1 && seg[0] == 'v' && seg[1] >= '0' && seg[1] <= '9' {
+		return seg[1:]
+	}
+	return ""
+}
+
+// ViewerStatus is a configured viewer plus what they're doing right now.
+type ViewerStatus struct {
+	Viewer
+	InUse    int        `json:"inUse"`
+	LastSeen *time.Time `json:"lastSeen"` // nil: never been in contact
+}
+
+// ViewerStatuses lists the configured viewers with live information.
+func (p *Policy) ViewerStatuses() []ViewerStatus {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]ViewerStatus, 0, len(p.cfg.viewers))
+	for _, v := range p.cfg.viewers {
+		vs := ViewerStatus{Viewer: v.Viewer}
+		for _, a := range p.active {
+			if a.Viewer == v.Name {
+				vs.InUse++
+			}
+		}
+		if t, ok := p.lastSeen[v.Name]; ok {
+			t := t
+			vs.LastSeen = &t
+		}
+		out = append(out, vs)
+	}
+	return out
+}
+
+// Mode is "open" while no viewers are configured, otherwise "enforced".
+func (p *Policy) Mode() string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.cfg.viewers) == 0 {
+		return "open"
+	}
+	return "enforced"
 }
 
 // note tells the owner about a refusal, at most once a minute per viewer and
