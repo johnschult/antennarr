@@ -341,3 +341,16 @@ func (st *site) browse(path string) (int, *http.Response) {
 	resp := rec.Result()
 	return resp.StatusCode, resp
 }
+
+func TestSessionsFileSitsBesideTheSettingsFile(t *testing.T) {
+	for in, want := range map[string]string{
+		"":                           "",
+		"/etc/antennarr.json":        "/etc/antennarr.sessions.json",
+		"/data/antennarr-multi.json": "/data/antennarr-multi.sessions.json",
+		"/data/settings":             "/data/settings.sessions.json",
+	} {
+		if got := sessionsFile(in); got != want {
+			t.Errorf("sessionsFile(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

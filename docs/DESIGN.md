@@ -121,7 +121,7 @@ Built. Live tiles and the Tuner page's table show each watched channel's logo, a
 Built. Off by default; switched on in Settings > Access. An admin can open the web UI from a listed address (loopback or `admin` CIDRs) or by signing in with an allowed Plex account, so it works from anywhere the port is reachable.
 
 - The server runs the plex.tv PIN flow. The Plex token never reaches the browser and is thrown away as soon as the account is identified. Only the numeric account ID and name are kept (`plex.admins` in the settings file).
-- Sessions are in memory (idle 12h, at most 7 days) in an `antennarr_session` cookie: HttpOnly, SameSite=Strict, Secure when served over https. A restart signs everyone out. Removing an account signs it out at once.
+- Sessions (idle 12h, at most 7 days) are tracked by an `antennarr_session` cookie: HttpOnly, SameSite=Strict, Secure when served over https. They are kept in a file beside the settings file (`<settings>.sessions.json`, mode 0600) so a restart doesn't sign anyone out; only a hash of each session ID is written, never the ID or the Plex token. Without a settings file they live in memory and a restart signs everyone out. Removing an account, or turning sign-in off, signs it out at once.
 - Starting a sign-in is rate-limited per address, and pending sign-ins are capped. Nothing contacts plex.tv until someone signs in.
 - The client ID is sent to plex.tv and appears in the sign-in link, so it isn't secret; it's what makes Antennarr show up under the account's authorised devices in Plex.
 - Bootstrapping: from an admin address, turn the switch on, then "Add a Plex account" and sign in with it.

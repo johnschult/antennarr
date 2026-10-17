@@ -35,6 +35,10 @@ type Config struct {
 	Now     func() time.Time
 	Log     *slog.Logger
 
+	// SessionsFile, if set, is where sign-ins are kept so they survive a
+	// restart. Empty means they are forgotten when Antennarr stops.
+	SessionsFile string
+
 	SessionIdle     time.Duration // default 12h
 	SessionMax      time.Duration // default 7 days
 	MaxPending      int           // sign-ins in progress at once; default 50
@@ -83,7 +87,7 @@ func New(cfg Config) *Auth {
 		cfg.IsAdmin = func(*http.Request) bool { return false }
 	}
 	return &Auth{
-		cfg: cfg, log: cfg.Log, sess: newSessions(cfg.SessionIdle, cfg.SessionMax, cfg.Now),
+		cfg: cfg, log: cfg.Log, sess: newSessions(cfg.SessionIdle, cfg.SessionMax, cfg.Now, cfg.SessionsFile, cfg.Log),
 		pins: map[int64]*pending{}, starts: map[string][]time.Time{},
 	}
 }

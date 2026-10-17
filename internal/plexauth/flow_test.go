@@ -704,7 +704,7 @@ func TestSimultaneousPollsMakeOneSession(t *testing.T) {
 
 func TestTheSessionStoreIsBounded(t *testing.T) {
 	c := &clock{t: time.Unix(1_000_000, 0)}
-	s := newSessions(time.Hour, 24*time.Hour, c.now)
+	s := newSessions(time.Hour, 24*time.Hour, c.now, "", nil)
 	first := s.create(access.PlexAccount{ID: 1})
 	c.add(time.Second)
 	for i := 0; i < maxSessions; i++ {
@@ -720,7 +720,7 @@ func TestTheSessionStoreIsBounded(t *testing.T) {
 }
 
 func TestSessionIDsAreLongAndUnique(t *testing.T) {
-	s := newSessions(time.Hour, time.Hour, time.Now)
+	s := newSessions(time.Hour, time.Hour, time.Now, "", nil)
 	seen := map[string]bool{}
 	for i := 0; i < 200; i++ {
 		id := s.create(access.PlexAccount{ID: 1})
@@ -736,7 +736,7 @@ func TestSessionIDsAreLongAndUnique(t *testing.T) {
 
 func TestActivityKeepsASessionAliveButNotForever(t *testing.T) {
 	c := &clock{t: time.Unix(1_000_000, 0)}
-	s := newSessions(time.Hour, 3*time.Hour, c.now) // idle limit 1h, absolute limit 3h
+	s := newSessions(time.Hour, 3*time.Hour, c.now, "", nil) // idle limit 1h, absolute limit 3h
 	id := s.create(access.PlexAccount{ID: 1})
 	for i := 1; i <= 3; i++ {
 		c.add(50 * time.Minute) // never idle for a full hour

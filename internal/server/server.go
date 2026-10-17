@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -152,6 +153,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	s.plex = plexauth.New(plexauth.Config{
 		Base: cfg.PlexURL, AuthBase: cfg.PlexAuthURL,
 		Settings: policy.Settings, Edit: store.Edit, IsAdmin: policy.IsAdmin, Log: cfg.Log,
+		SessionsFile: sessionsFile(cfg.ConfigPath),
 	})
 	policy.SetSessionCheck(s.plex.IsSignedInAdmin)
 
@@ -379,4 +381,14 @@ func ParseTuner(s string) (*url.URL, error) {
 		return nil, fmt.Errorf("bad tuner address %q", s)
 	}
 	return u, nil
+}
+
+// sessionsFile is where Plex sign-ins are kept so they survive a restart: beside
+// the settings file, which is where Antennarr is already allowed to write. With
+// no settings file (started with flags only) there is nowhere to keep them.
+func sessionsFile(configPath string) string {
+	if configPath == "" {
+		return ""
+	}
+	return strings.TrimSuffix(configPath, filepath.Ext(configPath)) + ".sessions.json"
 }
