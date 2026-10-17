@@ -48,15 +48,34 @@ describe('SetupPage', () => {
     expect(screen.queryByRole('radiogroup', { name: 'Tuner' })).not.toBeInTheDocument()
   })
 
-  it('asks you to add a viewer first when there are none', () => {
+  it('asks you to add a viewer first when there are none', async () => {
     renderWithApp(<SetupPage />, makeState({ viewers: [] }))
     expect(within(block('2. Who is it for?')).getByRole('link', { name: 'Add one' })).toHaveAttribute('href', '/viewers')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('switch', { name: /has a firewall/ }))
     expect(within(block('4. On this machine')).getByText('Add a viewer to get their firewall rules.')).toBeInTheDocument()
+  })
+
+  it('shows nothing about firewalls until you say there is one, and hides it again when you say there is not', async () => {
+    renderWithApp(<SetupPage />, makeState())
+    const user = await typeHost('box.lan')
+    const gate = screen.getByRole('switch', { name: 'This machine has a firewall that blocks port 5004' })
+    expect(gate).toHaveAttribute('aria-checked', 'false')
+    expect(screen.queryByRole('radiogroup', { name: 'Firewall' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('firewall rules')).not.toBeInTheDocument()
+    expect(document.body.textContent).not.toMatch(/ufw|firewalld|iptables/)
+
+    await user.click(gate)
+    expect(screen.getByRole('radiogroup', { name: 'Firewall' })).toBeInTheDocument()
+    expect(screen.getByLabelText('firewall rules')).toBeInTheDocument()
+    await user.click(gate)
+    expect(screen.queryByLabelText('firewall rules')).not.toBeInTheDocument()
   })
 
   it("writes the chosen viewer's firewall rules, and switches firewall and viewer", async () => {
     renderWithApp(<SetupPage />, makeState({ viewers: [john, mom] }))
     const user = await typeHost('box.lan')
+    await user.click(screen.getByRole('switch', { name: /has a firewall/ }))
     const fw = () => screen.getByLabelText('firewall rules')
 
     expect(fw()).toHaveTextContent(`sudo ufw allow from ${john.addresses[0]} to any port 5004 proto tcp`)

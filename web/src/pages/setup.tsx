@@ -5,6 +5,7 @@ import { Choice } from '@/components/setup/choice'
 import { Steps } from '@/components/setup/steps'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApp } from '@/hooks/app-context'
 import { deviceTitle } from '@/lib/device'
@@ -46,6 +47,7 @@ export function SetupPage() {
   const [host, setHost] = useState(window.location.hostname)
   const [viewerName, setViewerName] = useState(viewers[0]?.name ?? '')
   const [transport, setTransport] = useState<Transport>('tailscale')
+  const [hasFirewall, setHasFirewall] = useState(false)
   const [firewall, setFirewall] = useState<Firewall>('ufw')
   const [media, setMedia] = useState<MediaServer>('plex')
 
@@ -116,28 +118,36 @@ export function SetupPage() {
         <Steps steps={transportSteps(transport, problem ? '<address>' : address)} />
       </Block>
 
-      <Block
-        title="4. On this machine"
-        description={`Only needed if the machine running Antennarr has a firewall that blocks port ${port}. Allow the viewer's address, and only that.`}
-      >
-        <Choice label="Firewall" value={firewall} onChange={setFirewall} options={FIREWALLS} />
-        {rules.add.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{viewers.length === 0 ? 'Add a viewer to get their firewall rules.' : 'This viewer has no addresses to allow.'}</p>
-        ) : (
-          <div className="space-y-3">
-            <CodeBlock label="firewall rules" lines={rules.add} />
-            <details className="text-sm">
-              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Undo these rules</summary>
-              <div className="mt-2">
-                <CodeBlock label="undo firewall rules" lines={rules.undo} />
+      <Block title="4. On this machine">
+        <div className="flex items-center gap-3">
+          <Switch id="setup-firewall" checked={hasFirewall} onCheckedChange={setHasFirewall} />
+          <Label htmlFor="setup-firewall" className="font-normal">
+            This machine has a firewall that blocks port {port}
+          </Label>
+        </div>
+        {hasFirewall && (
+          <>
+            <p className="text-xs text-muted-foreground">Allow the viewer's address, and only that.</p>
+            <Choice label="Firewall" value={firewall} onChange={setFirewall} options={FIREWALLS} />
+            {rules.add.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{viewers.length === 0 ? 'Add a viewer to get their firewall rules.' : 'This viewer has no addresses to allow.'}</p>
+            ) : (
+              <div className="space-y-3">
+                <CodeBlock label="firewall rules" lines={rules.add} />
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Undo these rules</summary>
+                  <div className="mt-2">
+                    <CodeBlock label="undo firewall rules" lines={rules.undo} />
+                  </div>
+                </details>
               </div>
-            </details>
-          </div>
-        )}
-        {rules.skipped.length > 0 && (
-          <p role="alert" className="text-xs text-amber-700 dark:text-amber-300">
-            Left out because they aren't a plain IP address or network: {rules.skipped.join(', ')}
-          </p>
+            )}
+            {rules.skipped.length > 0 && (
+              <p role="alert" className="text-xs text-amber-700 dark:text-amber-300">
+                Left out because they aren't a plain IP address or network: {rules.skipped.join(', ')}
+              </p>
+            )}
+          </>
         )}
       </Block>
 
