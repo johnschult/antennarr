@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { john, makeState, makeTwoDeviceState, mom } from '@/test/fixtures'
+import { mockPhone } from '@/test/match-media'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { ViewersPage } from './viewers'
 
@@ -381,5 +382,73 @@ describe('ViewersPage', () => {
       await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
       expect(await within(dialog).findByRole('alert')).toHaveTextContent('The limit for Cable box must be 0 or more.')
     })
+  })
+})
+
+describe('ViewersPage on a phone', () => {
+  const card = (name: string) => within(screen.getByRole('list', { name: 'Viewers' })).getByText(name).closest('li')!
+
+  it('shows each viewer as a card instead of a table that would scroll sideways', () => {
+    mockPhone(true)
+    renderWithApp(<ViewersPage />, makeState())
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Viewers' })).getAllByRole('listitem')).toHaveLength(2)
+  })
+
+  it('carries the same details as the table: addresses, tuner use and status', () => {
+    mockPhone(true)
+    renderWithApp(<ViewersPage />, makeState())
+    expect(within(card('John')).getByText('100.67.117.32')).toBeInTheDocument()
+    expect(within(card('John')).getByText('1/2')).toBeInTheDocument()
+    expect(within(card('John')).getByText('Watching')).toBeInTheDocument()
+    expect(within(card('Mom')).getByText('10.8.0.0/24')).toBeInTheDocument()
+    expect(within(card('Mom')).getByText('Waiting for first contact')).toBeInTheDocument()
+  })
+
+  it('lets long names and many addresses wrap instead of pushing the page wider', () => {
+    mockPhone(true)
+    const long = { ...mom, name: 'A viewer with a rather long name', addresses: ['10.8.0.0/24', '100.64.0.9', 'fd7a:115c:a1e0::1234:5678'] }
+    renderWithApp(<ViewersPage />, makeState({ viewers: [long] }))
+    const addresses = within(card(long.name)).getByText(long.addresses.join(', '))
+    expect(addresses.className).toMatch(/break-all/)
+  })
+
+  it('edits and removes from the card, and disables both when the settings cannot be saved', async () => {
+    mockPhone(true)
+    const user = userEvent.setup()
+    const { unmount } = renderWithApp(<ViewersPage />, makeState())
+    await user.click(within(card('John')).getByRole('button', { name: 'Edit John' }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    unmount()
+
+    const s = makeState()
+    s.editable = false
+    renderWithApp(<ViewersPage />, s)
+    expect(within(card('John')).getByRole('button', { name: 'Edit John' })).toBeDisabled()
+    expect(within(card('John')).getByRole('button', { name: 'Remove John' })).toBeDisabled()
+  })
+
+  it('shows each tuner of a viewer on a device with several', () => {
+    mockPhone(true)
+    renderWithApp(<ViewersPage />, makeTwoDeviceState())
+    expect(within(card('John')).getByText('antenna')).toBeInTheDocument()
+    expect(within(card('John')).getByText('cable')).toBeInTheDocument()
+  })
+
+  it('switches between the card list and the table as the window is resized', () => {
+    const viewport = mockPhone(true)
+    renderWithApp(<ViewersPage />, makeState())
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    act(() => viewport.set(false))
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Viewers' })).not.toBeInTheDocument()
+    act(() => viewport.set(true))
+    expect(screen.getByRole('list', { name: 'Viewers' })).toBeInTheDocument()
+  })
+
+  it('still says so when there are no viewers', () => {
+    mockPhone(true)
+    renderWithApp(<ViewersPage />, makeState({ viewers: [] }))
+    expect(screen.getByText('No viewers yet')).toBeInTheDocument()
   })
 })
