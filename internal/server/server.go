@@ -12,11 +12,13 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/api"
 	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
@@ -43,6 +45,10 @@ type Config struct {
 	// Listeners are pre-bound listeners by device name; any device without one
 	// is bound from its Listen address when Run starts.
 	Listeners map[string]net.Listener
+	// FirmwareURL and FirmwareInterval override where and how often the
+	// firmware changelog is read; they exist for tests.
+	FirmwareURL      string
+	FirmwareInterval time.Duration
 }
 
 type device struct {
@@ -53,11 +59,15 @@ type device struct {
 
 // Server runs the devices.
 type Server struct {
-	cfg     Config
-	log     *slog.Logger
-	policy  *access.Policy
-	hub     *live.Hub
-	devices []*device
+	cfg      Config
+	log      *slog.Logger
+	policy   *access.Policy
+	hub      *live.Hub
+	devices  []*device
+	firmware *firmware.Checker
+
+	mu        sync.Mutex
+	announced map[string]string // device -> the firmware version we last told the owner about
 }
 
 // New builds the server: it finds each tuner and prepares everything, but
@@ -83,7 +93,13 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{cfg: cfg, log: cfg.Log, policy: policy, hub: live.NewHub()}
+	s := &Server{cfg: cfg, log: cfg.Log, policy: policy, hub: live.NewHub(), announced: map[string]string{}}
+	s.firmware = firmware.NewChecker(firmware.Config{
+		URL: cfg.FirmwareURL, Interval: cfg.FirmwareInterval, Logger: cfg.Log,
+		// Read live, so switching the setting takes effect at once.
+		Enabled:  func() bool { return policy.Settings().FirmwareCheckEnabled() },
+		OnChange: func() { s.hub.Notify(); s.announceFirmware() },
+	})
 
 	var apiDevices []api.Device
 	for _, d := range cfg.Devices {
@@ -94,7 +110,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		log := cfg.Log.With("device", d.Name)
 		mon := tuner.NewMonitor(tuner.Config{
 			Name: d.Name, BaseURL: base, ID: d.ID, StreamPort: d.StreamPort,
-			Interval: cfg.Poll, OnChange: s.hub.Notify, Logger: log,
+			Interval: cfg.Poll, OnChange: func() { s.hub.Notify(); s.announceFirmware() }, Logger: log,
 		})
 		policy.AddDevice(d.Name, mon, mon)
 		s.devices = append(s.devices, &device{cfg: d, mon: mon})
@@ -106,6 +122,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	// dashboards now, and have the monitors look again straight away.
 	policy.SetOnChange(func() {
 		s.hub.Notify()
+		s.firmware.Kick() // a no-op unless the firmware check was just switched on
 		for _, d := range s.devices {
 			d.mon.Kick()
 		}
@@ -114,16 +131,18 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Devices: apiDevices, Pol: policy, Store: access.NewStore(cfg.ConfigPath, policy), Hub: s.hub, Log: cfg.Log,
+		Devices: apiDevices, Firmware: s.firmware, Pol: policy, Store: access.NewStore(cfg.ConfigPath, policy), Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	admin.Handle("/antennarr/", policy.AdminOnly(ui.Handler("/antennarr/"))) // the web UI
 
 	for _, d := range s.devices {
+		name := d.cfg.Name
 		mux := http.NewServeMux()
 		mux.Handle("/antennarr/", admin) // the admin pages are reachable on every device's port
 		tunerAPI := proxy.New(proxy.Config{
 			Upstream: d.mon, Policy: policy.Device(d.cfg.Name),
 			Advertise: d.cfg.Advertise, DeviceID: d.cfg.ReportID, Logger: cfg.Log.With("device", d.cfg.Name),
+			FriendlyName: func() string { return policy.Label(name) },
 		})
 		mux.Handle("/", tunerAPI)
 		// Someone who types the bare address into a browser wants the admin
@@ -164,6 +183,8 @@ func (s *Server) Run(ctx context.Context) error {
 		lns[i] = ln
 	}
 
+	go s.firmware.Run(ctx)
+
 	servers := make([]*http.Server, len(s.devices))
 	errc := make(chan error, len(s.devices))
 	for i, d := range s.devices {
@@ -191,6 +212,52 @@ func (s *Server) Run(ctx context.Context) error {
 		_ = srv.Shutdown(shutdown)
 	}
 	return first
+}
+
+// announceFirmware tells the owner, once per release, when a tuner has newer
+// firmware available, and forgets it again once the tuner is up to date so the
+// next release is announced too.
+func (s *Server) announceFirmware() {
+	type note struct{ device, text string }
+	var notes []note
+
+	s.mu.Lock()
+	for _, d := range s.devices {
+		t := d.mon.Snapshot()
+		if !t.Online {
+			continue
+		}
+		st := s.firmware.StatusFor(firmware.Device{
+			Model: t.Model, FirmwareName: t.Firmware.Name, Version: t.Firmware.Version, UpgradeAvailable: t.Firmware.UpgradeAvailable,
+		})
+		switch st.State {
+		case firmware.StateUpdateAvailable:
+			if s.announced[d.cfg.Name] != st.Latest {
+				s.announced[d.cfg.Name] = st.Latest
+				title := s.policy.Label(d.cfg.Name)
+				if title == "" {
+					title = d.cfg.Name
+				}
+				text := fmt.Sprintf("Firmware %s is available for %s (it is on %s)", st.Latest, title, st.Current)
+				if st.DeviceReported != "" {
+					text += ", as reported by the tuner"
+				}
+				notes = append(notes, note{d.cfg.Name, text})
+			}
+		case firmware.StateUpToDate:
+			delete(s.announced, d.cfg.Name)
+		}
+	}
+	s.mu.Unlock()
+
+	// Outside the lock: noting an event calls back into the monitors.
+	for _, n := range notes {
+		for _, d := range s.devices {
+			if d.cfg.Name == n.device {
+				d.mon.Note("info", n.text)
+			}
+		}
+	}
 }
 
 // Reload applies new settings. Everything about viewers and limits takes

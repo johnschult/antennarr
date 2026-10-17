@@ -38,6 +38,7 @@ func main() {
 	flag.StringVar(&f.advertise, "advertise", "", "base URL to hand to clients (default: the host they connected with)")
 	flag.StringVar(&f.reportID, "report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
 	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuners")
+	firmwareURL := flag.String("firmware-url", "", "read the firmware changelog from here instead of SiliconDust's page (for a mirror, or testing)")
 	configPath := flag.String("config", "", "settings file (devices, viewers, limits); reloaded on SIGHUP. Without one, anyone who can reach a port may use the tuner")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: antennarr [flags]\n       antennarr discover [-wait 3s] [host ...]\n\n"+
@@ -70,7 +71,7 @@ func main() {
 	}
 
 	srv, err := server.New(ctx, server.Config{
-		Settings: settings, Devices: devices, ConfigPath: *configPath, Poll: *poll, Log: log,
+		Settings: settings, Devices: devices, ConfigPath: *configPath, Poll: *poll, Log: log, FirmwareURL: *firmwareURL,
 	})
 	if err != nil {
 		fail(err)

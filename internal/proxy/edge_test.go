@@ -198,3 +198,37 @@ func TestTunerSeesItsOwnHostHeader(t *testing.T) {
 		t.Errorf("tuner saw Host %q; want its own address, not the proxy's %q", got, proxyHost)
 	}
 }
+
+func TestFriendlyNameCanBeChosenByTheOwner(t *testing.T) {
+	f := newFakeTuner(t)
+	api, _ := url.Parse(f.api.URL)
+	stream, _ := url.Parse(f.stream.URL)
+	var mu sync.Mutex
+	name := ""
+	srv := httptest.NewServer(New(Config{API: api, Stream: stream, FriendlyName: func() string {
+		mu.Lock()
+		defer mu.Unlock()
+		return name
+	}}))
+	defer srv.Close()
+
+	friendly := func() any {
+		var d map[string]any
+		getJSON(t, srv.URL+"/discover.json", &d)
+		return d["FriendlyName"]
+	}
+	if got := friendly(); got != "Fake FLEX" {
+		t.Errorf("with no name chosen the tuner's own should pass through: %v", got)
+	}
+	mu.Lock()
+	name = "Antenna (Steve)"
+	mu.Unlock()
+	if got := friendly(); got != "Antenna (Steve)" {
+		t.Errorf("after naming it: %v (it is asked each time, so no restart is needed)", got)
+	}
+	var d map[string]any
+	getJSON(t, srv.URL+"/discover.json", &d)
+	if d["DeviceID"] != "10ABCC87" || d["TunerCount"] != float64(4) {
+		t.Errorf("other fields changed: %v", d)
+	}
+}

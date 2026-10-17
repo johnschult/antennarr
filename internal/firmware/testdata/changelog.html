@@ -1,0 +1,127 @@
+<!doctype html>
+<html><body><main id="content">
+<section class="band changelog-page">
+  <div class="wrap stack prose changelog">
+    <h1>Firmware Changelog</h1>
+    <h4>Release 20260326:</h4>
+    <ul>
+      <li>HDHR5-2DT/4DT: Add channel scan mode for 2MHz wide 420-450MHz DVB-T amateur radio used in North America.</li>
+      <li>ATSC3 models: Security update.</li>
+    </ul>
+    <h4>Release 20260313:</h4>
+    <ul>
+      <li>HDHR5-2DT/4DT: Add support for narrow band (1/2/3/4MHz) DVB-T/T2 used in amateur radio. HDHR5-2DT/4DT model only.</li>
+      <li>ATSC3 TECH/DEV models: Add new fmt=ethernet-pcap mode that outputs IPv4 traffic in PCAP packet capture format with artificially generated Ethernet headers for use with software that expects Ethernet frames.</li>
+      <li>All models: Upgrade TLS root certificates.</li>
+    </ul>
+    <h4>Release 20250815:</h4>
+    <ul>
+      <li>FLEX/SCRIBE/HHDD models: Fix problem where live TV would fail to play on Roku if the channel was in use by another player device or had recently been viewed.</li>
+      <li>4K models: Detect ATSC 3.0 BSSID from SLT, reported as TSID in programinfo.</li>
+      <li>TECH5-4K/DEV models: New hdhomerun_config get option to provide access to the raw ATSC 3.0 L1basic+L1detail data.</li>
+    </ul>
+    <h4>Release 20250623:</h4>
+    <ul>
+      <li>Support IPv6 UPnP using site-local multicast &#8211; fixes problem with VLC detecting HDHomeRun via IPv6.</li>
+      <li>FLEX/SCRIBE/HHDD models: Fix problem formatting a drive 18TB or larger.</li>
+      <li>TECH models: Report signal strength and signal quality to 1 dp in status.json.</li>
+    </ul>
+    <h4>Release 20250506:</h4>
+    <ul>
+      <li>Fix compliance issues with MDNS handling causing spurious traffic and other issues.</li>
+      <li>Configure UPNP to announce services using the primary IPv4 and primary IPv6 address only.</li>
+      <li>Add signal strength/quality to the channel scan results.</li>
+      <li>ATSC3 models: Fix problem where ATSC 3.0 channels found on one physical channel could false-detect on the next physical channel.</li>
+      <li>ATSC3 models: Fix problem where incorrect parental rating could be applied on ATSC 3.0 channels.</li>
+      <li>ATSC3 models: Fix issue in multi-representation support that was preventing a 4K test broadcast from playing.</li>
+      <li>ATSC3 models: Add support for ATSC 3.0 content that identifies as Dolby Vision.</li>
+      <li>HDFX/HDVR/HHDD models: Improve handling of a failing hard drive.</li>
+    </ul>
+    <h4>Release 20231214:</h4>
+    <ul>
+      <li>HDFX/HDVR/HHDD models: Fix problem where duplicate recordings could be made when running multiple record engines.</li>
+    </ul>
+    <h4>Release 20231020:</h4>
+    <ul>
+      <li>Release for HDHR5 and newer models. The latest firmware for HDHR4 and HDTC is 20230713.</li>
+      <li>ATSC3 models: Fix handling of entity-mode segments delivered in dash-tar format (TECH and DEV models).</li>
+    </ul>
+    <h4>Release 20230719:</h4>
+    <ul>
+      <li>Release for HDHR5 and newer models. The latest firmware for HDHR4 and HDTC is 20230713.</li>
+      <li>ATSC3 models: Support high bitrate 4K 120Hz HDR video.</li>
+      <li>ATSC3 models: Nextgen TV certification release.</li>
+    </ul>
+    <h4>Release 20230323:</h4>
+    <ul>
+      <li>ATSC3 models: Fix problem where channel scan may not detect some ATSC 3.0 channels.</li>
+      <li>ATSC3 models: Fix problem where channels using MMTP transport may fail to tune or stall shortly after tuning.</li>
+      <li>ATSC3 models: Fix problem where one or more elementary streams such as audio may be missing.</li>
+      <li>ATSC3 models: Fix problem where ATSC 3.0 HD channels were not detected as HD by the channel scan.</li>
+      <li>IPv6 models: Support detection via IPv6 site-local multicast.</li>
+      <li>Record models: Support discovering tuner and record engines via IPv6 site-local multicast when an IPv6 global or site-local IP address is present.</li>
+      <li>Record models: Upgrade to 64-bit identifiers for recorded files.</li>
+    </ul>
+    <h4>Release 20230303:</h4>
+    <ul>
+      <li>ATSC3 models: Detect ATSC 3.0 protected channels.</li>
+      <li>ATSC3 models: Support RTP radio channels.</li>
+      <li>ATSC3 models: Support operation when S-TSID content type is missing.</li>
+      <li>ATSC3 models: Report BSID/TSID in streaminfo if present.</li>
+      <li>ATSC3 models: Reorder audio tracks for apps that use the first track rather than selecting the audio track by language.</li>
+      <li>ATSC3 models: Improvements to MP4 parsing.</li>
+      <li>IPv6 models: Support IPv6 RTP/UDP target.</li>
+      <li>TECH models: Fix problem where target may not be set when specified in the boot script.</li>
+      <li>Fix problem where multicast traffic was sent with a TTL of 1.</li>
+      <li>Improvements to diagnostic logging.</li>
+    </ul>
+    <h4>Release 20221205:</h4>
+    <ul>
+      <li>HDHR4 models: IPv6 support.</li>
+      <li>HDFX/HDVR/HHDD models: Faster automatic failover when recording and multiple HDHomeRun devices are available.</li>
+      <li>CableCARD models: Fix problem where device may fail to sync with the guide server if the cable provider is sending the incorrect time on an inband channel.</li>
+      <li>TECH models: Fix crash-reboot when executing a bootscript that sets a target.</li>
+    </ul>
+    <h4>Release 20221031:</h4>
+    <ul>
+      <li>HDFX/HDVR/HHDD models: Fix problem where device could self-reboot while verifying the filesystem on the hard drive.</li>
+      <li>HDHR5/HDFX/HDVR/HHDD models: Improvements to diagnostic logging.</li>
+      <li>CableCARD models: Disable background channel scan when a tuning adapter is present.</li>
+      <li>Fix problem where HTTP response was not sent in reply to some POST control commands.</li>
+    </ul>
+    <h4>Release 20221023:</h4>
+    <ul>
+      <li>HDHR5/HDFX/HDVR/HHDD models: IPv6 support.</li>
+      <li>HDHR5/HDFX/HDVR/HHDD models: Improvements to automatic reboot handling required for EU certification.</li>
+      <li>HDFX/HDVR/HHDD models: Optimized handling of a new DVR request for the same channel from the same client.</li>
+      <li>HDFX/HDVR/HHDD models: Fix problem where duplicates could start recording at startup while existing recordings are still being detected.</li>
+      <li>ATSC3 models: Fix problem handling ATSC 3.0 stations missing media content type tag.</li>
+      <li>ATSC3 models: Fix problem handling ATSC 3.0 stations where the sample duration was not specified.</li>
+      <li>HDFX models: Use the first 17.6TB of the hard drive rather than failing to configure a hard drive 18TB or larger.</li>
+      <li>HDVR models: Operate as a tuner only if the hard drive is removed or not functioning.</li>
+      <li>HDTC: Fix reporting of codec tag in http response when transcoding.</li>
+      <li>Add lineup.m3u for use with VLC and other apps that import m3u channel lists.</li>
+      <li>Fix parsing of URLs without URI after the IP address.</li>
+      <li>Improvements to URL generation so the URLs are valid from .local names or if port forwarding across private subnets.</li>
+      <li>Don’t limit TTL for discover, control, or webpage access on private networks.</li>
+      <li>Upgraded discover support.</li>
+      <li>Security: Improved IP validation.</li>
+      <li>Legacy models: Update lineup URL.</li>
+      <li>Legacy models: Security: Limit TTL for non-private networks.</li>
+    </ul>
+    <h4>Release 20220822:</h4>
+    <ul>
+      <li>CableCARD models: Support for Vecima Tuning Adapters used to support CableCARD on high-split cable systems.</li>
+      <li>ATSC3 models: Support operation when codepoint is not specified in S-TSID data.</li>
+      <li>ATSC3 models: Fix problem parsing some multi-part broadcast data.</li>
+      <li>DVR models: Fix problem transitioning to a new live TV file after transitioning once.</li>
+      <li>DVR models: Report bps for completed recordings in addition to in-progress recordings.</li>
+      <li>DVR models: Remove old Roku-specific playback mode that is no longer used by the Roku app.</li>
+      <li>DVR models: Return “416 Requested Range Not Satisfiable” for playback requests where the range is malformed or invalid.</li>
+      <li>Security: TCP keepalive probe after 60 seconds for inactive connections.</li>
+      <li>Security: Improve DNS request-response validation to prevent injection attacks.</li>
+      <li>Security: Limit TTL for control requests.</li>
+    </ul>
+  </div>
+</section>
+</main></body></html>

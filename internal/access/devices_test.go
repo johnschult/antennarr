@@ -382,3 +382,178 @@ func TestLimitsForADevice(t *testing.T) {
 		t.Errorf("after update: cap = %d", c)
 	}
 }
+
+func TestThePolicyKeepsItsOwnCopyOfTheSettings(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	cap1 := 1
+	s := Settings{
+		Devices: []Device{{Name: "a", Listen: ":1", Tuner: "x", SharedCap: &cap1}},
+		Viewers: []Viewer{{Name: "J", Addresses: []string{"1.2.3.4"}, Limit: 1, Limits: map[string]int{"a": 2}}},
+		Admin:   []string{"10.0.0.0/8"},
+	}
+	p, err := NewPolicy(s, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutate := func(s Settings) {
+		s.Devices[0].Name, s.Devices[0].Listen = "changed", ":9"
+		*s.Devices[0].SharedCap = 99
+		s.Viewers[0].Addresses[0] = "9.9.9.9"
+		s.Viewers[0].Limits["a"] = 99
+		s.Admin[0] = "changed"
+	}
+	mutate(s) // after handing it over, the caller changes theirs...
+	if got := p.Settings(); got.Devices[0].Name != "a" || *got.Devices[0].SharedCap != 1 || got.Viewers[0].Addresses[0] != "1.2.3.4" || got.Viewers[0].Limits["a"] != 2 || got.Admin[0] != "10.0.0.0/8" {
+		t.Errorf("NewPolicy kept the caller's data: %+v", got)
+	}
+
+	// ...and the same goes for Update.
+	next := Settings{
+		Devices: []Device{{Name: "a", Listen: ":1", Tuner: "x"}},
+		Viewers: []Viewer{{Name: "K", Addresses: []string{"5.6.7.8"}, Limit: 1, Limits: map[string]int{"a": 3}}},
+		Admin:   []string{"192.168.0.0/16"},
+	}
+	next.Devices[0].SharedCap = &cap1
+	if err := p.Update(next); err != nil {
+		t.Fatal(err)
+	}
+	mutate(next)
+	if got := p.Settings(); got.Viewers[0].Addresses[0] != "5.6.7.8" || got.Viewers[0].Limits["a"] != 3 || got.Admin[0] != "192.168.0.0/16" || got.Devices[0].Name != "a" {
+		t.Errorf("Update kept the caller's data: %+v", got)
+	}
+}
+
+func TestTheFirmwareCheckIsOnUnlessSwitchedOff(t *testing.T) {
+	off, on := false, true
+	if !(Settings{}).FirmwareCheckEnabled() || !DefaultSettings().FirmwareCheckEnabled() {
+		t.Error("the check should default to on")
+	}
+	if (Settings{FirmwareCheck: &off}).FirmwareCheckEnabled() || !(Settings{FirmwareCheck: &on}).FirmwareCheckEnabled() {
+		t.Error("an explicit choice should win")
+	}
+
+	// It survives cloning without sharing, and a save and load.
+	s := Settings{FirmwareCheck: &off}
+	c := s.clone()
+	*c.FirmwareCheck = true
+	if *s.FirmwareCheck {
+		t.Error("clone shares the pointer")
+	}
+	path := filepath.Join(t.TempDir(), "a.json")
+	if err := SaveSettings(path, Settings{FirmwareCheck: &off}); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := LoadSettings(path)
+	if err != nil || got.FirmwareCheckEnabled() {
+		t.Errorf("a saved 'off' came back on: %+v %v", got, err)
+	}
+	if err := SaveSettings(path, DefaultSettings()); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); strings.Contains(string(b), "firmwareCheck") {
+		t.Errorf("an unset choice should not be written: %s", b)
+	}
+}
+
+// ---- display names ----
+
+func TestValidateLabel(t *testing.T) {
+	for _, ok := range []string{"Antenna", "Steve's FLEX 4K", "Cabin — upstairs", "日本語のチューナー", strings.Repeat("a", 60), "a"} {
+		if err := ValidateLabel(ok); err != nil {
+			t.Errorf("%q rejected: %v", ok, err)
+		}
+	}
+	for name, bad := range map[string]string{
+		"empty": "", "blank": "   ", "leading space": " Antenna", "trailing space": "Antenna ",
+		"too long": strings.Repeat("a", 61), "newline": "two\nlines", "tab": "a\tb", "escape": "a\x1bb", "nul": "a\x00b",
+	} {
+		if err := ValidateLabel(bad); err == nil {
+			t.Errorf("%s: accepted %q", name, bad)
+		}
+	}
+	// Sixty characters is sixty characters, not sixty bytes.
+	if err := ValidateLabel(strings.Repeat("é", 60)); err != nil {
+		t.Errorf("60 accented characters: %v", err)
+	}
+}
+
+func TestLabelsInSettings(t *testing.T) {
+	ok := Settings{Labels: map[string]string{"antenna": "Antenna", "cable.box-2": "Cable"}}
+	if err := ok.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	many := map[string]string{}
+	for i := 0; i < 65; i++ {
+		many[strings.Repeat("a", 1)+string(rune('a'+i%26))+strings.Repeat("x", i/26)] = "x"
+	}
+	for name, s := range map[string]Settings{
+		"bad key":       {Labels: map[string]string{"my box": "x"}},
+		"empty key":     {Labels: map[string]string{"": "x"}},
+		"empty value":   {Labels: map[string]string{"a": ""}},
+		"long value":    {Labels: map[string]string{"a": strings.Repeat("x", 61)}},
+		"control chars": {Labels: map[string]string{"a": "x\ny"}},
+		"too many":      {Labels: many},
+	} {
+		if err := s.Validate(); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
+
+func TestLabelsSurviveCloneSaveAndLoad(t *testing.T) {
+	s := Settings{Labels: map[string]string{"antenna": "Antenna"}}
+	c := s.clone()
+	c.Labels["antenna"] = "changed"
+	if s.Labels["antenna"] != "Antenna" {
+		t.Error("clone shares the map")
+	}
+
+	path := filepath.Join(t.TempDir(), "a.json")
+	if err := SaveSettings(path, s); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := LoadSettings(path)
+	if err != nil || got.Labels["antenna"] != "Antenna" {
+		t.Errorf("round trip: %+v %v", got, err)
+	}
+	if err := SaveSettings(path, DefaultSettings()); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); strings.Contains(string(b), "labels") {
+		t.Errorf("no labels should mean no labels section: %s", b)
+	}
+}
+
+func TestThePolicyKnowsADevicesLabel(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	p, _ := newPolicy(t, Settings{Labels: map[string]string{testDevice: "Antenna (Steve)"}}, mon)
+	if got := p.Label(testDevice); got != "Antenna (Steve)" {
+		t.Errorf("label = %q", got)
+	}
+	if got := p.Label("cable"); got != "" {
+		t.Errorf("a device without one: %q", got)
+	}
+	if err := p.Update(Settings{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Label(testDevice); got != "" {
+		t.Errorf("after the label was cleared: %q", got)
+	}
+}
+
+func TestRefusalNotesUseTheNameTheOwnerGave(t *testing.T) {
+	s, mons := twoDevices()
+	s.Labels = map[string]string{"cable": "Cable box"}
+	p, notes := newMulti(t, s, mons)
+	john := req("100.67.117.32:1")
+	p.Device("cable").Stream(john)
+	p.Device("cable").Stream(john)
+	p.Device("cable").Stream(john) // refused: his cable limit is 2
+	p.Device("antenna").Stream(john)
+	p.Device("antenna").Stream(john) // refused: his antenna limit is 1
+	if notes.count() != 2 || !strings.Contains(notes.notes[0], "on Cable box:") || !strings.Contains(notes.notes[1], "on antenna:") {
+		t.Errorf("notes = %q (a device with a name uses it; one without uses its key)", notes.notes)
+	}
+}

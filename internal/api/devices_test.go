@@ -73,7 +73,7 @@ func fakeHDHRWith(t *testing.T, id, status string) *httptest.Server {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/discover.json":
-			w.Write([]byte(`{"FriendlyName":"Fake ` + id + `","ModelNumber":"HDFX-4K","DeviceID":"` + id + `","TunerCount":4}`))
+			w.Write([]byte(`{"FriendlyName":"Fake ` + id + `","ModelNumber":"HDFX-4K","DeviceID":"` + id + `","TunerCount":4,"FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":"20250815"}`))
 		case "/status.json":
 			w.Write([]byte(status))
 		default:
@@ -301,5 +301,99 @@ func TestEventsFollowAnyDevice(t *testing.T) {
 	m, ok := nextMsg(t, ch, 2*time.Second)
 	if !ok || streamsIn(t, m) != 1 {
 		t.Errorf("a stream on the second device did not reach the event stream: %+v ok=%v", m, ok)
+	}
+}
+
+// ---- naming tuners ----
+
+func TestRenamingADevice(t *testing.T) {
+	e := newMultiEnv(t, twoDevices(), true)
+
+	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":"Antenna (Steve)"}`)
+	if code != 200 || obj(t, v)["label"] != "Antenna (Steve)" || obj(t, v)["name"] != "antenna" {
+		t.Fatalf("%d %v", code, v)
+	}
+	if got := fileSettings(t, e).Labels["antenna"]; got != "Antenna (Steve)" {
+		t.Errorf("not saved: %q", got)
+	}
+	if d := devDoc(t, e, "antenna"); d["label"] != "Antenna (Steve)" {
+		t.Errorf("state = %v", d)
+	}
+	if d := devDoc(t, e, "cable"); d["label"] != nil {
+		t.Errorf("the other device was renamed too: %v", d["label"])
+	}
+	// The key is unchanged, so limits and URLs that use it keep working.
+	if got := fileSettings(t, e).Viewers[0].Limits["cable"]; got != 2 {
+		t.Errorf("viewer limits were disturbed: %v", got)
+	}
+
+	code, v = e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":""}`)
+	if code != 200 || obj(t, v)["label"] != nil {
+		t.Errorf("clearing: %d %v", code, v)
+	}
+	if _, has := fileSettings(t, e).Labels["antenna"]; has {
+		t.Error("the cleared label is still in the file")
+	}
+}
+
+func TestRenamingChangesOnlyWhatIsSent(t *testing.T) {
+	e := newMultiEnv(t, twoDevices(), true)
+	e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":"Antenna"}`)
+	e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"ownerReserve":2}`) // no label in this one
+	s := fileSettings(t, e)
+	if s.Labels["antenna"] != "Antenna" || *s.Devices[0].OwnerReserve != 2 {
+		t.Errorf("labels %v, antenna %+v", s.Labels, s.Devices[0])
+	}
+	e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":"Antenna 2","sharedCap":1}`)
+	s = fileSettings(t, e)
+	if s.Labels["antenna"] != "Antenna 2" || *s.Devices[0].SharedCap != 1 || *s.Devices[0].OwnerReserve != 2 {
+		t.Errorf("labels %v, antenna %+v", s.Labels, s.Devices[0])
+	}
+}
+
+func TestBadNamesAreRefused(t *testing.T) {
+	e := newMultiEnv(t, twoDevices(), true)
+	for name, body := range map[string]string{
+		"too long":      `{"label":"` + strings.Repeat("x", 61) + `"}`,
+		"newline":       `{"label":"two\nlines"}`,
+		"padded":        `{"label":" Antenna "}`,
+		"blank":         `{"label":"   "}`,
+		"not a string":  `{"label":5}`,
+		"alongside bad": `{"label":"ok","sharedCap":-1}`,
+	} {
+		if code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", body); code != 400 {
+			t.Errorf("%s: %d %v", name, code, v)
+		}
+	}
+	if len(fileSettings(t, e).Labels) != 0 || devDoc(t, e, "antenna")["label"] != nil {
+		t.Error("a refused rename changed something")
+	}
+	if code, _ := e.call(t, "PATCH", "/antennarr/api/devices/satellite", `{"label":"x"}`); code != 404 {
+		t.Errorf("unknown device: %d", code)
+	}
+}
+
+func TestADeviceFromFlagsCanBeNamedToo(t *testing.T) {
+	// No devices declared in the file, so the label lives in its own section.
+	e := newEnv(t, johnAndMom, true)
+	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":"Living room antenna"}`)
+	if code != 200 || obj(t, v)["label"] != "Living room antenna" {
+		t.Fatalf("%d %v", code, v)
+	}
+	s := fileSettings(t, e)
+	if s.Labels["antenna"] != "Living room antenna" || len(s.Devices) != 0 {
+		t.Errorf("labels %v devices %v", s.Labels, s.Devices)
+	}
+}
+
+func TestOnlyAdminsCanRename(t *testing.T) {
+	e := newMultiEnv(t, twoDevices(), true)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("PATCH", "/antennarr/api/devices/antenna", strings.NewReader(`{"label":"mine now"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "100.67.117.32:1"
+	e.pol.AdminOnly(e.api.Handler()).ServeHTTP(rec, req)
+	if rec.Code != 403 || len(fileSettings(t, e).Labels) != 0 {
+		t.Errorf("status %d, labels %v", rec.Code, fileSettings(t, e).Labels)
 	}
 }

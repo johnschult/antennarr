@@ -35,7 +35,7 @@ func fakeHDHR(t *testing.T, status string) *httptest.Server {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/discover.json":
-			io.WriteString(w, `{"FriendlyName":"Fake FLEX","ModelNumber":"HDFX-4K","DeviceID":"10ABCC87","TunerCount":4}`)
+			io.WriteString(w, `{"FriendlyName":"Fake FLEX","ModelNumber":"HDFX-4K","DeviceID":"10ABCC87","TunerCount":4,"FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":"20250815"}`)
 		case "/status.json":
 			io.WriteString(w, status)
 		default:

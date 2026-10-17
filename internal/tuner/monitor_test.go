@@ -22,6 +22,7 @@ type fakeHDHR struct {
 	mu     sync.Mutex
 	id     string
 	status string
+	extra  string // more discover.json fields, e.g. ,"UpgradeAvailable":"20270101"
 }
 
 func newHDHR(id string) *fakeHDHR {
@@ -31,7 +32,7 @@ func newHDHR(id string) *fakeHDHR {
 		defer f.mu.Unlock()
 		switch r.URL.Path {
 		case "/discover.json":
-			fmt.Fprintf(w, `{"FriendlyName":"Fake FLEX","ModelNumber":"HDFX-4K","DeviceID":%q,"TunerCount":2}`, f.id)
+			fmt.Fprintf(w, `{"FriendlyName":"Fake FLEX","ModelNumber":"HDFX-4K","DeviceID":%q,"TunerCount":2,"FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":"20260326"%s}`, f.id, f.extra)
 		case "/status.json":
 			io.WriteString(w, f.status)
 		default:
@@ -397,5 +398,25 @@ func TestSnapshotCarriesTheDeviceName(t *testing.T) {
 	m.Poll(context.Background())
 	if got := m.Snapshot().Name; got != "antenna" {
 		t.Errorf("name after a poll = %q", got)
+	}
+}
+
+func TestFirmwareIsReadFromTheTuner(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	defer f.Close()
+	m := NewMonitor(Config{BaseURL: f.URL, ID: "10ABCC87", Find: neverFind})
+	m.Poll(context.Background())
+	fw := m.Snapshot().Firmware
+	if fw.Name != "hdhomerun_dvr_atsc3" || fw.Version != "20260326" || fw.UpgradeAvailable != "" {
+		t.Errorf("firmware = %+v", fw)
+	}
+
+	// A tuner that knows of a newer version says so in the same document.
+	f.mu.Lock()
+	f.extra = `,"UpgradeAvailable":"20270101"`
+	f.mu.Unlock()
+	m.Poll(context.Background())
+	if got := m.Snapshot().Firmware.UpgradeAvailable; got != "20270101" {
+		t.Errorf("UpgradeAvailable = %q", got)
 	}
 }

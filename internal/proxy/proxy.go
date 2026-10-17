@@ -27,6 +27,10 @@ type Config struct {
 	Upstream Upstream
 	// Policy, if set, gates every request and meters streams.
 	Policy Policy
+	// FriendlyName, if set and non-empty, replaces the tuner's name in
+	// discover.json, so media servers show the name the owner chose. It is
+	// asked each time, so a rename takes effect at once.
+	FriendlyName func() string
 	// Advertise is the base URL handed to clients, e.g. http://host:5004.
 	// Empty means "whatever host the client connected with".
 	Advertise string
@@ -234,6 +238,11 @@ func (p *Proxy) discover(w http.ResponseWriter, r *http.Request) {
 	d["LineupURL"] = base + "/lineup.json"
 	if p.cfg.DeviceID != "" {
 		d["DeviceID"] = p.cfg.DeviceID
+	}
+	if p.cfg.FriendlyName != nil {
+		if name := p.cfg.FriendlyName(); name != "" {
+			d["FriendlyName"] = name
+		}
 	}
 	if p.cfg.Policy != nil {
 		if n, ok := d["TunerCount"].(json.Number); ok {

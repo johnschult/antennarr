@@ -14,6 +14,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Device is one HDHomeRun that Antennarr fronts. Each device looks like its
@@ -76,7 +78,17 @@ type Settings struct {
 	// Admin lists extra addresses (IPs or CIDRs) allowed to see /antennarr/*.
 	// Loopback is always allowed once any viewer is configured.
 	Admin []string `json:"admin"`
+	// Labels are display names for devices, by device name. The name itself is
+	// a stable key (used in limits and URLs); the label is what people see, and
+	// what media servers are told the tuner is called.
+	Labels map[string]string `json:"labels,omitempty"`
+	// FirmwareCheck turns on looking at SiliconDust's firmware changelog (one
+	// request to their website every 12 hours). Unset means on.
+	FirmwareCheck *bool `json:"firmwareCheck,omitempty"`
 }
+
+// FirmwareCheckEnabled reports whether the firmware check is on (the default).
+func (s Settings) FirmwareCheckEnabled() bool { return s.FirmwareCheck == nil || *s.FirmwareCheck }
 
 // DefaultSettings is open access with one tuner held back for the owner.
 func DefaultSettings() Settings {
@@ -108,6 +120,16 @@ func (s Settings) clone() Settings {
 		}
 	}
 	out.Admin = append([]string(nil), s.Admin...)
+	if s.Labels != nil {
+		out.Labels = make(map[string]string, len(s.Labels))
+		for k, v := range s.Labels {
+			out.Labels[k] = v
+		}
+	}
+	if s.FirmwareCheck != nil {
+		b := *s.FirmwareCheck
+		out.FirmwareCheck = &b
+	}
 	return out
 }
 
@@ -179,6 +201,31 @@ var (
 	deviceID   = regexp.MustCompile(`^[0-9A-Fa-f]{8}$`)
 )
 
+const (
+	maxLabels   = 64
+	maxLabelLen = 60
+)
+
+// ValidateLabel checks a device's display name: some text, not too long, and
+// nothing that would break a line or confuse a media server.
+func ValidateLabel(l string) error {
+	if strings.TrimSpace(l) == "" {
+		return errors.New("can't be empty")
+	}
+	if l != strings.TrimSpace(l) {
+		return errors.New("can't start or end with spaces")
+	}
+	if utf8.RuneCountInString(l) > maxLabelLen {
+		return fmt.Errorf("can't be longer than %d characters", maxLabelLen)
+	}
+	for _, r := range l {
+		if unicode.IsControl(r) {
+			return errors.New("can't contain control characters")
+		}
+	}
+	return nil
+}
+
 func validPort(s string) bool {
 	n, err := strconv.Atoi(s)
 	return err == nil && n >= 1 && n <= 65535
@@ -229,6 +276,17 @@ func (s Settings) parse() (parsed, error) {
 			return out, fmt.Errorf("admin: %w", err)
 		}
 		out.admin = append(out.admin, p)
+	}
+	if len(s.Labels) > maxLabels {
+		return out, fmt.Errorf("at most %d device names", maxLabels)
+	}
+	for dev, label := range s.Labels {
+		if !deviceName.MatchString(dev) {
+			return out, fmt.Errorf("label for %q: not a device name", dev)
+		}
+		if err := ValidateLabel(label); err != nil {
+			return out, fmt.Errorf("name for %q: %w", dev, err)
+		}
 	}
 
 	ports := map[string]string{}

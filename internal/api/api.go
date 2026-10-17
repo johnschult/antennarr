@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/tuner"
 )
@@ -29,10 +30,12 @@ const (
 // API serves /antennarr/api/*.
 type API struct {
 	Devices []Device
-	Pol     *access.Policy
-	Store   *access.Store
-	Hub     *live.Hub
-	Log     *slog.Logger
+	// Firmware reads SiliconDust's changelog; nil means no firmware checking.
+	Firmware *firmware.Checker
+	Pol      *access.Policy
+	Store    *access.Store
+	Hub      *live.Hub
+	Log      *slog.Logger
 	// KeepAlive is how often an idle event stream gets a comment line, so
 	// proxies don't drop it. Zero means 20s.
 	KeepAlive time.Duration
@@ -64,6 +67,7 @@ func (a *API) Handler() http.Handler {
 		{"viewers/{name}", map[string]http.HandlerFunc{"PUT": a.replaceViewer, "DELETE": a.deleteViewer}},
 		{"settings", map[string]http.HandlerFunc{"GET": a.getSettings, "PATCH": a.patchSettings}},
 		{"devices/{name}", map[string]http.HandlerFunc{"PATCH": a.patchDevice}},
+		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
 	}
 	for _, rt := range routes {
 		var allow []string
@@ -99,22 +103,25 @@ type Summary struct {
 // SettingsDoc is the part of the settings that isn't per device or per viewer.
 // OwnerReserve and SharedCap are the defaults devices fall back to.
 type SettingsDoc struct {
-	Mode         string   `json:"mode"` // "open" or "enforced"
-	SharedCap    int      `json:"sharedCap"`
-	OwnerReserve int      `json:"ownerReserve"`
-	Admin        []string `json:"admin"`
+	Mode          string   `json:"mode"` // "open" or "enforced"
+	SharedCap     int      `json:"sharedCap"`
+	OwnerReserve  int      `json:"ownerReserve"`
+	Admin         []string `json:"admin"`
+	FirmwareCheck bool     `json:"firmwareCheck"`
 }
 
 // DeviceDoc is one tuner as the dashboard shows it. OwnerReserve and
 // SharedCap are the values in force for it.
 type DeviceDoc struct {
 	Name         string          `json:"name"`
+	Label        string          `json:"label,omitempty"` // display name, if the owner set one
 	Listen       string          `json:"listen"`
 	Tuner        tuner.State     `json:"tuner"`
 	Streams      []access.Active `json:"streams"`
 	Summary      Summary         `json:"summary"`
 	OwnerReserve int             `json:"ownerReserve"`
 	SharedCap    int             `json:"sharedCap"`
+	Firmware     firmware.Status `json:"firmware"`
 }
 
 // State is everything the dashboard shows.
@@ -135,8 +142,11 @@ func (a *API) deviceDoc(d Device, streams []access.Active) DeviceDoc {
 		free = 0
 	}
 	doc := DeviceDoc{
-		Name: d.Name, Listen: d.Listen, Tuner: t, Streams: []access.Active{},
+		Name: d.Name, Label: a.Pol.Label(d.Name), Listen: d.Listen, Tuner: t, Streams: []access.Active{},
 		OwnerReserve: reserve, SharedCap: capN,
+		Firmware: a.Firmware.StatusFor(firmware.Device{
+			Model: t.Model, FirmwareName: t.Firmware.Name, Version: t.Firmware.Version, UpgradeAvailable: t.Firmware.UpgradeAvailable,
+		}),
 		Summary: Summary{Total: t.TunerCount, InUse: total, Remote: via, Local: total - via, Reserved: reserve, Free: free},
 	}
 	for _, s := range streams {
@@ -166,6 +176,7 @@ func (a *API) state() State {
 		Viewers: a.Pol.ViewerStatuses(),
 		Settings: SettingsDoc{
 			Mode: a.Pol.Mode(), SharedCap: set.SharedCap, OwnerReserve: set.OwnerReserve, Admin: nonNil(set.Admin),
+			FirmwareCheck: set.FirmwareCheckEnabled(),
 		},
 		Editable: a.Store.Editable(),
 	}
@@ -363,9 +374,10 @@ func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
 
 // settingsPatch changes only the fields that are present.
 type settingsPatch struct {
-	SharedCap    *int      `json:"sharedCap"`
-	OwnerReserve *int      `json:"ownerReserve"`
-	Admin        *[]string `json:"admin"`
+	SharedCap     *int      `json:"sharedCap"`
+	OwnerReserve  *int      `json:"ownerReserve"`
+	Admin         *[]string `json:"admin"`
+	FirmwareCheck *bool     `json:"firmwareCheck"`
 }
 
 func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
@@ -383,22 +395,30 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 		if in.Admin != nil {
 			s.Admin = *in.Admin
 		}
+		if in.FirmwareCheck != nil {
+			b := *in.FirmwareCheck
+			s.FirmwareCheck = &b
+		}
 		return nil
 	})
 	if err != nil {
 		a.fail(w, err)
 		return
 	}
+	if in.FirmwareCheck != nil && *in.FirmwareCheck && a.Firmware != nil {
+		a.Firmware.Kick() // switched on: look now rather than at the next interval
+	}
 	writeJSON(w, http.StatusOK, a.settingsDoc())
 }
 
 // devicePatch changes only the fields that are present.
 type devicePatch struct {
-	SharedCap    *int `json:"sharedCap"`
-	OwnerReserve *int `json:"ownerReserve"`
+	SharedCap    *int    `json:"sharedCap"`
+	OwnerReserve *int    `json:"ownerReserve"`
+	Label        *string `json:"label"` // "" clears it
 }
 
-// patchDevice sets a device's owner reserve and shared cap. A device declared
+// patchDevice sets a device's display name, owner reserve and shared cap. A device declared
 // in the settings file keeps its own values; a device that comes from
 // command-line flags has none of its own, so the top-level ones are changed.
 func (a *API) patchDevice(w http.ResponseWriter, r *http.Request) {
@@ -418,6 +438,17 @@ func (a *API) patchDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, err := a.Store.Edit(func(s *access.Settings) error {
+		if in.Label != nil {
+			label := *in.Label
+			if label == "" {
+				delete(s.Labels, name)
+			} else {
+				if s.Labels == nil {
+					s.Labels = map[string]string{}
+				}
+				s.Labels[name] = label
+			}
+		}
 		for i := range s.Devices {
 			if s.Devices[i].Name != name {
 				continue
@@ -445,6 +476,26 @@ func (a *API) patchDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, a.deviceDoc(*dev, a.Pol.Active()))
+}
+
+// checkFirmware reads the changelog now, rather than waiting for the next
+// scheduled look. The new status reaches the UI through the event stream.
+func (a *API) checkFirmware(w http.ResponseWriter, r *http.Request) {
+	if a.Firmware == nil {
+		writeErr(w, http.StatusConflict, "the firmware check is not available")
+		return
+	}
+	switch err := a.Firmware.Refresh(r.Context()); {
+	case err == nil:
+		writeJSON(w, http.StatusOK, map[string]any{"checkedAt": a.Firmware.CheckedAt()})
+	case errors.Is(err, firmware.ErrTooSoon):
+		writeErr(w, http.StatusTooManyRequests, "the changelog was checked a moment ago; try again in a little while")
+	case !a.Pol.Settings().FirmwareCheckEnabled():
+		writeErr(w, http.StatusConflict, "the firmware check is turned off in the settings")
+	default:
+		a.Log.Warn("firmware changelog check failed", "err", err)
+		writeErr(w, http.StatusBadGateway, "couldn't read SiliconDust's changelog: "+err.Error())
+	}
 }
 
 // ---- plumbing ----

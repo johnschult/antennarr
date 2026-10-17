@@ -75,7 +75,7 @@ type deviceState struct {
 var openViewer = parsedViewer{Viewer: Viewer{Name: "anyone", Limit: -1}}
 
 func NewPolicy(s Settings, log *slog.Logger) (*Policy, error) {
-	cfg, err := s.parse()
+	cfg, err := s.clone().parse() // our own copy: the caller may go on changing theirs
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (p *Policy) changed() {
 
 // Update swaps in new settings. Streams already running are left alone.
 func (p *Policy) Update(s Settings) error {
-	cfg, err := s.parse()
+	cfg, err := s.clone().parse() // our own copy: the caller may go on changing theirs
 	if err != nil {
 		return err
 	}
@@ -147,6 +147,13 @@ func (p *Policy) Active() []Active {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
+}
+
+// Label is the display name set for a device, or "" if it has none.
+func (p *Policy) Label(device string) string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.cfg.Labels[device]
 }
 
 // Limits reports the owner reserve and shared cap in force for a device.
@@ -327,7 +334,11 @@ func (p *Policy) note(device, viewer, reason, text string) {
 	p.lastNote[key] = p.now()
 	where := ""
 	if len(p.devices) > 1 { // only mention the device when there is more than one
-		where = " on " + device
+		title := p.cfg.Labels[device]
+		if title == "" {
+			title = device
+		}
+		where = " on " + title
 	}
 	p.mu.Unlock()
 	notes.Note("warn", fmt.Sprintf("%s was refused a tuner%s: %s", viewer, where, text))

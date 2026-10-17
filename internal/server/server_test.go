@@ -25,15 +25,17 @@ import (
 
 // fakeTuner is an HDHomeRun: an API server and a separate streaming server.
 type fakeTuner struct {
-	id, name   string
-	api        *httptest.Server
-	stream     *httptest.Server
-	streamPort string
+	mu          sync.Mutex
+	fw, upgrade string // firmware version it reports, and a newer one it says exists
+	id, name    string
+	api         *httptest.Server
+	stream      *httptest.Server
+	streamPort  string
 }
 
 func newFakeTuner(t *testing.T, id, name string) *fakeTuner {
 	t.Helper()
-	f := &fakeTuner{id: id, name: name}
+	f := &fakeTuner{id: id, name: name, fw: "20260326"}
 	f.stream = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		w.(http.Flusher).Flush()
@@ -52,7 +54,14 @@ func newFakeTuner(t *testing.T, id, name string) *fakeTuner {
 	f.api = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/discover.json":
-			fmt.Fprintf(w, `{"FriendlyName":%q,"DeviceID":%q,"TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"}`, name, id)
+			f.mu.Lock()
+			fw, upgrade := f.fw, f.upgrade
+			f.mu.Unlock()
+			extra := ""
+			if upgrade != "" {
+				extra = fmt.Sprintf(`,"UpgradeAvailable":%q`, upgrade)
+			}
+			fmt.Fprintf(w, `{"FriendlyName":%q,"ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":%q,"DeviceID":%q,"TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"%s}`, name, fw, id, extra)
 		case "/lineup.json":
 			fmt.Fprintf(w, `[{"GuideNumber":"5.1","GuideName":"WFRV","URL":"http://%s/auto/v5.1"}]`, "127.0.0.1:"+f.streamPort)
 		case "/status.json":
@@ -63,6 +72,12 @@ func newFakeTuner(t *testing.T, id, name string) *fakeTuner {
 	}))
 	t.Cleanup(func() { f.api.Close(); f.stream.Close() })
 	return f
+}
+
+func (f *fakeTuner) setFirmware(version, upgrade string) {
+	f.mu.Lock()
+	f.fw, f.upgrade = version, upgrade
+	f.mu.Unlock()
 }
 
 // locate maps a device's configured address to the fake tuner behind it.
@@ -109,6 +124,12 @@ func ephemeral(t *testing.T) net.Listener {
 // start builds a server with the given devices on ephemeral ports and runs it.
 func start(t *testing.T, s access.Settings, devices []access.Device, tuners ...*fakeTuner) *rig {
 	t.Helper()
+	return startWith(t, s, devices, "", tuners...)
+}
+
+// startWith is start, reading the firmware changelog from fwURL.
+func startWith(t *testing.T, s access.Settings, devices []access.Device, fwURL string, tuners ...*fakeTuner) *rig {
+	t.Helper()
 	r := &rig{addr: map[string]string{}, logs: &lockedBuf{}, done: make(chan error, 1)}
 	lns := map[string]net.Listener{}
 	for _, d := range devices {
@@ -120,9 +141,13 @@ func start(t *testing.T, s access.Settings, devices []access.Device, tuners ...*
 	r.cancel = cancel
 	t.Cleanup(cancel)
 
+	if s.FirmwareCheck == nil && fwURL == "" { // never reach the real website from a test
+		off := false
+		s.FirmwareCheck = &off
+	}
 	srv, err := New(ctx, Config{
 		Settings: s, Devices: devices, Poll: 50 * time.Millisecond, Locate: locateFrom(tuners...),
-		Log: slog.New(slog.NewTextHandler(r.logs, nil)), Listeners: lns,
+		Log: slog.New(slog.NewTextHandler(r.logs, nil)), Listeners: lns, FirmwareURL: fwURL,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -549,5 +574,37 @@ func TestParseTuner(t *testing.T) {
 		if _, err := ParseTuner(in); err == nil {
 			t.Errorf("ParseTuner(%q) succeeded", in)
 		}
+	}
+}
+
+func TestRenamingATunerChangesWhatMediaServersSeeAtOnce(t *testing.T) {
+	a := newFakeTuner(t, "10ABCC87", "antenna-box")
+	s := access.Settings{}
+	r := start(t, s, oneDevice(a), a)
+
+	friendly := func() string {
+		_, body := r.get(t, "antenna", "/discover.json")
+		var d map[string]any
+		json.Unmarshal([]byte(body), &d)
+		return d["FriendlyName"].(string)
+	}
+	if got := friendly(); got != "antenna-box" {
+		t.Fatalf("before naming it: %q", got)
+	}
+
+	s.Labels = map[string]string{"antenna": "Antenna (Steve)"}
+	if err := r.srv.Reload(s); err != nil {
+		t.Fatal(err)
+	}
+	if got := friendly(); got != "Antenna (Steve)" {
+		t.Errorf("after naming it: %q, want it to apply with no restart", got)
+	}
+
+	s.Labels = nil
+	if err := r.srv.Reload(s); err != nil {
+		t.Fatal(err)
+	}
+	if got := friendly(); got != "antenna-box" {
+		t.Errorf("after clearing the name: %q", got)
 	}
 }

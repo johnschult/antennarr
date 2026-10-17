@@ -30,6 +30,14 @@ type Slot struct {
 	BitsPerSecond  int64  `json:"bitsPerSecond,omitempty"`
 }
 
+// Firmware is what the tuner itself says about its firmware in discover.json.
+type Firmware struct {
+	Name    string `json:"name,omitempty"`    // e.g. "hdhomerun_dvr_atsc3"
+	Version string `json:"version,omitempty"` // e.g. "20260326": a date
+	// UpgradeAvailable is the newer version the tuner knows of, if it says so.
+	UpgradeAvailable string `json:"upgradeAvailable,omitempty"`
+}
+
 // Event is something worth telling the owner about.
 type Event struct {
 	Time time.Time `json:"time"`
@@ -46,6 +54,7 @@ type State struct {
 	Model        string    `json:"model,omitempty"`
 	BaseURL      string    `json:"baseURL"`
 	TunerCount   int       `json:"tunerCount"`
+	Firmware     Firmware  `json:"firmware"`
 	Slots        []Slot    `json:"slots"`
 	LastSeen     time.Time `json:"lastSeen"`
 	Since        time.Time `json:"since"` // when Online last changed
@@ -204,10 +213,13 @@ func (m *Monitor) poll(ctx context.Context) {
 }
 
 type discoverDoc struct {
-	FriendlyName string
-	ModelNumber  string
-	DeviceID     string
-	TunerCount   int
+	FriendlyName     string
+	ModelNumber      string
+	DeviceID         string
+	TunerCount       int
+	FirmwareName     string
+	FirmwareVersion  string
+	UpgradeAvailable string
 }
 
 type statusEntry struct {
@@ -266,6 +278,7 @@ func (m *Monitor) check(ctx context.Context, base string) error {
 	defer m.mu.Unlock()
 	wasOnline := m.st.Online
 	m.st.FriendlyName, m.st.Model, m.st.TunerCount = d.FriendlyName, d.ModelNumber, d.TunerCount
+	m.st.Firmware = Firmware{Name: d.FirmwareName, Version: d.FirmwareVersion, UpgradeAvailable: d.UpgradeAvailable}
 	m.st.LastSeen = time.Now()
 	if statusErr == nil {
 		m.st.Slots = slotsFrom(raw, local)
