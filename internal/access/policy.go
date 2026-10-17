@@ -173,7 +173,9 @@ func clientIP(r *http.Request) (netip.Addr, bool) {
 	if err != nil {
 		return netip.Addr{}, false
 	}
-	return a.Unmap(), true
+	// An IPv6 link-local address arrives with the name of the interface it came in on
+	// (fe80::1%en0). A network range never "contains" an address with a zone, so drop it.
+	return a.Unmap().WithZone(""), true
 }
 
 // identify finds the viewer a request belongs to, preferring the most specific
@@ -469,13 +471,14 @@ func (p *Policy) isAdminAddress(r *http.Request) bool {
 // ignoring any sign-in. Plex sign-in uses it to tell the two apart.
 func (p *Policy) IsAdminAddress(r *http.Request) bool { return p.isAdminAddress(r) }
 
-// AdminHome sends admins who open the bare address in a browser to the admin
-// page at `to`. So are browsers belonging to anyone else, when signing in with
-// Plex is on, since that page is where they sign in. Everything else (media
-// servers, scripts) is handed to next, as if this wasn't here.
+// AdminHome sends admins who open the bare address to the admin page at `to`,
+// and so is any other browser (a request that accepts HTML): that page is where
+// someone not yet allowed in is told so and what to do, which beats a bare
+// refusal from the tuner's side. Everything else (media servers, scripts) is
+// handed to next, as if this wasn't here.
 func (p *Policy) AdminHome(to string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if p.IsAdmin(r) || (p.Settings().PlexEnabled() && strings.Contains(r.Header.Get("Accept"), "text/html")) {
+		if p.IsAdmin(r) || strings.Contains(r.Header.Get("Accept"), "text/html") {
 			http.Redirect(w, r, to, http.StatusFound)
 			return
 		}
