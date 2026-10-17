@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, addViewer, checkFirmware, deleteViewer, getState, patchDevice, patchSettings, replaceViewer } from './api'
+import { ApiError, addViewer, getAuthStatus, pollPlex, removePlexAdmin, signOut, startPlex, checkFirmware, deleteViewer, getState, patchDevice, patchSettings, replaceViewer } from './api'
 import { stubFetch } from '@/test/render'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -79,5 +79,38 @@ describe('api client', () => {
     vi.stubGlobal('fetch', fn)
     await patchDevice('antenna', { label: 'Antenna (Steve)' })
     expect(calls[0].body).toEqual({ label: 'Antenna (Steve)' })
+  })
+})
+
+describe('sign-in calls', () => {
+  it('use the public /auth routes, and the add routes when adding an account', async () => {
+    const { fn, calls } = stubFetch({
+      'GET /auth/status': () => ({ body: { plexEnabled: true, signedIn: null, admin: false } }),
+      'POST /auth/plex/start': () => ({ body: { pinId: 1, authUrl: 'u' } }),
+      'POST /auth/plex/add/start': () => ({ body: { pinId: 2, authUrl: 'u' } }),
+      'POST /auth/plex/poll': () => ({ body: { status: 'pending' } }),
+      'POST /auth/plex/add/poll': () => ({ body: { status: 'pending' } }),
+      'POST /auth/logout': () => ({ body: {} }),
+      'DELETE /plex/admins/42': () => ({ status: 204 }),
+    })
+    vi.stubGlobal('fetch', fn)
+    expect((await getAuthStatus()).plexEnabled).toBe(true)
+    await startPlex()
+    await startPlex(true)
+    await pollPlex(1)
+    await pollPlex(2, true)
+    await signOut()
+    await removePlexAdmin(42)
+    expect(calls.map((c) => `${c.method} ${c.url.replace(/^.*?(?=\/auth\/|\/api\/)/, '')}`)).toEqual([
+      'GET /auth/status',
+      'POST /auth/plex/start',
+      'POST /auth/plex/add/start',
+      'POST /auth/plex/poll',
+      'POST /auth/plex/add/poll',
+      'POST /auth/logout',
+      'DELETE /api/plex/admins/42',
+    ])
+    expect(calls[3].body).toEqual({ pinId: 1 })
+    expect(calls[4].body).toEqual({ pinId: 2 })
   })
 })

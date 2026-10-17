@@ -30,7 +30,11 @@ export function stubFetch(routes: Record<string, (body: unknown) => { status?: n
     const method = init?.method ?? 'GET'
     const body = init?.body ? JSON.parse(String(init.body)) : undefined
     calls.push({ method, url, body })
-    const key = `${method} ${url.replace(/^.*?\/api(?=\/)/, '')}` // whatever the base path is
+    // Whatever the base path is: API routes are keyed without it ("GET /state"),
+    // sign-in routes keep their /auth prefix ("POST /auth/plex/start").
+    let path = url.replace(/^.*?\/api(?=\/)/, '')
+    if (path === url) path = url.replace(/^.*?(?=\/auth\/)/, '')
+    const key = `${method} ${path}`
     const handler = routes[key]
     if (!handler) return new Response(JSON.stringify({ error: `unexpected ${key}` }), { status: 500 })
     const r = handler(body)

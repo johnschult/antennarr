@@ -17,3 +17,14 @@ address must be allowed to use the admin page (loopback always is).
 
 The UI talks only to the JSON API in `internal/api`. Its types are in
 `src/lib/types.ts` and must be kept in step with `internal/api/api.go`.
+
+## Third-party assets
+
+- `public/plex-wordmark.png` and `public/plex-icon.png` are resized copies of the Plex logos from
+  [homarr-labs/dashboard-icons](https://github.com/homarr-labs/dashboard-icons) and
+  [selfhst/icons](https://github.com/selfhst/icons). Plex is a trademark of Plex, Inc.; they are used only to
+  label the optional "Sign in with Plex" button. They are bundled rather than loaded from a CDN, so the page makes no
+  outside requests.
+- Fonts (Open Sans, Mozilla Headline, JetBrains Mono) come from Google Fonts via the Fontsource npm packages, also
+  bundled.
+

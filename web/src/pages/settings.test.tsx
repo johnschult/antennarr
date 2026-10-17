@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { fakeWindow, stubOpen } from '@/test/fake-window'
 import { makeDevice, makeState, makeTwoDeviceState } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { SettingsPage } from './settings'
@@ -9,7 +10,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, plex: { enabled: false, admins: [] } }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -296,5 +297,79 @@ describe('SettingsPage', () => {
     s.devices[0].label = 'Living room antenna'
     renderWithApp(<SettingsPage />, s)
     expect(section('Living room antenna')).toBeInTheDocument()
+  })
+})
+
+describe('Plex sign-in settings', () => {
+  const withPlex = (admins: { id: number; name: string }[] = [], enabled = true) => {
+    const s = state()
+    s.settings.plex = { enabled, admins }
+    return s
+  }
+  const access = () => section('Access')
+
+  it('is off by default and shows no accounts list', () => {
+    renderWithApp(<SettingsPage />, withPlex([], false))
+    expect(within(access()).getByRole('switch', { name: 'Sign in with Plex' })).not.toBeChecked()
+    expect(screen.queryByText('Allowed Plex accounts')).not.toBeInTheDocument()
+  })
+
+  it('turns on with the switch', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    renderWithApp(<SettingsPage />, withPlex([], false))
+    await userEvent.setup().click(within(access()).getByRole('switch', { name: 'Sign in with Plex' }))
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ plexEnabled: true }))
+  })
+
+  it('lists the allowed accounts, or says there are none', () => {
+    const { unmount } = renderWithApp(<SettingsPage />, withPlex())
+    expect(screen.getByText('No accounts yet.')).toBeInTheDocument()
+    unmount()
+    renderWithApp(<SettingsPage />, withPlex([{ id: 1, name: 'john' }, { id: 2, name: 'steve' }]))
+    expect(screen.getByText('john')).toBeInTheDocument()
+    expect(screen.getByText('steve')).toBeInTheDocument()
+    expect(screen.queryByText('No accounts yet.')).not.toBeInTheDocument()
+  })
+
+  it('removes an account', async () => {
+    const { fn, calls } = stubFetch({ 'DELETE /plex/admins/2': () => ({ status: 204 }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    renderWithApp(<SettingsPage />, withPlex([{ id: 1, name: 'john' }, { id: 2, name: 'steve' }]))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Remove steve' }))
+    await waitFor(() => expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/plex/admins/2'))).toBe(true))
+    expect(await screen.findByText('steve can no longer sign in')).toBeInTheDocument()
+  })
+
+  it('shows why removing failed', async () => {
+    vi.stubGlobal('fetch', stubFetch({ 'DELETE /plex/admins/1': () => ({ status: 409, body: { error: 'that is the last admin' } }) }).fn)
+    renderWithApp(<SettingsPage />, withPlex([{ id: 1, name: 'john' }]))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Remove john' }))
+    expect(await screen.findByText('that is the last admin')).toBeInTheDocument()
+  })
+
+  it('adds an account through a Plex sign-in', async () => {
+    const { fn, calls } = stubFetch({
+      'POST /auth/plex/add/start': () => ({ body: { pinId: 9, authUrl: 'https://app.plex.tv/auth#?code=z' } }),
+      'POST /auth/plex/add/poll': () => ({ body: { status: 'ok', account: { id: 5, name: 'newbie' } } }),
+      ...okState,
+    })
+    vi.stubGlobal('fetch', fn)
+    const win = fakeWindow()
+    stubOpen(win)
+    renderWithApp(<SettingsPage />, withPlex())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Add a Plex account' }))
+    expect(win.location.href).toBe('https://app.plex.tv/auth#?code=z')
+    expect(await screen.findByText('newbie can now sign in.', {}, { timeout: 6000 })).toBeInTheDocument()
+    expect(calls.map((c) => c.url.replace(/^.*?(?=\/auth\/)/, ''))).toContain('/auth/plex/add/poll')
+  }, 15000)
+
+  it('cannot be changed from a read-only view', () => {
+    const s = withPlex([{ id: 1, name: 'john' }])
+    s.editable = false
+    renderWithApp(<SettingsPage />, s)
+    expect(screen.getByRole('button', { name: 'Remove john' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add a Plex account' })).toBeDisabled()
+    expect(within(access()).getByRole('switch', { name: 'Sign in with Plex' })).toHaveAttribute('aria-disabled', 'true')
   })
 })

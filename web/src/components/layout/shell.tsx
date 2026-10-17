@@ -2,7 +2,10 @@ import { NavLink, Outlet } from 'react-router'
 import { Banners } from '@/components/banners'
 import { Logo } from '@/components/logo'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { PlexIcon } from '@/components/plex-button'
 import { useApp } from '@/hooks/app-context'
+import { useAuthStatus } from '@/hooks/use-auth'
+import { signOut } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +20,8 @@ const nav = [
 export function Shell() {
   const { state, connected } = useApp()
   const { devices } = state
+  const auth = useAuthStatus()
+  const signedIn = auth.data?.signedIn ?? null
   const one = devices.length === 1 ? devices[0] : null
 
   return (
@@ -71,6 +76,18 @@ export function Shell() {
               {connected ? 'Live' : 'Reconnecting…'}
             </span>
             </div>
+            {signedIn && (
+              <button
+                type="button"
+                onClick={() => void signOut().finally(() => window.location.reload())}
+                title="Sign out"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs hover:bg-muted"
+              >
+                <PlexIcon className="size-4" />
+                <span className="max-w-24 truncate">{signedIn.name}</span>
+                <span className="text-muted-foreground">· Sign out</span>
+              </button>
+            )}
             <ThemeToggle />
           </div>
         </div>

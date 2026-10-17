@@ -72,7 +72,7 @@ export function makeState(over: Partial<AppState> = {}): AppState {
     time: '2026-10-17T10:05:00Z',
     devices: [makeDevice()],
     viewers: [john, mom],
-    settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true },
+    settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true, plex: { enabled: false, admins: [] } },
     editable: true,
     ...over,
   }

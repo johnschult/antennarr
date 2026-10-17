@@ -1,4 +1,4 @@
-import type { AppState, DevicePatch, DeviceState, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
+import type { AppState, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -13,10 +13,13 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+// Signing in lives beside the API, not inside it: it has to work before you are an admin.
+export const AUTH = `${import.meta.env.BASE_URL}auth`
+
+async function request<T>(method: string, path: string, body?: unknown, base: string = API): Promise<T> {
   let res: Response
   try {
-    res = await fetch(`${API}${path}`, {
+    res = await fetch(`${base}${path}`, {
       method,
       headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -52,3 +55,12 @@ export const patchDevice = (name: string, p: DevicePatch) =>
 
 /** Read SiliconDust's changelog now. The new status arrives over the event stream. */
 export const checkFirmware = () => request<{ checkedAt: string }>('POST', '/firmware/check')
+
+export const removePlexAdmin = (id: number) => request<void>('DELETE', `/plex/admins/${id}`)
+
+export const getAuthStatus = () => request<AuthStatus>('GET', '/status', undefined, AUTH)
+export const startPlex = (add = false) =>
+  request<{ pinId: number; authUrl: string }>('POST', `/plex${add ? '/add' : ''}/start`, {}, AUTH)
+export const pollPlex = (pinId: number, add = false) =>
+  request<PlexPollStatus>('POST', `/plex${add ? '/add' : ''}/poll`, { pinId }, AUTH)
+export const signOut = () => request<unknown>('POST', '/logout', undefined, AUTH)

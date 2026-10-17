@@ -91,6 +91,31 @@ export interface Viewer {
   lastSeen: string | null
 }
 
+/** A Plex account that may sign in to the admin pages. */
+export interface PlexAccount {
+  id: number
+  name: string
+}
+
+export interface PlexSettings {
+  enabled: boolean
+  admins: PlexAccount[]
+}
+
+/** Who this browser is, as far as signing in goes. Public: it is how the page knows whether to offer sign-in. */
+export interface AuthStatus {
+  plexEnabled: boolean
+  signedIn: { id: number; name: string } | null
+  /** Whether this request may use the admin pages at all (by address, or by being signed in). */
+  admin: boolean
+}
+
+export type PlexPollStatus =
+  | { status: 'pending' }
+  | { status: 'expired' }
+  | { status: 'ok'; user?: { id: number; name: string }; account?: { id: number; name: string } }
+  | { status: 'denied'; user: { name: string } }
+
 export interface Settings {
   mode: 'open' | 'enforced'
   sharedCap: number
@@ -98,6 +123,7 @@ export interface Settings {
   admin: string[]
   /** Whether SiliconDust's changelog is read (one request every 12 hours). */
   firmwareCheck: boolean
+  plex: PlexSettings
 }
 
 export interface Summary {
@@ -145,6 +171,7 @@ export interface SettingsPatch {
   ownerReserve?: number
   admin?: string[]
   firmwareCheck?: boolean
+  plexEnabled?: boolean
 }
 
 export interface DevicePatch {

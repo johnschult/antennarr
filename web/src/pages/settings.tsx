@@ -1,4 +1,5 @@
 import { EditRow } from '@/components/settings/edit-row'
+import { PlexRows } from '@/components/settings/plex-rows'
 import { Row, Section } from '@/components/settings/section'
 import { SwitchRow } from '@/components/settings/switch-row'
 import { useApp } from '@/hooks/app-context'
@@ -81,6 +82,7 @@ export function SettingsPage() {
           disabled={!editable}
           onSave={(text) => update.mutateAsync({ admin: parseAddresses(text) })}
         />
+        <PlexRows />
         <Row title="Who can use your tuners" description="Only the addresses of the viewers you add. With no viewers, anyone who can reach a port can.">
           <span className="text-sm font-medium">{settings.mode === 'open' ? 'Open to anyone' : 'Viewers only'}</span>
         </Row>
