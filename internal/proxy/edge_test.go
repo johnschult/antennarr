@@ -121,6 +121,65 @@ func TestRebase(t *testing.T) {
 	}
 }
 
+// movingUpstream lets a test relocate the tuner while the proxy is running.
+type movingUpstream struct {
+	mu          sync.Mutex
+	api, stream *url.URL
+}
+
+func (m *movingUpstream) Targets() (*url.URL, *url.URL) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.api, m.stream
+}
+
+func (m *movingUpstream) set(api, stream *url.URL) {
+	m.mu.Lock()
+	m.api, m.stream = api, stream
+	m.mu.Unlock()
+}
+
+func TestFollowsUpstreamWhenItMoves(t *testing.T) {
+	a, b := newFakeTuner(t), newFakeTuner(t)
+	parse := func(f *fakeTuner) (*url.URL, *url.URL) {
+		api, _ := url.Parse(f.api.URL)
+		stream, _ := url.Parse(f.stream.URL)
+		return api, stream
+	}
+	up := &movingUpstream{}
+	up.set(parse(a))
+	srv := httptest.NewServer(New(Config{Upstream: up}))
+	defer srv.Close()
+
+	var d map[string]any
+	getJSON(t, srv.URL+"/discover.json", &d)
+	if d["FriendlyName"] != "Fake FLEX" {
+		t.Fatalf("first tuner: %v", d)
+	}
+
+	a.api.Close() // the old address goes dark...
+	a.stream.Close()
+	up.set(parse(b)) // ...and the tuner turns up somewhere else
+
+	getJSON(t, srv.URL+"/discover.json", &d)
+	if d["DeviceID"] != "10ABCC87" {
+		t.Errorf("after the move: %v", d)
+	}
+	if got := status(t, srv.URL+"/status.json"); got != http.StatusOK {
+		t.Errorf("pass-through after the move = %d", got)
+	}
+}
+
+func TestUnknownUpstreamIs502(t *testing.T) {
+	srv := httptest.NewServer(New(Config{Upstream: &movingUpstream{}})) // no address yet
+	defer srv.Close()
+	for _, path := range []string{"/discover.json", "/lineup.json", "/status.json", "/auto/v5.1"} {
+		if got := status(t, srv.URL+path); got != http.StatusBadGateway {
+			t.Errorf("%s = %d, want 502", path, got)
+		}
+	}
+}
+
 // The tuner must see its own address as Host, not Antennarr's, or firmware
 // that checks Host would reject the request.
 func TestTunerSeesItsOwnHostHeader(t *testing.T) {

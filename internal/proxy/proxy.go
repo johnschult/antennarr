@@ -5,6 +5,7 @@ package proxy
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -21,6 +22,9 @@ type Config struct {
 	API *url.URL
 	// Stream is where /auto/... and /tunerN/... streams live (port 5004).
 	Stream *url.URL
+	// Upstream, if set, replaces API and Stream and may move over time (see
+	// the tuner package, which follows the tuner by DeviceID).
+	Upstream Upstream
 	// Advertise is the base URL handed to clients, e.g. http://host:5004.
 	// Empty means "whatever host the client connected with".
 	Advertise string
@@ -34,6 +38,7 @@ type Config struct {
 // Proxy is an http.Handler.
 type Proxy struct {
 	cfg    Config
+	up     Upstream
 	client *http.Client
 	api    *httputil.ReverseProxy
 	stream *httputil.ReverseProxy
@@ -56,16 +61,33 @@ func New(cfg Config) *Proxy {
 		client: &http.Client{Transport: transport, Timeout: 15 * time.Second},
 		log:    cfg.Logger,
 	}
-	p.api = p.reverse(cfg.API, transport)
-	p.stream = p.reverse(cfg.Stream, transport)
+	if cfg.Upstream == nil {
+		cfg.Upstream = staticUpstream{cfg.API, cfg.Stream}
+	}
+	p.up = cfg.Upstream
+	p.api = p.reverse(func() *url.URL { a, _ := p.up.Targets(); return a }, transport)
+	p.stream = p.reverse(func() *url.URL { _, s := p.up.Targets(); return s }, transport)
 	return p
 }
 
-func (p *Proxy) reverse(target *url.URL, rt http.RoundTripper) *httputil.ReverseProxy {
+// Upstream says where the tuner is right now; it can change while we run.
+type Upstream interface {
+	Targets() (api, stream *url.URL)
+}
+
+type staticUpstream struct{ api, stream *url.URL }
+
+func (s staticUpstream) Targets() (*url.URL, *url.URL) { return s.api, s.stream }
+
+func (p *Proxy) reverse(target func() *url.URL, rt http.RoundTripper) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
 		Rewrite: func(r *httputil.ProxyRequest) {
-			r.SetURL(target)
-			r.Out.Host = target.Host
+			t := target()
+			if t == nil {
+				t = &url.URL{Scheme: "http", Host: "invalid.invalid"} // fails fast into the 502 handler
+			}
+			r.SetURL(t)
+			r.Out.Host = t.Host
 			r.Out.Header.Del("X-Forwarded-For")
 		},
 		Transport:     rt,
@@ -118,7 +140,11 @@ func (p *Proxy) base(r *http.Request) string {
 }
 
 func (p *Proxy) fetchJSON(r *http.Request, path string, v any) error {
-	u := *p.cfg.API
+	api, _ := p.up.Targets()
+	if api == nil {
+		return errors.New("tuner address unknown")
+	}
+	u := *api
 	u.Path = path
 	u.RawQuery = r.URL.RawQuery
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, u.String(), nil)
