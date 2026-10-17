@@ -470,10 +470,12 @@ func (p *Policy) isAdminAddress(r *http.Request) bool {
 func (p *Policy) IsAdminAddress(r *http.Request) bool { return p.isAdminAddress(r) }
 
 // AdminHome sends admins who open the bare address in a browser to the admin
-// page at `to`; everyone else is handed to next, as if this wasn't here.
+// page at `to`. So are browsers belonging to anyone else, when signing in with
+// Plex is on, since that page is where they sign in. Everything else (media
+// servers, scripts) is handed to next, as if this wasn't here.
 func (p *Policy) AdminHome(to string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if p.IsAdmin(r) {
+		if p.IsAdmin(r) || (p.Settings().PlexEnabled() && strings.Contains(r.Header.Get("Accept"), "text/html")) {
 			http.Redirect(w, r, to, http.StatusFound)
 			return
 		}

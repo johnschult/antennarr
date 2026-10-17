@@ -146,7 +146,10 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
 		Devices: apiDevices, Firmware: s.firmware, Pol: policy, Store: store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
-	admin.Handle("/antennarr/", policy.AdminOnly(ui.Handler("/antennarr/"))) // the web UI
+	// The page itself is just static files with no data in them. It has to load
+	// for someone who is not yet signed in, or there would be nowhere to sign in;
+	// everything it shows comes from the admin-only API above.
+	admin.Handle("/antennarr/", ui.Handler("/antennarr/"))
 
 	for _, d := range s.devices {
 		name := d.cfg.Name

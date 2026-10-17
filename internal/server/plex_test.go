@@ -185,6 +185,20 @@ func TestSigningInWithPlexOpensTheAdminPagesFromAnyAddress(t *testing.T) {
 	if _, body := st.here("GET", "/antennarr/auth/status", ""); !strings.Contains(body, `"plexEnabled":true`) || !strings.Contains(body, `"admin":false`) {
 		t.Errorf("status = %s", body)
 	}
+	// The page itself must load for a stranger, or there is nowhere to sign in
+	// (503: the UI isn't built in this checkout).
+	if code, _ := st.here("GET", "/antennarr/", ""); code != 200 && code != 503 {
+		t.Errorf("the page must load before signing in: %d", code)
+	}
+
+	// A browser at the bare address is sent to the page where it can sign in;
+	// a media server (no Accept: text/html) still just gets refused.
+	if code, _, resp := st.do("GET", "/", "", st.remote); code != 403 {
+		t.Errorf("a non-browser at the bare address: %d (resp %v)", code, resp.Header)
+	}
+	if code, _ := st.browse("/"); code != 302 {
+		t.Errorf("a browser at the bare address should go to the sign-in page: %d", code)
+	}
 
 	if body := st.signIn("tok-1", 7, "john"); !strings.Contains(body, `"status":"ok"`) {
 		t.Fatalf("sign-in: %s", body)
@@ -314,4 +328,16 @@ func TestConfigFileSurvivesPlexEdits(t *testing.T) {
 	if !strings.Contains(string(raw), `"clientId"`) || !strings.Contains(string(raw), `"admins"`) || !strings.Contains(string(raw), `"sharedCap": 2`) {
 		t.Errorf("file lost something:\n%s", raw)
 	}
+}
+
+// browse is a GET the way a browser makes it, asking for a page.
+func (st *site) browse(path string) (int, *http.Response) {
+	st.t.Helper()
+	req := httptest.NewRequest("GET", path, nil)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+	req.RemoteAddr = st.remote
+	rec := httptest.NewRecorder()
+	st.srv.devices[0].handler.ServeHTTP(rec, req)
+	resp := rec.Result()
+	return resp.StatusCode, resp
 }
