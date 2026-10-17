@@ -141,7 +141,11 @@ func TestStateCarriesTheVersionAndItsGitHubPage(t *testing.T) {
 	st := obj(t, v)
 	ver, _ := st["version"].(string)
 	url, _ := st["versionUrl"].(string)
+	docs, _ := st["docsUrl"].(string)
 	if code != 200 || ver == "" || !strings.HasPrefix(url, "https://github.com/johnschult/antennarr") {
 		t.Fatalf("version=%q url=%q (%d)", ver, url, code)
+	}
+	if !strings.HasPrefix(docs, "https://github.com/johnschult/antennarr/blob/") || !strings.HasSuffix(docs, "/docs/README.md") {
+		t.Errorf("docsUrl = %q", docs)
 	}
 }

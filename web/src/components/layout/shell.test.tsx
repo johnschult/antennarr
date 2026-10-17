@@ -136,9 +136,20 @@ describe('Shell footer', () => {
     expect(page.lastElementChild).toBe(footer) // after the main area, so it ends up under it
   })
 
-  it('opens both in a new tab, without handing the page to the other site', () => {
+  it('has a Help link to the documentation for this version', () => {
     mount()
-    for (const link of [screen.getByTestId('version'), screen.getByRole('link', { name: 'Antennarr on GitHub' })]) {
+    const help = screen.getByRole('link', { name: 'Help' })
+    expect(help).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/blob/v2026.10.0/docs/README.md')
+  })
+
+  it('points Help at the latest docs for a build from a checkout', () => {
+    mount({ version: 'dev+3553344', versionUrl: 'https://github.com/johnschult/antennarr', docsUrl: 'https://github.com/johnschult/antennarr/blob/main/docs/README.md' })
+    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/blob/main/docs/README.md')
+  })
+
+  it('opens all three in a new tab, without handing the page to the other site', () => {
+    mount()
+    for (const link of [screen.getByTestId('version'), screen.getByRole('link', { name: 'Help' }), screen.getByRole('link', { name: 'Antennarr on GitHub' })]) {
       expect(link).toHaveAttribute('target', '_blank')
       expect(link.getAttribute('rel')).toMatch(/noopener/)
       expect(link.getAttribute('rel')).toMatch(/noreferrer/)

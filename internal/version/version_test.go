@@ -48,3 +48,14 @@ func TestURLPointsAtTheReleaseOrTheProject(t *testing.T) {
 		}
 	}
 }
+
+func TestDocsURLPointsAtTheDocsForThatVersion(t *testing.T) {
+	if got := DocsURL("2026.10.0"); got != Repo+"/blob/v2026.10.0/docs/README.md" {
+		t.Errorf("release docs URL = %q", got)
+	}
+	for _, v := range []string{"dev", "dev+abc1234", ""} {
+		if got := DocsURL(v); got != Repo+"/blob/main/docs/README.md" {
+			t.Errorf("DocsURL(%q) = %q, want the latest docs", v, got)
+		}
+	}
+}
