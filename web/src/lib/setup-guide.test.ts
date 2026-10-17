@@ -97,10 +97,22 @@ describe('steps', () => {
   })
 
   it('says each transport differently, and warns about the internet one', () => {
-    const all = (['tailscale', 'vpn', 'lan', 'internet'] as const).map((t) => transportSteps(t, 'a:1').join(' '))
+    const all = (['tailscale', 'vpn', 'lan', 'internet'] as const).map((t) => transportSteps(t).join(' '))
     expect(new Set(all).size).toBe(4)
     expect(all[0]).toMatch(/Tailscale/)
     expect(all[3]).toMatch(/no passwords/)
+  })
+
+  it('keeps the Tailscale steps short when Tailscale is already running here', () => {
+    const known = transportSteps('tailscale', '100.64.0.9')
+    expect(known).toHaveLength(2)
+    expect(known.join(' ')).toContain('Tailscale is running on this machine (100.64.0.9)')
+    expect(known.join(' ')).not.toMatch(/Install Tailscale|tailscale ip -4|tailscale ping/) // nothing to install or look up
+    const unknown = transportSteps('tailscale')
+    expect(unknown.join(' ')).toContain('Install Tailscale')
+    expect(unknown.join(' ')).toContain('tailscale ip -4')
+    expect(unknown.join(' ')).not.toContain('tailscale ping') // the check commands at the end cover reaching it
+    expect(transportSteps('lan', '100.64.0.9').join(' ')).not.toContain('100.64.0.9') // only Tailscale uses it
   })
 
   it('checks the address with curl', () => {

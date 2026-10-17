@@ -193,3 +193,10 @@ export interface DevicePatch {
   /** The display name; an empty string clears it. */
   label?: string
 }
+
+/** One way to reach the machine running Antennarr, read from its network interfaces. */
+export interface NetworkAddress {
+  ip: string
+  kind: 'tailscale' | 'lan'
+  interface: string
+}

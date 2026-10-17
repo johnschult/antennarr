@@ -2,10 +2,13 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { john, makeState, makeTwoDeviceState, mom } from '@/test/fixtures'
-import { renderWithApp } from '@/test/render'
+import { renderWithApp, stubFetch } from '@/test/render'
 import { SetupPage } from './setup'
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 const block = (name: string) => screen.getByRole('region', { name })
 const host = () => screen.getByLabelText(/Address viewers will use/)
@@ -130,7 +133,6 @@ describe('SetupPage', () => {
   it('does not repeat an unusable address in the connection steps', async () => {
     renderWithApp(<SetupPage />, makeState())
     await typeHost('localhost')
-    expect(block('3. How will they reach it?')).toHaveTextContent('<address>')
     expect(block('3. How will they reach it?')).not.toHaveTextContent('localhost')
   })
 
@@ -157,5 +159,91 @@ describe('SetupPage', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('no')) }, configurable: true })
     await user.click(screen.getByRole('button', { name: 'Copy tuner address' }))
     expect(await screen.findByText(/Couldn't copy/)).toBeInTheDocument()
+  })
+})
+
+describe('SetupPage on a machine that knows its own addresses', () => {
+  const ts = { ip: '100.64.0.9', kind: 'tailscale', interface: 'tailscale0' }
+  const lan = { ip: '192.168.1.5', kind: 'lan', interface: 'eth0' }
+  const machine = (...addresses: unknown[]) => vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses } }) }).fn)
+  const field = async () => (await screen.findByLabelText(/Address viewers will use/)) as HTMLInputElement
+
+  it("fills in the machine's Tailscale address, and says Tailscale is already running", async () => {
+    machine(ts, lan)
+    renderWithApp(<SetupPage />, makeState())
+    await screen.findByRole('group', { name: 'Addresses of this machine' })
+    expect(await field()).toHaveValue('100.64.0.9')
+    expect(screen.getByLabelText('tuner address')).toHaveTextContent('100.64.0.9:5004')
+    expect(within(block('1. The address')).queryByRole('alert')).not.toBeInTheDocument()
+    const steps = block('3. How will they reach it?')
+    expect(steps).toHaveTextContent('Tailscale is running on this machine (100.64.0.9)')
+    expect(steps).not.toHaveTextContent(/Install Tailscale|tailscale ip -4|tailscale ping/) // nothing to install or look up: we know it
+    expect(within(steps).getByRole('radio', { name: /Tailscale/ })).toHaveTextContent('Running on this machine (100.64.0.9)')
+  })
+
+  it('offers each address, and clicking one uses it', async () => {
+    machine(ts, lan)
+    renderWithApp(<SetupPage />, makeState())
+    const user = userEvent.setup()
+    const chips = within(await screen.findByRole('group', { name: 'Addresses of this machine' }))
+    expect(chips.getByRole('button', { name: /100\.64\.0\.9.*Tailscale/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(chips.getByRole('button', { name: /192\.168\.1\.5.*LAN/ })).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(chips.getByRole('button', { name: /192\.168\.1\.5/ }))
+    expect(await field()).toHaveValue('192.168.1.5')
+    expect(chips.getByRole('button', { name: /192\.168\.1\.5/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('tuner address')).toHaveTextContent('192.168.1.5:5004')
+  })
+
+  it('follows the connection you choose until you type an address of your own', async () => {
+    machine(ts, lan)
+    renderWithApp(<SetupPage />, makeState())
+    const user = userEvent.setup()
+    await screen.findByRole('group', { name: 'Addresses of this machine' })
+    const connection = within(screen.getByRole('radiogroup', { name: 'Connection' }))
+
+    await user.click(connection.getByRole('radio', { name: /Same network/ }))
+    expect(await field()).toHaveValue('192.168.1.5')
+    await user.click(connection.getByRole('radio', { name: /Tailscale/ }))
+    expect(await field()).toHaveValue('100.64.0.9')
+
+    await user.clear(await field())
+    await user.type(await field(), 'mine.example.com')
+    await user.click(connection.getByRole('radio', { name: /Same network/ }))
+    expect(await field()).toHaveValue('mine.example.com') // what you typed is left alone
+  })
+
+  it('says so when Tailscale is not running on this machine, and falls back to the browser address', async () => {
+    machine(lan)
+    renderWithApp(<SetupPage />, makeState())
+    expect(await screen.findByText(/Tailscale wasn't found running on this machine/)).toBeInTheDocument()
+    expect(await field()).toHaveValue(window.location.hostname)
+    expect(block('3. How will they reach it?')).toHaveTextContent('Install Tailscale') // so the longer steps are still there
+  })
+
+  it('does not show the long Tailscale steps while it is still checking', async () => {
+    let release: (v: Response) => void = () => {}
+    vi.stubGlobal('fetch', () => new Promise<Response>((r) => (release = r)))
+    renderWithApp(<SetupPage />, makeState())
+    await screen.findByLabelText(/Address viewers will use/)
+    expect(block('3. How will they reach it?')).not.toHaveTextContent(/Install Tailscale|Tailscale is running/)
+    release(new Response(JSON.stringify({ addresses: [ts] })))
+    expect(await within(block('3. How will they reach it?')).findByText(/Tailscale is running on this machine/)).toBeInTheDocument()
+  })
+
+  it('does not claim anything when nothing could be read', async () => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ status: 500, body: { error: 'no' } }) }).fn)
+    renderWithApp(<SetupPage />, makeState())
+    expect(await field()).toHaveValue(window.location.hostname)
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('group', { name: 'Addresses of this machine' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/wasn't found running/)).not.toBeInTheDocument()
+  })
+
+  it('leaves the connection hint alone when there is no Tailscale here', async () => {
+    machine(lan)
+    renderWithApp(<SetupPage />, makeState())
+    await screen.findByRole('group', { name: 'Addresses of this machine' })
+    expect(screen.getByRole('radio', { name: /Tailscale/ })).not.toHaveTextContent('Running on this machine')
   })
 })

@@ -1,3 +1,4 @@
+import { useQuery } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { CodeBlock } from '@/components/setup/code-block'
@@ -8,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApp } from '@/hooks/app-context'
+import { getNetwork } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import {
   FIREWALLS,
@@ -44,9 +46,11 @@ export function SetupPage() {
   const several = devices.length > 1
 
   const [deviceName, setDeviceName] = useState(devices[0]?.name ?? '')
-  const [host, setHost] = useState(window.location.hostname)
+  // What the person typed, or null while the page is choosing the address for them.
+  const [typedHost, setTypedHost] = useState<string | null>(null)
   const [viewerName, setViewerName] = useState(viewers[0]?.name ?? '')
   const [transport, setTransport] = useState<Transport>('tailscale')
+  const network = useQuery({ queryKey: ['network'], queryFn: getNetwork, staleTime: 60_000, retry: false, refetchOnWindowFocus: false })
   const [hasFirewall, setHasFirewall] = useState(false)
   const [firewall, setFirewall] = useState<Firewall>('ufw')
   const [media, setMedia] = useState<MediaServer>('plex')
@@ -54,6 +58,14 @@ export function SetupPage() {
   const device = devices.find((d) => d.name === deviceName) ?? devices[0]
   const viewer = viewers.find((v) => v.name === viewerName) ?? viewers[0]
   const port = device ? portOf(device.listen) : ''
+
+  // This machine's own addresses, when the server could read them. The address
+  // follows the connection chosen in step 3 until the person types their own.
+  const found = network.data?.addresses ?? []
+  const tailscale = found.find((a) => a.kind === 'tailscale')
+  const lan = found.find((a) => a.kind === 'lan')
+  const suggested = (transport === 'tailscale' ? tailscale?.ip : transport === 'lan' ? lan?.ip : undefined) ?? window.location.hostname
+  const host = typedHost ?? suggested
   const problem = hostProblem(host)
   const address = tunerAddress(host, port)
   const rules = firewallRules(firewall, port, viewer?.addresses ?? [])
@@ -71,13 +83,30 @@ export function SetupPage() {
       <Block title="1. The address">
         <div className="space-y-2">
           <Label htmlFor="setup-host">Address viewers will use to reach this machine</Label>
-          <Input id="setup-host" value={host} onChange={(e) => setHost(e.target.value)} spellCheck={false} autoComplete="off" aria-invalid={problem !== null} className="max-w-sm font-mono" />
+          <Input id="setup-host" value={host} onChange={(e) => setTypedHost(e.target.value)} spellCheck={false} autoComplete="off" aria-invalid={problem !== null} className="max-w-sm font-mono" />
           {problem && (
             <p role="alert" className="text-xs text-amber-700 dark:text-amber-300">
               {problem}
             </p>
           )}
         </div>
+        {found.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs" role="group" aria-label="Addresses of this machine">
+            <span className="text-muted-foreground">This machine is at</span>
+            {found.map((a) => (
+              <button
+                key={a.ip}
+                type="button"
+                aria-pressed={host === a.ip}
+                onClick={() => setTypedHost(a.ip)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-2.5 py-1 font-mono hover:bg-muted aria-pressed:border-primary aria-pressed:bg-primary/10"
+              >
+                {a.ip}
+                <span className="font-sans text-muted-foreground">{a.kind === 'tailscale' ? 'Tailscale' : 'LAN'}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {several && (
           <Choice
             label="Tuner"
@@ -114,8 +143,19 @@ export function SetupPage() {
       </Block>
 
       <Block title="3. How will they reach it?">
-        <Choice label="Connection" value={transport} onChange={setTransport} options={TRANSPORTS} />
-        <Steps steps={transportSteps(transport, problem ? '<address>' : address)} />
+        <Choice
+          label="Connection"
+          value={transport}
+          onChange={setTransport}
+          options={TRANSPORTS.map((t) => (t.id === 'tailscale' && tailscale ? { ...t, hint: `Running on this machine (${tailscale.ip})` } : t))}
+        />
+        {transport === 'tailscale' && network.isSuccess && !tailscale && (
+          <p role="status" className="text-xs text-muted-foreground">
+            Tailscale wasn't found running on this machine. If Antennarr runs in a container it can't see the host's network, so use the steps below to find the address.
+          </p>
+        )}
+        {/* Wait for the check: until it finishes we can't tell which Tailscale steps apply. */}
+        {!(transport === 'tailscale' && network.isPending) && <Steps steps={transportSteps(transport, tailscale?.ip)} />}
       </Block>
 
       <Block title="4. On this machine">

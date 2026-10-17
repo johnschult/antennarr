@@ -19,6 +19,7 @@ import (
 	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/httpx"
 	"github.com/johnschult/antennarr/internal/live"
+	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/tuner"
 )
 
@@ -39,6 +40,9 @@ type API struct {
 	Store *access.Store
 	Hub   *live.Hub
 	Log   *slog.Logger
+	// Network lists the addresses this machine can be reached at, for the setup
+	// guide. Nil means netinfo.Detect; tests supply their own.
+	Network func() []netinfo.Address
 	// KeepAlive is how often an idle event stream gets a comment line, so
 	// proxies don't drop it. Zero means 20s.
 	KeepAlive time.Duration
@@ -71,6 +75,7 @@ func (a *API) Handler() http.Handler {
 		{"settings", map[string]http.HandlerFunc{"GET": a.getSettings, "PATCH": a.patchSettings}},
 		{"devices/{name}", map[string]http.HandlerFunc{"PATCH": a.patchDevice}},
 		{"devices/{name}/guide/{channel}/icon", map[string]http.HandlerFunc{"GET": a.channelIcon}},
+		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
 	}
@@ -628,4 +633,18 @@ func (a *API) channelIcon(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		_, _ = w.Write(body)
 	}
+}
+
+// network lists this machine's Tailscale and LAN addresses, so the setup guide
+// can offer the right one. It is read from the machine's own interfaces only.
+func (a *API) network(w http.ResponseWriter, r *http.Request) {
+	detect := a.Network
+	if detect == nil {
+		detect = netinfo.Detect
+	}
+	addrs := detect()
+	if addrs == nil {
+		addrs = []netinfo.Address{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"addresses": addrs})
 }

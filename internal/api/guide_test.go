@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/johnschult/antennarr/internal/guide"
+	"github.com/johnschult/antennarr/internal/netinfo"
 )
 
 func TestSettingsReportTheGuideSwitch(t *testing.T) {
@@ -93,6 +94,34 @@ func TestLogoRouteIsClosedWithoutAGuide(t *testing.T) {
 		t.Errorf("while off: %d", code)
 	}
 	if code, _ := e.call(t, "POST", path, ""); code != 405 {
+		t.Errorf("POST: %d, want 405", code)
+	}
+}
+
+func TestNetworkListsThisMachinesAddresses(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	e.api.Network = func() []netinfo.Address {
+		return []netinfo.Address{{IP: "100.64.0.9", Kind: netinfo.Tailscale, Interface: "tailscale0"}, {IP: "192.168.1.5", Kind: netinfo.LAN, Interface: "eth0"}}
+	}
+	code, v := e.call(t, "GET", "/antennarr/api/network", "")
+	addrs, _ := obj(t, v)["addresses"].([]any)
+	if code != 200 || len(addrs) != 2 || obj(t, addrs[0])["ip"] != "100.64.0.9" || obj(t, addrs[0])["kind"] != "tailscale" || obj(t, addrs[1])["interface"] != "eth0" {
+		t.Fatalf("%d %v", code, v)
+	}
+}
+
+func TestNetworkIsAnEmptyListWhenThereIsNothingToOffer(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	e.api.Network = func() []netinfo.Address { return nil }
+	_, v := e.call(t, "GET", "/antennarr/api/network", "")
+	if a, ok := obj(t, v)["addresses"].([]any); !ok || len(a) != 0 {
+		t.Errorf("addresses = %v, want [] (never null)", obj(t, v)["addresses"])
+	}
+}
+
+func TestNetworkIsReadOnly(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	if code, _ := e.call(t, "POST", "/antennarr/api/network", "{}"); code != 405 {
 		t.Errorf("POST: %d, want 405", code)
 	}
 }
