@@ -492,3 +492,59 @@ func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
 		}
 	})
 }
+
+func TestAdminHomeSendsEveryBrowserToTheAdminPage(t *testing.T) {
+	p, _ := newPolicy(t, twoViewers, &fakeMon{})
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "tuner front page") })
+	h := p.AdminHome("/antennarr/", next)
+
+	for _, remote := range []string{"203.0.113.9:1", "100.67.117.32:1"} { // not admins: a stranger and a viewer
+		rec := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		r.RemoteAddr = remote
+		r.Header.Set("Accept", "text/html,application/xhtml+xml")
+		h.ServeHTTP(rec, r)
+		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/antennarr/" {
+			t.Errorf("a browser from %s: %d %q, want a redirect to the admin page", remote, rec.Code, rec.Header().Get("Location"))
+		}
+	}
+	// A media server or script (no HTML in Accept) still reaches the tuner's side.
+	for _, accept := range []string{"", "*/*", "application/json"} {
+		rec := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/", nil)
+		r.RemoteAddr = "203.0.113.9:1"
+		if accept != "" {
+			r.Header.Set("Accept", accept)
+		}
+		h.ServeHTTP(rec, r)
+		if rec.Code != http.StatusOK || rec.Body.String() != "tuner front page" {
+			t.Errorf("Accept %q: %d %q, want the tuner's own handler", accept, rec.Code, rec.Body)
+		}
+	}
+}
+
+func TestIPv6LinkLocalAddressesCanBeListedDespiteTheirInterfaceName(t *testing.T) {
+	s := twoViewers
+	s.Admin = []string{"fe80::/10"}
+	s.Viewers = append(append([]Viewer(nil), s.Viewers...), Viewer{Name: "Phone", Addresses: []string{"fe80::1822:6815:bce3:f6e9"}, Limit: 1})
+	p, _ := newPolicy(t, s, &fakeMon{})
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
+	for _, remote := range []string{"[fe80::1822:6815:bce3:f6e9%en0]:50152", "[fe80::1822:6815:bce3:f6e9]:50152"} {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.RemoteAddr = remote
+		if !p.IsAdmin(r) {
+			t.Errorf("%s should be an admin through fe80::/10", remote)
+		}
+		rec := httptest.NewRecorder()
+		p.AdminOnly(next).ServeHTTP(rec, r)
+		if rec.Code != http.StatusOK {
+			t.Errorf("%s: %d from AdminOnly", remote, rec.Code)
+		}
+	}
+	// And a single link-local address works as a viewer's address.
+	r := httptest.NewRequest("GET", "/discover.json", nil)
+	r.RemoteAddr = "[fe80::1822:6815:bce3:f6e9%en0]:1"
+	if err := p.Authorize(r); err != nil {
+		t.Errorf("a viewer listed by its link-local address was refused: %v", err)
+	}
+}

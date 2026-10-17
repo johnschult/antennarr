@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
 )
@@ -20,6 +21,17 @@ func siliconDust(t *testing.T) (url string, hits *atomic.Int32) {
 	raw, err := os.ReadFile("../guide/testdata/xmltv.xml")
 	if err != nil {
 		t.Fatal(err)
+	}
+	// The listings in the fixture are for one day in October; shift them to now so
+	// that "what's on" works whenever the test runs.
+	now := time.Now().UTC().Truncate(time.Minute)
+	for stamp, at := range map[string]time.Time{
+		"20261017160000": now.Add(-90 * time.Minute), // already over
+		"20261017173000": now.Add(-30 * time.Minute), // on now: starts 30 min ago...
+		"20261017180000": now.Add(30 * time.Minute),  // ...ends in 30 min, when the next one starts
+		"20261017190000": now.Add(90 * time.Minute),
+	} {
+		raw = []byte(strings.ReplaceAll(string(raw), stamp, at.Format("20060102150405")))
 	}
 	hits = &atomic.Int32{}
 	var base string

@@ -15,6 +15,7 @@ import (
 	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/server"
+	"github.com/johnschult/antennarr/internal/version"
 )
 
 // deviceFlags are the command-line way to describe a single device.
@@ -39,6 +40,7 @@ func main() {
 	flag.StringVar(&f.reportID, "report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
 	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuners")
 	firmwareURL := flag.String("firmware-url", "", "read the firmware changelog from here instead of SiliconDust's page (for a mirror, or testing)")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	configPath := flag.String("config", "", "settings file (devices, viewers, limits); reloaded on SIGHUP. Without one, anyone who can reach a port may use the tuner")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: antennarr [flags]\n       antennarr discover [-wait 3s] [host ...]\n\n"+
@@ -46,11 +48,16 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+	if *showVersion {
+		fmt.Println("antennarr", version.Get())
+		return
+	}
 
 	set := map[string]bool{}
 	flag.Visit(func(fl *flag.Flag) { set[fl.Name] = true })
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	log.Info("starting", "version", version.Get())
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

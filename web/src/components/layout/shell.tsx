@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router'
 import { Banners } from '@/components/banners'
 import { Logo } from '@/components/logo'
+import { GithubIcon } from '@/components/github-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { PlexIcon } from '@/components/plex-button'
 import { useApp } from '@/hooks/app-context'
@@ -17,6 +18,9 @@ const nav = [
   { to: '/settings', label: 'Settings' },
 ]
 
+/** Where the project lives, for the footer. */
+const REPO_URL = 'https://github.com/johnschult/antennarr'
+
 export function Shell() {
   const { state, connected } = useApp()
   const { devices } = state
@@ -25,7 +29,7 @@ export function Shell() {
   const one = devices.length === 1 ? devices[0] : null
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,color-mix(in_oklch,var(--accent)_22%,var(--background))_0%,var(--background)_60%)]">
+    <div className="flex min-h-dvh flex-col bg-[radial-gradient(ellipse_at_top,color-mix(in_oklch,var(--accent)_22%,var(--background))_0%,var(--background)_60%)]">
       <header className="sticky top-0 z-10 border-b border-border/60 bg-background/70 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:gap-8 sm:px-6">
           {/* The text lines up with the TV's body, not the antenna ears above it. */}
@@ -92,10 +96,28 @@ export function Shell() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-8 sm:px-6">
         <Banners state={state} />
         <Outlet />
       </main>
+      <footer className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 pb-8 text-xs text-muted-foreground sm:px-6">
+        <span>
+          Antennarr{' '}
+          <a href={state.versionUrl} target="_blank" rel="noopener noreferrer" data-testid="version" className="font-mono underline-offset-2 hover:text-foreground hover:underline">
+            {state.version}
+          </a>
+        </span>
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Antennarr on GitHub"
+          title="Antennarr on GitHub"
+          className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
+        >
+          <GithubIcon className="size-5" />
+        </a>
+      </footer>
     </div>
   )
 }

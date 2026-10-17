@@ -56,11 +56,17 @@ Without `-config`, Antennarr runs with defaults and can't save changes made in t
 ### Docker
 
 ```sh
-docker build -t antennarr https://github.com/johnschult/antennarr.git#main
+docker pull ghcr.io/johnschult/antennarr:latest
 ```
 
-Or copy [docker-compose.example.yml](docker-compose.example.yml) next to your `antennarr.json` and run `docker compose up -d --build`.
+Or copy [docker-compose.example.yml](docker-compose.example.yml) next to your `antennarr.json` and run `docker compose up -d`.
 It uses host networking, which Antennarr needs to recognise its own streams and to offer your Tailscale and LAN addresses on the Setup page.
+Images are published for `amd64` and `arm64`. To build one yourself: `docker build -t antennarr https://github.com/johnschult/antennarr.git#main`.
+
+### Versions
+
+Releases are numbered by calendar, `YYYY.MM.PATCH` (for example `2026.10.0`), and the image is tagged with that number as well as `latest`.
+The app shows its version in the footer, linked to the release notes; `antennarr -version` prints it. See [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Security
 
@@ -142,7 +148,7 @@ The design notes, including what is built and what is planned, are in [docs/DESI
 
 ## Roadmap
 
-Planned, roughly in this order: a published container image, Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuner page. Contributions and bug reports are welcome.
+Planned, roughly in this order: Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuner page. Contributions and bug reports are welcome.
 
 ## License
 
