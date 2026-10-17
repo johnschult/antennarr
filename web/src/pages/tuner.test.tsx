@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot, updateAvailable } from '@/test/fixtures'
 import { renderWithApp } from '@/test/render'
+import { channelIconUrl } from '@/lib/api'
 import { TunerPage } from './tuner'
 
 describe('TunerPage', () => {
@@ -76,5 +77,22 @@ describe('TunerPage', () => {
     s.devices[0].label = 'Living room antenna'
     renderWithApp(<TunerPage />, s)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Living room antenna')
+  })
+})
+
+describe('TunerPage channel logos', () => {
+  it('shows the logo beside each watched channel that has one', () => {
+    const s = makeState()
+    s.devices[0].guide = { '5.1': { name: 'WFRV', icon: true }, '2.1': { name: 'WBAY', icon: false } }
+    renderWithApp(<TunerPage />, s)
+    const logos = screen.getAllByRole('img', { name: /logo/ })
+    expect(logos).toHaveLength(1) // 5.1 only: 2.1 has no logo, the idle tuners have no channel
+    expect(logos[0]).toHaveAttribute('src', channelIconUrl('antenna', '5.1'))
+    expect(logos[0].closest('tr')).toHaveTextContent('5.1')
+  })
+
+  it('shows no logos when the guide is off or empty', () => {
+    renderWithApp(<TunerPage />, makeState())
+    expect(screen.queryByRole('img', { name: /logo/ })).not.toBeInTheDocument()
   })
 })

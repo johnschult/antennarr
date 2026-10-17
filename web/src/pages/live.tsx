@@ -1,9 +1,8 @@
 import { FirmwareBadge } from '@/components/firmware'
 import { TunerTile } from '@/components/tuner-tile'
-import { Sparkline } from '@/components/sparkline'
 import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/hooks/app-context'
-import { useHistory } from '@/hooks/use-history'
+import { channelIconUrl } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import { formatMbps, timeAgo } from '@/lib/format'
 import { buildTiles, limitFor } from '@/lib/slots'
@@ -25,9 +24,7 @@ export function LivePage() {
   const several = devices.length > 1
 
   const slots = devices.flatMap((d) => d.tuner.slots)
-  const remoteBps = sum(slots.filter((s) => s.inUse && s.viaAntennarr), (s) => s.bitsPerSecond ?? 0)
   const totalBps = sum(slots, (s) => s.bitsPerSecond ?? 0)
-  const history = useHistory(remoteBps / 1_000_000, state.time)
 
   const parts = [
     `${sum(devices, (d) => d.summary.remote)} remote`,
@@ -50,13 +47,6 @@ export function LivePage() {
             {sum(devices, (d) => d.summary.inUse)} of {sum(devices, (d) => d.summary.total)} tuners live
           </h1>
           <p className="mt-1 text-muted-foreground">{parts.join(' · ')}</p>
-        </div>
-        <div className="w-full sm:w-72">
-          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-            <span>upload to viewers</span>
-            <span className="tabular-nums">{formatMbps(remoteBps)}</span>
-          </div>
-          <Sparkline data={history} height={56} />
         </div>
       </div>
 
@@ -123,7 +113,14 @@ function DeviceSection({ device, showHeader, tick }: { device: DeviceState; show
       )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {buildTiles(device).map((t) => (
-          <TunerTile key={t.index} tile={t} dimmed={!tuner.online} tick={tick} />
+          <TunerTile
+            key={t.index}
+            tile={t}
+            dimmed={!tuner.online}
+            tick={tick}
+            guide={t.slot?.channel ? device.guide[t.slot.channel] : undefined}
+            iconSrc={t.slot?.channel ? channelIconUrl(device.name, t.slot.channel) : undefined}
+          />
         ))}
       </div>
     </section>

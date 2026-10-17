@@ -10,7 +10,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, plex: { enabled: false, admins: [] } }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, plex: { enabled: false, admins: [] } }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -297,6 +297,26 @@ describe('SettingsPage', () => {
     s.devices[0].label = 'Living room antenna'
     renderWithApp(<SettingsPage />, s)
     expect(section('Living room antenna')).toBeInTheDocument()
+  })
+})
+
+describe('guide setting', () => {
+  it('is on by default and can be switched off, saying what it sends', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    renderWithApp(<SettingsPage />, state())
+    const sw = within(section('Updates')).getByRole('switch', { name: "Show what's on" })
+    expect(sw).toBeChecked()
+    expect(within(section('Updates')).getByText(/sends SiliconDust your tuner's guide key/)).toBeInTheDocument()
+    await userEvent.setup().click(sw)
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ guide: false }))
+  })
+
+  it('cannot be changed from a read-only view', () => {
+    const s = state()
+    s.editable = false
+    renderWithApp(<SettingsPage />, s)
+    expect(within(section('Updates')).getByRole('switch', { name: "Show what's on" })).toHaveAttribute('aria-disabled', 'true')
   })
 })
 

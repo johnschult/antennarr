@@ -1,8 +1,10 @@
-import { Antenna, Shield } from 'lucide-react'
+import { Antenna, Crown } from 'lucide-react'
+import { ChannelLogo } from '@/components/channel-logo'
 import { Sparkline } from '@/components/sparkline'
 import { Badge } from '@/components/ui/badge'
 import { useHistory } from '@/hooks/use-history'
 import { formatMbps } from '@/lib/format'
+import type { GuideEntry } from '@/lib/types'
 import { ownerLabel, type Tile } from '@/lib/slots'
 import { cn } from '@/lib/utils'
 
@@ -10,18 +12,29 @@ const badgeClass: Record<Tile['owner']['kind'], string> = {
   viewer: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300',
   remote: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300',
   local: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
-  reserved: 'bg-muted text-muted-foreground',
+  reserved: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
   free: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
 }
 
 /** The last couple of minutes of this stream's bitrate. Mounted only while a stream is live, so each new stream starts with a blank line. */
 function StreamSparkline({ bps, tick }: { bps?: number; tick: unknown }) {
   const history = useHistory(bps === undefined ? undefined : bps / 1_000_000, tick)
-  return <Sparkline data={history} height={32} label="Bitrate" />
+  return <Sparkline data={history} height={28} label="Bitrate" />
 }
 
-/** One physical tuner: what's on it and who has it. `tick` changes with each state update, so the bitrate line gets a sample each time. */
-export function TunerTile({ tile, dimmed = false, tick }: { tile: Tile; dimmed?: boolean; tick?: unknown }) {
+interface TileProps {
+  tile: Tile
+  dimmed?: boolean
+  /** Changes with each state update, so the bitrate line gets a sample each time. */
+  tick?: unknown
+  /** What the guide says about this channel, if anything. */
+  guide?: GuideEntry
+  /** Where this channel's logo is served from. */
+  iconSrc?: string
+}
+
+/** One physical tuner: what's on it and who has it. */
+export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TileProps) {
   const { slot, owner } = tile
   const live = slot?.inUse === true
 
@@ -40,16 +53,27 @@ export function TunerTile({ tile, dimmed = false, tick }: { tile: Tile; dimmed?:
       )}
       <div className="flex items-center justify-between">
         <span className="font-mono text-xs text-muted-foreground">TUNER {tile.index + 1}</span>
-        <Badge className={badgeClass[owner.kind]}>{ownerLabel(owner)}</Badge>
+        <Badge className={badgeClass[owner.kind]}>
+          {owner.kind === 'reserved' && <Crown data-icon="inline-start" />}
+          {ownerLabel(owner)}
+        </Badge>
       </div>
 
       {live ? (
         <>
           <div className="mt-auto">
-            <div className="text-5xl font-bold tracking-tight tabular-nums">{slot.channel ?? '—'}</div>
+            <div className="flex items-end justify-between gap-3">
+              <div className="text-5xl font-bold tracking-tight tabular-nums">{slot.channel ?? '—'}</div>
+              {guide?.icon && iconSrc && <ChannelLogo key={iconSrc} src={iconSrc} name={slot.channelName ?? guide.name ?? 'Channel'} className="h-12 max-w-24" />}
+            </div>
             <div className="text-lg text-foreground">{slot.channelName ?? 'Tuning…'}</div>
+            {guide?.now && (
+              <div data-testid="tile-now" className="truncate text-sm text-muted-foreground" title={guide.now.subTitle ? `${guide.now.title}: ${guide.now.subTitle}` : guide.now.title}>
+                {guide.now.title}
+              </div>
+            )}
           </div>
-          <div className="mt-3" data-testid="tile-bitrate">
+          <div className="mt-2" data-testid="tile-bitrate">
             {/* keyed so a different channel or a different viewer is a new stream with a new line */}
             <StreamSparkline key={`${slot.channel}|${slot.targetIP}|${owner.kind}`} bps={slot.bitsPerSecond} tick={tick} />
           </div>
@@ -62,7 +86,7 @@ export function TunerTile({ tile, dimmed = false, tick }: { tile: Tile; dimmed?:
         <div className="m-auto text-center text-sm text-muted-foreground">
           {owner.kind === 'reserved' ? (
             <>
-              <Shield className="mx-auto mb-2 size-6" />
+              <Crown className="mx-auto mb-2 size-6 text-amber-600 dark:text-amber-300" />
               Held for your TVs
             </>
           ) : (

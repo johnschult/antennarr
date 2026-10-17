@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { makeState, makeTwoDeviceState, updateAvailable } from '@/test/fixtures'
 import { renderWithApp } from '@/test/render'
+import { channelIconUrl } from '@/lib/api'
 import { LivePage } from './live'
 
 
@@ -17,7 +18,7 @@ describe('LivePage', () => {
     renderWithApp(<LivePage />, makeState())
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('2 of 4 tuners live')
     expect(screen.getByText('1 remote · 1 local · 1 held for you · 27 Mbps')).toBeInTheDocument()
-    expect(screen.getByText('upload to viewers')).toBeInTheDocument()
+    expect(screen.queryByText('upload to viewers')).not.toBeInTheDocument() // no overall chart; each live tile has its own
   })
 
   it('lays the tuners out as tiles with the right holders', () => {
@@ -157,5 +158,17 @@ describe('LivePage', () => {
     renderWithApp(<LivePage />, makeState())
     expect(screen.getByRole('region', { name: 'Tuners' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { level: 2, name: /antenna/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('LivePage guide', () => {
+  it('passes each watched channel its logo and programme', () => {
+    const s = makeState()
+    s.devices[0].guide = {
+      '5.1': { name: 'WFRV', icon: true, now: { title: 'Evening News', start: '2026-10-17T17:00:00Z', stop: '2026-10-17T18:00:00Z' } },
+    }
+    renderWithApp(<LivePage />, s)
+    expect(screen.getByRole('img', { name: /logo/ })).toHaveAttribute('src', channelIconUrl('antenna', '5.1'))
+    expect(screen.getByTestId('tile-now')).toHaveTextContent('Evening News')
   })
 })

@@ -97,6 +97,14 @@ export function SettingsPage() {
           disabled={!editable}
           onChange={(next) => update.mutateAsync({ firmwareCheck: next })}
         />
+        <SwitchRow
+          id="setting-guide"
+          title="Show what's on"
+          description="Shows each watched channel's logo and current programme on its tile. Antennarr reads SiliconDust's programme guide for your tuner every 6 hours, which sends SiliconDust your tuner's guide key. Nothing about your viewers is sent, and logos are served by Antennarr, not loaded by your browser."
+          checked={settings.guide}
+          disabled={!editable}
+          onChange={(next) => update.mutateAsync({ guide: next })}
+        />
       </Section>
 
       <Section title="Network" description="Antennarr listens on a port for each tuner. How viewers reach it (LAN, VPN, Tailscale) is up to you; built-in Tailscale is planned.">

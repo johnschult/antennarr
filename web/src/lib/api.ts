@@ -64,3 +64,7 @@ export const startPlex = (add = false) =>
 export const pollPlex = (pinId: number, add = false) =>
   request<PlexPollStatus>('POST', `/plex${add ? '/add' : ''}/poll`, { pinId }, AUTH)
 export const signOut = () => request<unknown>('POST', '/logout', undefined, AUTH)
+
+/** Where a channel's logo is served from: through Antennarr, never straight from SiliconDust. */
+export const channelIconUrl = (device: string, channel: string) =>
+  `${API}/devices/${encodeURIComponent(device)}/guide/${encodeURIComponent(channel)}/icon`

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { Tile } from '@/lib/slots'
 import { idleSlot, localSlot, remoteSlot } from '@/test/fixtures'
@@ -95,5 +95,59 @@ describe('TunerTile', () => {
       render(<TunerTile tile={tile({ owner: { kind: 'free' } })} tick={1} />)
       expect(screen.queryByTestId('tile-bitrate')).not.toBeInTheDocument()
     })
+  })
+
+  describe('guide', () => {
+    const watching = tile({ slot: remoteSlot(1), owner: { kind: 'remote' } })
+    const entry = { name: 'WFRV', icon: true, now: { title: "Rosie's Rules", subTitle: 'The Catrina Mystery', start: '2026-10-17T17:30:00Z', stop: '2026-10-17T18:00:00Z' } }
+    const icon = '/antennarr/api/devices/antenna/guide/5.1/icon'
+
+    it('shows the channel logo and what is on', () => {
+      render(<TunerTile tile={watching} guide={entry} iconSrc={icon} />)
+      expect(screen.getByRole('img', { name: 'WFRV logo' })).toHaveAttribute('src', icon)
+      const now = screen.getByTestId('tile-now')
+      expect(now).toHaveTextContent("Rosie's Rules")
+      expect(now).toHaveAttribute('title', "Rosie's Rules: The Catrina Mystery")
+    })
+
+    it('shows neither when the guide knows nothing about the channel', () => {
+      render(<TunerTile tile={watching} />)
+      expect(screen.queryByRole('img', { name: /logo/ })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('tile-now')).not.toBeInTheDocument()
+    })
+
+    it('shows the programme without a logo when there is none, or it will not load', () => {
+      const { rerender } = render(<TunerTile tile={watching} guide={{ ...entry, icon: false }} iconSrc={icon} />)
+      expect(screen.queryByRole('img', { name: /logo/ })).not.toBeInTheDocument()
+      expect(screen.getByTestId('tile-now')).toBeInTheDocument()
+
+      rerender(<TunerTile tile={watching} guide={entry} iconSrc={icon} />)
+      fireEvent.error(screen.getByRole('img', { name: 'WFRV logo' }))
+      expect(screen.queryByRole('img', { name: /logo/ })).not.toBeInTheDocument()
+      expect(screen.getByTestId('tile-now')).toBeInTheDocument()
+    })
+
+    it('shows the logo without a programme in a gap in the guide', () => {
+      render(<TunerTile tile={watching} guide={{ ...entry, now: undefined }} iconSrc={icon} />)
+      expect(screen.getByRole('img', { name: 'WFRV logo' })).toBeInTheDocument()
+      expect(screen.queryByTestId('tile-now')).not.toBeInTheDocument()
+    })
+
+    it('tries the logo again for a different channel after one failed', () => {
+      const { rerender } = render(<TunerTile tile={watching} guide={entry} iconSrc={icon} />)
+      fireEvent.error(screen.getByRole('img', { name: 'WFRV logo' }))
+      rerender(<TunerTile tile={watching} guide={entry} iconSrc={icon.replace('5.1', '7.1')} />)
+      expect(screen.getByRole('img', { name: 'WFRV logo' })).toBeInTheDocument()
+    })
+
+    it('shows no guide on idle tuners', () => {
+      render(<TunerTile tile={tile({ owner: { kind: 'free' } })} guide={entry} iconSrc={icon} />)
+      expect(screen.queryByTestId('tile-now')).not.toBeInTheDocument()
+    })
+  })
+
+  it('marks a reserved tuner with a crown, in the pill and the tile', () => {
+    render(<TunerTile tile={tile({ owner: { kind: 'reserved' } })} />)
+    expect(document.querySelectorAll('svg.lucide-crown')).toHaveLength(2)
   })
 })

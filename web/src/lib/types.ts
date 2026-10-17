@@ -123,6 +123,7 @@ export interface Settings {
   admin: string[]
   /** Whether SiliconDust's changelog is read (one request every 12 hours). */
   firmwareCheck: boolean
+  guide: boolean
   plex: PlexSettings
 }
 
@@ -149,6 +150,17 @@ export interface DeviceState {
   ownerReserve: number
   sharedCap: number
   firmware: FirmwareStatus
+  /** What the programme guide says about each channel being watched, by channel number. */
+  guide: Record<string, GuideEntry>
+}
+
+/** A channel as the programme guide knows it. */
+export interface GuideEntry {
+  name?: string
+  /** Whether a logo can be fetched (see channelIconUrl). */
+  icon: boolean
+  /** What is on right now. */
+  now?: { title: string; subTitle?: string; start: string; stop: string }
 }
 
 export interface AppState {
@@ -171,6 +183,7 @@ export interface SettingsPatch {
   ownerReserve?: number
   admin?: string[]
   firmwareCheck?: boolean
+  guide?: boolean
   plexEnabled?: boolean
 }
 

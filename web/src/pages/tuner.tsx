@@ -1,7 +1,9 @@
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useApp } from '@/hooks/app-context'
+import { ChannelLogo } from '@/components/channel-logo'
 import { FirmwareSection } from '@/components/firmware'
+import { channelIconUrl } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import { formatMbps, timeAgo } from '@/lib/format'
 import type { DeviceState } from '@/lib/types'
@@ -76,7 +78,18 @@ function DeviceDetails({ device, showName }: { device: DeviceState; showName: bo
             {tuner.slots.map((s) => (
               <TableRow key={s.resource}>
                 <TableCell className="font-mono text-xs">{s.resource}</TableCell>
-                <TableCell>{s.inUse ? `${s.channel ?? '—'} ${s.channelName ?? ''}` : <span className="text-muted-foreground">idle</span>}</TableCell>
+                <TableCell>
+                  {s.inUse ? (
+                    <span className="flex items-center gap-2">
+                      {s.channel && device.guide[s.channel]?.icon && (
+                        <ChannelLogo key={s.channel} src={channelIconUrl(device.name, s.channel)} name={s.channelName ?? device.guide[s.channel].name ?? 'Channel'} className="h-6 max-w-12" />
+                      )}
+                      {`${s.channel ?? '—'} ${s.channelName ?? ''}`}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">idle</span>
+                  )}
+                </TableCell>
                 <TableCell>{s.inUse ? (s.viaAntennarr ? 'Antennarr' : (s.targetIP ?? 'Local device')) : '—'}</TableCell>
                 <TableCell className="tabular-nums">
                   {s.inUse && s.signalStrength !== undefined ? `${s.signalStrength}% / ${s.signalQuality ?? 0}%` : '—'}
