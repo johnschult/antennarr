@@ -61,7 +61,7 @@ export function LivePage() {
       </div>
 
       {devices.map((d) => (
-        <DeviceSection key={d.name} device={d} showHeader={several || !!d.label} />
+        <DeviceSection key={d.name} device={d} showHeader={several || !!d.label} tick={state.time} />
       ))}
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -104,7 +104,7 @@ export function LivePage() {
   )
 }
 
-function DeviceSection({ device, showHeader }: { device: DeviceState; showHeader: boolean }) {
+function DeviceSection({ device, showHeader, tick }: { device: DeviceState; showHeader: boolean; tick: unknown }) {
   const { tuner, summary } = device
   return (
     <section aria-label={showHeader ? `Tuners on ${deviceTitle(device)}` : 'Tuners'} className="space-y-3">
@@ -123,7 +123,7 @@ function DeviceSection({ device, showHeader }: { device: DeviceState; showHeader
       )}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {buildTiles(device).map((t) => (
-          <TunerTile key={t.index} tile={t} dimmed={!tuner.online} />
+          <TunerTile key={t.index} tile={t} dimmed={!tuner.online} tick={tick} />
         ))}
       </div>
     </section>

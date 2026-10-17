@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { Tile } from '@/lib/slots'
 import { idleSlot, localSlot, remoteSlot } from '@/test/fixtures'
@@ -49,5 +49,51 @@ describe('TunerTile', () => {
     expect(screen.getByTestId('tuner-tile')).toHaveClass('opacity-50')
     rerender(<TunerTile tile={tile({})} />)
     expect(screen.getByTestId('tuner-tile')).not.toHaveClass('opacity-50')
+  })
+
+  describe('bitrate line', () => {
+    const live = (bps: number, channel = '5.1') => tile({ slot: { ...remoteSlot(0), channel, bitsPerSecond: bps }, owner: { kind: 'remote' } })
+    const line = () => within(screen.getByTestId('tile-bitrate')).getByRole('img', { name: /Bitrate/ })
+
+    it('starts empty, then draws a line as samples arrive', () => {
+      const { rerender } = render(<TunerTile tile={live(8_000_000)} tick={1} />)
+      expect(line()).toHaveAccessibleName('Bitrate: no data yet')
+      rerender(<TunerTile tile={live(12_000_000)} tick={2} />)
+      expect(line()).toHaveAccessibleName('Bitrate')
+      expect(line().querySelectorAll('path')).toHaveLength(2)
+    })
+
+    it('does not add a sample until the state has updated', () => {
+      const { rerender } = render(<TunerTile tile={live(8_000_000)} tick={1} />)
+      rerender(<TunerTile tile={live(9_000_000)} tick={1} />)
+      expect(line()).toHaveAccessibleName('Bitrate: no data yet')
+    })
+
+    it('starts a new line when the channel changes', () => {
+      const { rerender } = render(<TunerTile tile={live(8_000_000)} tick={1} />)
+      rerender(<TunerTile tile={live(8_000_000)} tick={2} />)
+      expect(line()).toHaveAccessibleName('Bitrate')
+      rerender(<TunerTile tile={live(8_000_000, '7.1')} tick={3} />)
+      expect(line()).toHaveAccessibleName('Bitrate: no data yet')
+    })
+
+    it('starts a new line when the stream ends and another begins', () => {
+      const { rerender } = render(<TunerTile tile={live(8_000_000)} tick={1} />)
+      rerender(<TunerTile tile={live(8_000_000)} tick={2} />)
+      rerender(<TunerTile tile={tile({ owner: { kind: 'free' } })} tick={3} />)
+      expect(screen.queryByTestId('tile-bitrate')).not.toBeInTheDocument()
+      rerender(<TunerTile tile={live(8_000_000)} tick={4} />)
+      expect(line()).toHaveAccessibleName('Bitrate: no data yet')
+    })
+
+    it('stays empty, without breaking, when the tuner reports no rate', () => {
+      render(<TunerTile tile={tile({ slot: { ...remoteSlot(0), bitsPerSecond: undefined }, owner: { kind: 'remote' } })} tick={1} />)
+      expect(line()).toHaveAccessibleName('Bitrate: no data yet')
+    })
+
+    it('is not shown on idle tuners', () => {
+      render(<TunerTile tile={tile({ owner: { kind: 'free' } })} tick={1} />)
+      expect(screen.queryByTestId('tile-bitrate')).not.toBeInTheDocument()
+    })
   })
 })

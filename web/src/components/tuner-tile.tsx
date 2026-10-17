@@ -1,5 +1,7 @@
 import { Antenna, Shield } from 'lucide-react'
+import { Sparkline } from '@/components/sparkline'
 import { Badge } from '@/components/ui/badge'
+import { useHistory } from '@/hooks/use-history'
 import { formatMbps } from '@/lib/format'
 import { ownerLabel, type Tile } from '@/lib/slots'
 import { cn } from '@/lib/utils'
@@ -12,8 +14,14 @@ const badgeClass: Record<Tile['owner']['kind'], string> = {
   free: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
 }
 
-/** One physical tuner: what's on it and who has it. */
-export function TunerTile({ tile, dimmed = false }: { tile: Tile; dimmed?: boolean }) {
+/** The last couple of minutes of this stream's bitrate. Mounted only while a stream is live, so each new stream starts with a blank line. */
+function StreamSparkline({ bps, tick }: { bps?: number; tick: unknown }) {
+  const history = useHistory(bps === undefined ? undefined : bps / 1_000_000, tick)
+  return <Sparkline data={history} height={32} label="Bitrate" />
+}
+
+/** One physical tuner: what's on it and who has it. `tick` changes with each state update, so the bitrate line gets a sample each time. */
+export function TunerTile({ tile, dimmed = false, tick }: { tile: Tile; dimmed?: boolean; tick?: unknown }) {
   const { slot, owner } = tile
   const live = slot?.inUse === true
 
@@ -41,7 +49,11 @@ export function TunerTile({ tile, dimmed = false }: { tile: Tile; dimmed?: boole
             <div className="text-5xl font-bold tracking-tight tabular-nums">{slot.channel ?? '—'}</div>
             <div className="text-lg text-foreground">{slot.channelName ?? 'Tuning…'}</div>
           </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+          <div className="mt-3" data-testid="tile-bitrate">
+            {/* keyed so a different channel or a different viewer is a new stream with a new line */}
+            <StreamSparkline key={`${slot.channel}|${slot.targetIP}|${owner.kind}`} bps={slot.bitsPerSecond} tick={tick} />
+          </div>
+          <div className="mt-2 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
             <span className="truncate">{owner.kind === 'local' ? (slot.targetIP ?? 'Local device') : ownerLabel(owner)}</span>
             <span className="tabular-nums">{formatMbps(slot.bitsPerSecond)}</span>
           </div>
