@@ -10,6 +10,13 @@
 
 ---
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/live-dark.jpg">
+    <img src="docs/screenshots/live-light.jpg" alt="The Antennarr Live page: four tuners, with one being watched by a viewer and one by a local device, each showing its channel, logo, what's on, bitrate and signal, and a list of viewers" width="900">
+  </picture>
+</p>
+
 An HDHomeRun's `lineup.json` hands out the tuner's own LAN address, so a media server on another network can't use it
 without firewall tricks on both ends. Antennarr sits in front of the tuner and rewrites that address, so remote
 media servers only ever talk to Antennarr. It also decides who may use the tuner, and how much of it.
@@ -27,6 +34,22 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
 
 > **Status: early.** It runs a real FLEX 4K and is tested with the Go race detector and a UI test suite, but it is young software.
 > Expect rough edges, and please read [Security](#security) before exposing it to anything beyond a network you trust.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/viewers.jpg" alt="The Viewers page: who can use the tuner, from which addresses, and how many tuners each gets"><br><sub><b>Viewers:</b> who can use the tuner, from where, and how many tuners each gets.</sub></td>
+    <td width="50%"><img src="docs/screenshots/setup.jpg" alt="The Setup page, offering this machine's Tailscale and LAN addresses and the steps for the chosen connection"><br><sub><b>Setup guide:</b> it spots this machine's Tailscale address and writes out the steps with your real addresses.</sub></td>
+  </tr>
+</table>
+
+<p>
+  <img src="docs/screenshots/phone-live.jpg" alt="The Live page on a phone" width="220">
+  &nbsp;
+  <img src="docs/screenshots/phone-menu.jpg" alt="The navigation menu on a phone" width="220">
+  <br><sub><b>On a phone:</b> the same pages, with a menu and cards instead of wide tables.</sub>
+</p>
 
 ## Quick start
 
