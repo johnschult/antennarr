@@ -27,9 +27,11 @@ import {
   type Transport,
 } from '@/lib/setup-guide'
 
-/** The selected tab is tinted and outlined in the accent colour, so it can't be mistaken for the others. */
+/** The selected tab is outlined in the accent colour and set apart from the others, so it can't be mistaken for them. */
 const TAB =
-  'gap-2 px-4 text-sm data-active:border-primary/60 data-active:bg-primary/15 data-active:font-semibold data-active:text-foreground dark:data-active:border-primary/60 dark:data-active:bg-primary/20'
+  'gap-2 px-4 text-sm data-active:border-primary/60 data-active:bg-primary/15 data-active:font-semibold data-active:text-foreground ' +
+  // In the dark theme the strip is mid-grey, so a faint tint doesn't stand out: make the selected tab darker than the strip, with a bright outline.
+  'dark:data-active:border-primary dark:data-active:bg-background dark:data-active:ring-2 dark:data-active:ring-primary/70'
 
 function Block({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
   return (
