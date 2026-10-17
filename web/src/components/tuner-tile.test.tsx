@@ -156,8 +156,9 @@ describe('TunerTile', () => {
     })
   })
 
-  it('marks a reserved tuner with a crown, in the pill and the tile', () => {
+  it('marks a reserved tuner with a crown in its pill only; the tile keeps the antenna', () => {
     render(<TunerTile tile={tile({ owner: { kind: 'reserved' } })} />)
-    expect(document.querySelectorAll('svg.lucide-crown')).toHaveLength(2)
+    expect(document.querySelectorAll('svg.lucide-crown')).toHaveLength(1)
+    expect(within(screen.getByTestId('tuner-tile')).getByText('Held for your TVs').parentElement!.querySelector('svg.lucide-antenna')).not.toBeNull()
   })
 })

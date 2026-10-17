@@ -90,17 +90,8 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
         </>
       ) : (
         <div className="m-auto text-center text-sm text-muted-foreground">
-          {owner.kind === 'reserved' ? (
-            <>
-              <Crown className="mx-auto mb-2 size-6 text-amber-600 dark:text-amber-300" />
-              Held for your TVs
-            </>
-          ) : (
-            <>
-              <Antenna className="mx-auto mb-2 size-6" />
-              Ready
-            </>
-          )}
+          <Antenna className="mx-auto mb-2 size-6" />
+          {owner.kind === 'reserved' ? 'Held for your TVs' : 'Ready'}
         </div>
       )}
     </div>
