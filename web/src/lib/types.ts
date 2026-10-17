@@ -169,6 +169,9 @@ export interface AppState {
   viewers: Viewer[]
   settings: Settings
   editable: boolean
+  /** This build's version ("2026.10.0", or "dev") and its page on GitHub. */
+  version: string
+  versionUrl: string
 }
 
 export interface ViewerInput {

@@ -75,6 +75,8 @@ export function makeState(over: Partial<AppState> = {}): AppState {
     viewers: [john, mom],
     settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true, guide: true, plex: { enabled: false, admins: [] } },
     editable: true,
+    version: '2026.10.0',
+    versionUrl: 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0',
     ...over,
   }
 }

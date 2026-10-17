@@ -17,6 +17,9 @@ const nav = [
   { to: '/settings', label: 'Settings' },
 ]
 
+/** Where the project lives, for the footer. */
+const REPO_URL = 'https://github.com/johnschult/antennarr'
+
 export function Shell() {
   const { state, connected } = useApp()
   const { devices } = state
@@ -96,6 +99,17 @@ export function Shell() {
         <Banners state={state} />
         <Outlet />
       </main>
+      <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 pb-8 text-xs text-muted-foreground sm:px-6">
+        <span>
+          Antennarr{' '}
+          <a href={state.versionUrl} target="_blank" rel="noopener noreferrer" data-testid="version" className="font-mono underline-offset-2 hover:text-foreground hover:underline">
+            {state.version}
+          </a>
+        </span>
+        <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-foreground hover:underline">
+          GitHub
+        </a>
+      </footer>
     </div>
   )
 }

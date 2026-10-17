@@ -34,3 +34,33 @@ describe('Shell sign-in chip', () => {
     expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/auth/logout'))).toBe(true)
   })
 })
+
+describe('Shell footer', () => {
+  const mount = (over: Parameters<typeof makeState>[0] = {}) => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /auth/status': () => ({ body: { plexEnabled: false, signedIn: null, admin: true } }) }).fn)
+    return renderWithApp(<Shell />, makeState(over))
+  }
+
+  it('shows the version, linked to its release page, and a link to the project', () => {
+    mount()
+    const version = screen.getByTestId('version')
+    expect(version).toHaveTextContent('2026.10.0')
+    expect(version).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0')
+    expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/johnschult/antennarr')
+  })
+
+  it('opens both in a new tab, without handing the page to the other site', () => {
+    mount()
+    for (const link of [screen.getByTestId('version'), screen.getByRole('link', { name: 'GitHub' })]) {
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link.getAttribute('rel')).toMatch(/noopener/)
+      expect(link.getAttribute('rel')).toMatch(/noreferrer/)
+    }
+  })
+
+  it('says dev for a build from a checkout, linked to the project', () => {
+    mount({ version: 'dev+3553344', versionUrl: 'https://github.com/johnschult/antennarr' })
+    expect(screen.getByTestId('version')).toHaveTextContent('dev+3553344')
+    expect(screen.getByTestId('version')).toHaveAttribute('href', 'https://github.com/johnschult/antennarr')
+  })
+})

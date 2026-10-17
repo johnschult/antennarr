@@ -21,6 +21,7 @@ import (
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/antennarr/internal/version"
 )
 
 const (
@@ -156,6 +157,9 @@ type State struct {
 	Viewers  []access.ViewerStatus `json:"viewers"`
 	Settings SettingsDoc           `json:"settings"`
 	Editable bool                  `json:"editable"` // false: started without -config
+	// Version is this build's version, and VersionURL its page on GitHub.
+	Version    string `json:"version"`
+	VersionURL string `json:"versionUrl"`
 }
 
 func (a *API) deviceDoc(d Device, streams []access.Active) DeviceDoc {
@@ -217,7 +221,9 @@ func (a *API) state() State {
 			Guide:         set.GuideEnabled(),
 			Plex:          plexDoc(set),
 		},
-		Editable: a.Store.Editable(),
+		Editable:   a.Store.Editable(),
+		Version:    version.Get(),
+		VersionURL: version.URL(version.Get()),
 	}
 }
 
