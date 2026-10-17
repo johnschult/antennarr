@@ -81,7 +81,7 @@ func TestOpenModeAllowsAnyone(t *testing.T) {
 	if err := p.Authorize(req("203.0.113.9:5555")); err != nil {
 		t.Errorf("open mode refused a client: %v", err)
 	}
-	if !p.isAdmin(req("203.0.113.9:5555")) {
+	if !p.IsAdmin(req("203.0.113.9:5555")) {
 		t.Error("open mode should leave /antennarr open")
 	}
 }
@@ -446,4 +446,39 @@ func TestConcurrentStreamsNeverExceedLimit(t *testing.T) {
 	if granted.Load() != 3 || len(p.Active()) != 3 {
 		t.Errorf("granted %d, active %d; want exactly 3 (the shared cap)", granted.Load(), len(p.Active()))
 	}
+}
+
+func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "tuner front page") })
+
+	t.Run("open mode: everyone is an admin", func(t *testing.T) {
+		p, _ := newPolicy(t, DefaultSettings(), &fakeMon{})
+		rec := httptest.NewRecorder()
+		p.AdminHome("/antennarr/", next).ServeHTTP(rec, req("203.0.113.9:1"))
+		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/antennarr/" {
+			t.Errorf("%d %q", rec.Code, rec.Header().Get("Location"))
+		}
+	})
+
+	t.Run("enforced: admins are sent to the UI, others reach the tuner side", func(t *testing.T) {
+		s := twoViewers
+		s.Admin = []string{"192.168.68.0/22"}
+		p, _ := newPolicy(t, s, &fakeMon{})
+		h := p.AdminHome("/antennarr/", next)
+		for remote, want := range map[string]int{
+			"127.0.0.1:1":     http.StatusFound, // loopback
+			"192.168.68.9:1":  http.StatusFound, // configured admin range
+			"100.67.117.32:1": http.StatusOK,    // a viewer is not an admin: gets the normal handler
+			"203.0.113.9:1":   http.StatusOK,
+		} {
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req(remote))
+			if rec.Code != want {
+				t.Errorf("%s: %d, want %d", remote, rec.Code, want)
+			}
+			if want == http.StatusOK && rec.Body.String() != "tuner front page" {
+				t.Errorf("%s: next handler not reached: %q", remote, rec.Body)
+			}
+		}
+	})
 }

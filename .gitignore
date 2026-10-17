@@ -2,3 +2,7 @@ bin/
 *.test
 .DS_Store
 .claude/settings.local.json
+
+# built web UI (embedded into the binary); only the placeholder is tracked
+internal/ui/dist/*
+!internal/ui/dist/.gitkeep

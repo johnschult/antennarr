@@ -19,6 +19,7 @@ import (
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/antennarr/internal/ui"
 )
 
 func main() {
@@ -86,7 +87,13 @@ func main() {
 	mux.Handle(api.Prefix, policy.AdminOnly((&api.API{
 		Mon: mon, Pol: policy, Store: access.NewStore(*configPath, policy), Hub: hub, Log: log,
 	}).Handler()))
-	mux.Handle("/", proxy.New(proxy.Config{Upstream: mon, Policy: policy, Advertise: *advertise, DeviceID: *reportID, Logger: log}))
+	mux.Handle("/antennarr/", policy.AdminOnly(ui.Handler("/antennarr/"))) // the web UI
+	tunerAPI := proxy.New(proxy.Config{Upstream: mon, Policy: policy, Advertise: *advertise, DeviceID: *reportID, Logger: log})
+	mux.Handle("/", tunerAPI)
+	// Someone who types the bare address into a browser wants the admin page,
+	// not the tuner's own front page. Everyone else (viewers, media servers)
+	// is handled as before.
+	mux.Handle("GET /{$}", policy.AdminHome("/antennarr/", tunerAPI))
 
 	// No overall timeouts: streams run for hours. Only the header read is
 	// bounded, so a stalled client can't hold a connection open for free.

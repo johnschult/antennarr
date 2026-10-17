@@ -330,7 +330,7 @@ func (p *Policy) note(viewer, reason, text string) {
 // the configured admin addresses get through.
 func (p *Policy) AdminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !p.isAdmin(r) {
+		if !p.IsAdmin(r) {
 			http.Error(w, "admin only", http.StatusForbidden)
 			return
 		}
@@ -338,7 +338,8 @@ func (p *Policy) AdminOnly(next http.Handler) http.Handler {
 	})
 }
 
-func (p *Policy) isAdmin(r *http.Request) bool {
+// IsAdmin reports whether the request may use the /antennarr/* admin endpoints.
+func (p *Policy) IsAdmin(r *http.Request) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if len(p.cfg.viewers) == 0 {
@@ -357,6 +358,18 @@ func (p *Policy) isAdmin(r *http.Request) bool {
 		}
 	}
 	return false
+}
+
+// AdminHome sends admins who open the bare address in a browser to the admin
+// page at `to`; everyone else is handed to next, as if this wasn't here.
+func (p *Policy) AdminHome(to string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p.IsAdmin(r) {
+			http.Redirect(w, r, to, http.StatusFound)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ActiveHandler serves the streams in progress as JSON.
