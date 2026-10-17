@@ -103,7 +103,11 @@ func TestNetworkListsThisMachinesAddresses(t *testing.T) {
 	e.api.Network = func() []netinfo.Address {
 		return []netinfo.Address{{IP: "100.64.0.9", Kind: netinfo.Tailscale, Interface: "tailscale0"}, {IP: "192.168.1.5", Kind: netinfo.LAN, Interface: "eth0"}}
 	}
+	e.api.Firewall = func() netinfo.Firewall { return netinfo.Firewall{Tool: "ufw", Active: true} }
 	code, v := e.call(t, "GET", "/antennarr/api/network", "")
+	if fw := obj(t, obj(t, v)["firewall"]); fw["tool"] != "ufw" || fw["active"] != true {
+		t.Errorf("firewall = %v", fw)
+	}
 	addrs, _ := obj(t, v)["addresses"].([]any)
 	if code != 200 || len(addrs) != 2 || obj(t, addrs[0])["ip"] != "100.64.0.9" || obj(t, addrs[0])["kind"] != "tailscale" || obj(t, addrs[1])["interface"] != "eth0" {
 		t.Fatalf("%d %v", code, v)
@@ -113,9 +117,13 @@ func TestNetworkListsThisMachinesAddresses(t *testing.T) {
 func TestNetworkIsAnEmptyListWhenThereIsNothingToOffer(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	e.api.Network = func() []netinfo.Address { return nil }
+	e.api.Firewall = func() netinfo.Firewall { return netinfo.Firewall{} }
 	_, v := e.call(t, "GET", "/antennarr/api/network", "")
 	if a, ok := obj(t, v)["addresses"].([]any); !ok || len(a) != 0 {
 		t.Errorf("addresses = %v, want [] (never null)", obj(t, v)["addresses"])
+	}
+	if fw := obj(t, obj(t, v)["firewall"]); fw["tool"] != "" || fw["active"] != false {
+		t.Errorf("firewall = %v, want nothing found", fw)
 	}
 }
 

@@ -51,8 +51,9 @@ export function SetupPage() {
   const [viewerName, setViewerName] = useState(viewers[0]?.name ?? '')
   const [transport, setTransport] = useState<Transport>('tailscale')
   const network = useQuery({ queryKey: ['network'], queryFn: getNetwork, staleTime: 60_000, retry: false, refetchOnWindowFocus: false })
-  const [hasFirewall, setHasFirewall] = useState(false)
-  const [firewall, setFirewall] = useState<Firewall>('ufw')
+  // The person's choices, or null while the page goes by what it found on this machine.
+  const [firewallGate, setFirewallGate] = useState<boolean | null>(null)
+  const [firewallPick, setFirewallPick] = useState<Firewall | null>(null)
   const [media, setMedia] = useState<MediaServer>('plex')
 
   const device = devices.find((d) => d.name === deviceName) ?? devices[0]
@@ -66,6 +67,13 @@ export function SetupPage() {
   const lan = found.find((a) => a.kind === 'lan')
   const suggested = (transport === 'tailscale' ? tailscale?.ip : transport === 'lan' ? lan?.ip : undefined) ?? window.location.hostname
   const host = typedHost ?? suggested
+
+  // Which firewall is switched on here, if the server could tell. Only a firewall
+  // seen to be on opens the step by itself; plain iptables might have no rules.
+  const detected = network.data?.firewall
+  const detectedTool = detected?.tool ? detected.tool : null
+  const hasFirewall = firewallGate ?? detected?.active ?? false
+  const firewall: Firewall = firewallPick ?? detectedTool ?? 'ufw'
   const problem = hostProblem(host)
   const address = tunerAddress(host, port)
   const rules = firewallRules(firewall, port, viewer?.addresses ?? [])
@@ -160,15 +168,22 @@ export function SetupPage() {
 
       <Block title="4. On this machine">
         <div className="flex items-center gap-3">
-          <Switch id="setup-firewall" checked={hasFirewall} onCheckedChange={setHasFirewall} />
+          <Switch id="setup-firewall" checked={hasFirewall} onCheckedChange={setFirewallGate} />
           <Label htmlFor="setup-firewall" className="font-normal">
             This machine has a firewall that blocks port {port}
           </Label>
         </div>
+        {detected && detectedTool && (
+          <p role="status" className="text-xs text-muted-foreground">
+            {detected.active
+              ? `Antennarr found ${detectedTool} switched on here.`
+              : `${detectedTool} looks to be in use here, but Antennarr can't see its rules, so it can't tell whether port ${port} is blocked.`}
+          </p>
+        )}
         {hasFirewall && (
           <>
-            <p className="text-xs text-muted-foreground">Allow the viewer's address, and only that.</p>
-            <Choice label="Firewall" value={firewall} onChange={setFirewall} options={FIREWALLS} />
+            <p className="text-xs text-muted-foreground">Antennarr can't read your firewall's rules. These add an allow for the viewer's address, and only that.</p>
+            <Choice label="Firewall" value={firewall} onChange={setFirewallPick} options={FIREWALLS} />
             {rules.add.length === 0 ? (
               <p className="text-sm text-muted-foreground">{viewers.length === 0 ? 'Add a viewer to get their firewall rules.' : 'This viewer has no addresses to allow.'}</p>
             ) : (
@@ -199,6 +214,7 @@ export function SetupPage() {
             <TabsList>
               {MEDIA_SERVERS.map((m) => (
                 <TabsTrigger key={m.id} value={m.id}>
+                  <img src={`${import.meta.env.BASE_URL}${m.icon}`} alt="" aria-hidden="true" className="size-4 rounded-sm" draggable={false} />
                   {m.label}
                 </TabsTrigger>
               ))}

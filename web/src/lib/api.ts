@@ -1,4 +1,4 @@
-import type { AppState, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
+import type { AppState, FirewallInfo, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -69,5 +69,5 @@ export const signOut = () => request<unknown>('POST', '/logout', undefined, AUTH
 export const channelIconUrl = (device: string, channel: string) =>
   `${API}/devices/${encodeURIComponent(device)}/guide/${encodeURIComponent(channel)}/icon`
 
-/** This machine's Tailscale and LAN addresses, for the setup guide. */
-export const getNetwork = () => request<{ addresses: NetworkAddress[] }>('GET', '/network')
+/** This machine's Tailscale and LAN addresses and its firewall, for the setup guide. */
+export const getNetwork = () => request<{ addresses: NetworkAddress[]; firewall?: FirewallInfo }>('GET', '/network')

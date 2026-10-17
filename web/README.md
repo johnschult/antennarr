@@ -25,6 +25,10 @@ The UI talks only to the JSON API in `internal/api`. Its types are in
   [selfhst/icons](https://github.com/selfhst/icons). Plex is a trademark of Plex, Inc.; they are used only to
   label the optional "Sign in with Plex" button. They are bundled rather than loaded from a CDN, so the page makes no
   outside requests.
+- `public/jellyfin-icon.png` and `public/emby-icon.png` are resized copies of the app icons from
+  [selfhst/icons](https://github.com/selfhst/icons), shown beside the media server names on the Setup page
+  (`plex-icon.png` above is from the same set). Jellyfin and Emby are trademarks of their owners; the icons only label
+  the matching instructions and don't imply any affiliation. They are bundled, not loaded from a CDN.
 - Fonts (Open Sans, Mozilla Headline, JetBrains Mono) come from Google Fonts via the Fontsource npm packages, also
   bundled.
 

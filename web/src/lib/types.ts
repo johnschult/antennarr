@@ -200,3 +200,9 @@ export interface NetworkAddress {
   kind: 'tailscale' | 'lan'
   interface: string
 }
+
+/** Which firewall looks to be in use on the machine running Antennarr. Its rules can't be read, so this is only which tool is switched on. */
+export interface FirewallInfo {
+  tool: '' | 'ufw' | 'firewalld' | 'iptables'
+  active: boolean
+}

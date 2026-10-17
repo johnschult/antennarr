@@ -22,10 +22,11 @@ export const FIREWALLS: { id: Firewall; label: string }[] = [
   { id: 'iptables', label: 'iptables' },
 ]
 
-export const MEDIA_SERVERS: { id: MediaServer; label: string }[] = [
-  { id: 'plex', label: 'Plex' },
-  { id: 'jellyfin', label: 'Jellyfin' },
-  { id: 'emby', label: 'Emby' },
+/** `icon` is a file in the app's public folder. */
+export const MEDIA_SERVERS: { id: MediaServer; label: string; icon: string }[] = [
+  { id: 'plex', label: 'Plex', icon: 'plex-icon.png' },
+  { id: 'jellyfin', label: 'Jellyfin', icon: 'jellyfin-icon.png' },
+  { id: 'emby', label: 'Emby', icon: 'emby-icon.png' },
 ]
 
 /** The port from a listen address like ":5004" or "127.0.0.1:5004". */

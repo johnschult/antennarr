@@ -43,6 +43,9 @@ type API struct {
 	// Network lists the addresses this machine can be reached at, for the setup
 	// guide. Nil means netinfo.Detect; tests supply their own.
 	Network func() []netinfo.Address
+	// Firewall says which firewall looks to be in use here. Nil means
+	// netinfo.DetectFirewall.
+	Firewall func() netinfo.Firewall
 	// KeepAlive is how often an idle event stream gets a comment line, so
 	// proxies don't drop it. Zero means 20s.
 	KeepAlive time.Duration
@@ -635,8 +638,9 @@ func (a *API) channelIcon(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// network lists this machine's Tailscale and LAN addresses, so the setup guide
-// can offer the right one. It is read from the machine's own interfaces only.
+// network lists this machine's Tailscale and LAN addresses and which firewall
+// looks to be in use, so the setup guide can offer the right ones. It is read
+// from the machine's own interfaces and a few small files only.
 func (a *API) network(w http.ResponseWriter, r *http.Request) {
 	detect := a.Network
 	if detect == nil {
@@ -646,5 +650,9 @@ func (a *API) network(w http.ResponseWriter, r *http.Request) {
 	if addrs == nil {
 		addrs = []netinfo.Address{}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"addresses": addrs})
+	firewall := a.Firewall
+	if firewall == nil {
+		firewall = netinfo.DetectFirewall
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"addresses": addrs, "firewall": firewall()})
 }

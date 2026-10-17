@@ -247,3 +247,80 @@ describe('SetupPage on a machine that knows its own addresses', () => {
     expect(screen.getByRole('radio', { name: /Tailscale/ })).not.toHaveTextContent('Running on this machine')
   })
 })
+
+describe('SetupPage firewall detection', () => {
+  const network = (firewall: unknown) =>
+    vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses: [], firewall } }) }).fn)
+  const gate = () => screen.getByRole('switch', { name: /has a firewall/ })
+
+  it('opens the firewall step with the right tool when one is switched on', async () => {
+    network({ tool: 'firewalld', active: true })
+    renderWithApp(<SetupPage />, makeState())
+    expect(await screen.findByText('Antennarr found firewalld switched on here.')).toBeInTheDocument()
+    expect(gate()).toHaveAttribute('aria-checked', 'true')
+    expect(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'firewalld' })).toBeChecked()
+    expect(screen.getByLabelText('firewall rules')).toHaveTextContent('firewall-cmd')
+  })
+
+  it('goes by ufw when that is what is on', async () => {
+    network({ tool: 'ufw', active: true })
+    renderWithApp(<SetupPage />, makeState())
+    expect(await screen.findByText('Antennarr found ufw switched on here.')).toBeInTheDocument()
+    expect(screen.getByLabelText('firewall rules')).toHaveTextContent('sudo ufw allow from')
+  })
+
+  it("does not claim iptables is blocking anything, since its rules can't be read, but offers it if you say there is a firewall", async () => {
+    network({ tool: 'iptables', active: false })
+    renderWithApp(<SetupPage />, makeState())
+    expect(await screen.findByText(/iptables looks to be in use here, but Antennarr can't see its rules/)).toBeInTheDocument()
+    expect(gate()).toHaveAttribute('aria-checked', 'false')
+    expect(screen.queryByLabelText('firewall rules')).not.toBeInTheDocument()
+    await userEvent.setup().click(gate())
+    expect(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'iptables' })).toBeChecked()
+    expect(screen.getByLabelText('firewall rules')).toHaveTextContent('sudo iptables -I INPUT')
+  })
+
+  it('says nothing and stays closed when no firewall was found', async () => {
+    network({ tool: '', active: false })
+    renderWithApp(<SetupPage />, makeState())
+    await new Promise((r) => setTimeout(r, 50))
+    expect(gate()).toHaveAttribute('aria-checked', 'false')
+    expect(screen.queryByText(/switched on here|looks to be in use/)).not.toBeInTheDocument()
+  })
+
+  it('lets you overrule what it found', async () => {
+    network({ tool: 'ufw', active: true })
+    renderWithApp(<SetupPage />, makeState())
+    const user = userEvent.setup()
+    await screen.findByText('Antennarr found ufw switched on here.')
+    await user.click(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'iptables' }))
+    expect(screen.getByLabelText('firewall rules')).toHaveTextContent('sudo iptables')
+    await user.click(gate())
+    expect(screen.queryByLabelText('firewall rules')).not.toBeInTheDocument()
+  })
+
+  it('still works when the server cannot say (an older server, or a failed request)', async () => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses: [] } }) }).fn)
+    renderWithApp(<SetupPage />, makeState())
+    await new Promise((r) => setTimeout(r, 50))
+    expect(gate()).toHaveAttribute('aria-checked', 'false')
+  })
+})
+
+describe('SetupPage media server icons', () => {
+  it('shows each media server with its own icon, which comes from the app and not a CDN', async () => {
+    renderWithApp(<SetupPage />, makeState())
+    await typeHost('box.lan')
+    const icons = Object.fromEntries(
+      screen.getAllByRole('tab').map((t) => [t.textContent, t.querySelector('img')?.getAttribute('src')]),
+    )
+    expect(icons).toEqual({ Plex: '/plex-icon.png', Jellyfin: '/jellyfin-icon.png', Emby: '/emby-icon.png' })
+    for (const src of Object.values(icons)) expect(src).not.toMatch(/^https?:/)
+  })
+
+  it('keeps the tab names readable without the icons', async () => {
+    renderWithApp(<SetupPage />, makeState())
+    await typeHost('box.lan')
+    for (const name of ['Plex', 'Jellyfin', 'Emby']) expect(screen.getByRole('tab', { name })).toBeInTheDocument()
+  })
+})
