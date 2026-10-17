@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router'
 import { Banners } from '@/components/banners'
 import { Logo } from '@/components/logo'
+import { GithubIcon } from '@/components/github-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { PlexIcon } from '@/components/plex-button'
 import { useApp } from '@/hooks/app-context'
@@ -106,8 +107,15 @@ export function Shell() {
             {state.version}
           </a>
         </span>
-        <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-foreground hover:underline">
-          GitHub
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Antennarr on GitHub"
+          title="Antennarr on GitHub"
+          className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
+        >
+          <GithubIcon className="size-5" />
         </a>
       </footer>
     </div>

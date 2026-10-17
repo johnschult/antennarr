@@ -41,17 +41,20 @@ describe('Shell footer', () => {
     return renderWithApp(<Shell />, makeState(over))
   }
 
-  it('shows the version, linked to its release page, and a link to the project', () => {
+  it('shows the version, linked to its release page, and the GitHub icon linking to the project', () => {
     mount()
     const version = screen.getByTestId('version')
     expect(version).toHaveTextContent('2026.10.0')
     expect(version).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0')
-    expect(screen.getByRole('link', { name: 'GitHub' })).toHaveAttribute('href', 'https://github.com/johnschult/antennarr')
+    const gh = screen.getByRole('link', { name: 'Antennarr on GitHub' })
+    expect(gh).toHaveAttribute('href', 'https://github.com/johnschult/antennarr')
+    expect(gh.querySelector('svg')).not.toBeNull() // an icon, not text
+    expect(gh.querySelector('svg')).toHaveAttribute('aria-hidden', 'true') // the link's name comes from the label, not the drawing
   })
 
   it('opens both in a new tab, without handing the page to the other site', () => {
     mount()
-    for (const link of [screen.getByTestId('version'), screen.getByRole('link', { name: 'GitHub' })]) {
+    for (const link of [screen.getByTestId('version'), screen.getByRole('link', { name: 'Antennarr on GitHub' })]) {
       expect(link).toHaveAttribute('target', '_blank')
       expect(link.getAttribute('rel')).toMatch(/noopener/)
       expect(link.getAttribute('rel')).toMatch(/noreferrer/)
