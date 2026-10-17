@@ -20,6 +20,7 @@ import (
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/live"
+	"github.com/johnschult/antennarr/internal/plexauth"
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
 	"github.com/johnschult/antennarr/internal/ui"
@@ -49,6 +50,8 @@ type Config struct {
 	// firmware changelog is read; they exist for tests.
 	FirmwareURL      string
 	FirmwareInterval time.Duration
+	// PlexURL and PlexAuthURL override plex.tv's addresses, for tests.
+	PlexURL, PlexAuthURL string
 }
 
 type device struct {
@@ -65,6 +68,7 @@ type Server struct {
 	hub      *live.Hub
 	devices  []*device
 	firmware *firmware.Checker
+	plex     *plexauth.Auth
 
 	mu        sync.Mutex
 	announced map[string]string // device -> the firmware version we last told the owner about
@@ -128,10 +132,19 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		}
 	})
 
+	store := access.NewStore(cfg.ConfigPath, policy)
+
+	// Signing in with Plex is a second way to be an admin, next to the address.
+	s.plex = plexauth.New(plexauth.Config{
+		Base: cfg.PlexURL, AuthBase: cfg.PlexAuthURL,
+		Settings: policy.Settings, Edit: store.Edit, IsAdmin: policy.IsAdmin, Log: cfg.Log,
+	})
+	policy.SetSessionCheck(s.plex.IsSignedInAdmin)
+
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Devices: apiDevices, Firmware: s.firmware, Pol: policy, Store: access.NewStore(cfg.ConfigPath, policy), Hub: s.hub, Log: cfg.Log,
+		Devices: apiDevices, Firmware: s.firmware, Pol: policy, Store: store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	admin.Handle("/antennarr/", policy.AdminOnly(ui.Handler("/antennarr/"))) // the web UI
 
@@ -139,6 +152,9 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		name := d.cfg.Name
 		mux := http.NewServeMux()
 		mux.Handle("/antennarr/", admin) // the admin pages are reachable on every device's port
+		// Signing in has to be reachable by someone who isn't signed in yet; each
+		// endpoint checks for itself what it will allow.
+		mux.Handle("/antennarr/auth/", s.plex.Handler())
 		tunerAPI := proxy.New(proxy.Config{
 			Upstream: d.mon, Policy: policy.Device(d.cfg.Name),
 			Advertise: d.cfg.Advertise, DeviceID: d.cfg.ReportID, Logger: cfg.Log.With("device", d.cfg.Name),

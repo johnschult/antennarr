@@ -8,21 +8,21 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"mime"
 	"net/http"
-	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/firmware"
+	"github.com/johnschult/antennarr/internal/httpx"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/tuner"
 )
 
 const (
-	maxBody     = 64 << 10 // settings are tiny; anything bigger is a mistake or an attack
+	maxBody     = httpx.MaxBody // settings are tiny; anything bigger is a mistake or an attack
 	keepAlive   = 20 * time.Second
 	coalesceFor = 100 * time.Millisecond // bursts of changes become one event
 )
@@ -68,6 +68,7 @@ func (a *API) Handler() http.Handler {
 		{"settings", map[string]http.HandlerFunc{"GET": a.getSettings, "PATCH": a.patchSettings}},
 		{"devices/{name}", map[string]http.HandlerFunc{"PATCH": a.patchDevice}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
+		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
 	}
 	for _, rt := range routes {
 		var allow []string
@@ -108,6 +109,14 @@ type SettingsDoc struct {
 	OwnerReserve  int      `json:"ownerReserve"`
 	Admin         []string `json:"admin"`
 	FirmwareCheck bool     `json:"firmwareCheck"`
+	Plex          PlexDoc  `json:"plex"`
+}
+
+// PlexDoc is the state of signing in with Plex. The client ID is deliberately
+// not here.
+type PlexDoc struct {
+	Enabled bool                 `json:"enabled"`
+	Admins  []access.PlexAccount `json:"admins"`
 }
 
 // DeviceDoc is one tuner as the dashboard shows it. OwnerReserve and
@@ -177,9 +186,18 @@ func (a *API) state() State {
 		Settings: SettingsDoc{
 			Mode: a.Pol.Mode(), SharedCap: set.SharedCap, OwnerReserve: set.OwnerReserve, Admin: nonNil(set.Admin),
 			FirmwareCheck: set.FirmwareCheckEnabled(),
+			Plex:          plexDoc(set),
 		},
 		Editable: a.Store.Editable(),
 	}
+}
+
+func plexDoc(set access.Settings) PlexDoc {
+	d := PlexDoc{Enabled: set.PlexEnabled(), Admins: []access.PlexAccount{}}
+	if set.Plex != nil {
+		d.Admins = append(d.Admins, set.Plex.Admins...)
+	}
+	return d
 }
 
 func nonNil(s []string) []string {
@@ -378,6 +396,7 @@ type settingsPatch struct {
 	OwnerReserve  *int      `json:"ownerReserve"`
 	Admin         *[]string `json:"admin"`
 	FirmwareCheck *bool     `json:"firmwareCheck"`
+	PlexEnabled   *bool     `json:"plexEnabled"`
 }
 
 func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
@@ -398,6 +417,12 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 		if in.FirmwareCheck != nil {
 			b := *in.FirmwareCheck
 			s.FirmwareCheck = &b
+		}
+		if in.PlexEnabled != nil {
+			if s.Plex == nil {
+				s.Plex = &access.PlexSettings{}
+			}
+			s.Plex.Enabled = *in.PlexEnabled
 		}
 		return nil
 	})
@@ -498,6 +523,32 @@ func (a *API) checkFirmware(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// removePlexAdmin takes a Plex account off the list of those who may sign in.
+// Anyone signed in as that account is signed out by their next request.
+func (a *API) removePlexAdmin(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeErr(w, http.StatusBadRequest, "that is not a Plex account ID")
+		return
+	}
+	_, err = a.Store.Edit(func(s *access.Settings) error {
+		if s.Plex != nil {
+			for i, acct := range s.Plex.Admins {
+				if acct.ID == id {
+					s.Plex.Admins = append(s.Plex.Admins[:i:i], s.Plex.Admins[i+1:]...)
+					return nil
+				}
+			}
+		}
+		return &httpErr{http.StatusNotFound, fmt.Sprintf("no Plex account %d is allowed to sign in", id)}
+	})
+	if err != nil {
+		a.fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ---- plumbing ----
 
 type httpErr struct {
@@ -523,61 +574,7 @@ func (a *API) fail(w http.ResponseWriter, err error) {
 	}
 }
 
-func writeJSON(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeErr(w http.ResponseWriter, code int, msg string) {
-	writeJSON(w, code, map[string]string{"error": msg})
-}
-
-// decode reads a JSON body strictly. It writes the error response itself and
-// returns false if the body is unusable.
-func decode(w http.ResponseWriter, r *http.Request, v any) bool {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(v); err != nil {
-		var tooBig *http.MaxBytesError
-		if errors.As(err, &tooBig) {
-			writeErr(w, http.StatusRequestEntityTooLarge, "request body too large")
-		} else {
-			writeErr(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
-		}
-		return false
-	}
-	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
-		writeErr(w, http.StatusBadRequest, "invalid JSON: unexpected data after the object")
-		return false
-	}
-	return true
-}
-
-// guardWrites is the CSRF defence for an API that trusts the caller's
-// address: a web page the owner happens to visit must not be able to change
-// settings from their browser. Writes have to be JSON (which a cross-origin
-// page can't send without a CORS preflight that we never approve), and an
-// Origin header, if present, has to be this very host.
-func guardWrites(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			if origin := r.Header.Get("Origin"); origin != "" {
-				if u, err := url.Parse(origin); err != nil || u.Host != r.Host {
-					writeErr(w, http.StatusForbidden, "cross-origin requests are not allowed")
-					return
-				}
-			}
-			// Bodyless writes (DELETE) have no type to check.
-			if r.ContentLength != 0 {
-				mt, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-				if err != nil || mt != "application/json" {
-					writeErr(w, http.StatusUnsupportedMediaType, "send application/json")
-					return
-				}
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
+func writeJSON(w http.ResponseWriter, code int, v any)          { httpx.WriteJSON(w, code, v) }
+func writeErr(w http.ResponseWriter, code int, msg string)      { httpx.WriteErr(w, code, msg) }
+func decode(w http.ResponseWriter, r *http.Request, v any) bool { return httpx.Decode(w, r, v) }
+func guardWrites(next http.Handler) http.Handler                { return httpx.GuardWrites(next) }

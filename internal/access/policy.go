@@ -64,6 +64,7 @@ type Policy struct {
 	lastNote map[string]time.Time
 	lastSeen map[string]time.Time // by viewer name
 	onChange func()
+	session  func(*http.Request) bool // an admin signed in some other way (Plex)
 }
 
 type deviceState struct {
@@ -75,7 +76,7 @@ type deviceState struct {
 var openViewer = parsedViewer{Viewer: Viewer{Name: "anyone", Limit: -1}}
 
 func NewPolicy(s Settings, log *slog.Logger) (*Policy, error) {
-	cfg, err := s.clone().parse() // our own copy: the caller may go on changing theirs
+	cfg, err := s.Clone().parse() // our own copy: the caller may go on changing theirs
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,7 @@ func (p *Policy) changed() {
 
 // Update swaps in new settings. Streams already running are left alone.
 func (p *Policy) Update(s Settings) error {
-	cfg, err := s.clone().parse() // our own copy: the caller may go on changing theirs
+	cfg, err := s.Clone().parse() // our own copy: the caller may go on changing theirs
 	if err != nil {
 		return err
 	}
@@ -134,7 +135,7 @@ func (p *Policy) Update(s Settings) error {
 func (p *Policy) Settings() Settings {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.cfg.Settings.clone()
+	return p.cfg.Settings.Clone()
 }
 
 // Active lists streams in progress on every device, oldest first.
@@ -420,8 +421,30 @@ func (p *Policy) AdminOnly(next http.Handler) http.Handler {
 	})
 }
 
-// IsAdmin reports whether the request may use the /antennarr/* admin endpoints.
+// SetSessionCheck adds a second way to be an admin, alongside the address:
+// a request for which check returns true is an admin too. Used for signing in
+// with Plex.
+func (p *Policy) SetSessionCheck(check func(*http.Request) bool) {
+	p.mu.Lock()
+	p.session = check
+	p.mu.Unlock()
+}
+
+// IsAdmin reports whether the request may use the /antennarr/* admin
+// endpoints: from an admin address, or signed in as an admin.
 func (p *Policy) IsAdmin(r *http.Request) bool {
+	if p.isAdminAddress(r) {
+		return true
+	}
+	p.mu.Lock()
+	check := p.session
+	p.mu.Unlock()
+	return check != nil && check(r) // asked without our lock: it reads the settings
+}
+
+// isAdminAddress is the address-based part: open mode, loopback, or an
+// admin address.
+func (p *Policy) isAdminAddress(r *http.Request) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if len(p.cfg.viewers) == 0 {
@@ -441,6 +464,10 @@ func (p *Policy) IsAdmin(r *http.Request) bool {
 	}
 	return false
 }
+
+// IsAdminAddress reports whether the request comes from an admin address,
+// ignoring any sign-in. Plex sign-in uses it to tell the two apart.
+func (p *Policy) IsAdminAddress(r *http.Request) bool { return p.isAdminAddress(r) }
 
 // AdminHome sends admins who open the bare address in a browser to the admin
 // page at `to`; everyone else is handed to next, as if this wasn't here.

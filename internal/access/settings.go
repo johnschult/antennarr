@@ -62,6 +62,25 @@ func (v Viewer) limitFor(device string) int {
 	return v.Limit
 }
 
+// PlexAccount is a Plex account allowed to sign in as an admin. It is
+// identified by its account ID, which never changes; the name is only for
+// showing in the UI.
+type PlexAccount struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// PlexSettings is the optional "Sign in with Plex" for the admin pages.
+type PlexSettings struct {
+	// Enabled turns it on. Nothing contacts plex.tv while it is off.
+	Enabled bool `json:"enabled"`
+	// Admins are the Plex accounts that may sign in.
+	Admins []PlexAccount `json:"admins"`
+	// ClientID identifies this Antennarr to plex.tv. It is generated once and
+	// kept; Plex lists the sign-ins under it in the account's authorized devices.
+	ClientID string `json:"clientId,omitempty"`
+}
+
 // Settings is everything that decides access. With no viewers the tuners are
 // open to anyone who can reach them, bounded only by SharedCap and OwnerReserve.
 type Settings struct {
@@ -82,9 +101,26 @@ type Settings struct {
 	// a stable key (used in limits and URLs); the label is what people see, and
 	// what media servers are told the tuner is called.
 	Labels map[string]string `json:"labels,omitempty"`
+	// Plex configures signing in to the admin pages with a Plex account.
+	Plex *PlexSettings `json:"plex,omitempty"`
 	// FirmwareCheck turns on looking at SiliconDust's firmware changelog (one
 	// request to their website every 12 hours). Unset means on.
 	FirmwareCheck *bool `json:"firmwareCheck,omitempty"`
+}
+
+// PlexEnabled reports whether signing in with Plex is switched on (off by default).
+func (s Settings) PlexEnabled() bool { return s.Plex != nil && s.Plex.Enabled }
+
+// PlexAdmin finds an allowed Plex account by ID.
+func (s Settings) PlexAdmin(id int64) (PlexAccount, bool) {
+	if s.Plex != nil {
+		for _, a := range s.Plex.Admins {
+			if a.ID == id {
+				return a, true
+			}
+		}
+	}
+	return PlexAccount{}, false
 }
 
 // FirmwareCheckEnabled reports whether the firmware check is on (the default).
@@ -95,9 +131,9 @@ func DefaultSettings() Settings {
 	return Settings{OwnerReserve: 1}
 }
 
-// clone copies the settings deeply, so callers can't change ours through the
+// Clone copies the settings deeply, so callers can't change ours through the
 // slices, maps and pointers inside.
-func (s Settings) clone() Settings {
+func (s Settings) Clone() Settings {
 	out := s
 	out.Devices = make([]Device, len(s.Devices))
 	for i, d := range s.Devices {
@@ -129,6 +165,11 @@ func (s Settings) clone() Settings {
 	if s.FirmwareCheck != nil {
 		b := *s.FirmwareCheck
 		out.FirmwareCheck = &b
+	}
+	if s.Plex != nil {
+		pl := *s.Plex
+		pl.Admins = append([]PlexAccount(nil), s.Plex.Admins...)
+		out.Plex = &pl
 	}
 	return out
 }
@@ -226,6 +267,36 @@ func ValidateLabel(l string) error {
 	return nil
 }
 
+const maxPlexAdmins = 50
+
+var clientIDRe = regexp.MustCompile(`^[A-Za-z0-9._-]{8,64}$`)
+
+func (p *PlexSettings) validate() error {
+	if p == nil {
+		return nil
+	}
+	if len(p.Admins) > maxPlexAdmins {
+		return fmt.Errorf("plex: at most %d accounts", maxPlexAdmins)
+	}
+	seen := map[int64]bool{}
+	for _, a := range p.Admins {
+		if a.ID <= 0 {
+			return errors.New("plex: an account has no ID")
+		}
+		if seen[a.ID] {
+			return fmt.Errorf("plex: account %d is listed twice", a.ID)
+		}
+		seen[a.ID] = true
+		if len(a.Name) > maxLabelLen || strings.ContainsFunc(a.Name, unicode.IsControl) {
+			return fmt.Errorf("plex: bad name for account %d", a.ID)
+		}
+	}
+	if p.ClientID != "" && !clientIDRe.MatchString(p.ClientID) {
+		return errors.New("plex: clientId is not valid")
+	}
+	return nil
+}
+
 func validPort(s string) bool {
 	n, err := strconv.Atoi(s)
 	return err == nil && n >= 1 && n <= 65535
@@ -276,6 +347,9 @@ func (s Settings) parse() (parsed, error) {
 			return out, fmt.Errorf("admin: %w", err)
 		}
 		out.admin = append(out.admin, p)
+	}
+	if err := s.Plex.validate(); err != nil {
+		return out, err
 	}
 	if len(s.Labels) > maxLabels {
 		return out, fmt.Errorf("at most %d device names", maxLabels)

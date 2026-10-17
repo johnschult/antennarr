@@ -105,6 +105,16 @@ Built. Antennarr tells you when SiliconDust has released firmware for a tuner. I
 - Not every release is for every model, and notes are scoped in prose ("ATSC3 models:", "HDHR5-2DT/4DT:", "All models:"). A release counts as **update available** only when a note in it is plainly for this model; if the only match is a scope that isn't recognised it is a **possible update**; `TECH`/`DEV` narrow a scope. If the model isn't recognised at all, every note is shown. If the page's layout changes, the parser fails loudly and the status is "unknown" with the reason, never a guess.
 - New releases are announced once in the device's timeline; the Tuner page shows what changed, when the page was last read, and a Check now button.
 
+## Sign in with Plex
+
+Built. Off by default; switched on in Settings > Access. An admin can open the web UI from a listed address (loopback or `admin` CIDRs) or by signing in with an allowed Plex account, so it works from anywhere the port is reachable.
+
+- The server runs the plex.tv PIN flow. The Plex token never reaches the browser and is thrown away as soon as the account is identified. Only the numeric account ID and name are kept (`plex.admins` in the settings file).
+- Sessions are in memory (idle 12h, at most 7 days) in an `antennarr_session` cookie: HttpOnly, SameSite=Strict, Secure when served over https. A restart signs everyone out. Removing an account signs it out at once.
+- Starting a sign-in is rate-limited per address, and pending sign-ins are capped. Nothing contacts plex.tv until someone signs in.
+- The client ID is sent to plex.tv and appears in the sign-in link, so it isn't secret; it's what makes Antennarr show up under the account's authorised devices in Plex.
+- Bootstrapping: from an admin address, turn the switch on, then "Add a Plex account" and sign in with it.
+
 ## Where things stand
 
 Built and tested (Go, with the race detector; UI, with Vitest):
@@ -115,9 +125,11 @@ Built and tested (Go, with the race detector; UI, with Vitest):
 - the settings file (atomic saves, reload on SIGHUP), the JSON API and the live event stream;
 - the web UI: Live, Viewers, Tuner, Settings (grouped sections and rows), a light / dark / system theme, and a placeholder Setup page.
 
+- sign in with Plex (below).
+
 Next, roughly in this order. Each is a real piece of work, not a tweak:
 
-1. **Sign in with Plex.** Admin login to the web UI with a Plex account (the plex.tv PIN flow, done by the server so the Plex token never reaches the browser and is thrown away once the account is identified), authorised by an allowlist of Plex account IDs. Additive to the existing address-based admin access, so it can be used from anywhere the port is reachable. Later: Plex-verified viewer enrollment, where an invite link leads to a Plex sign-in and the viewer's server addresses are read from plex.tv and allowlisted.
+1. **Plex-verified viewer enrollment** (later): an invite link leads to a Plex sign-in, and the viewer's server addresses are read from plex.tv and allowlisted.
 2. **Tailscale, set up from the web UI.** An optional built-in tailnet node (tsnet): enable it, sign in with a link or an auth key, see the node's name and address, and have viewers identified by their tailnet identity instead of an IP. Needs no firewall rules on the host.
 3. **Manage tuners from the UI.** Renaming is done. Adding and removing tuners, and changing a tuner's address, port or DeviceID, need listeners to be opened and closed while running (or an honest "applies on restart").
 4. **The setup guide generator** (above): per-viewer commands for firewall, routing and the media server, with verify and rollback steps, replacing the placeholder Setup page.

@@ -115,7 +115,7 @@ func TestCloneIsDeep(t *testing.T) {
 		Viewers: []Viewer{{Name: "J", Addresses: []string{"1.2.3.4"}, Limit: 1, Limits: map[string]int{"a": 2}}},
 		Admin:   []string{"10.0.0.0/8"},
 	}
-	c := orig.clone()
+	c := orig.Clone()
 	*c.Devices[0].OwnerReserve = 99
 	c.Devices[0].Name = "changed"
 	c.Viewers[0].Limits["a"] = 99
@@ -126,7 +126,7 @@ func TestCloneIsDeep(t *testing.T) {
 		orig.Viewers[0].Addresses[0] != "1.2.3.4" || orig.Admin[0] != "10.0.0.0/8" {
 		t.Errorf("clone shares state with the original: %+v", orig)
 	}
-	if got := (Settings{}).clone(); got.Devices != nil || got.Viewers == nil {
+	if got := (Settings{}).Clone(); got.Devices != nil || got.Viewers == nil {
 		t.Errorf("empty clone: %+v", got)
 	}
 }
@@ -435,7 +435,7 @@ func TestTheFirmwareCheckIsOnUnlessSwitchedOff(t *testing.T) {
 
 	// It survives cloning without sharing, and a save and load.
 	s := Settings{FirmwareCheck: &off}
-	c := s.clone()
+	c := s.Clone()
 	*c.FirmwareCheck = true
 	if *s.FirmwareCheck {
 		t.Error("clone shares the pointer")
@@ -503,7 +503,7 @@ func TestLabelsInSettings(t *testing.T) {
 
 func TestLabelsSurviveCloneSaveAndLoad(t *testing.T) {
 	s := Settings{Labels: map[string]string{"antenna": "Antenna"}}
-	c := s.clone()
+	c := s.Clone()
 	c.Labels["antenna"] = "changed"
 	if s.Labels["antenna"] != "Antenna" {
 		t.Error("clone shares the map")
