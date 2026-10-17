@@ -302,6 +302,13 @@ func (m *Monitor) fail(ctx context.Context, err error) {
 	m.Poll(ctx) // confirm right away instead of waiting a full interval
 }
 
+// Note adds an event from outside the monitor, e.g. a refused stream.
+func (m *Monitor) Note(kind, text string) {
+	m.mu.Lock()
+	m.addEvent(kind, text)
+	m.mu.Unlock()
+}
+
 // addEvent records an event; m.mu must be held.
 func (m *Monitor) addEvent(kind, text string) {
 	m.st.Events = append(m.st.Events, Event{Time: time.Now(), Kind: kind, Text: text})

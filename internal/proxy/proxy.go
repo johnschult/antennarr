@@ -25,6 +25,8 @@ type Config struct {
 	// Upstream, if set, replaces API and Stream and may move over time (see
 	// the tuner package, which follows the tuner by DeviceID).
 	Upstream Upstream
+	// Policy, if set, gates every request and meters streams.
+	Policy Policy
 	// Advertise is the base URL handed to clients, e.g. http://host:5004.
 	// Empty means "whatever host the client connected with".
 	Advertise string
@@ -104,9 +106,46 @@ func (p *Proxy) reverse(target func() *url.URL, rt http.RoundTripper) *httputil.
 	}
 }
 
+// Policy decides who may use the tuner. The proxy asks it before doing
+// anything, so a nil Policy means open access.
+type Policy interface {
+	// Authorize is called for every request; an error refuses it.
+	Authorize(r *http.Request) error
+	// Stream is called before a stream is opened. It reserves a tuner for the
+	// viewer and returns the func to call when the stream ends.
+	Stream(r *http.Request) (release func(), err error)
+	// TunerCount is the number of tuners to tell this viewer about.
+	TunerCount(r *http.Request, real int) int
+}
+
+// Denied is a refusal from a Policy.
+type Denied struct {
+	Code   int    // HTTP status: 403 not allowed, 503 no tuner for you right now
+	Reason string // short machine-readable cause, sent as X-Antennarr-Reason
+	Text   string // for the viewer
+}
+
+func (d *Denied) Error() string { return d.Text }
+
+func (p *Proxy) deny(w http.ResponseWriter, err error) {
+	var d *Denied
+	if !errors.As(err, &d) {
+		d = &Denied{Code: http.StatusForbidden, Reason: "denied", Text: err.Error()}
+	}
+	w.Header().Set("X-Antennarr-Reason", d.Reason)
+	http.Error(w, d.Text, d.Code)
+}
+
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !isStream(r.URL.Path) {
 		p.log.Info("request", "method", r.Method, "path", r.URL.RequestURI(), "client", r.RemoteAddr, "ua", r.UserAgent())
+	}
+	if p.cfg.Policy != nil {
+		if err := p.cfg.Policy.Authorize(r); err != nil {
+			p.log.Warn("refused", "path", r.URL.Path, "client", r.RemoteAddr, "why", err)
+			p.deny(w, err)
+			return
+		}
 	}
 	switch {
 	case r.URL.Path == "/discover.json":
@@ -114,6 +153,15 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/lineup.json":
 		p.lineup(w, r)
 	case isStream(r.URL.Path):
+		if p.cfg.Policy != nil {
+			release, err := p.cfg.Policy.Stream(r)
+			if err != nil {
+				p.log.Warn("stream refused", "path", r.URL.Path, "client", r.RemoteAddr, "why", err)
+				p.deny(w, err)
+				return
+			}
+			defer release() // runs even when ReverseProxy aborts the handler
+		}
 		p.log.Info("stream open", "path", r.URL.Path, "client", r.RemoteAddr)
 		start := time.Now()
 		// ReverseProxy panics with http.ErrAbortHandler when the viewer drops
@@ -186,6 +234,13 @@ func (p *Proxy) discover(w http.ResponseWriter, r *http.Request) {
 	d["LineupURL"] = base + "/lineup.json"
 	if p.cfg.DeviceID != "" {
 		d["DeviceID"] = p.cfg.DeviceID
+	}
+	if p.cfg.Policy != nil {
+		if n, ok := d["TunerCount"].(json.Number); ok {
+			if real, err := n.Int64(); err == nil {
+				d["TunerCount"] = p.cfg.Policy.TunerCount(r, int(real))
+			}
+		}
 	}
 	writeJSON(w, d)
 }

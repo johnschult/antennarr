@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
@@ -30,6 +31,7 @@ func main() {
 	advertise := flag.String("advertise", "", "base URL to hand to clients (default: the host they connected with)")
 	reportID := flag.String("report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
 	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuner")
+	configPath := flag.String("config", "", "settings file (viewers, limits); reloaded on SIGHUP. Without one, anyone who can reach the port may use the tuner")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: antennarr [flags]\n       antennarr discover [-wait 3s] [host ...]\n\nneeds -tuner or -tuner-id.\n\n")
 		flag.PrintDefaults()
@@ -51,9 +53,31 @@ func main() {
 	})
 	go mon.Run(ctx)
 
+	settings := access.DefaultSettings()
+	if *configPath != "" {
+		var exists bool
+		if settings, exists, err = access.LoadSettings(*configPath); err != nil {
+			fmt.Fprintln(os.Stderr, "antennarr:", err)
+			os.Exit(2)
+		}
+		if !exists {
+			log.Warn("settings file not found, using defaults", "path", *configPath)
+		}
+	}
+	policy, err := access.NewPolicy(settings, mon, mon, log)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "antennarr:", err)
+		os.Exit(2)
+	}
+	if len(settings.Viewers) == 0 {
+		log.Warn("no viewers configured: anyone who can reach this port can use the tuner", "ownerReserve", settings.OwnerReserve)
+	}
+	go reloadOnHUP(ctx, *configPath, policy, log)
+
 	mux := http.NewServeMux()
-	mux.Handle("/antennarr/status", tuner.StatusHandler(mon))
-	mux.Handle("/", proxy.New(proxy.Config{Upstream: mon, Advertise: *advertise, DeviceID: *reportID, Logger: log}))
+	mux.Handle("/antennarr/status", policy.AdminOnly(tuner.StatusHandler(mon)))
+	mux.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
+	mux.Handle("/", proxy.New(proxy.Config{Upstream: mon, Policy: policy, Advertise: *advertise, DeviceID: *reportID, Logger: log}))
 
 	srv := &http.Server{Addr: *listen, Handler: mux}
 	go func() {
@@ -67,6 +91,33 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
+	}
+}
+
+// reloadOnHUP re-reads the settings file when the process gets SIGHUP. A bad
+// file is reported and the running settings are kept.
+func reloadOnHUP(ctx context.Context, path string, policy *access.Policy, log *slog.Logger) {
+	if path == "" {
+		return
+	}
+	hup := make(chan os.Signal, 1)
+	signal.Notify(hup, syscall.SIGHUP)
+	defer signal.Stop(hup)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-hup:
+			s, _, err := access.LoadSettings(path)
+			if err == nil {
+				err = policy.Update(s)
+			}
+			if err != nil {
+				log.Error("settings reload failed, keeping the current ones", "err", err)
+				continue
+			}
+			log.Info("settings reloaded", "viewers", len(s.Viewers), "sharedCap", s.SharedCap, "ownerReserve", s.OwnerReserve)
+		}
 	}
 }
 
