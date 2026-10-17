@@ -1,4 +1,4 @@
-// Package access decides who may use the tuner and how much of it they may use.
+// Package access decides who may use the tuners and how much of them they may use.
 package access
 
 import (
@@ -7,28 +7,71 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/netip"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
-// Viewer is someone you share the tuner with.
+// Device is one HDHomeRun that Antennarr fronts. Each device looks like its
+// own HDHomeRun to media servers, on its own port.
+type Device struct {
+	// Name identifies the device in settings, limits and the UI. Letters,
+	// digits, '.', '_' and '-' only, since it appears in URLs.
+	Name string `json:"name"`
+	// Listen is where media servers reach this device, e.g. ":5004".
+	Listen string `json:"listen"`
+	// Tuner is the address to look for the tuner at first (host or URL).
+	Tuner string `json:"tuner,omitempty"`
+	// ID is the DeviceID to follow if the tuner's address changes. If empty it
+	// is learned from the tuner at Tuner.
+	ID string `json:"id,omitempty"`
+	// StreamPort is the tuner's streaming port; default 5004.
+	StreamPort string `json:"streamPort,omitempty"`
+	// Advertise overrides the address handed to media servers.
+	Advertise string `json:"advertise,omitempty"`
+	// ReportID is a DeviceID to show media servers instead of the tuner's own,
+	// for when a media server already knows the real tuner.
+	ReportID string `json:"reportId,omitempty"`
+	// OwnerReserve and SharedCap override the top-level values for this device.
+	OwnerReserve *int `json:"ownerReserve,omitempty"`
+	SharedCap    *int `json:"sharedCap,omitempty"`
+}
+
+// Viewer is someone you share the tuners with.
 type Viewer struct {
 	Name string `json:"name"`
 	// Addresses the viewer's media server connects from: single IPs or CIDRs.
 	Addresses []string `json:"addresses"`
-	// Limit is how many tuners they may use at once. 0 pauses the viewer.
+	// Limit is how many tuners they may use at once on a device. 0 pauses them.
 	Limit int `json:"limit"`
+	// Limits overrides Limit for particular devices, by device name.
+	Limits map[string]int `json:"limits,omitempty"`
 }
 
-// Settings is everything that decides access. With no viewers the tuner is
-// open to anyone who can reach it, bounded only by SharedCap and OwnerReserve.
+// limitFor is the viewer's limit on the named device.
+func (v Viewer) limitFor(device string) int {
+	if n, ok := v.Limits[device]; ok {
+		return n
+	}
+	return v.Limit
+}
+
+// Settings is everything that decides access. With no viewers the tuners are
+// open to anyone who can reach them, bounded only by SharedCap and OwnerReserve.
 type Settings struct {
+	// Devices to front. If empty, Antennarr is started with one device from
+	// its command-line flags.
+	Devices []Device `json:"devices,omitempty"`
 	Viewers []Viewer `json:"viewers"`
-	// SharedCap is the most tuners all viewers together may use. 0 = no cap.
+	// SharedCap is the most tuners all viewers together may use on a device.
+	// 0 = no cap. Devices can override it.
 	SharedCap int `json:"sharedCap"`
-	// OwnerReserve tuners are always kept free for your own devices.
+	// OwnerReserve tuners are always kept free for your own devices. Devices
+	// can override it.
 	OwnerReserve int `json:"ownerReserve"`
 	// Admin lists extra addresses (IPs or CIDRs) allowed to see /antennarr/*.
 	// Loopback is always allowed once any viewer is configured.
@@ -40,16 +83,69 @@ func DefaultSettings() Settings {
 	return Settings{OwnerReserve: 1}
 }
 
+// clone copies the settings deeply, so callers can't change ours through the
+// slices, maps and pointers inside.
+func (s Settings) clone() Settings {
+	out := s
+	out.Devices = make([]Device, len(s.Devices))
+	for i, d := range s.Devices {
+		out.Devices[i] = d
+		out.Devices[i].OwnerReserve = cloneInt(d.OwnerReserve)
+		out.Devices[i].SharedCap = cloneInt(d.SharedCap)
+	}
+	if len(s.Devices) == 0 {
+		out.Devices = nil
+	}
+	out.Viewers = make([]Viewer, len(s.Viewers))
+	for i, v := range s.Viewers {
+		out.Viewers[i] = v
+		out.Viewers[i].Addresses = append([]string(nil), v.Addresses...)
+		if v.Limits != nil {
+			out.Viewers[i].Limits = make(map[string]int, len(v.Limits))
+			for k, n := range v.Limits {
+				out.Viewers[i].Limits[k] = n
+			}
+		}
+	}
+	out.Admin = append([]string(nil), s.Admin...)
+	return out
+}
+
+func cloneInt(p *int) *int {
+	if p == nil {
+		return nil
+	}
+	n := *p
+	return &n
+}
+
 // parsed is Settings with the addresses already parsed.
 type parsed struct {
 	Settings
 	viewers []parsedViewer
 	admin   []netip.Prefix
+	devices map[string]Device
 }
 
 type parsedViewer struct {
 	Viewer
 	prefixes []netip.Prefix
+}
+
+// reserveFor and capFor give the values in force for a device: its own
+// override if it has one, else the top-level default.
+func (p *parsed) reserveFor(device string) int {
+	if d, ok := p.devices[device]; ok && d.OwnerReserve != nil {
+		return *d.OwnerReserve
+	}
+	return p.OwnerReserve
+}
+
+func (p *parsed) capFor(device string) int {
+	if d, ok := p.devices[device]; ok && d.SharedCap != nil {
+		return *d.SharedCap
+	}
+	return p.SharedCap
 }
 
 func parsePrefix(s string) (netip.Prefix, error) {
@@ -78,9 +174,49 @@ func unmapBits(p netip.Prefix) int {
 	return p.Bits()
 }
 
+var (
+	deviceName = regexp.MustCompile(`^[A-Za-z0-9._-]{1,40}$`)
+	deviceID   = regexp.MustCompile(`^[0-9A-Fa-f]{8}$`)
+)
+
+func validPort(s string) bool {
+	n, err := strconv.Atoi(s)
+	return err == nil && n >= 1 && n <= 65535
+}
+
+// Validate reports the first problem with the device's own settings.
+func (d Device) Validate() error {
+	if !deviceName.MatchString(d.Name) {
+		return fmt.Errorf("device name %q: use 1-40 letters, digits, '.', '_' or '-'", d.Name)
+	}
+	_, port, err := net.SplitHostPort(d.Listen)
+	if err != nil || !validPort(port) {
+		return fmt.Errorf("device %q: listen %q must look like \":5004\" or \"127.0.0.1:5004\"", d.Name, d.Listen)
+	}
+	if strings.TrimSpace(d.Tuner) == "" && d.ID == "" {
+		return fmt.Errorf("device %q needs a tuner address, an id, or both", d.Name)
+	}
+	if d.ID != "" && !deviceID.MatchString(d.ID) {
+		return fmt.Errorf("device %q: id %q is not 8 hex digits", d.Name, d.ID)
+	}
+	if d.ReportID != "" && !deviceID.MatchString(d.ReportID) {
+		return fmt.Errorf("device %q: reportId %q is not 8 hex digits", d.Name, d.ReportID)
+	}
+	if d.StreamPort != "" && !validPort(d.StreamPort) {
+		return fmt.Errorf("device %q: bad streamPort %q", d.Name, d.StreamPort)
+	}
+	if d.OwnerReserve != nil && *d.OwnerReserve < 0 {
+		return fmt.Errorf("device %q: ownerReserve cannot be negative", d.Name)
+	}
+	if d.SharedCap != nil && *d.SharedCap < 0 {
+		return fmt.Errorf("device %q: sharedCap cannot be negative", d.Name)
+	}
+	return nil
+}
+
 // parse checks the settings and returns them with addresses parsed.
 func (s Settings) parse() (parsed, error) {
-	out := parsed{Settings: s}
+	out := parsed{Settings: s, devices: map[string]Device{}}
 	if s.SharedCap < 0 {
 		return out, errors.New("sharedCap cannot be negative")
 	}
@@ -93,6 +229,24 @@ func (s Settings) parse() (parsed, error) {
 			return out, fmt.Errorf("admin: %w", err)
 		}
 		out.admin = append(out.admin, p)
+	}
+
+	ports := map[string]string{}
+	lowered := map[string]bool{}
+	for _, d := range s.Devices {
+		if err := d.Validate(); err != nil {
+			return out, err
+		}
+		if lowered[strings.ToLower(d.Name)] { // "Antenna" and "antenna" would be confusing
+			return out, fmt.Errorf("device %q is listed twice", d.Name)
+		}
+		lowered[strings.ToLower(d.Name)] = true
+		out.devices[d.Name] = d
+		_, port, _ := net.SplitHostPort(d.Listen)
+		if other, taken := ports[port]; taken {
+			return out, fmt.Errorf("devices %q and %q both listen on port %s", other, d.Name, port)
+		}
+		ports[port] = d.Name
 	}
 
 	names := map[string]bool{}
@@ -109,6 +263,17 @@ func (s Settings) parse() (parsed, error) {
 		names[key] = true
 		if v.Limit < 0 {
 			return out, fmt.Errorf("viewer %q: limit cannot be negative", name)
+		}
+		for dev, n := range v.Limits {
+			if len(s.Devices) == 0 {
+				return out, fmt.Errorf("viewer %q: limits for devices need devices declared in the settings file", name)
+			}
+			if _, ok := out.devices[dev]; !ok {
+				return out, fmt.Errorf("viewer %q: limit for unknown device %q", name, dev)
+			}
+			if n < 0 {
+				return out, fmt.Errorf("viewer %q: limit for %q cannot be negative", name, dev)
+			}
 		}
 		if len(v.Addresses) == 0 {
 			return out, fmt.Errorf("viewer %q has no addresses", name)

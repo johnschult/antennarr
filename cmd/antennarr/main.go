@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
-	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -14,107 +13,113 @@ import (
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/api"
 	"github.com/johnschult/antennarr/internal/discovery"
-	"github.com/johnschult/antennarr/internal/live"
-	"github.com/johnschult/antennarr/internal/proxy"
-	"github.com/johnschult/antennarr/internal/tuner"
-	"github.com/johnschult/antennarr/internal/ui"
+	"github.com/johnschult/antennarr/internal/server"
 )
+
+// deviceFlags are the command-line way to describe a single device.
+type deviceFlags struct {
+	listen, tuner, id, streamPort, advertise, reportID string
+}
+
+// flagNames lists the flags that describe a device, for spotting conflicts.
+var flagNames = []string{"listen", "tuner", "tuner-id", "stream-port", "advertise", "report-id"}
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "discover" {
 		os.Exit(runDiscover(os.Args[2:]))
 	}
 
-	listen := flag.String("listen", ":5004", "address to listen on")
-	tunerAddr := flag.String("tuner", "", "tuner host or URL, e.g. 192.168.1.132")
-	tunerID := flag.String("tuner-id", "", "DeviceID of the tuner to follow if its address changes (learned from -tuner if omitted)")
-	streamPort := flag.String("stream-port", "5004", "tuner's streaming port")
-	advertise := flag.String("advertise", "", "base URL to hand to clients (default: the host they connected with)")
-	reportID := flag.String("report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
-	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuner")
-	configPath := flag.String("config", "", "settings file (viewers, limits); reloaded on SIGHUP. Without one, anyone who can reach the port may use the tuner")
+	var f deviceFlags
+	flag.StringVar(&f.listen, "listen", ":5004", "address to listen on")
+	flag.StringVar(&f.tuner, "tuner", "", "tuner host or URL, e.g. 192.168.1.132")
+	flag.StringVar(&f.id, "tuner-id", "", "DeviceID of the tuner to follow if its address changes (learned from -tuner if omitted)")
+	flag.StringVar(&f.streamPort, "stream-port", "5004", "tuner's streaming port")
+	flag.StringVar(&f.advertise, "advertise", "", "base URL to hand to clients (default: the host they connected with)")
+	flag.StringVar(&f.reportID, "report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
+	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuners")
+	configPath := flag.String("config", "", "settings file (devices, viewers, limits); reloaded on SIGHUP. Without one, anyone who can reach a port may use the tuner")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: antennarr [flags]\n       antennarr discover [-wait 3s] [host ...]\n\nneeds -tuner or -tuner-id.\n\n")
+		fmt.Fprintf(os.Stderr, "usage: antennarr [flags]\n       antennarr discover [-wait 3s] [host ...]\n\n"+
+			"Run one device with -tuner or -tuner-id, or declare several under \"devices\" in the -config file.\n\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	set := map[string]bool{}
+	flag.Visit(func(fl *flag.Flag) { set[fl.Name] = true })
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	base, err := startAddress(ctx, *tunerAddr, *tunerID)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "antennarr:", err)
-		os.Exit(2)
-	}
-
-	hub := live.NewHub()
-	mon := tuner.NewMonitor(tuner.Config{
-		BaseURL: base, ID: *tunerID, StreamPort: *streamPort, Interval: *poll, OnChange: hub.Notify, Logger: log,
-	})
-	go mon.Run(ctx)
-
 	settings := access.DefaultSettings()
 	if *configPath != "" {
 		var exists bool
+		var err error
 		if settings, exists, err = access.LoadSettings(*configPath); err != nil {
-			fmt.Fprintln(os.Stderr, "antennarr:", err)
-			os.Exit(2)
+			fail(err)
 		}
 		if !exists {
 			log.Warn("settings file not found, using defaults", "path", *configPath)
 		}
 	}
-	policy, err := access.NewPolicy(settings, mon, mon, log)
+	devices, err := devicesFor(settings, f, set)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "antennarr:", err)
-		os.Exit(2)
+		fail(err)
 	}
-	if len(settings.Viewers) == 0 {
-		log.Warn("no viewers configured: anyone who can reach this port can use the tuner", "ownerReserve", settings.OwnerReserve)
+
+	srv, err := server.New(ctx, server.Config{
+		Settings: settings, Devices: devices, ConfigPath: *configPath, Poll: *poll, Log: log,
+	})
+	if err != nil {
+		fail(err)
 	}
-	// A stream starting or ending changes the tuner's own status too: tell the
-	// dashboards now, and have the monitor look again straight away.
-	policy.SetOnChange(func() { hub.Notify(); mon.Kick() })
-	go reloadOnHUP(ctx, *configPath, policy, log)
+	go reloadOnHUP(ctx, *configPath, srv, log)
 
-	mux := http.NewServeMux()
-	mux.Handle("/antennarr/status", policy.AdminOnly(tuner.StatusHandler(mon)))
-	mux.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
-	mux.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Mon: mon, Pol: policy, Store: access.NewStore(*configPath, policy), Hub: hub, Log: log,
-	}).Handler()))
-	mux.Handle("/antennarr/", policy.AdminOnly(ui.Handler("/antennarr/"))) // the web UI
-	tunerAPI := proxy.New(proxy.Config{Upstream: mon, Policy: policy, Advertise: *advertise, DeviceID: *reportID, Logger: log})
-	mux.Handle("/", tunerAPI)
-	// Someone who types the bare address into a browser wants the admin page,
-	// not the tuner's own front page. Everyone else (viewers, media servers)
-	// is handled as before.
-	mux.Handle("GET /{$}", policy.AdminHome("/antennarr/", tunerAPI))
-
-	// No overall timeouts: streams run for hours. Only the header read is
-	// bounded, so a stalled client can't hold a connection open for free.
-	srv := &http.Server{Addr: *listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(shutdown)
-	}()
-
-	log.Info("starting", "listen", *listen, "tuner", base, "tunerID", strings.ToUpper(*tunerID))
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := srv.Run(ctx); err != nil {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
 }
 
+func fail(err error) {
+	fmt.Fprintln(os.Stderr, "antennarr:", err)
+	os.Exit(2)
+}
+
+// devicesFor decides which devices to run: those declared in the settings
+// file, or else the single one described by the flags. Mixing the two would
+// leave it unclear which wins, so that is an error.
+func devicesFor(s access.Settings, f deviceFlags, set map[string]bool) ([]access.Device, error) {
+	if len(s.Devices) > 0 {
+		var given []string
+		for _, n := range flagNames {
+			if set[n] {
+				given = append(given, "-"+n)
+			}
+		}
+		if len(given) > 0 {
+			return nil, fmt.Errorf("%s can't be combined with devices declared in the settings file; set them there instead", strings.Join(given, ", "))
+		}
+		return s.Devices, nil
+	}
+	if f.tuner == "" && f.id == "" {
+		return nil, errors.New("give -tuner (an address) or -tuner-id (a DeviceID to search for), or declare devices in a -config file")
+	}
+	d := access.Device{
+		Name: "tuner", Listen: f.listen, Tuner: f.tuner, ID: f.id,
+		StreamPort: f.streamPort, Advertise: f.advertise, ReportID: f.reportID,
+	}
+	if err := d.Validate(); err != nil {
+		return nil, err
+	}
+	return []access.Device{d}, nil
+}
+
 // reloadOnHUP re-reads the settings file when the process gets SIGHUP. A bad
 // file is reported and the running settings are kept.
-func reloadOnHUP(ctx context.Context, path string, policy *access.Policy, log *slog.Logger) {
+func reloadOnHUP(ctx context.Context, path string, srv *server.Server, log *slog.Logger) {
 	if path == "" {
 		return
 	}
@@ -126,56 +131,11 @@ func reloadOnHUP(ctx context.Context, path string, policy *access.Policy, log *s
 		case <-ctx.Done():
 			return
 		case <-hup:
-			s, _, err := access.LoadSettings(path)
-			if err == nil {
-				err = policy.Update(s)
-			}
-			if err != nil {
+			if err := srv.ReloadFile(path); err != nil {
 				log.Error("settings reload failed, keeping the current ones", "err", err)
-				continue
 			}
-			log.Info("settings reloaded", "viewers", len(s.Viewers), "sharedCap", s.SharedCap, "ownerReserve", s.OwnerReserve)
 		}
 	}
-}
-
-// startAddress works out where to look for the tuner first: the -tuner flag,
-// or failing that a network search for -tuner-id.
-func startAddress(ctx context.Context, addr, id string) (string, error) {
-	if addr != "" {
-		u, err := parseTuner(addr)
-		if err != nil {
-			return "", err
-		}
-		return u.String(), nil
-	}
-	if id == "" {
-		return "", fmt.Errorf("give -tuner (an address) or -tuner-id (a DeviceID to search for)")
-	}
-	fctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	devs, err := discovery.Discover(fctx, 3*time.Second)
-	if err != nil && len(devs) == 0 {
-		return "", fmt.Errorf("searching for tuner %s: %w", id, err)
-	}
-	for _, d := range devs {
-		if strings.EqualFold(d.ID, id) {
-			return d.BaseURL, nil
-		}
-	}
-	return "", fmt.Errorf("tuner %s not found on the network; pass -tuner with its address", strings.ToUpper(id))
-}
-
-func parseTuner(s string) (*url.URL, error) {
-	s = strings.TrimSpace(s)
-	if !strings.Contains(s, "://") {
-		s = "http://" + s
-	}
-	u, err := url.Parse(s)
-	if err != nil || u.Hostname() == "" {
-		return nil, fmt.Errorf("bad -tuner %q", s)
-	}
-	return u, nil
 }
 
 func runDiscover(args []string) int {

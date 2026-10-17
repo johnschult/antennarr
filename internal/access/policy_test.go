@@ -46,14 +46,24 @@ var (
 	_     = idle
 )
 
-func newPolicy(t *testing.T, s Settings, mon *fakeMon) (*Policy, *fakeNotes) {
+const testDevice = "antenna"
+
+// testPolicy is a policy together with the view of it for one device, so tests
+// can call Stream, Authorize and TunerCount directly.
+type testPolicy struct {
+	*Policy
+	*DeviceView
+}
+
+func newPolicy(t *testing.T, s Settings, mon *fakeMon) (*testPolicy, *fakeNotes) {
 	t.Helper()
 	n := &fakeNotes{}
-	p, err := NewPolicy(s, mon, n, nil)
+	p, err := NewPolicy(s, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return p, n
+	p.AddDevice(testDevice, mon, n)
+	return &testPolicy{p, p.Device(testDevice)}, n
 }
 
 func req(remote string) *http.Request {

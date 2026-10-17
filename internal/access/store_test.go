@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func newStore(t *testing.T, initial Settings) (*Store, *Policy, string) {
+func newStore(t *testing.T, initial Settings) (*Store, *testPolicy, string) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "antennarr.json")
 	if err := SaveSettings(path, initial); err != nil {
@@ -20,7 +20,7 @@ func newStore(t *testing.T, initial Settings) (*Store, *Policy, string) {
 	mon := &fakeMon{}
 	mon.set(true, 4)
 	pol, _ := newPolicy(t, initial, mon)
-	return NewStore(path, pol), pol, path
+	return NewStore(path, pol.Policy), pol, path
 }
 
 func TestEditSavesThenApplies(t *testing.T) {
@@ -45,7 +45,7 @@ func TestEditSavesThenApplies(t *testing.T) {
 
 func TestEditWithoutFileIsRefused(t *testing.T) {
 	pol, _ := newPolicy(t, twoViewers, &fakeMon{})
-	st := NewStore("", pol)
+	st := NewStore("", pol.Policy)
 	if st.Editable() {
 		t.Error("a store with no path claims to be editable")
 	}
@@ -89,7 +89,7 @@ func TestEditCallbackErrorChangesNothing(t *testing.T) {
 
 func TestFailedSaveLeavesRunningSettingsAlone(t *testing.T) {
 	_, pol, _ := newStore(t, twoViewers)
-	st := NewStore(filepath.Join(t.TempDir(), "missing", "dir", "a.json"), pol) // can't be written
+	st := NewStore(filepath.Join(t.TempDir(), "missing", "dir", "a.json"), pol.Policy) // can't be written
 
 	_, err := st.Edit(func(s *Settings) error { s.SharedCap = 3; return nil })
 	if err == nil {

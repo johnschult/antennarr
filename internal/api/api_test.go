@@ -65,13 +65,14 @@ func newEnv(t *testing.T, s access.Settings, withFile bool) *env {
 	]`)
 	hub := live.NewHub()
 	mon := tuner.NewMonitor(tuner.Config{
-		BaseURL: tun.URL, ID: "10ABCC87", OnChange: hub.Notify,
+		Name: "antenna", BaseURL: tun.URL, ID: "10ABCC87", OnChange: hub.Notify,
 		LocalIPs: func() []string { return []string{"192.168.1.20"} },
 	})
-	pol, err := access.NewPolicy(s, mon, mon, nil)
+	pol, err := access.NewPolicy(s, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	pol.AddDevice("antenna", mon, mon)
 	pol.SetOnChange(hub.Notify)
 
 	e := &env{pol: pol, mon: mon, hub: hub}
@@ -81,7 +82,7 @@ func newEnv(t *testing.T, s access.Settings, withFile bool) *env {
 			t.Fatal(err)
 		}
 	}
-	e.api = &API{Mon: mon, Pol: pol, Store: access.NewStore(e.path, pol), Hub: hub, KeepAlive: time.Hour}
+	e.api = &API{Devices: []Device{{Name: "antenna", Listen: ":5004", Mon: mon}}, Pol: pol, Store: access.NewStore(e.path, pol), Hub: hub, KeepAlive: time.Hour}
 	e.srv = httptest.NewServer(pol.AdminOnly(e.api.Handler()))
 	t.Cleanup(e.srv.Close)
 	mon.Poll(context.Background())
@@ -150,7 +151,7 @@ func TestState(t *testing.T) {
 	// One of John's streams is running through us.
 	r := httptest.NewRequest("GET", "/auto/v5.1", nil)
 	r.RemoteAddr = "100.67.117.32:4000"
-	if _, err := e.pol.Stream(r); err != nil {
+	if _, err := e.pol.Device("antenna").Stream(r); err != nil {
 		t.Fatal(err)
 	}
 
@@ -160,24 +161,35 @@ func TestState(t *testing.T) {
 	}
 	st := obj(t, v)
 
-	tun := obj(t, st["tuner"])
-	if tun["online"] != true || tun["id"] != "10ABCC87" || tun["friendlyName"] != "Fake FLEX" || len(tun["slots"].([]any)) != 4 {
+	devices := st["devices"].([]any)
+	if len(devices) != 1 {
+		t.Fatalf("%d devices", len(devices))
+	}
+	dev := obj(t, devices[0])
+	if dev["name"] != "antenna" || dev["listen"] != ":5004" || dev["ownerReserve"] != float64(1) || dev["sharedCap"] != float64(0) {
+		t.Errorf("device = %v", dev)
+	}
+	tun := obj(t, dev["tuner"])
+	if tun["online"] != true || tun["id"] != "10ABCC87" || tun["name"] != "antenna" || tun["friendlyName"] != "Fake FLEX" || len(tun["slots"].([]any)) != 4 {
 		t.Errorf("tuner = %v", tun)
 	}
-	sum := obj(t, st["summary"])
+	sum := obj(t, dev["summary"])
 	want := map[string]float64{"total": 4, "inUse": 2, "remote": 1, "local": 1, "reserved": 1, "free": 2}
 	for k, w := range want {
 		if sum[k] != w {
 			t.Errorf("summary.%s = %v, want %v", k, sum[k], w)
 		}
 	}
-	streams := st["streams"].([]any)
-	if len(streams) != 1 || obj(t, streams[0])["viewer"] != "John" || obj(t, streams[0])["channel"] != "5.1" {
+	streams := dev["streams"].([]any)
+	if len(streams) != 1 || obj(t, streams[0])["viewer"] != "John" || obj(t, streams[0])["channel"] != "5.1" || obj(t, streams[0])["device"] != "antenna" {
 		t.Errorf("streams = %v", streams)
 	}
 	viewers := st["viewers"].([]any)
 	if len(viewers) != 2 || obj(t, viewers[0])["inUse"] != float64(1) || obj(t, viewers[1])["lastSeen"] != nil {
 		t.Errorf("viewers = %v", viewers)
+	}
+	if by := obj(t, obj(t, viewers[0])["inUseByDevice"]); by["antenna"] != float64(1) {
+		t.Errorf("inUseByDevice = %v", by)
 	}
 	set := obj(t, st["settings"])
 	if set["mode"] != "enforced" || set["ownerReserve"] != float64(1) || st["editable"] != true {
@@ -188,8 +200,9 @@ func TestState(t *testing.T) {
 func TestStateBeforeAnyPollHasEmptyListsNotNulls(t *testing.T) {
 	tun := fakeHDHR(t, `[]`)
 	mon := tuner.NewMonitor(tuner.Config{BaseURL: tun.URL, ID: "10ABCC87"}) // never polled
-	pol, _ := access.NewPolicy(access.DefaultSettings(), mon, mon, nil)
-	a := &API{Mon: mon, Pol: pol, Store: access.NewStore("", pol), Hub: live.NewHub()}
+	pol, _ := access.NewPolicy(access.DefaultSettings(), nil)
+	pol.AddDevice("antenna", mon, mon)
+	a := &API{Devices: []Device{{Name: "antenna", Mon: mon}}, Pol: pol, Store: access.NewStore("", pol), Hub: live.NewHub()}
 	srv := httptest.NewServer(a.Handler())
 	defer srv.Close()
 
@@ -539,11 +552,17 @@ func nextMsg(t *testing.T, ch <-chan sseMsg, within time.Duration) (sseMsg, bool
 
 func streamsIn(t *testing.T, m sseMsg) int {
 	t.Helper()
-	var st struct{ Streams []any }
+	var st struct {
+		Devices []struct{ Streams []any }
+	}
 	if err := json.Unmarshal([]byte(m.data), &st); err != nil {
 		t.Fatalf("bad event data: %v\n%s", err, m.data)
 	}
-	return len(st.Streams)
+	n := 0
+	for _, d := range st.Devices {
+		n += len(d.Streams)
+	}
+	return n
 }
 
 func TestEventsSendStateNowAndAfterChanges(t *testing.T) {
@@ -560,7 +579,7 @@ func TestEventsSendStateNowAndAfterChanges(t *testing.T) {
 
 	r := httptest.NewRequest("GET", "/auto/v2.1", nil)
 	r.RemoteAddr = "10.8.0.5:4000"
-	release, err := e.pol.Stream(r)
+	release, err := e.pol.Device("antenna").Stream(r)
 	if err != nil {
 		t.Fatal(err)
 	}

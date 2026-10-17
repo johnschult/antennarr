@@ -28,14 +28,22 @@ const (
 
 // API serves /antennarr/api/*.
 type API struct {
-	Mon   *tuner.Monitor
-	Pol   *access.Policy
-	Store *access.Store
-	Hub   *live.Hub
-	Log   *slog.Logger
+	Devices []Device
+	Pol     *access.Policy
+	Store   *access.Store
+	Hub     *live.Hub
+	Log     *slog.Logger
 	// KeepAlive is how often an idle event stream gets a comment line, so
 	// proxies don't drop it. Zero means 20s.
 	KeepAlive time.Duration
+}
+
+// Device is one fronted tuner: its name, where media servers reach it, and the
+// monitor watching it.
+type Device struct {
+	Name   string
+	Listen string
+	Mon    *tuner.Monitor
 }
 
 // Prefix is where the API is mounted.
@@ -55,6 +63,7 @@ func (a *API) Handler() http.Handler {
 		{"viewers", map[string]http.HandlerFunc{"GET": a.listViewers, "POST": a.addViewer}},
 		{"viewers/{name}", map[string]http.HandlerFunc{"PUT": a.replaceViewer, "DELETE": a.deleteViewer}},
 		{"settings", map[string]http.HandlerFunc{"GET": a.getSettings, "PATCH": a.patchSettings}},
+		{"devices/{name}", map[string]http.HandlerFunc{"PATCH": a.patchDevice}},
 	}
 	for _, rt := range routes {
 		var allow []string
@@ -87,7 +96,8 @@ type Summary struct {
 	Free     int `json:"free"`
 }
 
-// SettingsDoc is the part of the settings that isn't the viewer list.
+// SettingsDoc is the part of the settings that isn't per device or per viewer.
+// OwnerReserve and SharedCap are the defaults devices fall back to.
 type SettingsDoc struct {
 	Mode         string   `json:"mode"` // "open" or "enforced"
 	SharedCap    int      `json:"sharedCap"`
@@ -95,44 +105,70 @@ type SettingsDoc struct {
 	Admin        []string `json:"admin"`
 }
 
+// DeviceDoc is one tuner as the dashboard shows it. OwnerReserve and
+// SharedCap are the values in force for it.
+type DeviceDoc struct {
+	Name         string          `json:"name"`
+	Listen       string          `json:"listen"`
+	Tuner        tuner.State     `json:"tuner"`
+	Streams      []access.Active `json:"streams"`
+	Summary      Summary         `json:"summary"`
+	OwnerReserve int             `json:"ownerReserve"`
+	SharedCap    int             `json:"sharedCap"`
+}
+
 // State is everything the dashboard shows.
 type State struct {
 	Time     time.Time             `json:"time"`
-	Tuner    tuner.State           `json:"tuner"`
-	Streams  []access.Active       `json:"streams"`
+	Devices  []DeviceDoc           `json:"devices"`
 	Viewers  []access.ViewerStatus `json:"viewers"`
 	Settings SettingsDoc           `json:"settings"`
-	Summary  Summary               `json:"summary"`
 	Editable bool                  `json:"editable"` // false: started without -config
 }
 
-func (a *API) state() State {
-	t := a.Mon.Snapshot()
-	set := a.Pol.Settings()
+func (a *API) deviceDoc(d Device, streams []access.Active) DeviceDoc {
+	t := d.Mon.Snapshot()
+	reserve, capN := a.Pol.Limits(d.Name)
 	total, via := t.InUse()
-
 	free := t.TunerCount - total
 	if free < 0 {
 		free = 0
 	}
-	st := State{
+	doc := DeviceDoc{
+		Name: d.Name, Listen: d.Listen, Tuner: t, Streams: []access.Active{},
+		OwnerReserve: reserve, SharedCap: capN,
+		Summary: Summary{Total: t.TunerCount, InUse: total, Remote: via, Local: total - via, Reserved: reserve, Free: free},
+	}
+	for _, s := range streams {
+		if s.Device == d.Name {
+			doc.Streams = append(doc.Streams, s)
+		}
+	}
+	if doc.Tuner.Slots == nil {
+		doc.Tuner.Slots = []tuner.Slot{}
+	}
+	if doc.Tuner.Events == nil {
+		doc.Tuner.Events = []tuner.Event{}
+	}
+	return doc
+}
+
+func (a *API) state() State {
+	set := a.Pol.Settings()
+	streams := a.Pol.Active()
+	devices := make([]DeviceDoc, 0, len(a.Devices))
+	for _, d := range a.Devices {
+		devices = append(devices, a.deviceDoc(d, streams))
+	}
+	return State{
 		Time:    time.Now(),
-		Tuner:   t,
-		Streams: a.Pol.Active(),
+		Devices: devices,
 		Viewers: a.Pol.ViewerStatuses(),
 		Settings: SettingsDoc{
 			Mode: a.Pol.Mode(), SharedCap: set.SharedCap, OwnerReserve: set.OwnerReserve, Admin: nonNil(set.Admin),
 		},
-		Summary:  Summary{Total: t.TunerCount, InUse: total, Remote: via, Local: total - via, Reserved: set.OwnerReserve, Free: free},
 		Editable: a.Store.Editable(),
 	}
-	if st.Tuner.Slots == nil {
-		st.Tuner.Slots = []tuner.Slot{}
-	}
-	if st.Tuner.Events == nil {
-		st.Tuner.Events = []tuner.Event{}
-	}
-	return st
 }
 
 func nonNil(s []string) []string {
@@ -215,13 +251,18 @@ func (a *API) events(w http.ResponseWriter, r *http.Request) {
 // ---- viewers ----
 
 type viewerInput struct {
-	Name      string   `json:"name"`
-	Addresses []string `json:"addresses"`
-	Limit     int      `json:"limit"`
+	Name      string         `json:"name"`
+	Addresses []string       `json:"addresses"`
+	Limit     int            `json:"limit"`
+	Limits    map[string]int `json:"limits"` // per-device overrides, by device name
 }
 
 func (v viewerInput) viewer() access.Viewer {
-	return access.Viewer{Name: strings.TrimSpace(v.Name), Addresses: nonNil(v.Addresses), Limit: v.Limit}
+	var limits map[string]int
+	if len(v.Limits) > 0 {
+		limits = v.Limits
+	}
+	return access.Viewer{Name: strings.TrimSpace(v.Name), Addresses: nonNil(v.Addresses), Limit: v.Limit, Limits: limits}
 }
 
 func (a *API) listViewers(w http.ResponseWriter, r *http.Request) {
@@ -349,6 +390,61 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, a.settingsDoc())
+}
+
+// devicePatch changes only the fields that are present.
+type devicePatch struct {
+	SharedCap    *int `json:"sharedCap"`
+	OwnerReserve *int `json:"ownerReserve"`
+}
+
+// patchDevice sets a device's owner reserve and shared cap. A device declared
+// in the settings file keeps its own values; a device that comes from
+// command-line flags has none of its own, so the top-level ones are changed.
+func (a *API) patchDevice(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	var dev *Device
+	for i := range a.Devices {
+		if a.Devices[i].Name == name {
+			dev = &a.Devices[i]
+		}
+	}
+	if dev == nil {
+		writeErr(w, http.StatusNotFound, fmt.Sprintf("no device named %q", name))
+		return
+	}
+	var in devicePatch
+	if !decode(w, r, &in) {
+		return
+	}
+	_, err := a.Store.Edit(func(s *access.Settings) error {
+		for i := range s.Devices {
+			if s.Devices[i].Name != name {
+				continue
+			}
+			if in.SharedCap != nil {
+				n := *in.SharedCap
+				s.Devices[i].SharedCap = &n
+			}
+			if in.OwnerReserve != nil {
+				n := *in.OwnerReserve
+				s.Devices[i].OwnerReserve = &n
+			}
+			return nil
+		}
+		if in.SharedCap != nil {
+			s.SharedCap = *in.SharedCap
+		}
+		if in.OwnerReserve != nil {
+			s.OwnerReserve = *in.OwnerReserve
+		}
+		return nil
+	})
+	if err != nil {
+		a.fail(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, a.deviceDoc(*dev, a.Pol.Active()))
 }
 
 // ---- plumbing ----

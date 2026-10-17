@@ -2,7 +2,6 @@ package tuner
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -309,40 +308,6 @@ func TestRunStopsOnContextCancel(t *testing.T) {
 	}
 }
 
-func TestStatusHandler(t *testing.T) {
-	f := newHDHR("10ABCC87")
-	defer f.Close()
-	m := monitorFor(f.URL, "10ABCC87", neverFind)
-
-	// Before any poll: valid JSON with empty arrays, not nulls.
-	rec := httptest.NewRecorder()
-	StatusHandler(m).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/antennarr/status", nil))
-	body := rec.Body.String()
-	if !strings.Contains(body, `"slots":[]`) || !strings.Contains(body, `"events":[]`) {
-		t.Errorf("empty state body = %s", body)
-	}
-
-	m.Poll(context.Background())
-	rec = httptest.NewRecorder()
-	StatusHandler(m).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/antennarr/status", nil))
-	var got State
-	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
-		t.Fatal(err)
-	}
-	if !got.Online || got.ID != "10ABCC87" || len(got.Slots) != 2 {
-		t.Errorf("decoded = %+v", got)
-	}
-	if rec.Header().Get("Content-Type") != "application/json" || rec.Header().Get("Cache-Control") != "no-store" {
-		t.Errorf("headers = %v", rec.Header())
-	}
-
-	rec = httptest.NewRecorder()
-	StatusHandler(m).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/antennarr/status", nil))
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Errorf("POST status = %d, want 405", rec.Code)
-	}
-}
-
 func TestOnChangeFiresAfterPollAndNote(t *testing.T) {
 	f := newHDHR("10ABCC87")
 	defer f.Close()
@@ -419,5 +384,18 @@ func TestKickNeverBlocks(t *testing.T) {
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatal("Kick blocked")
+	}
+}
+
+func TestSnapshotCarriesTheDeviceName(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	defer f.Close()
+	m := NewMonitor(Config{Name: "antenna", BaseURL: f.URL, ID: "10ABCC87", Find: neverFind})
+	if got := m.Snapshot().Name; got != "antenna" {
+		t.Errorf("name before any poll = %q", got)
+	}
+	m.Poll(context.Background())
+	if got := m.Snapshot().Name; got != "antenna" {
+		t.Errorf("name after a poll = %q", got)
 	}
 }

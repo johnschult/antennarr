@@ -39,6 +39,7 @@ type Event struct {
 
 // State is a snapshot of the tuner.
 type State struct {
+	Name         string    `json:"name,omitempty"` // the device's name in Antennarr
 	Online       bool      `json:"online"`
 	ID           string    `json:"id"`
 	FriendlyName string    `json:"friendlyName,omitempty"`
@@ -70,6 +71,7 @@ type Finder func(ctx context.Context, id, lastKnown string) (discovery.Device, e
 
 // Config for a Monitor.
 type Config struct {
+	Name       string        // the device's name, shown in the UI
 	BaseURL    string        // where to look first
 	ID         string        // DeviceID to follow; learned from BaseURL if empty
 	StreamPort string        // tuner's streaming port, default 5004
@@ -116,7 +118,7 @@ func NewMonitor(cfg Config) *Monitor {
 		cfg.Logger = slog.Default()
 	}
 	m := &Monitor{cfg: cfg, client: &http.Client{Timeout: 3 * time.Second}, log: cfg.Logger, kick: make(chan struct{}, 1)}
-	m.st = State{ID: strings.ToUpper(cfg.ID), BaseURL: discovery.NormalizeBase(cfg.BaseURL), Since: time.Now()}
+	m.st = State{Name: cfg.Name, ID: strings.ToUpper(cfg.ID), BaseURL: discovery.NormalizeBase(cfg.BaseURL), Since: time.Now()}
 	if cfg.Find == nil {
 		m.cfg.Find = m.defaultFind
 	}

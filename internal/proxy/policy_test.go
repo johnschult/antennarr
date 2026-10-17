@@ -41,6 +41,16 @@ func (f *fakePolicy) TunerCount(_ *http.Request, real int) int {
 }
 func (f *fakePolicy) releasedCount() int { f.mu.Lock(); defer f.mu.Unlock(); return f.released }
 
+// waitReleased waits for the slot to be given back. That happens when the
+// handler returns, which can be a moment after the client has its response.
+func (f *fakePolicy) waitReleased(want int) int {
+	deadline := time.Now().Add(2 * time.Second)
+	for f.releasedCount() < want && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	return f.releasedCount()
+}
+
 func proxyWithPolicy(t *testing.T, f *fakeTuner, pol Policy) *httptest.Server {
 	t.Helper()
 	api, _ := url.Parse(f.api.URL)
@@ -127,12 +137,8 @@ func TestPolicyReleasesWhenViewerDisconnects(t *testing.T) {
 
 	cancel()
 	resp.Body.Close()
-	deadline := time.Now().Add(2 * time.Second)
-	for pol.releasedCount() == 0 && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	if pol.releasedCount() != 1 {
-		t.Errorf("released %d times after disconnect, want exactly 1", pol.releasedCount())
+	if n := pol.waitReleased(1); n != 1 {
+		t.Errorf("released %d times after disconnect, want exactly 1", n)
 	}
 }
 
@@ -161,8 +167,8 @@ func TestPolicyReleasesWhenTunerRefuses(t *testing.T) {
 	if resp.StatusCode != 503 || opened.Load() != 1 {
 		t.Errorf("status %d, tuner opened %d times", resp.StatusCode, opened.Load())
 	}
-	if pol.releasedCount() != 1 {
-		t.Errorf("released %d times, want 1 (a busy tuner must not leak our slot)", pol.releasedCount())
+	if n := pol.waitReleased(1); n != 1 {
+		t.Errorf("released %d times, want 1 (a busy tuner must not leak our slot)", n)
 	}
 }
 
