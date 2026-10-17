@@ -22,6 +22,12 @@ function StreamSparkline({ bps, tick }: { bps?: number; tick: unknown }) {
   return <Sparkline data={history} height={28} label="Bitrate" />
 }
 
+/** Where a stream is going, for the footer; the pill already says who it is. */
+function where({ slot, owner, stream }: Tile): string {
+  if (owner.kind === 'local') return slot?.targetIP ?? 'Local device'
+  return stream?.client.replace(/:\d+$/, '') ?? ''
+}
+
 interface TileProps {
   tile: Tile
   dimmed?: boolean
@@ -78,7 +84,7 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
             <StreamSparkline key={`${slot.channel}|${slot.targetIP}|${owner.kind}`} bps={slot.bitsPerSecond} tick={tick} />
           </div>
           <div className="mt-2 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-            <span className="truncate">{owner.kind === 'local' ? (slot.targetIP ?? 'Local device') : ownerLabel(owner)}</span>
+            <span className="truncate">{where(tile)}</span>
             <span className="tabular-nums">{formatMbps(slot.bitsPerSecond)}</span>
           </div>
         </>

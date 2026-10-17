@@ -12,9 +12,19 @@ describe('TunerTile', () => {
     expect(screen.getByText('TUNER 2')).toBeInTheDocument()
     expect(screen.getByText('5.1')).toBeInTheDocument()
     expect(screen.getByText('WFRV')).toBeInTheDocument()
-    expect(screen.getAllByText('John')).toHaveLength(2) // the badge and the footer
+    expect(screen.getAllByText('John')).toHaveLength(1) // the name is in the pill only; the footer says where it is going
     expect(screen.getByText('14 Mbps')).toBeInTheDocument()
     expect(screen.getByTestId('tuner-tile')).toHaveAttribute('data-owner', 'viewer')
+  })
+
+  it("shows where a viewer's stream is going, without the port, and nothing when it can't tell", () => {
+    const stream = { id: 1, device: 'antenna', viewer: 'John', client: '100.67.117.32:4000', path: '/auto/v5.1', channel: '5.1', started: '2026-10-17T10:00:00Z' }
+    const { rerender } = render(<TunerTile tile={tile({ slot: remoteSlot(1), owner: { kind: 'viewer', viewer: 'John' }, stream })} />)
+    expect(screen.getByText('100.67.117.32')).toBeInTheDocument()
+    expect(screen.queryByText(/:4000/)).not.toBeInTheDocument()
+
+    rerender(<TunerTile tile={tile({ slot: remoteSlot(1), owner: { kind: 'remote' } })} />)
+    expect(screen.getAllByText('Remote')).toHaveLength(1) // the pill; the footer doesn't repeat it
   })
 
   it("shows the owner's own device by its address", () => {
