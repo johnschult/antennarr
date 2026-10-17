@@ -21,6 +21,7 @@ export interface TunerEvent {
 }
 
 export interface TunerState {
+  name?: string
   online: boolean
   id: string
   friendlyName?: string
@@ -35,6 +36,7 @@ export interface TunerState {
 
 export interface Stream {
   id: number
+  device: string
   viewer: string
   client: string
   path: string
@@ -45,8 +47,12 @@ export interface Stream {
 export interface Viewer {
   name: string
   addresses: string[]
+  /** Tuners at once on a device, unless `limits` says otherwise for it. */
   limit: number
+  /** Per-device overrides, by device name. */
+  limits?: Record<string, number>
   inUse: number
+  inUseByDevice: Record<string, number>
   lastSeen: string | null
 }
 
@@ -66,13 +72,23 @@ export interface Summary {
   free: number
 }
 
-export interface AppState {
-  time: string
+/** One HDHomeRun that Antennarr fronts. */
+export interface DeviceState {
+  name: string
+  listen: string
   tuner: TunerState
   streams: Stream[]
+  summary: Summary
+  /** The values in force for this device (its own, or the defaults). */
+  ownerReserve: number
+  sharedCap: number
+}
+
+export interface AppState {
+  time: string
+  devices: DeviceState[]
   viewers: Viewer[]
   settings: Settings
-  summary: Summary
   editable: boolean
 }
 
@@ -80,10 +96,16 @@ export interface ViewerInput {
   name: string
   addresses: string[]
   limit: number
+  limits?: Record<string, number>
 }
 
 export interface SettingsPatch {
   sharedCap?: number
   ownerReserve?: number
   admin?: string[]
+}
+
+export interface DevicePatch {
+  sharedCap?: number
+  ownerReserve?: number
 }

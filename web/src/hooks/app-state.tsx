@@ -20,8 +20,9 @@ function Splash({ error }: { error?: Error | null }) {
   return (
     <div className="grid min-h-screen place-items-center px-4">
       <div className="max-w-md text-center">
-        <div className="mx-auto mb-4 w-fit">
-          <Logo size={48} />
+        <div className="mx-auto mb-4 flex w-fit items-end gap-3">
+          <Logo size={56} />
+          <span className="font-wordmark pb-2 text-4xl leading-none font-bold tracking-[0.02em]">Antennarr</span>
         </div>
         {!error ? (
           <p className="text-muted-foreground">Connecting to Antennarr…</p>

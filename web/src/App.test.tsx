@@ -1,7 +1,7 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { App } from '@/App'
-import { makeState } from '@/test/fixtures'
+import { makeState, makeTwoDeviceState } from '@/test/fixtures'
 import { renderWithApp } from '@/test/render'
 
 describe('App routes', () => {
@@ -35,5 +35,16 @@ describe('App routes', () => {
     unmount()
     renderWithApp(<App />, makeState(), { connected: false })
     expect(screen.getByTestId('connection')).toHaveTextContent('Reconnecting…')
+  })
+
+  it('summarises several devices in the header, one dot each', () => {
+    const s = makeTwoDeviceState()
+    s.devices[1].tuner.online = false
+    renderWithApp(<App />, s)
+    expect(screen.getByText('2 tuners')).toBeInTheDocument()
+    expect(screen.getByTitle('antenna: online')).toBeInTheDocument()
+    expect(screen.getByTitle('cable: offline')).toBeInTheDocument()
+    // the header shows dots, not one tuner's name (the page below does name each device)
+    expect(within(screen.getByRole('banner')).queryByText(/Steve FLEX 4K/)).not.toBeInTheDocument()
   })
 })

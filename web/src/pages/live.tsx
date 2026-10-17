@@ -4,8 +4,8 @@ import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/hooks/app-context'
 import { useHistory } from '@/hooks/use-history'
 import { formatMbps, timeAgo } from '@/lib/format'
-import { buildTiles } from '@/lib/slots'
-import type { EventKind, Viewer } from '@/lib/types'
+import { buildTiles, limitFor } from '@/lib/slots'
+import type { DeviceState, EventKind, TunerEvent, Viewer } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const dot: Record<EventKind, string> = {
@@ -15,34 +15,42 @@ const dot: Record<EventKind, string> = {
   err: 'bg-red-400',
 }
 
+const sum = <T,>(xs: T[], f: (x: T) => number) => xs.reduce((a, x) => a + f(x), 0)
+
 export function LivePage() {
   const { state } = useApp()
-  const { summary, tuner, viewers } = state
-  const tiles = buildTiles(state)
+  const { devices, viewers } = state
+  const several = devices.length > 1
 
-  const remoteBps = tuner.slots.filter((s) => s.inUse && s.viaAntennarr).reduce((a, s) => a + (s.bitsPerSecond ?? 0), 0)
-  const totalBps = tuner.slots.reduce((a, s) => a + (s.bitsPerSecond ?? 0), 0)
+  const slots = devices.flatMap((d) => d.tuner.slots)
+  const remoteBps = sum(slots.filter((s) => s.inUse && s.viaAntennarr), (s) => s.bitsPerSecond ?? 0)
+  const totalBps = sum(slots, (s) => s.bitsPerSecond ?? 0)
   const history = useHistory(remoteBps / 1_000_000, state.time)
 
   const parts = [
-    `${summary.remote} remote`,
-    `${summary.local} local`,
-    `${summary.reserved} held for you`,
+    `${sum(devices, (d) => d.summary.remote)} remote`,
+    `${sum(devices, (d) => d.summary.local)} local`,
+    `${sum(devices, (d) => d.summary.reserved)} held for you`,
     formatMbps(totalBps),
   ]
+
+  // Events from every device, newest first, tagged with where they happened.
+  const events: (TunerEvent & { device: string })[] = devices
+    .flatMap((d) => d.tuner.events.map((e) => ({ ...e, device: d.name })))
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <div className="text-xs tracking-[0.2em] text-cyan-300/80 uppercase">On air now</div>
+          <div className="text-xs tracking-[0.2em] text-cyan-700 dark:text-cyan-700 dark:text-cyan-300/80 uppercase">On air now</div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            {summary.inUse} of {summary.total} tuners live
+            {sum(devices, (d) => d.summary.inUse)} of {sum(devices, (d) => d.summary.total)} tuners live
           </h1>
-          <p className="mt-1 text-zinc-400">{parts.join(' · ')}</p>
+          <p className="mt-1 text-muted-foreground">{parts.join(' · ')}</p>
         </div>
         <div className="w-full sm:w-72">
-          <div className="mb-1 flex justify-between text-xs text-zinc-500">
+          <div className="mb-1 flex justify-between text-xs text-muted-foreground">
             <span>upload to viewers</span>
             <span className="tabular-nums">{formatMbps(remoteBps)}</span>
           </div>
@@ -50,23 +58,21 @@ export function LivePage() {
         </div>
       </div>
 
-      <section aria-label="Tuners" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {tiles.map((t) => (
-          <TunerTile key={t.index} tile={t} dimmed={!tuner.online} />
-        ))}
-      </section>
+      {devices.map((d) => (
+        <DeviceSection key={d.name} device={d} showHeader={several} />
+      ))}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section>
           <h2 className="mb-3 text-sm font-semibold">Viewers</h2>
           {viewers.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-zinc-800 px-4 py-6 text-sm text-zinc-500">
-              No viewers yet. Anyone who can reach this port may use the tuner.
+            <p className="rounded-xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+              No viewers yet. Anyone who can reach {several ? 'these ports' : 'this port'} may use {several ? 'the tuners' : 'the tuner'}.
             </p>
           ) : (
             <div className="space-y-2">
               {viewers.map((v) => (
-                <ViewerRow key={v.name} v={v} />
+                <ViewerRow key={v.name} v={v} devices={devices} />
               ))}
             </div>
           )}
@@ -74,15 +80,18 @@ export function LivePage() {
 
         <section>
           <h2 className="mb-3 text-sm font-semibold">Timeline</h2>
-          {tuner.events.length === 0 ? (
-            <p className="text-sm text-zinc-500">Nothing has happened yet.</p>
+          {events.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing has happened yet.</p>
           ) : (
-            <ol className="relative ml-2 space-y-5 border-l border-zinc-800">
-              {[...tuner.events].reverse().map((e, i) => (
-                <li key={`${e.time}-${i}`} className="relative pl-5">
-                  <span className={cn('absolute top-1.5 -left-[5px] size-2.5 rounded-full ring-4 ring-zinc-950', dot[e.kind])} />
+            <ol className="relative ml-2 space-y-5 border-l border-border">
+              {events.map((e, i) => (
+                <li key={`${e.device}-${e.time}-${i}`} className="relative pl-5">
+                  <span className={cn('absolute top-1.5 -left-[5px] size-2.5 rounded-full ring-4 ring-background', dot[e.kind])} />
                   <div className="text-sm">{e.text}</div>
-                  <div className="text-xs text-zinc-500">{timeAgo(e.time)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {timeAgo(e.time)}
+                    {several && ` · ${e.device}`}
+                  </div>
                 </li>
               ))}
             </ol>
@@ -93,22 +102,59 @@ export function LivePage() {
   )
 }
 
-function ViewerRow({ v }: { v: Viewer }) {
+function DeviceSection({ device, showHeader }: { device: DeviceState; showHeader: boolean }) {
+  const { tuner, summary } = device
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3">
+    <section aria-label={showHeader ? `Tuners on ${device.name}` : 'Tuners'} className="space-y-3">
+      {showHeader && (
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <span className={cn('size-2 rounded-full', tuner.online ? 'bg-emerald-400' : 'bg-red-400')} />
+            {device.name}
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            {tuner.friendlyName ?? 'Tuner'} · {summary.inUse} of {summary.total} live
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">{tuner.baseURL.replace(/^https?:\/\//, '')}</span>
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {buildTiles(device).map((t) => (
+          <TunerTile key={t.index} tile={t} dimmed={!tuner.online} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ViewerRow({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
+  const several = devices.length > 1
+  return (
+    <div className="flex items-center gap-4 rounded-xl border border-border bg-card/70 px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 font-medium">
           {v.name}
-          {v.inUse > 0 && <Badge className="bg-emerald-500/15 text-emerald-300">Watching</Badge>}
+          {v.inUse > 0 && <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Watching</Badge>}
         </div>
-        <div className="truncate text-xs text-zinc-500">
+        <div className="truncate text-xs text-muted-foreground">
           {v.addresses.join(', ')} · {v.lastSeen ? `seen ${timeAgo(v.lastSeen)}` : 'waiting for first contact'}
         </div>
       </div>
-      <div className="flex gap-1" role="img" aria-label={`${v.inUse} of ${v.limit} tuners in use`}>
-        {Array.from({ length: v.limit }).map((_, i) => (
-          <div key={i} className={cn('h-6 w-3 rounded-sm', i < v.inUse ? 'bg-cyan-400' : 'bg-zinc-800')} />
-        ))}
+      <div className="flex flex-col items-end gap-1.5">
+        {devices.map((d) => {
+          const limit = limitFor(v, d.name)
+          const inUse = v.inUseByDevice?.[d.name] ?? 0
+          return (
+            <div key={d.name} className="flex items-center gap-2">
+              {several && <span className="text-xs text-muted-foreground">{d.name}</span>}
+              <div className="flex gap-1" role="img" aria-label={`${several ? `${d.name}: ` : ''}${inUse} of ${limit} tuners in use`}>
+                {Array.from({ length: limit }).map((_, i) => (
+                  <div key={i} className={cn('h-6 w-3 rounded-sm', i < inUse ? 'bg-cyan-400' : 'bg-muted')} />
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

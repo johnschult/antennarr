@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { john, makeState, mom } from '@/test/fixtures'
+import { john, makeState, makeTwoDeviceState, mom } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { ViewersPage } from './viewers'
 
@@ -223,6 +223,111 @@ describe('ViewersPage', () => {
       await user.click(within(dialog).getByRole('button', { name: 'Remove' }))
       expect(await within(dialog).findByRole('alert')).toHaveTextContent('no viewer named "Mom"')
       expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    })
+  })
+
+  describe('with several devices', () => {
+    it("shows a viewer's use on each device, honouring per-device limits", () => {
+      renderWithApp(<ViewersPage />, makeTwoDeviceState())
+      const john = row('John')
+      expect(within(john).getByText('antenna')).toBeInTheDocument()
+      expect(within(john).getByText('1/2')).toBeInTheDocument() // antenna: default 2
+      expect(within(john).getByText('0/2')).toBeInTheDocument() // cable: override 2
+      expect(within(row('Mom')).getAllByText('0/1')).toHaveLength(2) // limit 1 on each of the two devices
+    })
+
+    it('only offers per-device limits when there is more than one device', async () => {
+      vi.stubGlobal('fetch', stubFetch({}).fn)
+      const user = userEvent.setup()
+      const { unmount } = renderWithApp(<ViewersPage />, makeState())
+      await user.click(screen.getByRole('button', { name: /Add viewer/ }))
+      expect(await screen.findByLabelText('Tuners at once')).toBeInTheDocument()
+      expect(screen.queryByText(/Per device/)).not.toBeInTheDocument()
+      unmount()
+
+      renderWithApp(<ViewersPage />, makeTwoDeviceState())
+      await user.click(screen.getByRole('button', { name: /Add viewer/ }))
+      expect(await screen.findByLabelText('Tuners at once (default)')).toBeInTheDocument()
+      expect(screen.getByLabelText('Tuners on antenna')).toBeInTheDocument()
+      expect(screen.getByLabelText('Tuners on cable')).toBeInTheDocument()
+    })
+
+    it('sends only the per-device limits that were filled in', async () => {
+      const { fn, calls } = stubFetch({ 'POST /viewers': () => ({ status: 201, body: {} }), 'GET /state': () => ({ body: makeState() }) })
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      renderWithApp(<ViewersPage />, makeTwoDeviceState())
+
+      await user.click(screen.getByRole('button', { name: /Add viewer/ }))
+      const dialog = await screen.findByRole('dialog')
+      await user.type(within(dialog).getByLabelText('Name'), 'Cabin')
+      await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.6')
+      await user.type(within(dialog).getByLabelText('Tuners on cable'), '3') // antenna left blank: uses the default
+      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+
+      await waitFor(() => expect(calls.find((c) => c.method === 'POST')).toBeDefined())
+      expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'Cabin', addresses: ['10.9.0.6'], limit: 1, limits: { cable: 3 } })
+    })
+
+    it('treats an explicit 0 as a limit, and a blank box as "use the default"', async () => {
+      const { fn, calls } = stubFetch({ 'POST /viewers': () => ({ status: 201, body: {} }), 'GET /state': () => ({ body: makeState() }) })
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      renderWithApp(<ViewersPage />, makeTwoDeviceState())
+
+      await user.click(screen.getByRole('button', { name: /Add viewer/ }))
+      const dialog = await screen.findByRole('dialog')
+      await user.type(within(dialog).getByLabelText('Name'), 'Guest')
+      await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.7')
+      await user.type(within(dialog).getByLabelText('Tuners on antenna'), '0') // paused on the antenna box only
+      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+
+      await waitFor(() => expect(calls.find((c) => c.method === 'POST')).toBeDefined())
+      expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({ limits: { antenna: 0 } })
+    })
+
+    it('prefills overrides when editing, and clears them when emptied', async () => {
+      const { fn, calls } = stubFetch({ 'PUT /viewers/John': () => ({ body: {} }), 'GET /state': () => ({ body: makeState() }) })
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      renderWithApp(<ViewersPage />, makeTwoDeviceState())
+
+      await user.click(screen.getByRole('button', { name: 'Edit John' }))
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByLabelText('Tuners on cable')).toHaveValue(2) // John's override
+      expect(within(dialog).getByLabelText('Tuners on antenna')).toHaveValue(null) // none: default
+
+      await user.clear(within(dialog).getByLabelText('Tuners on cable'))
+      await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(calls.find((c) => c.method === 'PUT')).toBeDefined())
+      expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ name: 'John', addresses: ['100.67.117.32'], limit: 2, limits: {} })
+    })
+
+    it('rejects a bad per-device limit, naming the device', async () => {
+      const { fn, calls } = stubFetch({})
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      renderWithApp(<ViewersPage />, makeTwoDeviceState())
+
+      await user.click(screen.getByRole('button', { name: /Add viewer/ }))
+      const dialog = await screen.findByRole('dialog')
+      await user.type(within(dialog).getByLabelText('Name'), 'X')
+      await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.8')
+      await user.type(within(dialog).getByLabelText('Tuners on cable'), '-2')
+      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('The limit for cable must be 0 or more.')
+      expect(calls).toHaveLength(0)
+    })
+
+    it('shows a viewer as paused only when every device is paused', () => {
+      const s = makeTwoDeviceState()
+      s.viewers = [
+        { ...mom, name: 'OnePaused', limit: 0, limits: { cable: 1 } }, // paused on antenna, allowed on cable
+        { ...mom, name: 'AllPaused', limit: 0 },
+      ]
+      renderWithApp(<ViewersPage />, s)
+      expect(within(row('AllPaused')).getByText('Paused')).toBeInTheDocument()
+      expect(within(row('OnePaused')).queryByText('Paused')).not.toBeInTheDocument()
     })
   })
 })

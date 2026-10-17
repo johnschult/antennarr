@@ -10,8 +10,8 @@ function Banner({ tone, icon, children }: { tone: 'amber' | 'red'; icon: ReactNo
       role="status"
       className={cn(
         'flex items-start gap-3 rounded-xl border px-4 py-3 text-sm',
-        tone === 'amber' && 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-        tone === 'red' && 'border-red-500/30 bg-red-500/10 text-red-200',
+        tone === 'amber' && 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200',
+        tone === 'red' && 'border-red-500/30 bg-red-500/10 text-red-900 dark:text-red-200',
       )}
     >
       <span className="mt-0.5 shrink-0">{icon}</span>
@@ -22,17 +22,31 @@ function Banner({ tone, icon, children }: { tone: 'amber' | 'red'; icon: ReactNo
 
 /** The notices that belong at the top of every page. */
 export function Banners({ state }: { state: AppState }) {
+  const offline = state.devices.filter((d) => !d.tuner.online)
+  const several = state.devices.length > 1
+
   return (
     <>
-      {!state.tuner.online && (
+      {offline.length > 0 && (
         <Banner tone="red" icon={<WifiOff className="size-4" />}>
-          <strong>The tuner is offline.</strong> Antennarr will keep looking for it
-          {state.tuner.id ? ` (DeviceID ${state.tuner.id})` : ''} and follow it if it changes address.
+          {several ? (
+            <>
+              <strong>{offline.length === 1 ? 'A tuner is offline' : `${offline.length} tuners are offline`}:</strong>{' '}
+              {offline.map((d) => d.name).join(', ')}.
+            </>
+          ) : (
+            <>
+              <strong>The tuner is offline.</strong>
+              {offline[0].tuner.id ? ` (DeviceID ${offline[0].tuner.id})` : ''}
+            </>
+          )}{' '}
+          Antennarr will keep looking and follow {several ? 'them' : 'it'} if the address changes.
         </Banner>
       )}
       {state.settings.mode === 'open' && (
         <Banner tone="amber" icon={<AlertTriangle className="size-4" />}>
-          <strong>Anyone who can reach this port can use your tuner.</strong> No viewers are set up yet.{' '}
+          <strong>Anyone who can reach {several ? 'these ports' : 'this port'} can use your {several ? 'tuners' : 'tuner'}.</strong>{' '}
+          No viewers are set up yet.{' '}
           <Link to="/viewers" className="underline underline-offset-2">
             Add a viewer
           </Link>{' '}

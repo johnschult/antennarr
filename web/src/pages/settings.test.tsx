@@ -1,7 +1,7 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { makeState } from '@/test/fixtures'
+import { makeState, makeTwoDeviceState } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { SettingsPage } from './settings'
 
@@ -9,7 +9,9 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 2, ownerReserve: 1, admin: ['100.64.0.0/10'] }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'] }
+  s.devices[0].ownerReserve = 1
+  s.devices[0].sharedCap = 2
   return s
 }
 const saveFor = (title: string) => screen.getByText(title).closest('[data-slot="card"]')!.querySelector('button[type="submit"]') as HTMLElement
@@ -33,7 +35,7 @@ describe('SettingsPage', () => {
 
   it('saves only the field that was changed', async () => {
     const { fn, calls } = stubFetch({
-      'PATCH /settings': () => ({ body: {} }),
+      'PATCH /devices/antenna': () => ({ body: {} }),
       'GET /state': () => ({ body: makeState() }),
     })
     vi.stubGlobal('fetch', fn)
@@ -50,7 +52,7 @@ describe('SettingsPage', () => {
   })
 
   it('sends zero when the cap is cleared to 0, which means "no cap"', async () => {
-    const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), 'GET /state': () => ({ body: makeState() }) })
+    const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), 'GET /state': () => ({ body: makeState() }) })
     vi.stubGlobal('fetch', fn)
     const user = userEvent.setup()
     renderWithApp(<SettingsPage />, state())
@@ -119,5 +121,40 @@ describe('SettingsPage', () => {
     expect(screen.getByLabelText('Tuners for viewers')).toBeDisabled()
     expect(screen.getByLabelText('Admin addresses')).toBeDisabled()
     for (const t of ['Owner reserve', 'Shared cap', 'Admin access']) expect(saveFor(t)).toBeDisabled()
+  })
+
+  describe('with several devices', () => {
+    const card = (title: string) => screen.getByText(title).closest('[data-slot="card"]') as HTMLElement
+
+    it('has an owner reserve and a shared cap for each device, with that device\'s values', () => {
+      const s = makeTwoDeviceState()
+      s.devices[0].sharedCap = 2
+      renderWithApp(<SettingsPage />, s)
+      expect(within(card('Owner reserve — antenna')).getByLabelText('Tuners to keep free')).toHaveValue(1)
+      expect(within(card('Owner reserve — cable')).getByLabelText('Tuners to keep free')).toHaveValue(0)
+      expect(within(card('Shared cap — antenna')).getByLabelText('Tuners for viewers')).toHaveValue(2)
+      expect(within(card('Shared cap — cable')).getByLabelText('Tuners for viewers')).toHaveValue(0)
+      expect(screen.getByText('cable has 2.')).toBeInTheDocument()
+    })
+
+    it("saves a device's value on that device only", async () => {
+      const { fn, calls } = stubFetch({ 'PATCH /devices/cable': () => ({ body: {} }), 'GET /state': () => ({ body: makeState() }) })
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      renderWithApp(<SettingsPage />, makeTwoDeviceState())
+
+      const box = within(card('Owner reserve — cable')).getByLabelText('Tuners to keep free')
+      await user.clear(box)
+      await user.type(box, '1')
+      await user.click(within(card('Owner reserve — cable')).getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')).toBeDefined())
+      expect(calls.find((c) => c.method === 'PATCH')).toMatchObject({ url: expect.stringContaining('/devices/cable'), body: { ownerReserve: 1 } })
+    })
+
+    it('lists where each device listens', () => {
+      renderWithApp(<SettingsPage />, makeTwoDeviceState())
+      expect(screen.getByText('antenna listens on :5004')).toBeInTheDocument()
+      expect(screen.getByText('cable listens on :5005')).toBeInTheDocument()
+    })
   })
 })

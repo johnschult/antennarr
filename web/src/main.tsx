@@ -6,12 +6,14 @@ import { App } from '@/App'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppStateProvider } from '@/hooks/app-state'
+import { ThemeProvider } from '@/hooks/theme-provider'
 import './index.css'
 
 const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <ThemeProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
@@ -22,5 +24,6 @@ createRoot(document.getElementById('root')!).render(
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

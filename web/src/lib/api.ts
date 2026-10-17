@@ -1,4 +1,4 @@
-import type { AppState, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
+import type { AppState, DevicePatch, DeviceState, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -47,3 +47,5 @@ export const replaceViewer = (name: string, v: ViewerInput) =>
 export const deleteViewer = (name: string, allowOpen = false) =>
   request<void>('DELETE', `/viewers/${encodeURIComponent(name)}${allowOpen ? '?allowOpen=true' : ''}`)
 export const patchSettings = (p: SettingsPatch) => request<Settings>('PATCH', '/settings', p)
+export const patchDevice = (name: string, p: DevicePatch) =>
+  request<DeviceState>('PATCH', `/devices/${encodeURIComponent(name)}`, p)

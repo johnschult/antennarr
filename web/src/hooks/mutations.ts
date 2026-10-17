@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addViewer, deleteViewer, patchSettings, replaceViewer } from '@/lib/api'
-import type { SettingsPatch, ViewerInput } from '@/lib/types'
+import { addViewer, deleteViewer, patchDevice, patchSettings, replaceViewer } from '@/lib/api'
+import type { DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
 
 /**
@@ -41,5 +41,12 @@ export function useEdits() {
       void refresh()
     },
   })
-  return { add, replace, remove, settings }
+  const device = useMutation({
+    mutationFn: ({ name, patch }: { name: string; patch: DevicePatch }) => patchDevice(name, patch),
+    onSuccess: () => {
+      toast.success('Settings saved')
+      void refresh()
+    },
+  })
+  return { add, replace, remove, settings, device }
 }

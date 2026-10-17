@@ -15,15 +15,15 @@ export function Sparkline({ data, height = 48, max, label = 'Recent upload' }: P
   const pts = data.map((v, i) => [(i / (data.length - 1)) * w, height - (v / top) * (height - 4) - 2] as const)
   const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
   return (
-    <svg role="img" aria-label={label} viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }}>
+    <svg role="img" aria-label={label} viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="w-full text-cyan-600 dark:text-cyan-400" style={{ height }}>
       <defs>
         <linearGradient id="spark" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#22d3ee" stopOpacity=".35" />
-          <stop offset="1" stopColor="#22d3ee" stopOpacity="0" />
+          <stop offset="0" stopColor="currentColor" stopOpacity=".35" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={`${line} L${w} ${height} L0 ${height} Z`} fill="url(#spark)" />
-      <path d={line} stroke="#22d3ee" strokeWidth="1.5" fill="none" vectorEffect="non-scaling-stroke" />
+      <path d={line} stroke="currentColor" strokeWidth="1.5" fill="none" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }

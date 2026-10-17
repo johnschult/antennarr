@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { idleSlot, localSlot, makeState, remoteSlot } from '@/test/fixtures'
+import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot } from '@/test/fixtures'
 import { renderWithApp } from '@/test/render'
 import { TunerPage } from './tuner'
 
@@ -16,7 +16,7 @@ describe('TunerPage', () => {
 
   it('lists each tuner and who is using it', () => {
     const s = makeState()
-    s.tuner.slots = [
+    s.devices[0].tuner.slots = [
       { ...localSlot(0), signalStrength: 90, signalQuality: 100 },
       { ...remoteSlot(1), signalStrength: 85, signalQuality: 95 },
       idleSlot(2),
@@ -35,10 +35,22 @@ describe('TunerPage', () => {
 
   it('copes with a tuner that has never been seen', () => {
     const s = makeState()
-    s.tuner = { ...s.tuner, online: false, id: '', friendlyName: undefined, model: undefined, slots: [] }
+    s.devices[0].tuner = { ...s.devices[0].tuner, online: false, id: '', friendlyName: undefined, model: undefined, slots: [] }
     renderWithApp(<TunerPage />, s)
     expect(screen.getByText('Not yet seen')).toBeInTheDocument()
     expect(screen.getByText('Offline')).toBeInTheDocument()
     expect(screen.getByText('No tuner data yet.')).toBeInTheDocument()
+  })
+
+  it('has a section for each device when there are several', () => {
+    renderWithApp(<TunerPage />, makeTwoDeviceState())
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
+    const antenna = screen.getByRole('region', { name: 'antenna' })
+    const cable = screen.getByRole('region', { name: 'cable' })
+    expect(within(antenna).getByText('10ABCC87')).toBeInTheDocument()
+    expect(within(cable).getByText('1111AAA2')).toBeInTheDocument()
+    expect(within(cable).getByText('HDHR5-4DT')).toBeInTheDocument()
+    expect(within(antenna).getAllByRole('row')).toHaveLength(5) // header + 4 tuners
+    expect(within(cable).getAllByRole('row')).toHaveLength(3) // header + 2 tuners
   })
 })

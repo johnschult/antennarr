@@ -2,10 +2,26 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useApp } from '@/hooks/app-context'
 import { formatMbps, timeAgo } from '@/lib/format'
+import type { DeviceState } from '@/lib/types'
 
 export function TunerPage() {
   const { state } = useApp()
-  const { tuner } = state
+  const several = state.devices.length > 1
+  return (
+    <div className="space-y-10">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight">{several ? 'Tuners' : 'Tuner'}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Antennarr follows a tuner if its address changes.</p>
+      </div>
+      {state.devices.map((d) => (
+        <DeviceDetails key={d.name} device={d} showName={several} />
+      ))}
+    </div>
+  )
+}
+
+function DeviceDetails({ device, showName }: { device: DeviceState; showName: boolean }) {
+  const { tuner } = device
   const facts: [string, string][] = [
     ['Device', tuner.friendlyName ?? 'Unknown'],
     ['Model', tuner.model ?? 'Unknown'],
@@ -16,30 +32,25 @@ export function TunerPage() {
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">Tuner</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Found by DeviceID, so Antennarr follows it if its address changes.
-        </p>
-      </div>
+    <section aria-label={showName ? device.name : undefined} className="space-y-4">
+      {showName && <h2 className="text-lg font-semibold tracking-tight">{device.name}</h2>}
 
-      <dl className="grid gap-5 rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 text-sm sm:grid-cols-2 xl:grid-cols-3">
+      <dl className="grid gap-5 rounded-xl border border-border bg-card/70 p-5 text-sm sm:grid-cols-2 xl:grid-cols-3">
         {facts.map(([k, v]) => (
           <div key={k}>
-            <dt className="text-xs text-zinc-500">{k}</dt>
+            <dt className="text-xs text-muted-foreground">{k}</dt>
             <dd className="mt-0.5 font-mono text-[13px] font-medium">{v}</dd>
           </div>
         ))}
         <div>
-          <dt className="text-xs text-zinc-500">Status</dt>
+          <dt className="text-xs text-muted-foreground">Status</dt>
           <dd className="mt-0.5">
-            {tuner.online ? <Badge className="bg-emerald-500/15 text-emerald-300">Online</Badge> : <Badge className="bg-red-500/15 text-red-300">Offline</Badge>}
+            {tuner.online ? <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Online</Badge> : <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>}
           </dd>
         </div>
       </dl>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50">
+      <div className="rounded-xl border border-border bg-card/70">
         <Table>
           <TableHeader>
             <TableRow>
@@ -53,7 +64,7 @@ export function TunerPage() {
           <TableBody>
             {tuner.slots.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-zinc-500">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No tuner data yet.
                 </TableCell>
               </TableRow>
@@ -61,7 +72,7 @@ export function TunerPage() {
             {tuner.slots.map((s) => (
               <TableRow key={s.resource}>
                 <TableCell className="font-mono text-xs">{s.resource}</TableCell>
-                <TableCell>{s.inUse ? `${s.channel ?? '—'} ${s.channelName ?? ''}` : <span className="text-zinc-500">idle</span>}</TableCell>
+                <TableCell>{s.inUse ? `${s.channel ?? '—'} ${s.channelName ?? ''}` : <span className="text-muted-foreground">idle</span>}</TableCell>
                 <TableCell>{s.inUse ? (s.viaAntennarr ? 'Antennarr' : (s.targetIP ?? 'Local device')) : '—'}</TableCell>
                 <TableCell className="tabular-nums">
                   {s.inUse && s.signalStrength !== undefined ? `${s.signalStrength}% / ${s.signalQuality ?? 0}%` : '—'}
@@ -72,6 +83,6 @@ export function TunerPage() {
           </TableBody>
         </Table>
       </div>
-    </div>
+    </section>
   )
 }

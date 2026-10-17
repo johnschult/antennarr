@@ -38,13 +38,13 @@ describe('useLiveState', () => {
 
   it('replaces the state with each event pushed by the server', async () => {
     const { result } = renderHook(() => useLiveState(), { wrapper })
-    await waitFor(() => expect(result.current.state?.summary.inUse).toBe(2))
+    await waitFor(() => expect(result.current.state?.devices[0].summary.inUse).toBe(2))
 
     const next = makeState()
-    next.summary = { ...next.summary, inUse: 3 }
+    next.devices[0].summary = { ...next.devices[0].summary, inUse: 3 }
     act(() => FakeEventSource.last().emit('state', next))
 
-    await waitFor(() => expect(result.current.state?.summary.inUse).toBe(3))
+    await waitFor(() => expect(result.current.state?.devices[0].summary.inUse).toBe(3))
     expect(result.current.connected).toBe(true) // receiving events means the stream is up
   })
 
@@ -54,7 +54,7 @@ describe('useLiveState', () => {
     await waitFor(() => expect(result.current.error).toBeTruthy())
 
     act(() => FakeEventSource.last().emit('state', makeState()))
-    await waitFor(() => expect(result.current.state?.tuner.id).toBe('10ABCC87'))
+    await waitFor(() => expect(result.current.state?.devices[0].tuner.id).toBe('10ABCC87'))
   })
 
   it('closes the stream when unmounted', () => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, addViewer, deleteViewer, getState, patchSettings, replaceViewer } from './api'
+import { ApiError, addViewer, deleteViewer, getState, patchDevice, patchSettings, replaceViewer } from './api'
 import { stubFetch } from '@/test/render'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -58,5 +58,12 @@ describe('api client', () => {
     })
     const err = await getState().catch((e) => e)
     expect(err).toMatchObject({ status: 0, message: 'Could not reach Antennarr' })
+  })
+
+  it('patches a device by name, escaping it', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /devices/my%20box': () => ({ body: {} }) })
+    vi.stubGlobal('fetch', fn)
+    await patchDevice('my box', { ownerReserve: 0, sharedCap: 2 })
+    expect(calls).toEqual([{ method: 'PATCH', url: expect.stringContaining('/devices/my%20box'), body: { ownerReserve: 0, sharedCap: 2 } }])
   })
 })

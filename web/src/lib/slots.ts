@@ -1,4 +1,4 @@
-import type { AppState, Slot, Stream } from './types'
+import type { DeviceState, Slot, Stream, Viewer } from './types'
 
 export type Owner =
   | { kind: 'viewer'; viewer: string }
@@ -15,14 +15,14 @@ export interface Tile {
 }
 
 /**
- * Lay the tuner's slots out as tiles and say who holds each.
+ * Lay one device's slots out as tiles and say who holds each.
  *
  * The tuner only says "something is streaming to Antennarr's address"; the
  * stream list says which viewer. They are paired by channel number. Idle
  * tuners are shown as reserved up to the owner reserve, then free.
  */
-export function buildTiles(state: Pick<AppState, 'tuner' | 'streams' | 'settings'>): Tile[] {
-  const { tuner, streams, settings } = state
+export function buildTiles(device: Pick<DeviceState, 'tuner' | 'streams' | 'ownerReserve'>): Tile[] {
+  const { tuner, streams } = device
   const total = Math.max(tuner.tunerCount, tuner.slots.length)
   const unmatched = [...streams]
   const tiles: Tile[] = []
@@ -40,7 +40,7 @@ export function buildTiles(state: Pick<AppState, 'tuner' | 'streams' | 'settings
     }
   }
 
-  let toReserve = settings.ownerReserve
+  let toReserve = device.ownerReserve
   for (const t of tiles) {
     if (toReserve > 0 && t.owner.kind === 'free') {
       t.owner = { kind: 'reserved' }
@@ -63,4 +63,9 @@ export function ownerLabel(o: Owner): string {
     case 'free':
       return 'Free'
   }
+}
+
+/** How many tuners a viewer may use on a device: its own limit, else the default. */
+export function limitFor(v: Pick<Viewer, 'limit' | 'limits'>, device: string): number {
+  return v.limits?.[device] ?? v.limit
 }

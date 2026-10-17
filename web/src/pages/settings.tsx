@@ -7,51 +7,61 @@ import { Textarea } from '@/components/ui/textarea'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
 import { parseAddresses } from '@/lib/format'
-import type { SettingsPatch } from '@/lib/types'
+import type { DeviceState } from '@/lib/types'
 
 export function SettingsPage() {
   const { state } = useApp()
-  const { settings, tuner, editable } = state
+  const { settings, devices, editable } = state
+  const several = devices.length > 1
 
   return (
     <div className="max-w-3xl space-y-4">
       <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
 
-      <NumberCard
-        key={`reserve-${settings.ownerReserve}`}
-        title="Owner reserve"
-        description="Tuners always kept free for your own TVs and apps. Viewers are refused instead of taking the last ones."
-        label="Tuners to keep free"
-        initial={settings.ownerReserve}
-        max={tuner.tunerCount}
-        disabled={!editable}
-        field="ownerReserve"
-        hint={`Your tuner has ${tuner.tunerCount}.`}
-      />
-      <NumberCard
-        key={`cap-${settings.sharedCap}`}
-        title="Shared cap"
-        description="The most tuners all viewers together may use, however many are idle."
-        label="Tuners for viewers"
-        initial={settings.sharedCap}
-        max={tuner.tunerCount}
-        disabled={!editable}
-        field="sharedCap"
-        hint="0 means no cap beyond the owner reserve."
-      />
+      {devices.map((d) => (
+        <div key={d.name} className="space-y-4">
+          <NumberCard
+            key={`reserve-${d.name}-${d.ownerReserve}`}
+            device={d}
+            field="ownerReserve"
+            title={several ? `Owner reserve — ${d.name}` : 'Owner reserve'}
+            description="Tuners always kept free for your own TVs and apps. Viewers are refused instead of taking the last ones."
+            label="Tuners to keep free"
+            disabled={!editable}
+            hint={`${several ? `${d.name} has` : 'Your tuner has'} ${d.tuner.tunerCount}.`}
+          />
+          <NumberCard
+            key={`cap-${d.name}-${d.sharedCap}`}
+            device={d}
+            field="sharedCap"
+            title={several ? `Shared cap — ${d.name}` : 'Shared cap'}
+            description="The most tuners all viewers together may use, however many are idle."
+            label="Tuners for viewers"
+            disabled={!editable}
+            hint="0 means no cap beyond the owner reserve."
+          />
+        </div>
+      ))}
       <AdminCard key={`admin-${settings.admin.join(',')}`} initial={settings.admin} disabled={!editable} />
 
       <Card>
         <CardHeader>
           <CardTitle>Network</CardTitle>
           <CardDescription>
-            Antennarr listens on a port; how viewers reach it (LAN, VPN, Tailscale) is up to you. Built-in Tailscale is
-            planned.
+            Antennarr listens on a port for each tuner; how viewers reach it (LAN, VPN, Tailscale) is up to you. Built-in
+            Tailscale is planned.
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Access mode:{' '}
-          <strong className="text-foreground">{settings.mode === 'open' ? 'open (no viewers)' : 'viewers only'}</strong>
+        <CardContent className="space-y-1 text-sm text-muted-foreground">
+          <div>
+            Access mode:{' '}
+            <strong className="text-foreground">{settings.mode === 'open' ? 'open (no viewers)' : 'viewers only'}</strong>
+          </div>
+          {devices.map((d) => (
+            <div key={d.name} className="font-mono text-xs">
+              {d.name} listens on {d.listen}
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>
@@ -66,7 +76,7 @@ function SaveRow({ children, busy, disabled, error }: { children?: ReactNode; bu
       </Button>
       {children}
       {error && (
-        <span role="alert" className="text-sm text-red-400">
+        <span role="alert" className="text-sm text-red-600 dark:text-red-400">
           {error}
         </span>
       )}
@@ -75,19 +85,18 @@ function SaveRow({ children, busy, disabled, error }: { children?: ReactNode; bu
 }
 
 function NumberCard(props: {
+  device: DeviceState
+  field: 'ownerReserve' | 'sharedCap'
   title: string
   description: string
   label: string
-  initial: number
-  max: number
   disabled: boolean
-  field: 'ownerReserve' | 'sharedCap'
   hint: string
 }) {
-  const { settings } = useEdits()
-  const [value, setValue] = useState(String(props.initial))
+  const { device: mutation } = useEdits()
+  const [value, setValue] = useState(String(props.device[props.field]))
   const [error, setError] = useState<string | null>(null)
-  const id = `setting-${props.field}`
+  const id = `setting-${props.device.name}-${props.field}`
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -96,7 +105,7 @@ function NumberCard(props: {
     // An empty box reads as 0, which would silently drop the owner reserve.
     if (value.trim() === '' || !Number.isInteger(n) || n < 0) return setError('Enter a whole number, 0 or more.')
     try {
-      await settings.mutateAsync({ [props.field]: n } as SettingsPatch)
+      await mutation.mutateAsync({ name: props.device.name, patch: { [props.field]: n } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
     }
@@ -112,10 +121,10 @@ function NumberCard(props: {
         <form onSubmit={save} noValidate className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor={id}>{props.label}</Label>
-            <Input id={id} type="number" min={0} max={props.max} value={value} onChange={(e) => setValue(e.target.value)} className="w-24" disabled={props.disabled} />
+            <Input id={id} type="number" min={0} max={props.device.tuner.tunerCount} value={value} onChange={(e) => setValue(e.target.value)} className="w-24" disabled={props.disabled} />
             <p className="text-xs text-muted-foreground">{props.hint}</p>
           </div>
-          <SaveRow busy={settings.isPending} disabled={props.disabled} error={error} />
+          <SaveRow busy={mutation.isPending} disabled={props.disabled} error={error} />
         </form>
       </CardContent>
     </Card>

@@ -11,7 +11,7 @@ function Probe() {
   const { state, connected } = useApp()
   return (
     <p>
-      {state.tuner.friendlyName} {connected ? 'live' : 'polling'}
+      {state.devices[0].tuner.friendlyName} {connected ? 'live' : 'polling'}
     </p>
   )
 }
