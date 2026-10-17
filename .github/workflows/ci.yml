@@ -17,6 +17,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: false # there are no dependencies to cache (no go.sum)
       - run: go vet ./...
       - run: go test -race ./...
 
