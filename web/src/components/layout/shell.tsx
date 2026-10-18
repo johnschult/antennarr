@@ -49,7 +49,13 @@ function ConnectionStatus() {
       data-testid="connection"
       className={cn('rounded-full px-2 py-0.5', connected ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300')}
     >
-      {connected ? 'Live' : 'Reconnecting…'}
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className="relative flex size-1.5">
+          {connected && <span className="absolute inline-flex size-full rounded-full bg-emerald-500 opacity-60 motion-safe:animate-ping" />}
+          <span className={cn('relative inline-flex size-1.5 rounded-full', connected ? 'bg-emerald-500' : 'bg-amber-500')} />
+        </span>
+        {connected ? 'Live' : 'Reconnecting…'}
+      </span>
     </span>
   )
 }
