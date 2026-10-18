@@ -1,6 +1,7 @@
 package access
 
 import (
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,5 +186,75 @@ func TestNotificationsRejectUnknownKeys(t *testing.T) {
 		if _, _, err := LoadSettings(path); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
+	}
+}
+
+func TestNotifyAddrAllowed(t *testing.T) {
+	for addr, want := range map[string]bool{
+		"127.0.0.1":       true, // this machine: ntfy next to Antennarr
+		"::1":             true,
+		"192.168.1.20":    true, // a LAN server
+		"10.0.0.5":        true,
+		"172.16.0.9":      true,
+		"100.64.0.9":      true, // Tailscale
+		"fd7a:115c::1":    true,
+		"203.0.113.9":     true, // a public server
+		"2001:db8::1":     true,
+		"::ffff:10.0.0.5": true, // an IPv4 address written the IPv6 way
+		// not allowed: nothing is ever there, or it is a cloud machine's keys
+		"169.254.169.254":        false, // the cloud metadata service
+		"169.254.0.1":            false,
+		"fe80::1":                false,
+		"fe80::1%en0":            false,
+		"::ffff:169.254.169.254": false, // the same address, written the IPv6 way
+		"0.0.0.0":                false,
+		"::":                     false,
+		"224.0.0.1":              false,
+		"ff02::1":                false,
+		"255.255.255.255":        false,
+	} {
+		ip, err := netip.ParseAddr(addr)
+		if err != nil {
+			t.Fatalf("%s: %v", addr, err)
+		}
+		if got := NotifyAddrAllowed(ip); got != want {
+			t.Errorf("NotifyAddrAllowed(%s) = %v, want %v", addr, got, want)
+		}
+	}
+	if NotifyAddrAllowed(netip.Addr{}) {
+		t.Error("the zero address was allowed")
+	}
+}
+
+func TestChannelAddressesWrittenOutAreCheckedWhenSaved(t *testing.T) {
+	try := func(typ, raw string) error {
+		c := NotifyChannel{ID: "a", Name: "A", Type: typ, URL: raw, Topic: "t"}
+		if typ == ChannelWebhook {
+			c.Topic = ""
+		}
+		return c.Validate()
+	}
+	for _, raw := range []string{
+		"http://169.254.169.254/latest/meta-data", "http://169.254.169.254:80", "https://[fe80::1]/x", "http://0.0.0.0:8080",
+		"http://224.0.0.1/x", "http://255.255.255.255/x", "http://[::ffff:169.254.169.254]/x",
+	} {
+		for _, typ := range []string{ChannelNtfy, ChannelWebhook} {
+			if err := try(typ, raw); err == nil {
+				t.Errorf("%s %s was accepted", typ, raw)
+			}
+		}
+	}
+	for _, raw := range []string{
+		"http://127.0.0.1:8080", "http://[::1]:8080/x", "http://192.168.1.20", "http://10.0.0.5:2586", "http://100.64.0.9",
+		"https://ntfy.sh", "https://ntfy.example.com/prefix", "http://homeassistant.local:8123/api/webhook/x", "http://localhost:8080",
+	} {
+		for _, typ := range []string{ChannelNtfy, ChannelWebhook} {
+			if err := try(typ, raw); err != nil {
+				t.Errorf("%s %s was refused: %v", typ, raw, err)
+			}
+		}
+	}
+	if err := try(ChannelNtfy, "http://169.254.169.254"); err == nil || !strings.Contains(err.Error(), "link-local") {
+		t.Errorf("the reason should say why: %v", err)
 	}
 }

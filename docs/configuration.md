@@ -86,7 +86,7 @@ Each channel has an `id` (made for you, and never changed), a `name`, and a `typ
 | `pushover` | `token` (the application token) and `user` (your user key) | Sent to `api.pushover.net`. |
 | `webhook` | `url`, and optionally `token` | A JSON `POST` with `event`, `title`, `message`, `device` and `time`. A `token` is sent as `Authorization: Bearer …`. |
 
-`url` must be `http://` or `https://`, without a username or password in it (use `token`). A private or LAN address is fine.
+`url` must be `http://` or `https://`, without a username or password in it (use `token`). A private or LAN address, or this machine, is fine; a link-local one (such as `169.254.169.254`), multicast and `0.0.0.0` are refused.
 
 `events` switches each kind on or off. Every channel gets every message that is on.
 

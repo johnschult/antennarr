@@ -477,3 +477,31 @@ func TestFirmwareMessagesNeedTheFirmwareCheck(t *testing.T) {
 		t.Errorf("re-sending it with the check off: %d", code)
 	}
 }
+
+func TestAChannelAtAnAddressNoServerIsAtIsRefusedWithTheReason(t *testing.T) {
+	e, ft := notifyEnv(t)
+	for name, body := range map[string]string{
+		"the cloud metadata service": `{"name":"A","type":"webhook","url":"http://169.254.169.254/latest/meta-data/"}`,
+		"link-local IPv6":            `{"name":"A","type":"ntfy","url":"http://[fe80::1]:8080","topic":"t"}`,
+		"the unspecified address":    `{"name":"A","type":"webhook","url":"http://0.0.0.0:8080/x"}`,
+	} {
+		code, v := e.call(t, "POST", channels, body)
+		if code != 400 || !strings.Contains(errText(v), "link-local") {
+			t.Errorf("adding %s: %d %v", name, code, v)
+		}
+	}
+	// a test of one is refused before anything is sent
+	code, v := e.call(t, "POST", testURL, `{"channel":{"name":"A","type":"webhook","url":"http://169.254.169.254/latest/meta-data/"}}`)
+	if code != 400 || !strings.Contains(errText(v), "link-local") {
+		t.Errorf("testing one: %d %v", code, v)
+	}
+	if ft.count() != 0 {
+		t.Errorf("%d tests were sent", ft.count())
+	}
+	// while this machine and the LAN are fine, since a ntfy server there is the usual case
+	for _, url := range []string{"http://127.0.0.1:8080", "http://192.168.1.20:2586", "http://100.64.0.9"} {
+		if code, v := e.call(t, "POST", channels, `{"name":"`+url+`","type":"webhook","url":"`+url+`"}`); code != 201 {
+			t.Errorf("%s: %d %v", url, code, v)
+		}
+	}
+}

@@ -7,9 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
@@ -24,12 +27,36 @@ const (
 )
 
 // NewClient is the HTTP client notifications go out through. It never follows a
-// redirect: a notification goes where it was set up to go and nowhere else.
+// redirect: a notification goes where it was set up to go and nowhere else. And it
+// won't connect to an address no notification server is at (see
+// access.NotifyAddrAllowed), checked when the connection is made, after any name has
+// been looked up, so a name that points at one is refused too.
 func NewClient() *http.Client {
+	dialer := &net.Dialer{Timeout: sendTimeout, Control: guard}
 	return &http.Client{
 		Timeout:       sendTimeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		Transport: &http.Transport{
+			Proxy:               http.ProxyFromEnvironment,
+			DialContext:         dialer.DialContext,
+			TLSHandshakeTimeout: sendTimeout,
+			ForceAttemptHTTP2:   true,
+		},
 	}
+}
+
+// guard refuses a connection to an address that is not allowed. It is called with the
+// address already looked up, for each connection.
+func guard(_, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return errors.New("that address can't be used")
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil || !access.NotifyAddrAllowed(ip) {
+		return errors.New("that address can't be used for notifications")
+	}
+	return nil
 }
 
 // send delivers one event to one channel.

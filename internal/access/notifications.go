@@ -3,6 +3,7 @@ package access
 import (
 	"errors"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"strings"
@@ -209,6 +210,18 @@ func (c NotifyChannel) Validate() error {
 	return nil
 }
 
+// NotifyAddrAllowed reports whether Antennarr will send a notification to this
+// address. A private or LAN address is allowed on purpose, since a ntfy server on
+// your own network is the usual case, and so is this machine. What isn't is an
+// address no server is ever at, and the one that holds the keys of a cloud machine:
+// link-local (169.254.0.0/16, which includes the cloud metadata service at
+// 169.254.169.254, and fe80::/10), the unspecified address, multicast and broadcast.
+func NotifyAddrAllowed(ip netip.Addr) bool {
+	ip = ip.Unmap()
+	return ip.IsValid() && !ip.IsLinkLocalUnicast() && !ip.IsLinkLocalMulticast() && !ip.IsMulticast() && !ip.IsUnspecified() &&
+		ip != netip.AddrFrom4([4]byte{255, 255, 255, 255})
+}
+
 // validChannelURL accepts an http or https address with a host. A password in
 // the address is refused: it would end up in logs and error messages. (A token
 // in the path or query, which some webhooks use, is fine; it is never logged.)
@@ -222,6 +235,10 @@ func validChannelURL(raw string) error {
 	}
 	if u.User != nil {
 		return errors.New("can't have a username or password in it; use the token field")
+	}
+	// A name is looked up when the message is sent, and checked then; an address written out is checked now.
+	if ip, err := netip.ParseAddr(strings.Trim(u.Hostname(), "[]")); err == nil && !NotifyAddrAllowed(ip) {
+		return errors.New("can't be a link-local, multicast or unspecified address")
 	}
 	return nil
 }

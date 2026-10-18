@@ -673,3 +673,60 @@ func TestAStatePathThatCannotBeWrittenDoesNotStopTheMessage(t *testing.T) {
 	n.FirmwareFound("a", "A", "v1", "x")
 	srv.next(t)
 }
+
+// ---- where a notification may go ----
+
+func TestTheClientRefusesAddressesNoServerIsAt(t *testing.T) {
+	for address, ok := range map[string]bool{
+		"127.0.0.1:8080":              true,
+		"[::1]:8080":                  true,
+		"192.168.1.20:80":             true,
+		"10.0.0.5:2586":               true,
+		"203.0.113.9:443":             true,
+		"169.254.169.254:80":          false, // the cloud metadata service
+		"[fe80::1]:80":                false,
+		"[::ffff:169.254.169.254]:80": false,
+		"0.0.0.0:80":                  false,
+		"224.0.0.1:80":                false,
+		"not an address":              false,
+		"example.com:80":              false, // a name should never reach here: it is looked up first
+	} {
+		err := guard("tcp", address, nil)
+		if (err == nil) != ok {
+			t.Errorf("guard(%s) = %v, want allowed=%v", address, err, ok)
+		}
+	}
+}
+
+func TestANotificationToALinkLocalAddressNeverConnects(t *testing.T) {
+	// The real client, as used outside tests. 169.254.x.x is refused before anything is sent, so this is quick.
+	n := New(Config{Settings: func() access.Settings { return access.Settings{} }})
+	start := time.Now()
+	err := n.post(context.Background(), "http://169.254.169.254/latest/meta-data/", "application/json", []byte("{}"), "SECRETTOKEN")
+	if err == nil || !strings.Contains(err.Error(), "can't be used") {
+		t.Fatalf("error = %v", err)
+	}
+	if strings.Contains(err.Error(), "SECRETTOKEN") || strings.Contains(err.Error(), "latest/meta-data") {
+		t.Errorf("the error repeats what it shouldn't: %v", err)
+	}
+	if time.Since(start) > 3*time.Second {
+		t.Errorf("took %v: it tried to connect", time.Since(start))
+	}
+}
+
+func TestAnAddressItIsAllowedToSendToStillWorksThroughTheRealClient(t *testing.T) {
+	srv := newServer(t) // on 127.0.0.1
+	n := New(Config{Settings: func() access.Settings { return access.Settings{} }})
+	if err := n.Test(context.Background(), ntfyChannel(srv)); err != nil {
+		t.Fatal(err)
+	}
+	srv.next(t)
+	// and by name, which is looked up and then checked
+	u, _ := url.Parse(srv.URL)
+	named := ntfyChannel(srv)
+	named.URL = "http://localhost:" + u.Port()
+	if err := n.Test(context.Background(), named); err != nil {
+		t.Fatal(err)
+	}
+	srv.next(t)
+}
