@@ -111,6 +111,9 @@ type Settings struct {
 	// the channel's logo and what is on. It sends the tuner's DeviceAuth to
 	// SiliconDust. Unset means on.
 	Guide *bool `json:"guide,omitempty"`
+	// Notifications says where to send word of firmware, tuner and viewer events.
+	// Nothing is sent, or contacted, while it has no channels.
+	Notifications *Notifications `json:"notifications,omitempty"`
 }
 
 // PlexEnabled reports whether signing in with Plex is switched on (off by default).
@@ -183,6 +186,7 @@ func (s Settings) Clone() Settings {
 		pl.Admins = append([]PlexAccount(nil), s.Plex.Admins...)
 		out.Plex = &pl
 	}
+	out.Notifications = s.Notifications.clone()
 	return out
 }
 
@@ -361,6 +365,9 @@ func (s Settings) parse() (parsed, error) {
 		out.admin = append(out.admin, p)
 	}
 	if err := s.Plex.validate(); err != nil {
+		return out, err
+	}
+	if err := s.Notifications.validate(); err != nil {
 		return out, err
 	}
 	if len(s.Labels) > maxLabels {

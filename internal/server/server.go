@@ -24,6 +24,7 @@ import (
 	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
+	"github.com/johnschult/antennarr/internal/notify"
 	"github.com/johnschult/antennarr/internal/plexauth"
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
@@ -65,6 +66,11 @@ type Config struct {
 	GuideIconBase string
 	// PlexURL and PlexAuthURL override plex.tv's addresses, for tests.
 	PlexURL, PlexAuthURL string
+	// PushoverURL overrides where Pushover messages go, for tests.
+	PushoverURL string
+	// OfflineGrace is how long a tuner must be offline before the owner is
+	// messaged; zero means two minutes. Tests shorten it.
+	OfflineGrace time.Duration
 }
 
 type device struct {
@@ -87,6 +93,7 @@ type Server struct {
 	hub      *live.Hub
 	firmware *firmware.Checker
 	guide    *guide.Service
+	notify   *notify.Notifier
 	plex     *plexauth.Auth
 	claim    *claim.Claimer
 	admin    http.Handler // the admin pages, shared by every listener
@@ -156,6 +163,14 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		OnChange: s.hub.Notify,
 	})
 
+	// Messages to the owner. Nothing is contacted until a channel is set up, and the
+	// settings are read on each event, so changing them needs no restart.
+	s.notify = notify.New(notify.Config{
+		Settings: policy.Settings, Log: cfg.Log, PushoverURL: cfg.PushoverURL, OfflineGrace: cfg.OfflineGrace,
+		StatePath: notifiedFile(cfg.ConfigPath),
+	})
+	policy.SetEvents(s.notify)
+
 	// A stream starting or ending changes the tuners' own status too: tell the
 	// dashboards now, and have the monitors look again straight away.
 	policy.SetOnChange(func() {
@@ -183,7 +198,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Fleet: s, Firmware: s.firmware, Guide: s.guide, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -215,7 +230,9 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 	log := s.cfg.Log.With("device", d.Name)
 	mon := tuner.NewMonitor(tuner.Config{
 		Name: d.Name, BaseURL: base, ID: d.ID, StreamPort: d.StreamPort,
-		Interval: s.cfg.Poll, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() }, Logger: log,
+		Interval: s.cfg.Poll, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() },
+		OnTransition: func(online bool) { s.notify.TunerState(d.Name, s.title(d.Name), online) },
+		Logger:       log,
 	})
 	s.policy.AddDevice(d.Name, mon, mon)
 	s.guide.Watch(d.Name, mon.DeviceAuth)
@@ -294,6 +311,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 	go s.firmware.Run(ctx)
 	go s.guide.Run(ctx)
+	go s.notify.Run(ctx)
 
 	for i, d := range devs {
 		s.start(d, lns[i])
@@ -383,7 +401,7 @@ func (s *Server) logClaimLinks(lns []net.Listener) {
 // firmware available, and forgets it again once the tuner is up to date so the
 // next release is announced too.
 func (s *Server) announceFirmware() {
-	type note struct{ device, text string }
+	type note struct{ device, title, version, text string }
 	var notes []note
 
 	s.mu.Lock()
@@ -399,15 +417,12 @@ func (s *Server) announceFirmware() {
 		case firmware.StateUpdateAvailable:
 			if s.announced[d.cfg.Name] != st.Latest {
 				s.announced[d.cfg.Name] = st.Latest
-				title := s.policy.Label(d.cfg.Name)
-				if title == "" {
-					title = d.cfg.Name
-				}
+				title := s.title(d.cfg.Name)
 				text := fmt.Sprintf("Firmware %s is available for %s (it is on %s)", st.Latest, title, st.Current)
 				if st.DeviceReported != "" {
 					text += ", as reported by the tuner"
 				}
-				notes = append(notes, note{d.cfg.Name, text})
+				notes = append(notes, note{d.cfg.Name, title, st.Latest, text})
 			}
 		case firmware.StateUpToDate:
 			delete(s.announced, d.cfg.Name)
@@ -422,7 +437,16 @@ func (s *Server) announceFirmware() {
 				d.mon.Note("info", n.text)
 			}
 		}
+		s.notify.FirmwareFound(n.device, n.title, n.version, n.text)
 	}
+}
+
+// title is what a tuner is called to the owner: its label, or its name.
+func (s *Server) title(name string) string {
+	if l := s.policy.Label(name); l != "" {
+		return l
+	}
+	return name
 }
 
 // Reload applies new settings. Everything about viewers and limits takes
@@ -510,6 +534,16 @@ func ParseTuner(s string) (*url.URL, error) {
 		return nil, fmt.Errorf("bad tuner address %q", s)
 	}
 	return u, nil
+}
+
+// notifiedFile is where the firmware releases the owner was messaged about are
+// kept, so a restart doesn't repeat them: beside the settings file, and empty when
+// there isn't one.
+func notifiedFile(configPath string) string {
+	if configPath == "" {
+		return ""
+	}
+	return strings.TrimSuffix(configPath, filepath.Ext(configPath)) + ".notified.json"
 }
 
 // sessionsFile is where Plex sign-ins are kept so they survive a restart: beside

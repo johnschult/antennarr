@@ -29,6 +29,7 @@ type fakeTuner struct {
 	fw, upgrade string // firmware version it reports, and a newer one it says exists
 	id, name    string
 	channel     string // if set, tuner0 reports someone watching this channel
+	down        bool   // if set, its API answers 503, as a tuner that is unplugged would
 	api         *httptest.Server
 	stream      *httptest.Server
 	streamPort  string
@@ -53,6 +54,13 @@ func newFakeTuner(t *testing.T, id, name string) *fakeTuner {
 	u, _ := url.Parse(f.stream.URL)
 	f.streamPort = u.Port()
 	f.api = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		f.mu.Lock()
+		down := f.down
+		f.mu.Unlock()
+		if down {
+			http.Error(w, "unplugged", http.StatusServiceUnavailable)
+			return
+		}
 		switch r.URL.Path {
 		case "/discover.json":
 			f.mu.Lock()
@@ -80,6 +88,13 @@ func newFakeTuner(t *testing.T, id, name string) *fakeTuner {
 	}))
 	t.Cleanup(func() { f.api.Close(); f.stream.Close() })
 	return f
+}
+
+// setDown makes the tuner stop answering, or answer again.
+func (f *fakeTuner) setDown(down bool) {
+	f.mu.Lock()
+	f.down = down
+	f.mu.Unlock()
 }
 
 func (f *fakeTuner) setFirmware(version, upgrade string) {
@@ -153,6 +168,12 @@ func startWith(t *testing.T, s access.Settings, devices []access.Device, fwURL s
 // can never reach SiliconDust.
 func startFull(t *testing.T, s access.Settings, devices []access.Device, fwURL, guideURL string, tuners ...*fakeTuner) *rig {
 	t.Helper()
+	return startConfigured(t, s, devices, fwURL, guideURL, nil, tuners...)
+}
+
+// startConfigured is startFull, letting a test change the server's Config first.
+func startConfigured(t *testing.T, s access.Settings, devices []access.Device, fwURL, guideURL string, tweak func(*Config), tuners ...*fakeTuner) *rig {
+	t.Helper()
 	r := &rig{addr: map[string]string{}, logs: &lockedBuf{}, done: make(chan error, 1)}
 	lns := map[string]net.Listener{}
 	for _, d := range devices {
@@ -172,10 +193,14 @@ func startFull(t *testing.T, s access.Settings, devices []access.Device, fwURL, 
 		off := false
 		s.Guide = &off
 	}
-	srv, err := New(ctx, Config{GuideURL: guideURL + "/api/xmltv", GuideIconBase: guideURL,
+	cfg := Config{GuideURL: guideURL + "/api/xmltv", GuideIconBase: guideURL,
 		Settings: s, Devices: devices, Poll: 50 * time.Millisecond, Locate: locateFrom(tuners...),
 		Log: slog.New(slog.NewTextHandler(r.logs, nil)), Listeners: lns, FirmwareURL: fwURL,
-	})
+	}
+	if tweak != nil {
+		tweak(&cfg)
+	}
+	srv, err := New(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

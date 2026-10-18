@@ -420,3 +420,82 @@ func TestFirmwareIsReadFromTheTuner(t *testing.T) {
 		t.Errorf("UpgradeAvailable = %q", got)
 	}
 }
+
+func TestOnTransitionSaysOnceWhenTheTunerGoesOfflineAndComesBack(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	defer f.Close()
+	var mu sync.Mutex
+	var seen []bool
+	var m *Monitor
+	m = NewMonitor(Config{
+		BaseURL: f.URL, ID: "10ABCC87", Failures: 2, Find: neverFind,
+		LocalIPs: func() []string { return nil },
+		OnTransition: func(online bool) {
+			m.Snapshot() // would deadlock if the monitor's lock were still held
+			mu.Lock()
+			seen = append(seen, online)
+			mu.Unlock()
+		},
+	})
+	got := func() []bool { mu.Lock(); defer mu.Unlock(); return append([]bool(nil), seen...) }
+	same := func(a, b []bool) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		for i := range a {
+			if a[i] != b[i] {
+				return false
+			}
+		}
+		return true
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		m.Poll(context.Background())
+		m.Poll(context.Background()) // still online: nothing more
+		if !same(got(), []bool{true}) {
+			t.Errorf("after coming online: %v", got())
+		}
+
+		f.mu.Lock()
+		f.id = "SOMEONE1"
+		f.mu.Unlock()
+		m.Poll(context.Background()) // first failure: a blip is not a transition
+		if !same(got(), []bool{true}) {
+			t.Errorf("after one failure: %v", got())
+		}
+		m.Poll(context.Background()) // second: offline
+		m.Poll(context.Background()) // still offline: nothing more
+		if !same(got(), []bool{true, false}) {
+			t.Errorf("after going offline: %v", got())
+		}
+
+		f.mu.Lock()
+		f.id = "10ABCC87"
+		f.mu.Unlock()
+		m.Poll(context.Background())
+		m.Poll(context.Background())
+		if !same(got(), []bool{true, false, true}) {
+			t.Errorf("after coming back: %v", got())
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the callback ran with the monitor's lock held")
+	}
+}
+
+func TestNoOnTransitionIsFine(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	m := monitorFor(f.URL, "10ABCC87", neverFind)
+	m.Poll(context.Background())
+	f.Close()
+	m.Poll(context.Background())
+	m.Poll(context.Background())
+	if m.Snapshot().Online {
+		t.Error("should be offline")
+	}
+}

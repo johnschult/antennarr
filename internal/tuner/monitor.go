@@ -91,7 +91,10 @@ type Config struct {
 	// OnChange, if set, is called after every poll and every Note, so a UI can
 	// refresh. It must not block.
 	OnChange func()
-	Logger   *slog.Logger
+	// OnTransition, if set, is called when the tuner is first seen online and each
+	// time it goes offline or comes back, with the lock released. It must not block.
+	OnTransition func(online bool)
+	Logger       *slog.Logger
 }
 
 // Monitor polls the tuner and tracks where it lives.
@@ -286,6 +289,13 @@ func (m *Monitor) check(ctx context.Context, base string) error {
 		local[ip] = true
 	}
 
+	// Registered before the lock's own defer, so it runs after the lock is released.
+	cameOnline := false
+	defer func() {
+		if cameOnline {
+			m.announce(true)
+		}
+	}()
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	wasOnline := m.st.Online
@@ -297,6 +307,7 @@ func (m *Monitor) check(ctx context.Context, base string) error {
 		m.st.Slots = slotsFrom(raw, local)
 	}
 	if !wasOnline {
+		cameOnline = true
 		m.st.Online, m.st.Since = true, time.Now()
 		m.addEvent("ok", fmt.Sprintf("Tuner online at %s", base))
 		m.log.Info("tuner online", "id", id, "base", base)
@@ -332,19 +343,27 @@ func (m *Monitor) fail(ctx context.Context, err error) {
 		m.log.Debug("tuner check failed", "n", fails, "err", err)
 		return
 	}
+	wentOffline := false
 	if m.st.Online {
 		m.st.Online, m.st.Since = false, time.Now()
 		m.st.Slots = nil
 		m.addEvent("err", fmt.Sprintf("Tuner offline: %v", err))
 		m.log.Warn("tuner offline", "err", err)
+		wentOffline = true
 	}
 	// Don't hammer the network: search at most every 30s.
 	if time.Since(m.lastSearch) < 30*time.Second {
 		m.mu.Unlock()
+		if wentOffline {
+			m.announce(false)
+		}
 		return
 	}
 	m.lastSearch = time.Now()
 	m.mu.Unlock()
+	if wentOffline { // before the search, which can take a while
+		m.announce(false)
+	}
 
 	if id == "" {
 		return // never saw it, so there's nothing to search for
@@ -361,6 +380,13 @@ func (m *Monitor) fail(ctx context.Context, err error) {
 	m.mu.Unlock()
 	m.log.Info("tuner moved", "from", last, "to", dev.BaseURL, "id", id)
 	m.Poll(ctx) // confirm right away instead of waiting a full interval
+}
+
+// announce tells OnTransition, if there is one, that the tuner went offline or came online.
+func (m *Monitor) announce(online bool) {
+	if m.cfg.OnTransition != nil {
+		m.cfg.OnTransition(online)
+	}
 }
 
 // Note adds an event from outside the monitor, e.g. a refused stream.
