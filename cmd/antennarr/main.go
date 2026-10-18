@@ -44,7 +44,8 @@ func main() {
 	configPath := flag.String("config", defaultConfigPath, "settings file (devices, viewers, limits); created with defaults if it doesn't exist, reloaded on SIGHUP")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: antennarr [flags]\n       antennarr discover [-wait 3s] [host ...]\n\n"+
-			"Run one device with -tuner or -tuner-id, or declare several under \"devices\" in the -config file.\n\n")
+			"With no -tuner, Antennarr looks for HDHomeRun tuners on the network and remembers them in the settings file.\n"+
+			"Name a tuner with -tuner or -tuner-id, or declare devices under \"devices\" in the settings file.\n\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -64,6 +65,31 @@ func main() {
 	settings, savePath, err := loadOrCreateSettings(*configPath, set["config"], log)
 	if err != nil {
 		fail(err)
+	}
+	// With no tuner given anywhere, find one: nobody should have to write a
+	// config file before the first start. What is found is saved to the settings
+	// file, so it is the same tuner next time and can be edited from then on.
+	if wantsAutoDiscovery(settings, set) {
+		found, err := findTuners(ctx, f.listen, func(ctx context.Context, wait time.Duration) ([]discovery.Device, error) {
+			return discovery.Discover(ctx, wait)
+		}, discoverRetry, log)
+		if err != nil {
+			if ctx.Err() != nil {
+				return // asked to stop while still looking
+			}
+			fail(err)
+		}
+		settings.Devices = found
+		for _, d := range found {
+			log.Info("found a tuner", "device", d.Name, "id", d.ID, "at", d.Tuner, "listen", d.Listen)
+		}
+		if savePath != "" {
+			if err := access.SaveSettings(savePath, settings); err != nil {
+				log.Warn("couldn't save the tuners that were found; they will be looked for again next start", "path", savePath, "err", err)
+			} else {
+				log.Info("saved them to the settings file", "path", savePath)
+			}
+		}
 	}
 	devices, err := devicesFor(settings, f, set)
 	if err != nil {
@@ -137,7 +163,7 @@ func devicesFor(s access.Settings, f deviceFlags, set map[string]bool) ([]access
 		return s.Devices, nil
 	}
 	if f.tuner == "" && f.id == "" {
-		return nil, errors.New("give -tuner (an address) or -tuner-id (a DeviceID to search for), or declare devices in a -config file")
+		return nil, errors.New("give -tuner (an address) or -tuner-id (a DeviceID to search for), or declare devices in a -config file; or leave the tuner flags out and Antennarr will look for one")
 	}
 	d := access.Device{
 		Name: "tuner", Listen: f.listen, Tuner: f.tuner, ID: f.id,

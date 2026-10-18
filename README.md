@@ -62,11 +62,17 @@ cd antennarr
 go build -o antennarr ./cmd/antennarr
 ```
 
-Find your tuner, then run Antennarr in front of it:
+Run it. With no `-tuner`, Antennarr finds your HDHomeRun on the network and remembers it in `antennarr.json`:
+
+```sh
+./antennarr
+```
+
+To name a tuner yourself (say it's on another network), find it and pass its address:
 
 ```sh
 ./antennarr discover                   # lists HDHomeRun tuners on your network
-./antennarr -tuner 192.168.1.50 -config antennarr.json
+./antennarr -tuner 192.168.1.50
 ```
 
 Look in the log for the first-run **setup link** and open it from your own computer to become the admin (or open `http://localhost:5004/antennarr/` on the machine itself). The Setup page in the UI writes out the steps for a viewer, with your addresses filled in.
