@@ -193,7 +193,7 @@ describe('FirmwareSection', () => {
       </>,
       s,
     )
-    expect(section('Firmware — antenna')).toBeInTheDocument()
+    expect(section('Firmware — Steve FLEX 4K')).toBeInTheDocument()
     expect(section('Firmware — Cable box')).toBeInTheDocument()
   })
 })

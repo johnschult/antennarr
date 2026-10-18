@@ -60,30 +60,30 @@ describe('TunerPage', () => {
     const user = userEvent.setup()
     renderWithApp(<TunerPage />, makeTwoDeviceState())
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
-    const antenna = screen.getByRole('region', { name: 'antenna' })
-    const cable = screen.getByRole('region', { name: 'cable' })
-    expect(within(antenna).getByRole('button', { name: /^antenna/ })).toHaveAttribute('aria-expanded', 'false')
+    const antenna = screen.getByRole('region', { name: 'Steve FLEX 4K' })
+    const cable = screen.getByRole('region', { name: 'Cable HDHR' })
+    expect(within(antenna).getByRole('button', { name: /^Steve FLEX 4K/ })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('10ABCC87')).not.toBeInTheDocument()
     expect(antenna).toHaveTextContent('HDFX-4K')
     expect(antenna).toHaveTextContent('port 5004')
     expect(antenna).toHaveTextContent('2 of 4 in use')
     expect(cable).toHaveTextContent('0 of 2 in use')
 
-    await user.click(within(antenna).getByRole('button', { name: /^antenna/ }))
-    await user.click(within(cable).getByRole('button', { name: /^cable/ }))
+    await user.click(within(antenna).getByRole('button', { name: /^Steve FLEX 4K/ }))
+    await user.click(within(cable).getByRole('button', { name: /^Cable HDHR/ }))
     expect(within(antenna).getByText('10ABCC87')).toBeInTheDocument()
     expect(within(cable).getByText('1111AAA2')).toBeInTheDocument()
     expect(within(cable).getByText('HDHR5-4DT')).toBeInTheDocument()
     expect(within(antenna).getAllByRole('listitem').length).toBeGreaterThanOrEqual(4)
-    expect(within(cable).getByRole('list', { name: 'Tuners on cable' })).toBeInTheDocument()
+    expect(within(cable).getByRole('list', { name: 'Tuners on Cable HDHR' })).toBeInTheDocument()
 
-    await user.click(within(antenna).getByRole('button', { name: /^antenna/ }))
+    await user.click(within(antenna).getByRole('button', { name: /^Steve FLEX 4K/ }))
     expect(screen.queryByText('10ABCC87')).not.toBeInTheDocument()
   })
 
   it('opens a single tuner by itself', () => {
     renderWithApp(<TunerPage />, makeState())
-    expect(screen.getByRole('button', { name: /^antenna/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: /^Steve FLEX 4K/ })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('shows how many tuners are in use and a firmware flag while folded', () => {
@@ -91,7 +91,7 @@ describe('TunerPage', () => {
     s.devices[0].tuner.slots = [localSlot(0), remoteSlot(1), idleSlot(2), idleSlot(3)]
     s.devices[0].firmware = updateAvailable
     renderWithApp(<TunerPage />, s)
-    const antenna = screen.getByRole('region', { name: 'antenna' })
+    const antenna = screen.getByRole('region', { name: 'Steve FLEX 4K' })
     expect(antenna).toHaveTextContent('2 of 4 in use')
     expect(within(antenna).getByText('Firmware update')).toBeInTheDocument()
   })
@@ -104,10 +104,10 @@ describe('TunerPage', () => {
     renderWithApp(<TunerPage />, s)
     const antenna = screen.getByRole('region', { name: 'Living room antenna' })
     await user.click(within(antenna).getByRole('button', { name: /^Living room antenna/ }))
-    await user.click(within(screen.getByRole('region', { name: 'cable' })).getByRole('button', { name: /^cable/ }))
+    await user.click(within(screen.getByRole('region', { name: 'Cable HDHR' })).getByRole('button', { name: /^Cable HDHR/ }))
     expect(screen.getByRole('region', { name: 'Firmware — Living room antenna' })).toBeInTheDocument()
     expect(screen.getByText('Update available · 26 Mar 2026')).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Firmware — cable' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Firmware — Cable HDHR' })).toBeInTheDocument()
   })
 
   it('shows the firmware section for a single tuner without naming it', () => {

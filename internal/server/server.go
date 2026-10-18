@@ -247,7 +247,6 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 	tunerAPI := proxy.New(proxy.Config{
 		Upstream: mon, Policy: s.policy.Device(name),
 		Advertise: d.Advertise, DeviceID: d.ReportID, Logger: log,
-		FriendlyName: func() string { return s.policy.Label(name) },
 	})
 	mux.Handle("/", tunerAPI)
 	// Someone who types the bare address into a browser wants the admin

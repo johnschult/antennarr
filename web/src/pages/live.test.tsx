@@ -23,7 +23,7 @@ describe('LivePage', () => {
 
   it('lays the tuners out as tiles with the right holders', () => {
     renderWithApp(<LivePage />, makeState())
-    const tiles = within(screen.getByRole('region', { name: 'Tuners' })).getAllByTestId('tuner-tile')
+    const tiles = within(screen.getByRole('region', { name: 'Tuners on Steve FLEX 4K' })).getAllByTestId('tuner-tile')
     expect(tiles.map((t) => t.getAttribute('data-owner'))).toEqual(['local', 'viewer', 'reserved', 'free'])
     expect(within(tiles[1]).getAllByText('John').length).toBeGreaterThan(0)
   })
@@ -74,13 +74,15 @@ describe('LivePage', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('2 of 6 tuners live')
       expect(screen.getByText('1 remote · 1 local · 1 held for you · 27 Mbps')).toBeInTheDocument()
 
-      const antenna = screen.getByRole('region', { name: 'Tuners on antenna' })
-      const cable = screen.getByRole('region', { name: 'Tuners on cable' })
+      const antenna = screen.getByRole('region', { name: 'Tuners on Steve FLEX 4K' })
+      const cable = screen.getByRole('region', { name: 'Tuners on Cable HDHR' })
       expect(within(antenna).getAllByTestId('tuner-tile')).toHaveLength(4)
       expect(within(cable).getAllByTestId('tuner-tile')).toHaveLength(2)
-      expect(within(antenna).getByRole('heading', { name: /antenna/ })).toBeInTheDocument()
-      expect(antenna).toHaveTextContent('Steve FLEX 4K · 2 of 4 live')
-      expect(cable).toHaveTextContent('Cable HDHR · 0 of 2 live')
+      expect(within(antenna).getByRole('heading', { name: 'Steve FLEX 4K' })).toBeInTheDocument()
+      // The model is the title, so it is said once, not again beside it.
+      expect(within(antenna).getAllByText('Steve FLEX 4K')).toHaveLength(1)
+      expect(antenna).toHaveTextContent('2 of 4 live')
+      expect(cable).toHaveTextContent('0 of 2 live')
     })
 
     it('dims only the tiles of the device that is offline', () => {
@@ -88,19 +90,19 @@ describe('LivePage', () => {
       s.devices[1].tuner.online = false
       renderWithApp(<LivePage />, s)
       const dimmed = (name: string) => within(screen.getByRole('region', { name })).getAllByTestId('tuner-tile').map((t) => t.classList.contains('opacity-50'))
-      expect(dimmed('Tuners on antenna').every((d) => !d)).toBe(true)
-      expect(dimmed('Tuners on cable').every((d) => d)).toBe(true)
+      expect(dimmed('Tuners on Steve FLEX 4K').every((d) => !d)).toBe(true)
+      expect(dimmed('Tuners on Cable HDHR').every((d) => d)).toBe(true)
     })
 
     it("shows each viewer's use and limit on every device, using per-device overrides", () => {
       renderWithApp(<LivePage />, makeTwoDeviceState())
       const row = screen.getByText('John', { selector: 'div.font-medium' }).closest('div.flex.items-center.gap-4') as HTMLElement
       // John: default limit 2, but 2 on cable too via the override; he is using 1 on the antenna box.
-      expect(within(row).getByRole('img', { name: 'antenna: 1 of 2 tuners in use' })).toBeInTheDocument()
-      expect(within(row).getByRole('img', { name: 'cable: 0 of 2 tuners in use' })).toBeInTheDocument()
+      expect(within(row).getByRole('img', { name: 'Steve FLEX 4K: 1 of 2 tuners in use' })).toBeInTheDocument()
+      expect(within(row).getByRole('img', { name: 'Cable HDHR: 0 of 2 tuners in use' })).toBeInTheDocument()
       // Mom: limit 1 everywhere.
       const mom = screen.getByText('Mom', { selector: 'div.font-medium' }).closest('div.flex.items-center.gap-4') as HTMLElement
-      expect(within(mom).getByRole('img', { name: 'cable: 0 of 1 tuners in use' })).toBeInTheDocument()
+      expect(within(mom).getByRole('img', { name: 'Cable HDHR: 0 of 1 tuners in use' })).toBeInTheDocument()
     })
 
     it('merges the timelines, newest first, saying which device each event is from', () => {
@@ -108,16 +110,15 @@ describe('LivePage', () => {
       const items = screen.getAllByRole('listitem')
       expect(items).toHaveLength(3)
       expect(items[0]).toHaveTextContent('Mom was refused a tuner') // 09:30, antenna
-      expect(items[0]).toHaveTextContent('antenna')
+      expect(items[0]).toHaveTextContent('Steve FLEX 4K')
       expect(items[1]).toHaveTextContent('Tuner online at http://192.168.1.133') // 08:05, cable
-      expect(items[1]).toHaveTextContent('cable')
+      expect(items[1]).toHaveTextContent('Cable HDHR')
       expect(items[2]).toHaveTextContent('Tuner online at http://192.168.1.132') // 08:00
     })
 
-    it('does not mention devices when there is only one', () => {
+    it('does not say which device an event is from when there is only one', () => {
       renderWithApp(<LivePage />, makeState())
-      expect(screen.queryByRole('region', { name: /Tuners on/ })).not.toBeInTheDocument()
-      for (const item of screen.getAllByRole('listitem')) expect(item).not.toHaveTextContent('antenna')
+      for (const item of screen.getAllByRole('listitem')) expect(item).not.toHaveTextContent('Steve FLEX 4K')
     })
   })
 
@@ -126,7 +127,7 @@ describe('LivePage', () => {
       renderWithApp(<LivePage />, named())
       expect(screen.getByRole('region', { name: 'Tuners on Living room antenna' })).toBeInTheDocument()
       expect(screen.getByRole('region', { name: 'Tuners on Cable box' })).toBeInTheDocument()
-      expect(screen.queryByRole('region', { name: 'Tuners on antenna' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Tuners on Steve FLEX 4K' })).not.toBeInTheDocument()
 
       const row = screen.getByText('John', { selector: 'div.font-medium' }).closest('div.flex.items-center.gap-4') as HTMLElement
       expect(within(row).getByRole('img', { name: 'Living room antenna: 1 of 2 tuners in use' })).toBeInTheDocument()
@@ -143,22 +144,36 @@ describe('LivePage', () => {
       const s = makeTwoDeviceState()
       s.devices[0].firmware = updateAvailable
       renderWithApp(<LivePage />, s)
-      expect(within(screen.getByRole('region', { name: 'Tuners on antenna' })).getByRole('link', { name: /Firmware update/ })).toHaveAttribute('href', '/tuner')
-      expect(within(screen.getByRole('region', { name: 'Tuners on cable' })).queryByRole('link')).not.toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Tuners on Steve FLEX 4K' })).getByRole('link', { name: /Firmware update/ })).toHaveAttribute('href', '/tuner')
+      expect(within(screen.getByRole('region', { name: 'Tuners on Cable HDHR' })).queryByRole('link')).not.toBeInTheDocument()
     })
   })
 
-  it('shows the name of a single tuner once it has been named, and nothing extra before', () => {
+  it("always gives a tuner a header: the model when it has no name of its own, so it is said once", () => {
+    renderWithApp(<LivePage />, makeState())
+    const section = screen.getByRole('region', { name: 'Tuners on Steve FLEX 4K' })
+    expect(within(section).getByRole('heading', { level: 2, name: 'Steve FLEX 4K' })).toBeInTheDocument()
+    expect(within(section).getAllByText('Steve FLEX 4K')).toHaveLength(1)
+    expect(section).toHaveTextContent('2 of 4 live')
+    expect(section).toHaveTextContent('192.168.1.132') // where it is: the top bar no longer says
+  })
+
+  it('shows the name you gave a tuner as its title, with the model beside it', () => {
     const s = makeState()
     s.devices[0].label = 'Living room antenna'
-    const { unmount } = renderWithApp(<LivePage />, s)
-    expect(screen.getByRole('region', { name: 'Tuners on Living room antenna' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /Living room antenna/ })).toBeInTheDocument()
-    unmount()
-    renderWithApp(<LivePage />, makeState())
-    expect(screen.getByRole('region', { name: 'Tuners' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { level: 2, name: /antenna/ })).not.toBeInTheDocument()
+    renderWithApp(<LivePage />, s)
+    const section = screen.getByRole('region', { name: 'Tuners on Living room antenna' })
+    expect(within(section).getByRole('heading', { level: 2, name: 'Living room antenna' })).toBeInTheDocument()
+    expect(section).toHaveTextContent('Steve FLEX 4K · 2 of 4 live')
   })
+
+  it('does not say the model twice when the name you gave is the model', () => {
+    const s = makeState()
+    s.devices[0].label = 'Steve FLEX 4K'
+    renderWithApp(<LivePage />, s)
+    expect(within(screen.getByRole('region', { name: 'Tuners on Steve FLEX 4K' })).getAllByText('Steve FLEX 4K')).toHaveLength(1)
+  })
+
 })
 
 describe('LivePage guide', () => {

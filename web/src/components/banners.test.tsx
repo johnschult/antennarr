@@ -50,10 +50,10 @@ describe('Banners', () => {
     const s = makeTwoDeviceState()
     s.devices[1].tuner.online = false
     show(s)
-    expect(screen.getByRole('status')).toHaveTextContent('A tuner is offline: cable.')
+    expect(screen.getByRole('status')).toHaveTextContent('A tuner is offline: Cable HDHR.')
     s.devices[0].tuner.online = false
     show(s)
-    expect(screen.getAllByRole('status')[1]).toHaveTextContent('2 tuners are offline: antenna, cable.')
+    expect(screen.getAllByRole('status')[1]).toHaveTextContent('2 tuners are offline: Steve FLEX 4K, Cable HDHR.')
   })
 
   it('talks about tuners in the plural with no viewers and several devices', () => {

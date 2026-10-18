@@ -58,14 +58,14 @@ describe('Shell menu on a phone', () => {
     expect(menu.getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Settings'])
   })
 
-  it('also holds the tuner status and sign-out that the phone header has no room for', async () => {
+  it('also holds the connection and sign-out that the phone header has no room for, and nothing about the tuners', async () => {
     mount()
     const user = userEvent.setup()
     await user.click(button())
     const panel = document.getElementById('mobile-menu')!
-    expect(within(panel).getByText('Steve FLEX 4K', { exact: false })).toBeInTheDocument()
     expect(within(panel).getByTestId('connection')).toBeInTheDocument()
     expect(await within(panel).findByRole('button', { name: /john/ })).toBeInTheDocument()
+    expect(within(panel).queryByText(/Steve FLEX 4K/)).not.toBeInTheDocument()
   })
 
   it('has an icon on every page in the phone menu', async () => {

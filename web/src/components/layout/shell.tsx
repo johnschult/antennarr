@@ -9,7 +9,6 @@ import { PlexIcon } from '@/components/plex-button'
 import { useApp } from '@/hooks/app-context'
 import { useAuthStatus } from '@/hooks/use-auth'
 import { signOut } from '@/lib/api'
-import { deviceTitle } from '@/lib/device'
 import { cn } from '@/lib/utils'
 
 // The pages, in the order they are used: watching, who may watch, the hardware,
@@ -35,42 +34,20 @@ function NavLabel({ item, active, always }: { item: (typeof nav)[number]; active
 /** Where the project lives, for the footer. */
 const REPO_URL = 'https://github.com/johnschult/antennarr'
 
-/** Whether the tuner is up and whether the live feed is connected. */
-function Status() {
-  const { state, connected } = useApp()
-  const { devices } = state
-  const one = devices.length === 1 ? devices[0] : null
+/**
+ * Whether the page's live feed is connected. Nothing here about the tuners: there can be
+ * any number, so each has its header on the Live page and a row on the Tuners page, and
+ * an offline one is a banner.
+ */
+function ConnectionStatus() {
+  const { connected } = useApp()
   return (
-    <>
-      {devices.length === 0 ? (
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-amber-400" />
-          No tuners yet
-        </span>
-      ) : one ? (
-        <span className="flex items-center gap-1.5" title={one.tuner.online ? 'Tuner online' : 'Tuner offline'}>
-          <span className={cn('size-2 rounded-full', one.tuner.online ? 'bg-emerald-400' : 'bg-red-400')} />
-          {one.label ?? one.tuner.friendlyName ?? 'Tuner'} · <span className="font-mono">{one.tuner.baseURL.replace(/^https?:\/\//, '')}</span>
-        </span>
-      ) : (
-        <span className="flex items-center gap-1.5">
-          {devices.map((d) => (
-            <span
-              key={d.name}
-              title={`${deviceTitle(d)}: ${d.tuner.online ? 'online' : 'offline'}`}
-              className={cn('size-2 rounded-full', d.tuner.online ? 'bg-emerald-400' : 'bg-red-400')}
-            />
-          ))}
-          {devices.length} tuners
-        </span>
-      )}
-      <span
-        data-testid="connection"
-        className={cn('rounded-full px-2 py-0.5', connected ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300')}
-      >
-        {connected ? 'Live' : 'Reconnecting…'}
-      </span>
-    </>
+    <span
+      data-testid="connection"
+      className={cn('rounded-full px-2 py-0.5', connected ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300')}
+    >
+      {connected ? 'Live' : 'Reconnecting…'}
+    </span>
   )
 }
 
@@ -140,7 +117,7 @@ export function Shell() {
           </nav>
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
             <div className="hidden items-center gap-3 md:flex">
-              <Status />
+              <ConnectionStatus />
             </div>
             <div className="hidden md:block">
               <SignedIn />
@@ -171,7 +148,7 @@ export function Shell() {
                 ))}
               </nav>
               <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground sm:px-6">
-                <Status />
+                <ConnectionStatus />
                 <SignedIn />
               </div>
             </div>
