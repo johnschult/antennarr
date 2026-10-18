@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -21,6 +22,9 @@ import (
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
+	"github.com/johnschult/antennarr/internal/upgrade"
 )
 
 // TestDemo runs Antennarr against a made-up tuner and guide until interrupted,
@@ -79,6 +83,60 @@ func TestDemo(t *testing.T) {
 	var mu sync.Mutex
 	remote := false // Alex is watching the first channel through Antennarr
 
+	// DEMO_UPDATE=1 is a tuner that is a release behind, with SiliconDust's side (the changelog and the download)
+	// and the tuner's control port faked, so that installing firmware can be tried: it is downloaded, sent
+	// slowly enough to watch, and the tuner goes away for several seconds and comes back on the new version.
+	// None of it leaves this machine.
+	fwVersion, fwDown := "20260326", false
+	var update struct {
+		on        bool
+		changelog *httptest.Server
+		files     *httptest.Server
+		ctrl      *hdhrtest.Server
+	}
+	if os.Getenv("DEMO_UPDATE") != "" {
+		update.on = true
+		fwVersion = "20250815"
+		page, err := os.ReadFile("../firmware/testdata/changelog.html")
+		if err != nil {
+			t.Fatal(err)
+		}
+		update.changelog = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write(page) }))
+		defer update.changelog.Close()
+		image := make([]byte, 4<<20)
+		for i := range image {
+			image[i] = byte(i * 7)
+		}
+		update.files = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/hdhomerun_dvr_atsc3_firmware_20260326.bin" {
+				http.NotFound(w, r)
+				return
+			}
+			time.Sleep(3 * time.Second) // a download takes a moment
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Write(image)
+		}))
+		defer update.files.Close()
+		var err2 error
+		update.ctrl, err2 = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20250815", VersionAfter: "20260326", RebootFor: 9 * time.Second, ChunkDelay: time.Millisecond})
+		if err2 != nil {
+			t.Fatal(err2)
+		}
+		defer update.ctrl.Close()
+		go func() { // the tuner's web side goes quiet while it restarts, and comes back on the new version
+			for !update.ctrl.Upgraded() {
+				time.Sleep(50 * time.Millisecond)
+			}
+			mu.Lock()
+			fwDown = true
+			mu.Unlock()
+			time.Sleep(10 * time.Second)
+			mu.Lock()
+			fwVersion, fwDown = "20260326", false
+			mu.Unlock()
+		}()
+	}
+
 	stream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		remote = true
@@ -100,9 +158,16 @@ func TestDemo(t *testing.T) {
 	_, sport, _ := net.SplitHostPort(strings.TrimPrefix(stream.URL, "http://"))
 
 	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		down, ver := fwDown, fwVersion
+		mu.Unlock()
+		if down {
+			http.Error(w, "restarting", http.StatusServiceUnavailable)
+			return
+		}
 		switch r.URL.Path {
 		case "/discover.json":
-			fmt.Fprint(w, `{"DeviceAuth":"DEMO-AUTH","FriendlyName":"HDHomeRun FLEX 4K","ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":"20260326","DeviceID":"10ABCC87","TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"}`)
+			fmt.Fprintf(w, `{"DeviceAuth":"DEMO-AUTH","FriendlyName":"HDHomeRun FLEX 4K","ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":%q,"DeviceID":"10ABCC87","TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"}`, ver)
 		case "/lineup.json":
 			var items []string
 			for _, c := range chs {
@@ -193,12 +258,23 @@ func TestDemo(t *testing.T) {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-	srv, err := New(ctx, Config{
+	cfg := Config{
 		Settings: s, Devices: s.Devices, ConfigPath: cfgPath, Poll: time.Second, Log: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 		Locate:    func(context.Context, string, string) (string, error) { return api.URL, nil },
 		Listeners: map[string]net.Listener{"antenna": ln}, GuideURL: guide.URL + "/api/xmltv", GuideIconBase: guide.URL,
 		AdminListen: "127.0.0.1:0",
-	})
+		// The demo's tuner is made up and goes quiet on purpose: don't go looking for a real one.
+		Find: func(context.Context, string, string) (discovery.Device, error) {
+			return discovery.Device{}, errors.New("demo")
+		},
+	}
+	if update.on {
+		cfg.FirmwareURL = update.changelog.URL
+		cfg.FirmwareDownloadBase = update.files.URL
+		cfg.ControlPort = update.ctrl.Addr()[strings.LastIndex(update.ctrl.Addr(), ":")+1:]
+		cfg.UpgradeConfig = func(u *upgrade.Config) { u.RestartWait, u.PollEvery = 4*time.Second, time.Second }
+	}
+	srv, err := New(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}

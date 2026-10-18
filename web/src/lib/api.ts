@@ -1,4 +1,4 @@
-import type { AppState, ChannelInput, DeviceInput, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
+import type { AppState, ChannelInput, DeviceInput, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -65,6 +65,12 @@ export const replaceChannel = (id: string, c: ChannelInput) => request<NotifyCha
 export const deleteChannel = (id: string) => request<void>('DELETE', `/notifications/channels/${encodeURIComponent(id)}`)
 /** Send one test message to a channel: a saved one by `id`, or the form's values, or a saved one with edits not yet saved. */
 export const testChannel = (t: { id?: string; channel?: ChannelInput }) => request<{ ok: true }>('POST', '/notifications/test', t)
+
+/** Install the latest firmware on a tuner. It runs in the background: progress is in the state. */
+export const installFirmware = (device: string, r: UpgradeRequest) =>
+  request<{ release: string; from: string }>('POST', `/devices/${encodeURIComponent(device)}/firmware/upgrade`, r)
+/** Clear a finished install's result. */
+export const dismissUpgrade = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/firmware/upgrade`)
 
 export const removePlexAdmin = (id: number) => request<void>('DELETE', `/plex/admins/${id}`)
 

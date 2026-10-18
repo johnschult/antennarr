@@ -49,6 +49,7 @@ Only your tuners, plus these. Each can be switched off or left unset, and Antenn
 | What | Where | How often | What is sent |
 |---|---|---|---|
 | Firmware changelog | `silicondust.com` | every 12 hours | Nothing about you or your tuners. |
+| Firmware file | `download.silicondust.com` | only when an admin presses Install | Nothing about you or your tuners. |
 | Programme guide, channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | Your tuner's guide key (its `DeviceAuth`), which is how SiliconDust knows which channels to list. |
 | Sign in with Plex | `plex.tv` | when someone signs in | The sign-in request. |
 | Notifications | the ntfy server, `api.pushover.net`, or the webhook address **you** set up | when something you switched on happens, and when you press Test | A short message: a title and a sentence naming a tuner, a viewer or an address, for example `Mom was refused a tuner`, `192.0.2.9 tried to use Living room`, or `Living room is offline`. Nothing is sent, and nothing is contacted, until you add a channel. |

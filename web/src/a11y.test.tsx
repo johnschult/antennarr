@@ -116,6 +116,49 @@ describe("axe: what's new", () => {
   })
 })
 
+describe('axe: installing firmware', () => {
+  const upgrading = (u?: { phase: 'downloading' | 'sending' | 'restarting' | 'verifying' | 'done' | 'failed'; error?: string }, over: Partial<ReturnType<typeof makeDevice>> = {}) =>
+    makeState({
+      devices: [
+        makeDevice({
+          firmware: { ...updateAvailable, current: '20250815', latest: '20260326' },
+          upgrade: u && { release: '20260326', from: '20250815', percent: 60, started: '2026-10-18T10:00:00Z', ...u },
+          ...over,
+        }),
+      ],
+    })
+
+  it('the Tuners page offering the update, and its confirmation', async () => {
+    render(upgrading(), '/tuner')
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Install' }))
+    await screen.findByRole('alertdialog')
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('the confirmation with something running to interrupt', async () => {
+    const s = upgrading()
+    s.devices[0].summary.inUse = 2
+    render(s, '/tuner')
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Install' }))
+    await screen.findByRole('alertdialog')
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it.each(['downloading', 'sending', 'restarting', 'verifying', 'done', 'failed'] as const)('the page while it is %s', async (phase) => {
+    render(upgrading({ phase, error: phase === 'failed' ? 'the tuner has not come back.' : undefined }), '/tuner')
+    await screen.findByRole('region', { name: 'Firmware' })
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('the Live page and the banners while a tuner is updating', async () => {
+    const s = upgrading({ phase: 'restarting' }, { tuner: { ...makeDevice().tuner, online: false, updating: true } })
+    render(s, '/')
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
 describe('axe: the phone layout', () => {
   it('the pages and the open menu', async () => {
     mockPhone(true)

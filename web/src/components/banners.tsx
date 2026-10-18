@@ -23,7 +23,8 @@ function Banner({ tone, icon, children }: { tone: 'amber' | 'red'; icon: ReactNo
 
 /** The notices that belong at the top of every page. */
 export function Banners({ state }: { state: AppState }) {
-  const offline = state.devices.filter((d) => !d.tuner.online)
+  // A tuner that is restarting to install firmware is expected to be away: that is not an outage.
+  const offline = state.devices.filter((d) => !d.tuner.online && !d.tuner.updating)
   const several = state.devices.length > 1
 
   return (

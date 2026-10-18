@@ -45,6 +45,9 @@ type Options struct {
 	// VersionAfter is what /sys/version says after the upgrade. Empty means unchanged: a tuner that took the
 	// image and ignored it.
 	VersionAfter string
+	// ChunkDelay slows the reading of each upgrade chunk, so an upload takes long enough to watch (the
+	// demo). It is not for tests that want to be quick.
+	ChunkDelay time.Duration
 	// Unknown is a value name the tuner answers with an error for, besides the ones it doesn't have.
 	Unknown map[string]bool
 }
@@ -235,6 +238,9 @@ func (s *Server) handle(c net.Conn, id int) {
 				}
 				image = append(image, payload[4:]...)
 				chunks++
+				if s.opts.ChunkDelay > 0 {
+					time.Sleep(s.opts.ChunkDelay)
+				}
 				if s.opts.DropBeforeEnd > 0 && chunks >= s.opts.DropBeforeEnd {
 					return
 				}

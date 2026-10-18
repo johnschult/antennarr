@@ -1,14 +1,33 @@
-import { ArrowUpCircle, ChevronDown, ChevronUp, Cpu, ExternalLink, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowUpCircle, Check, ChevronDown, ChevronUp, Cpu, Download, ExternalLink, Loader2, RefreshCw, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Row, Section } from '@/components/settings/section'
 import { Badge } from '@/components/ui/badge'
+import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
 import { deviceTitle } from '@/lib/device'
 import { firmwareDate, isNever, timeAgo } from '@/lib/format'
-import type { DeviceState, FirmwareStatus } from '@/lib/types'
+import type { DeviceState, FirmwareStatus, UpgradeStatus } from '@/lib/types'
+
+/** What an install is doing, in words. */
+function upgradeText(u: UpgradeStatus): string {
+  switch (u.phase) {
+    case 'downloading':
+      return `Downloading ${firmwareDate(u.release)} from SiliconDust…`
+    case 'sending':
+      return `Sending it to the tuner… ${u.percent}%`
+    case 'restarting':
+      return "The tuner is installing it and restarting. This takes a couple of minutes: don't unplug it."
+    case 'verifying':
+      return 'The tuner is back. Checking what it is running…'
+    case 'done':
+      return `Updated from ${firmwareDate(u.from)} to ${firmwareDate(u.release)}.`
+    default:
+      return u.error ?? 'The update did not finish.'
+  }
+}
 
 export const CHANGELOG_URL = 'https://www.silicondust.com/support/downloads/firmware-changelog.html'
 
@@ -44,11 +63,16 @@ function StatusBadge({ s }: { s: FirmwareStatus }) {
 export function FirmwareSection({ device }: { device: DeviceState }) {
   const { state } = useApp()
   const { firmware: s, tuner } = device
-  const { firmware: check } = useEdits()
+  const { firmware: check, dismiss } = useEdits()
   const [showAll, setShowAll] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const several = state.devices.length > 1
   const checking = state.settings.firmwareCheck
   const shown = showAll ? s.updates : s.updates.slice(0, 2)
+  const up = device.upgrade
+  const running = up !== undefined && up.phase !== 'done' && up.phase !== 'failed'
+  // The server decides for itself; this is only so the button isn't offered when it would be refused.
+  const canInstall = s.state === 'update-available' && tuner.online && !tuner.updating && !running
 
   return (
     <Section icon={Cpu} title={several ? `Firmware — ${deviceTitle(device)}` : 'Firmware'}>
@@ -58,7 +82,31 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
       >
         <span className="text-sm font-medium">{firmwareDate(s.current)}</span>
         <StatusBadge s={s} />
+        {canInstall && (
+          <Button size="sm" onClick={() => setConfirming(true)}>
+            <Download data-icon="inline-start" /> Install
+          </Button>
+        )}
       </Row>
+
+      {up && (
+        <Row
+          title={running ? 'Updating' : up.phase === 'done' ? 'Updated' : 'The update failed'}
+          description={
+            <span role={running ? 'status' : undefined} className={up.phase === 'failed' ? 'text-red-700 dark:text-red-300' : undefined}>
+              {upgradeText(up)}
+            </span>
+          }
+        >
+          {running && <Loader2 aria-label="Working" className="size-4 animate-spin text-muted-foreground" />}
+          {up.phase === 'done' && <Check aria-hidden className="size-4 text-emerald-600 dark:text-emerald-400" />}
+          {!running && (
+            <Button size="sm" variant="outline" disabled={dismiss.isPending} onClick={() => dismiss.mutate({ device: device.name })}>
+              <X data-icon="inline-start" /> Dismiss
+            </Button>
+          )}
+        </Row>
+      )}
 
       <Row
         title="SiliconDust's changelog"
@@ -120,9 +168,14 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
           {!s.modelRecognised && (
             <p className="text-xs text-muted-foreground">Antennarr doesn't recognise this model, so it can't tell which notes are for it; they are all shown.</p>
           )}
-          <p className="text-xs text-muted-foreground">Update from the tuner's own page or with SiliconDust's HDHomeRun software; Antennarr never installs firmware.</p>
+          <p className="text-xs text-muted-foreground">
+            {canInstall
+              ? 'Install downloads the newest release from SiliconDust and puts it on the tuner. You can also update from the tuner’s own page or with SiliconDust’s HDHomeRun software.'
+              : 'You can update from the tuner’s own page or with SiliconDust’s HDHomeRun software, or install it here when the tuner is online and a newer release applies.'}
+          </p>
         </div>
       )}
+      <UpgradeDialog device={confirming ? device : null} onClose={() => setConfirming(false)} />
     </Section>
   )
 }

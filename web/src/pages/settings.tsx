@@ -95,7 +95,7 @@ export function SettingsPage() {
         <SwitchRow
           id="setting-firmwareCheck"
           title="Check for new tuner firmware"
-          description="Reads SiliconDust's public firmware changelog once every 12 hours. Nothing about you or your tuners is sent. Antennarr only tells you about new releases; it never installs them."
+          description="Reads SiliconDust's public firmware changelog once every 12 hours. Nothing about you or your tuners is sent. Antennarr tells you about new releases, and installs one only when you press Install on the Tuners page."
           checked={settings.firmwareCheck}
           disabled={!editable}
           onChange={(next) => update.mutateAsync({ firmwareCheck: next })}

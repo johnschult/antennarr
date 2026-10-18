@@ -152,6 +152,7 @@ Back them up with your other configuration. There is no database, and nothing el
 |---|---|---|
 | The tuners | every 5 seconds (`-poll`) | After 3 failures in a row a tuner is shown offline, and Antennarr starts searching for it by DeviceID (at most every 30 seconds), using a broadcast and a scan of the nearby subnet. |
 | Firmware changelog | every 12 hours | Only when `firmwareCheck` is on. |
+| Firmware file | never on a schedule | Downloaded only when an admin presses Install on the Tuners page, and sent to that tuner over its control port (TCP 65001). Needs `firmwareCheck` on. |
 | Programme guide | every 6 hours | Only when `guide` is on. About 3.5 MB for a FLEX 4K. |
 
 Notifications aren't on a schedule of their own: they are sent when the firmware check, the tuner check or a viewer's request notices something.

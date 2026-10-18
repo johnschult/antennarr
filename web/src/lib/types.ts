@@ -67,6 +67,33 @@ export interface TunerState {
   lastSeen: string
   since: string
   events: TunerEvent[]
+  /** Antennarr is installing firmware: the tuner is expected to go away and come back, so it is not offline. */
+  updating: boolean
+}
+
+export type UpgradePhase = 'downloading' | 'sending' | 'restarting' | 'verifying' | 'done' | 'failed'
+
+/** A firmware install on a tuner, while it runs and after. */
+export interface UpgradeStatus {
+  phase: UpgradePhase
+  /** The version being installed, and what the tuner ran before. */
+  release: string
+  from: string
+  /** How much of the image has been sent, 0 to 100. */
+  percent: number
+  /** Why it failed, in words for a person. */
+  error?: string
+  sha256?: string
+  started: string
+  finished?: string
+}
+
+/** What is sent to install firmware. */
+export interface UpgradeRequest {
+  /** The release the page was offering: the server refuses if a newer one has been found since. */
+  version: string
+  /** The person has been told something is running and that this will cut it off. */
+  interrupt?: boolean
 }
 
 export interface Stream {
@@ -193,6 +220,8 @@ export interface DeviceState {
   ownerReserve: number
   sharedCap: number
   firmware: FirmwareStatus
+  /** The latest firmware install on this tuner, running or finished. Absent when there has been none. */
+  upgrade?: UpgradeStatus
   /** What the programme guide says about each channel being watched, by channel number. */
   guide: Record<string, GuideEntry>
 }

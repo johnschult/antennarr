@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, getState, patchDevice, patchSettings, replaceChannel, replaceViewer, testChannel } from '@/lib/api'
+import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, replaceViewer, testChannel } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
-import type { AppState, ChannelInput, DeviceInput, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
+import type { AppState, ChannelInput, DeviceInput, UpgradeRequest, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
 
 /** What a firmware check turned up across the tuners: newer firmware, none, or no clear answer. */
@@ -109,5 +109,17 @@ export function useEdits() {
     onSuccess: (_, { name }) => toast.success(`Test sent to ${name}`),
     onError: (err) => toast.error(err instanceof Error ? err.message : 'The test did not go through'),
   })
-  return { add, replace, remove, settings, device, firmware, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
+  // Installing runs on the server, in the background. Starting it is a request that answers at once; how it
+  // goes arrives in the state, and the toast for how it ended is in useUpgradeToasts, so it shows wherever the
+  // person is on the page. A request that is refused says why.
+  const install = useMutation({
+    mutationFn: ({ device, request }: { device: string; request: UpgradeRequest }) => installFirmware(device, request),
+    onSuccess: () => void refresh(),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not start the update'),
+  })
+  const dismiss = useMutation({
+    mutationFn: ({ device }: { device: string }) => dismissUpgrade(device),
+    onSuccess: () => void refresh(),
+  })
+  return { add, replace, remove, settings, device, firmware, install, dismiss, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
 }
