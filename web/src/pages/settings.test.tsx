@@ -35,7 +35,7 @@ describe('SettingsPage', () => {
     expect(within(tuner).getByText(/4 tuners/)).toBeInTheDocument()
     expect(screen.getByLabelText('Admin addresses')).toHaveValue('100.64.0.0/10')
     expect(screen.getByRole('switch', { name: 'Check for new tuner firmware' })).toBeChecked()
-    expect(within(section('Access')).getByText('Viewers only')).toBeInTheDocument()
+    expect(within(section('Access')).getByRole('link', { name: 'Viewers only' })).toHaveAttribute('href', '/viewers')
   })
 
   it('says when there are no viewers yet', () => {

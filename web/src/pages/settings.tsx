@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 import { EditRow } from '@/components/settings/edit-row'
 import { PlexRows } from '@/components/settings/plex-rows'
 import { Row, Section } from '@/components/settings/section'
@@ -72,7 +74,9 @@ export function SettingsPage() {
         />
         <PlexRows />
         <Row title="Who can use your tuners" description="Only the addresses of the viewers you add. With no viewers, nobody can.">
-          <span className="text-sm font-medium">{settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}</span>
+          <Link to="/viewers" className="text-sm font-medium underline underline-offset-2 hover:text-foreground">
+            {settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}
+          </Link>
         </Row>
       </Section>
 
