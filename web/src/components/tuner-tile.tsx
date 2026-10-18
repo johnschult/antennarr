@@ -1,4 +1,4 @@
-import { Crown, Tv } from 'lucide-react'
+import { Crown, Globe, House, Tv } from 'lucide-react'
 import { ChannelLogo } from '@/components/channel-logo'
 import { SignalMeter } from '@/components/signal-meter'
 import { Sparkline } from '@/components/sparkline'
@@ -62,6 +62,8 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
         <span className="font-mono text-xs text-muted-foreground">TUNER {tile.index + 1}</span>
         <Badge className={badgeClass[owner.kind]}>
           {owner.kind === 'reserved' && <Crown data-icon="inline-start" />}
+          {owner.kind === 'local' && <House data-icon="inline-start" />}
+          {(owner.kind === 'viewer' || owner.kind === 'remote') && <Globe data-icon="inline-start" />}
           {ownerLabel(owner)}
         </Badge>
       </div>
