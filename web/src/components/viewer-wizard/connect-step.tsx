@@ -19,7 +19,7 @@ export function ConnectStep({ g }: { g: ConnectGuide }) {
       <Block title="The address">
         <div className="space-y-2">
           <Label htmlFor="setup-host">Address viewers will use to reach this machine</Label>
-          <Input id="setup-host" value={g.host} onChange={(e) => g.setTypedHost(e.target.value)} spellCheck={false} autoComplete="off" aria-invalid={problem !== null} className="max-w-sm font-mono" />
+          <Input id="setup-host" value={g.host} onChange={(e) => g.setTypedHost(e.target.value)} spellCheck={false} aria-invalid={problem !== null} className="max-w-sm font-mono" />
           {problem && (
             <p role="alert" className="text-xs text-amber-700 dark:text-amber-300">
               {problem}
