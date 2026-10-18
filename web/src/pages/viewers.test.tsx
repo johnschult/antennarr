@@ -231,7 +231,7 @@ describe('ViewersPage', () => {
     it("shows a viewer's use on each device, honouring per-device limits", () => {
       renderWithApp(<ViewersPage />, makeTwoDeviceState())
       const john = row('John')
-      expect(within(john).getByText('antenna')).toBeInTheDocument()
+      expect(within(john).getByText('Steve FLEX 4K')).toBeInTheDocument()
       expect(within(john).getByText('1/2')).toBeInTheDocument() // antenna: default 2
       expect(within(john).getByText('0/2')).toBeInTheDocument() // cable: override 2
       expect(within(row('Mom')).getAllByText('0/1')).toHaveLength(2) // limit 1 on each of the two devices
@@ -249,8 +249,8 @@ describe('ViewersPage', () => {
       renderWithApp(<ViewersPage />, makeTwoDeviceState())
       await user.click(screen.getByRole('button', { name: /Add viewer/ }))
       expect(await screen.findByLabelText('Tuners at once (default)')).toBeInTheDocument()
-      expect(screen.getByLabelText('Tuners on antenna')).toBeInTheDocument()
-      expect(screen.getByLabelText('Tuners on cable')).toBeInTheDocument()
+      expect(screen.getByLabelText('Tuners on Steve FLEX 4K')).toBeInTheDocument()
+      expect(screen.getByLabelText('Tuners on Cable HDHR')).toBeInTheDocument()
     })
 
     it('sends only the per-device limits that were filled in', async () => {
@@ -263,7 +263,7 @@ describe('ViewersPage', () => {
       const dialog = await screen.findByRole('dialog')
       await user.type(within(dialog).getByLabelText('Name'), 'Cabin')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.6')
-      await user.type(within(dialog).getByLabelText('Tuners on cable'), '3') // antenna left blank: uses the default
+      await user.type(within(dialog).getByLabelText('Tuners on Cable HDHR'), '3') // antenna left blank: uses the default
       await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
 
       await waitFor(() => expect(calls.find((c) => c.method === 'POST')).toBeDefined())
@@ -280,7 +280,7 @@ describe('ViewersPage', () => {
       const dialog = await screen.findByRole('dialog')
       await user.type(within(dialog).getByLabelText('Name'), 'Guest')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.7')
-      await user.type(within(dialog).getByLabelText('Tuners on antenna'), '0') // paused on the antenna box only
+      await user.type(within(dialog).getByLabelText('Tuners on Steve FLEX 4K'), '0') // paused on the antenna box only
       await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
 
       await waitFor(() => expect(calls.find((c) => c.method === 'POST')).toBeDefined())
@@ -295,10 +295,10 @@ describe('ViewersPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'Edit John' }))
       const dialog = await screen.findByRole('dialog')
-      expect(within(dialog).getByLabelText('Tuners on cable')).toHaveValue(2) // John's override
-      expect(within(dialog).getByLabelText('Tuners on antenna')).toHaveValue(null) // none: default
+      expect(within(dialog).getByLabelText('Tuners on Cable HDHR')).toHaveValue(2) // John's override
+      expect(within(dialog).getByLabelText('Tuners on Steve FLEX 4K')).toHaveValue(null) // none: default
 
-      await user.clear(within(dialog).getByLabelText('Tuners on cable'))
+      await user.clear(within(dialog).getByLabelText('Tuners on Cable HDHR'))
       await user.click(within(dialog).getByRole('button', { name: 'Save' }))
       await waitFor(() => expect(calls.find((c) => c.method === 'PUT')).toBeDefined())
       expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ name: 'John', addresses: ['100.67.117.32'], limit: 2, limits: {} })
@@ -314,9 +314,9 @@ describe('ViewersPage', () => {
       const dialog = await screen.findByRole('dialog')
       await user.type(within(dialog).getByLabelText('Name'), 'X')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.8')
-      await user.type(within(dialog).getByLabelText('Tuners on cable'), '-2')
+      await user.type(within(dialog).getByLabelText('Tuners on Cable HDHR'), '-2')
       await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
-      expect(await within(dialog).findByRole('alert')).toHaveTextContent('The limit for cable must be 0 or more.')
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent('The limit for Cable HDHR must be 0 or more.')
       expect(calls).toHaveLength(0)
     })
 
@@ -341,13 +341,13 @@ describe('ViewersPage', () => {
       renderWithApp(<ViewersPage />, s)
 
       expect(within(row('John')).getByText('Cable box')).toBeInTheDocument()
-      expect(within(row('John')).getByText('antenna')).toBeInTheDocument()
+      expect(within(row('John')).getByText('Steve FLEX 4K')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'Edit John' }))
       const dialog = await screen.findByRole('dialog')
       expect(within(dialog).getByLabelText('Tuners on Cable box')).toHaveValue(2)
       // ...but limits are still saved under the device's key, which never changes.
-      expect(within(dialog).getByLabelText('Tuners on antenna')).toBeInTheDocument()
+      expect(within(dialog).getByLabelText('Tuners on Steve FLEX 4K')).toBeInTheDocument()
     })
 
     it('saves limits under the key, whatever the tuner is called', async () => {
@@ -431,8 +431,8 @@ describe('ViewersPage on a phone', () => {
   it('shows each tuner of a viewer on a device with several', () => {
     mockPhone(true)
     renderWithApp(<ViewersPage />, makeTwoDeviceState())
-    expect(within(card('John')).getByText('antenna')).toBeInTheDocument()
-    expect(within(card('John')).getByText('cable')).toBeInTheDocument()
+    expect(within(card('John')).getByText('Steve FLEX 4K')).toBeInTheDocument()
+    expect(within(card('John')).getByText('Cable HDHR')).toBeInTheDocument()
   })
 
   it('switches between the card list and the table as the window is resized', () => {

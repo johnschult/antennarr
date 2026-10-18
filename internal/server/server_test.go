@@ -628,7 +628,7 @@ func TestParseTuner(t *testing.T) {
 	}
 }
 
-func TestRenamingATunerChangesWhatMediaServersSeeAtOnce(t *testing.T) {
+func TestRenamingATunerNeverChangesWhatMediaServersSee(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	s := loopbackViewer(access.Settings{})
 	r := start(t, s, oneDevice(a), a)
@@ -639,16 +639,26 @@ func TestRenamingATunerChangesWhatMediaServersSeeAtOnce(t *testing.T) {
 		json.Unmarshal([]byte(body), &d)
 		return d["FriendlyName"].(string)
 	}
+	label := func() string {
+		_, body := r.get(t, "antenna", "/antennarr/api/state")
+		var st struct{ Devices []struct{ Label string } }
+		json.Unmarshal([]byte(body), &st)
+		return st.Devices[0].Label
+	}
 	if got := friendly(); got != "antenna-box" {
 		t.Fatalf("before naming it: %q", got)
 	}
 
-	s.Labels = map[string]string{"antenna": "Antenna (Steve)"}
+	// The name shows on the page at once, and media servers still see the tuner's own.
+	s.Labels = map[string]string{"antenna": "Living room antenna"}
 	if err := r.srv.Reload(s); err != nil {
 		t.Fatal(err)
 	}
-	if got := friendly(); got != "Antenna (Steve)" {
-		t.Errorf("after naming it: %q, want it to apply with no restart", got)
+	if got := label(); got != "Living room antenna" {
+		t.Errorf("the page should have the name: %q", got)
+	}
+	if got := friendly(); got != "antenna-box" {
+		t.Errorf("a media server was told %q after the rename; it should keep the tuner's own name", got)
 	}
 
 	s.Labels = nil

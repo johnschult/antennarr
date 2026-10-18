@@ -173,7 +173,7 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
                 maxLength={60}
                 id={`setting-${device.name}-label`}
                 title="Name"
-                description="What it is called here and to media servers."
+                description="What it is called on this page. Plex and other media servers always see the tuner's own name."
                 initial={device.label ?? ''}
                 placeholder={tuner.friendlyName ?? device.name}
                 disabled={!state.editable}

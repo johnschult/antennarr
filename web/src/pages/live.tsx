@@ -5,7 +5,7 @@ import { TunerTile } from '@/components/tuner-tile'
 import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/hooks/app-context'
 import { channelIconUrl } from '@/lib/api'
-import { deviceTitle } from '@/lib/device'
+import { deviceModel, deviceTitle } from '@/lib/device'
 import { formatMbps, timeAgo } from '@/lib/format'
 import { buildTiles, limitFor } from '@/lib/slots'
 import type { DeviceState, EventKind, TunerEvent, Viewer } from '@/lib/types'
@@ -54,7 +54,7 @@ export function LivePage() {
 
       {devices.length === 0 && <NoTuners />}
       {devices.map((d) => (
-        <DeviceSection key={d.name} device={d} showHeader={several || !!d.label} tick={state.time} />
+        <DeviceSection key={d.name} device={d} tick={state.time} />
       ))}
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -97,23 +97,24 @@ export function LivePage() {
   )
 }
 
-function DeviceSection({ device, showHeader, tick }: { device: DeviceState; showHeader: boolean; tick: unknown }) {
+function DeviceSection({ device, tick }: { device: DeviceState; tick: unknown }) {
   const { tuner, summary } = device
+  const model = deviceModel(device)
   return (
-    <section aria-label={showHeader ? `Tuners on ${deviceTitle(device)}` : 'Tuners'} className="space-y-3">
-      {showHeader && (
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            <span className={cn('size-2 rounded-full', tuner.online ? 'bg-emerald-400' : 'bg-red-400')} />
-            {deviceTitle(device)}
-          </h2>
-          <span className="text-sm text-muted-foreground">
-            {tuner.friendlyName ?? 'Tuner'} · {summary.inUse} of {summary.total} live
-          </span>
-          <span className="font-mono text-xs text-muted-foreground">{tuner.baseURL.replace(/^https?:\/\//, '')}</span>
-          <FirmwareBadge status={device.firmware} />
-        </div>
-      )}
+    <section aria-label={`Tuners on ${deviceTitle(device)}`} className="space-y-3">
+      {/* The top bar doesn't say anything about the tuners, so each one has its header here: its name, the model beside a name you chose, how many are live, and where it is. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <span className={cn('size-2 rounded-full', tuner.online ? 'bg-emerald-400' : 'bg-red-400')} />
+          {deviceTitle(device)}
+        </h2>
+        <span className="text-sm text-muted-foreground">
+          {model && `${model} · `}
+          {summary.inUse} of {summary.total} live
+        </span>
+        <span className="font-mono text-xs text-muted-foreground">{tuner.baseURL.replace(/^https?:\/\//, '')}</span>
+        <FirmwareBadge status={device.firmware} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {buildTiles(device).map((t) => (
           <TunerTile

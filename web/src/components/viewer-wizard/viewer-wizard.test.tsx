@@ -200,7 +200,7 @@ describe('ViewerWizard: how they connect', () => {
     expect(screen.getByLabelText('tuner address')).toHaveTextContent('box.lan:5004')
     const choice = within(screen.getByRole('radiogroup', { name: 'Tuner' }))
     expect(choice.getByRole('radio', { name: /Living room antenna/ })).toBeChecked()
-    await user.click(choice.getByRole('radio', { name: /cable/ }))
+    await user.click(choice.getByRole('radio', { name: /Cable HDHR/ }))
     expect(screen.getByLabelText('tuner address')).toHaveTextContent('box.lan:5005')
   })
 

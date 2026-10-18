@@ -32,41 +32,32 @@ describe('App routes', () => {
     expect(screen.getByRole('link', { name: 'Live' })).not.toHaveAttribute('aria-current')
   })
 
-  it('shows the tuner and whether the live feed is connected', () => {
+  it('shows whether the live feed is connected', () => {
     const { unmount } = renderWithApp(<App />, makeState(), { connected: true })
-    expect(screen.getByTestId('connection')).toHaveTextContent('Live')
-    expect(screen.getByText(/Steve FLEX 4K/)).toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).getByTestId('connection')).toHaveTextContent('Live')
     unmount()
     renderWithApp(<App />, makeState(), { connected: false })
-    expect(screen.getByTestId('connection')).toHaveTextContent('Reconnecting…')
+    expect(within(screen.getByRole('banner')).getByTestId('connection')).toHaveTextContent('Reconnecting…')
   })
 
-  it('summarises several devices in the header, one dot each', () => {
-    const s = makeTwoDeviceState()
-    s.devices[1].tuner.online = false
-    renderWithApp(<App />, s)
-    expect(screen.getByText('2 tuners')).toBeInTheDocument()
-    expect(screen.getByTitle('antenna: online')).toBeInTheDocument()
-    expect(screen.getByTitle('cable: offline')).toBeInTheDocument()
-    // the header shows dots, not one tuner's name (the page below does name each device)
-    expect(within(screen.getByRole('banner')).queryByText(/Steve FLEX 4K/)).not.toBeInTheDocument()
-  })
-
-  it('names a tuner by its chosen name in the header dots', () => {
-    const s = makeTwoDeviceState()
-    s.devices[1].label = 'Cable box'
-    s.devices[1].tuner.online = false
-    renderWithApp(<App />, s)
-    expect(screen.getByTitle('Cable box: offline')).toBeInTheDocument()
-    expect(screen.getByTitle('antenna: online')).toBeInTheDocument()
-  })
-
-  it("shows a single tuner's chosen name in the header instead of the model's", () => {
-    const s = makeState()
-    s.devices[0].label = 'Living room antenna'
-    renderWithApp(<App />, s)
-    const header = within(screen.getByRole('banner'))
-    expect(header.getByText(/Living room antenna/)).toBeInTheDocument()
-    expect(header.queryByText(/Steve FLEX 4K/)).not.toBeInTheDocument()
+  it('says nothing about the tuners in the top bar, however many there are', () => {
+    // Each tuner has its header on the Live page and a row on Tuners, and an offline one is a banner: a bar
+    // that tried to list them would run out of room.
+    const many = makeTwoDeviceState()
+    for (let i = 0; i < 4; i++) many.devices.push({ ...many.devices[0], name: `extra${i}`, label: `Extra tuner number ${i}` })
+    const offline = makeTwoDeviceState()
+    offline.devices[1].tuner.online = false
+    const named = makeState()
+    named.devices[0].label = 'Living room antenna'
+    for (const [what, state] of [['none', makeState({ devices: [] })], ['one', makeState()], ['a named one', named], ['two', makeTwoDeviceState()], ['one offline', offline], ['six', many]] as const) {
+      const { unmount } = renderWithApp(<App />, state, { route: '/viewers' })
+      const header = within(screen.getByRole('banner'))
+      expect(header.getByTestId('connection'), what).toBeInTheDocument()
+      for (const text of [/Steve FLEX 4K/, /Cable HDHR/, /Living room antenna/, /Extra tuner/, /192\.168\.1\./, /\d tuners/, /No tuners yet/]) {
+        expect(header.queryByText(text), `${what}: ${text}`).not.toBeInTheDocument()
+      }
+      expect(header.queryByTitle(/online|offline/), what).not.toBeInTheDocument()
+      unmount()
+    }
   })
 })

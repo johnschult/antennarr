@@ -199,7 +199,7 @@ describe('SettingsPage', () => {
       s.devices[1] = makeDevice({ ...s.devices[1], label: 'Cable box' })
       renderWithApp(<SettingsPage />, s)
 
-      const antenna = section('Limits: antenna')
+      const antenna = section('Limits: Steve FLEX 4K')
       const cable = section('Limits: Cable box')
       expect(within(antenna).getByLabelText('Tuners reserved for you')).toHaveValue(1)
       expect(within(antenna).getByLabelText('Max tuners for viewers')).toHaveValue(2)
@@ -213,7 +213,7 @@ describe('SettingsPage', () => {
       const user = userEvent.setup()
       renderWithApp(<SettingsPage />, makeTwoDeviceState())
 
-      const cable = section('Limits: cable')
+      const cable = section('Limits: Cable HDHR')
       const box = within(cable).getByLabelText('Tuners reserved for you')
       await user.clear(box)
       await user.type(box, '1')

@@ -199,36 +199,18 @@ func TestTunerSeesItsOwnHostHeader(t *testing.T) {
 	}
 }
 
-func TestFriendlyNameCanBeChosenByTheOwner(t *testing.T) {
+func TestMediaServersAlwaysGetTheTunersOwnName(t *testing.T) {
+	// The name the owner gives a tuner is for the web page only. What a media server is told is the
+	// tuner's own, so it doesn't change when the owner renames it (and Plex keeps showing the model).
 	f := newFakeTuner(t)
 	api, _ := url.Parse(f.api.URL)
 	stream, _ := url.Parse(f.stream.URL)
-	var mu sync.Mutex
-	name := ""
-	srv := httptest.NewServer(New(Config{API: api, Stream: stream, FriendlyName: func() string {
-		mu.Lock()
-		defer mu.Unlock()
-		return name
-	}}))
+	srv := httptest.NewServer(New(Config{API: api, Stream: stream}))
 	defer srv.Close()
 
-	friendly := func() any {
-		var d map[string]any
-		getJSON(t, srv.URL+"/discover.json", &d)
-		return d["FriendlyName"]
-	}
-	if got := friendly(); got != "Fake FLEX" {
-		t.Errorf("with no name chosen the tuner's own should pass through: %v", got)
-	}
-	mu.Lock()
-	name = "Antenna (Steve)"
-	mu.Unlock()
-	if got := friendly(); got != "Antenna (Steve)" {
-		t.Errorf("after naming it: %v (it is asked each time, so no restart is needed)", got)
-	}
 	var d map[string]any
 	getJSON(t, srv.URL+"/discover.json", &d)
-	if d["DeviceID"] != "10ABCC87" || d["TunerCount"] != float64(4) {
-		t.Errorf("other fields changed: %v", d)
+	if d["FriendlyName"] != "Fake FLEX" || d["DeviceID"] != "10ABCC87" || d["TunerCount"] != float64(4) {
+		t.Errorf("discover.json = %v", d)
 	}
 }

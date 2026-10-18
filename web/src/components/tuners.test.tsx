@@ -101,11 +101,11 @@ describe('adding and removing tuners on the Tuners page', () => {
   it('gives each tuner its port and a way to remove it, and the page a way to add another', async () => {
     renderWithApp(<TunerPage />, two())
     await openAll()
-    const antenna = screen.getByRole('region', { name: 'Manage antenna' })
+    const antenna = screen.getByRole('region', { name: 'Manage Steve FLEX 4K' })
     expect(within(antenna).getByLabelText('Port')).toHaveValue(5004)
-    expect(within(antenna).getByRole('button', { name: 'Remove antenna' })).toBeEnabled()
-    expect(within(screen.getByRole('region', { name: 'Manage cable' })).getByLabelText('Port')).toHaveValue(5005)
-    expect(screen.getByRole('button', { name: 'Remove cable' })).toBeEnabled()
+    expect(within(antenna).getByRole('button', { name: 'Remove Steve FLEX 4K' })).toBeEnabled()
+    expect(within(screen.getByRole('region', { name: 'Manage Cable HDHR' })).getByLabelText('Port')).toHaveValue(5005)
+    expect(screen.getByRole('button', { name: 'Remove Cable HDHR' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Add tuner' })).toBeEnabled()
   })
 
@@ -114,9 +114,9 @@ describe('adding and removing tuners on the Tuners page', () => {
     vi.stubGlobal('fetch', fn)
     renderWithApp(<TunerPage />, two())
     await openAll()
-    await userEvent.click(screen.getByRole('button', { name: 'Remove antenna' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Steve FLEX 4K' }))
     const dialog = await screen.findByRole('alertdialog')
-    expect(within(dialog).getByText('Remove antenna?')).toBeInTheDocument()
+    expect(within(dialog).getByText('Remove Steve FLEX 4K?')).toBeInTheDocument()
     expect(within(dialog).getByText(/One stream is running on it and will be cut off/)).toBeInTheDocument()
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false) // nothing yet
 
@@ -130,11 +130,11 @@ describe('adding and removing tuners on the Tuners page', () => {
     vi.stubGlobal('fetch', fn)
     renderWithApp(<TunerPage />, two())
     await openAll()
-    await userEvent.click(screen.getByRole('button', { name: 'Remove cable' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Cable HDHR' }))
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Keep' }))
     expect(calls).toHaveLength(0)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Remove cable' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Cable HDHR' }))
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove' }))
     expect(await screen.findByText('the tuner was set with command-line flags')).toBeInTheDocument()
   })
@@ -142,7 +142,7 @@ describe('adding and removing tuners on the Tuners page', () => {
   it('cannot be changed when there is no settings file, and says why', async () => {
     renderWithApp(<TunerPage />, { ...two(), editable: false })
     await openAll()
-    expect(screen.getByRole('button', { name: 'Remove antenna' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Remove Steve FLEX 4K' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Add tuner' })).toBeDisabled()
     expect(screen.getByText(/no settings file to save tuners in/)).toBeInTheDocument()
   })

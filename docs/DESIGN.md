@@ -76,7 +76,7 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 
 **Chosen layout: "Control room"** (chosen from a throwaway HTML mockup, since removed):
 
-- **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Tuners, Settings). Tuner name, IP and a live dot on the right.
+- **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Tuners, Settings). On the right, the signed-in account and a Live / Reconnecting pill for the page's connection. It says nothing about the tuners: there can be any number, so each has a header on Live (its name, the model beside a name you chose, how many are live, its address and a firmware flag) and a row on Tuners, and an offline one is a banner.
 - **Hero:** a short "On air now" summary ("2 of 4 tuners live", remote/local/reserved, total Mbps), with a 24h upload sparkline beside it.
 - **One big tile per tuner:**
   - Live tiles show a large channel number, call sign and network, with a subtle scanline texture. Below that: who's watching and the bitrate. A red REC badge marks recordings.
@@ -95,7 +95,7 @@ Tuner health and last-seen IP; tuners in use by viewer vs. local; current channe
 
 Built. Devices are declared in the settings file (`devices`), each looking like its own HDHomeRun to media servers on its own port, with its own monitor following the tuner by DeviceID. Viewers and the allowlist are shared; stream counts, the shared cap and the owner reserve are per device (with per-device overrides of the defaults), and a viewer's limit can be overridden per device. Running with just `-tuner` or `-tuner-id` is the same thing with one device. A pool mode (several devices behind one virtual tuner, with failover) is still a later option; it needs the lineups to match.
 
-A device's `name` is a stable key (settings, limits, URLs); what people see is its **display name** (`labels`), which is also what media servers are told the tuner is called, and which changes live.
+A device's `name` is a stable key (settings, limits, URLs); what people see on the web page is its **display name** (`labels`), which changes live, or the model the tuner reports (HDHomeRun FLEX 4K) when it has none, shown once. The display name is local: media servers are always told the tuner's own name, so it stays the same whatever the tuner is called here, and the model always shows up in Plex (where a DVR can be renamed on Plex's side).
 
 ## Firmware
 
