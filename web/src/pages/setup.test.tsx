@@ -314,7 +314,7 @@ describe('SetupPage media server icons', () => {
     const icons = Object.fromEntries(
       screen.getAllByRole('tab').map((t) => [t.textContent, t.querySelector('img')?.getAttribute('src')]),
     )
-    expect(icons).toEqual({ Plex: '/plex-icon.png', Jellyfin: '/jellyfin-icon.png', Emby: '/emby-icon.png' })
+    expect(icons).toEqual({ Plex: '/plex-icon.svg', Jellyfin: '/jellyfin-icon.svg', Emby: '/emby-icon.svg' })
     for (const src of Object.values(icons)) expect(src).not.toMatch(/^https?:/)
   })
 
