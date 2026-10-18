@@ -1,6 +1,10 @@
 import '@testing-library/jest-dom/vitest'
+import * as axeMatchers from 'vitest-axe/matchers'
 import { cleanup } from '@testing-library/react'
-import { afterEach, beforeEach, vi } from 'vitest'
+import { afterEach, beforeEach, expect, vi } from 'vitest'
+
+// toHaveNoViolations, for the accessibility checks in a11y.test.tsx.
+expect.extend(axeMatchers)
 
 // Nothing in a test may reach a real network: unless a test stubs fetch itself, every call is refused.
 beforeEach(() => {
