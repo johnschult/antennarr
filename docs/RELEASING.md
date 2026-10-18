@@ -9,7 +9,7 @@ checkout says `dev` (with the commit, e.g. `dev+3553344`); `antennarr -version` 
 
 ## To release
 
-`main` is protected, so changes arrive by pull request. First write the release's entry in [`CHANGELOG.md`](../CHANGELOG.md), in a pull request like any other change: a `## 2026.10.2 (2026-10-18)` heading, then what changed. Put anything that changes what an existing install does under *Read before updating*. The release's notes on GitHub are that section, and a tag with no section fails before anything is published.
+`main` is protected, so changes arrive by pull request. First write the release's entry in [`CHANGELOG.md`](../CHANGELOG.md), in a pull request like any other change: a `## 2026.10.2 (2026-10-18)` heading, then what changed. Put anything that changes what an existing install does under *Read before updating*. Link to the docs with full `https://github.com/...` addresses, because the section is shown on a GitHub release page where relative links break. The release's notes on GitHub are that section, and a tag with no section fails before anything is published.
 
 Once the entry is on `main`:
 
