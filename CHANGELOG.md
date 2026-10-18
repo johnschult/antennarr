@@ -5,6 +5,31 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.5 (2026-10-18)
+
+### Read before updating
+
+- **Media servers now always see the tuner's own name.** The name you gave a tuner on the *Tuners* page used to be sent to Plex and the others in place of its model, so renaming a tuner changed what Plex showed. Now they are always told what the tuner calls itself (for example *HDHomeRun FLEX 4K*), and the name you give it is only for Antennarr's own page. A DVR that is already set up in Plex may keep the old name until Plex reads the device again or you add the DVR again. A media server can still rename its own DVR.
+- **The Connect page is part of adding a viewer.** *Viewers → Add viewer* now walks through three steps: who they are, how their server reaches yours, and what to do in their media server. For a viewer you already have, use the new *Connection steps* button on their row. The old `/setup` link goes to *Viewers*.
+- **The top bar no longer shows the tuner.** It has only the *Live* connection pill. Each tuner now has its own header on the *Live* page (see below), so nothing is lost, and with several tuners the top bar can't run out of room.
+
+### Added
+
+- **Notifications to ntfy, Pushover or a webhook**, under *Settings → Notifications*. Switch each kind on or off: new tuner firmware (once per release, not repeated after a restart), a tuner offline for two minutes and then back, a viewer turned away, and an address that isn't a viewer connecting (off by default, and limited, since a tuner port on the internet is scanned all day). Every channel has a **Test** button, and the dialog's **Send test** tries what is in the form before you save it. Nothing is sent, and nothing is contacted, until you add a channel. Tokens and keys are saved in the settings file and are never shown again. Notifications won't go to link-local addresses such as the cloud metadata service. See [Notifications](https://github.com/johnschult/antennarr/blob/main/docs/configuration.md#notifications) and [what leaves your network](https://github.com/johnschult/antennarr/blob/main/docs/security.md#what-leaves-your-network). A small `<settings file>.notified.json` beside the settings file remembers which firmware release was announced.
+- **The firmware *Check now* button shows it is working**, and the message says **New firmware found** or **No new firmware**.
+- **Each tuner has a header on the *Live* page**: its name, the model beside a name you chose, how many of its tuners are live, its address and a firmware flag. A tuner with no name of its own is titled by its model, shown once.
+- **The HDHomeRun logo on each tuner**, and icons on the section headings in *Settings* and on *Sign in with Plex*.
+- **Automated accessibility checks** (axe) over every page and dialog, which found and fixed a blank column header on the *Viewers* table.
+- **How to run the Go server for development** in [web/README.md](https://github.com/johnschult/antennarr/blob/main/web/README.md). A settings file made by running from the repository is git-ignored.
+
+### Changed
+
+- A viewer's tuner count is a row of small antennas, on *Viewers* and *Live*, and the note under the viewers table is an info box. The first column has more room.
+- An idle tuner on *Live* says **Idle** (it said "Ready") and has no antenna icon; one held for you has a TV. The station logo no longer sits against the owner's pill, and the cards are a little taller to make room.
+- The Plex, Jellyfin, Emby and HDHomeRun icons are SVGs: sharper, and smaller.
+- Text fields ask password managers and the browser not to offer to fill them.
+- The README screenshots are retaken with real channel logos. `docs/screenshots/retake.sh` can read the logos from your own tuner's guide when it takes them (the logos are not kept in the repository).
+
 ## 2026.10.4 (2026-10-18)
 
 ### Changed
