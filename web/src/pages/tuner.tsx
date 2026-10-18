@@ -1,7 +1,14 @@
+import { useState } from 'react'
+import { AddTunerDialog } from '@/components/add-tuner-dialog'
 import { NoTuners } from '@/components/no-tuners'
+import { RemoveTunerDialog } from '@/components/remove-tuner-dialog'
+import { EditRow } from '@/components/settings/edit-row'
+import { Row, Section } from '@/components/settings/section'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useApp } from '@/hooks/app-context'
+import { useEdits } from '@/hooks/mutations'
 import { useIsPhone } from '@/hooks/use-media-query'
 import { ChannelLogo } from '@/components/channel-logo'
 import { FirmwareSection } from '@/components/firmware'
@@ -13,16 +20,30 @@ import type { DeviceState, Slot } from '@/lib/types'
 export function TunerPage() {
   const { state } = useApp()
   const several = state.devices.length > 1
+  const [adding, setAdding] = useState(false)
+  const [removing, setRemoving] = useState<DeviceState | null>(null)
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">{several || state.devices.length === 0 ? 'Tuners' : (state.devices[0].label ?? 'Tuner')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Antennarr follows a tuner if its address changes.</p>
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Tuners</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Antennarr follows a tuner if its address changes.</p>
+        </div>
+        {state.devices.length > 0 && (
+          <div className="flex flex-col items-end gap-1">
+            <Button size="sm" disabled={!state.editable} onClick={() => setAdding(true)}>
+              Add tuner
+            </Button>
+            {!state.editable && <p className="max-w-xs text-right text-xs text-muted-foreground">Antennarr has no settings file to save tuners in.</p>}
+          </div>
+        )}
       </div>
       {state.devices.length === 0 && <NoTuners />}
       {state.devices.map((d) => (
-        <DeviceDetails key={d.name} device={d} showName={several} />
+        <DeviceDetails key={d.name} device={d} showName={several} onRemove={() => setRemoving(d)} />
       ))}
+      <AddTunerDialog open={adding} onOpenChange={setAdding} />
+      <RemoveTunerDialog device={removing} onClose={() => setRemoving(null)} />
     </div>
   )
 }
@@ -44,8 +65,10 @@ const usedBy = (s: Slot) => (s.inUse ? (s.viaAntennarr ? 'Antennarr' : (s.target
 const signalOf = (s: Slot) => (s.inUse && s.signalStrength !== undefined ? `${s.signalStrength}% / ${s.signalQuality ?? 0}%` : '—')
 const rateOf = (s: Slot) => (s.inUse ? formatMbps(s.bitsPerSecond) : '—')
 
-function DeviceDetails({ device, showName }: { device: DeviceState; showName: boolean }) {
+function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; showName: boolean; onRemove: () => void }) {
   const { tuner } = device
+  const { state } = useApp()
+  const { device: edit } = useEdits()
   const phone = useIsPhone()
   const facts: [string, string][] = [
     ['Device', tuner.friendlyName ?? 'Unknown'],
@@ -74,6 +97,29 @@ function DeviceDetails({ device, showName }: { device: DeviceState; showName: bo
           </dd>
         </div>
       </dl>
+
+      <Section title={showName ? `Manage ${deviceTitle(device)}` : 'Manage'}>
+        <EditRow
+          key={`label-${device.name}-${device.label ?? ''}`}
+          kind="text"
+          maxLength={60}
+          id={`setting-${device.name}-label`}
+          title="Name"
+          description="What this tuner is called here, and to the media servers that use it."
+          initial={device.label ?? ''}
+          placeholder={tuner.friendlyName ?? device.name}
+          disabled={!state.editable}
+          onSave={(text) => edit.mutateAsync({ name: device.name, patch: { label: text.trim() } })}
+        />
+        <Row title="Port" description="Where media servers reach this tuner. Each tuner has its own.">
+          <span className="font-mono text-xs text-muted-foreground">{device.listen}</span>
+        </Row>
+        <Row title="Remove this tuner" description="Antennarr stops sharing it. Streams running on it are cut off. The tuner itself is untouched.">
+          <Button variant="outline" size="sm" disabled={!state.editable} aria-label={`Remove ${deviceTitle(device)}`} onClick={onRemove}>
+            Remove
+          </Button>
+        </Row>
+      </Section>
 
       <FirmwareSection device={device} />
 

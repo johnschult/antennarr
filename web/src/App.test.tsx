@@ -8,7 +8,7 @@ describe('App routes', () => {
   it.each([
     ['/', 'tuners live'],
     ['/viewers', 'Viewers'],
-    ['/setup', 'Setup guide'],
+    ['/setup', 'Connect a viewer'],
     ['/tuner', 'Tuner'],
     ['/settings', 'Settings'],
   ])('renders %s inside the shell', (route, heading) => {

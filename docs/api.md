@@ -46,7 +46,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `PATCH devices/{name}` | Change a device's `label` (display name; `""` clears it), `ownerReserve` or `sharedCap`. |
 | `GET devices/{name}/guide/{channel}/icon` | A channel's logo (a PNG), fetched by Antennarr, `404` when there isn't one. |
 | `POST firmware/check` | Read the firmware changelog now. `429` if it was read a moment ago. |
-| `GET network` | This machine's Tailscale and LAN addresses, and which firewall looks switched on, for the Setup page. |
+| `GET network` | This machine's Tailscale and LAN addresses, and which firewall looks switched on, for the Connect page. |
 | `DELETE plex/admins/{id}` | Stop a Plex account from signing in. |
 
 ### The state document

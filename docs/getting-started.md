@@ -28,7 +28,7 @@ Then `mkdir config && chown 1000:1000 config` (use the same numbers as `user:`),
 (step 2), and run `docker compose up -d`.
 
 Use **host networking** (`network_mode: host`). Antennarr tells its own streams from the ones your own TVs open by comparing addresses,
-looks for the tuner with a broadcast on your network, and offers this machine's Tailscale and LAN addresses on the Setup page. All three need to see the machine's real network, which a container on its own bridge network can't.
+looks for the tuner with a broadcast on your network, and offers this machine's Tailscale and LAN addresses on the Connect page. All three need to see the machine's real network, which a container on its own bridge network can't.
 (With host networking you can't also remap the port: set `listen` in the settings file instead.)
 
 ### A program, without Docker
@@ -50,7 +50,7 @@ Unraid User Script). `./antennarr -version` prints the version.
 **Usually there is nothing to do.** If you don't name a tuner, Antennarr looks for HDHomeRuns on the network when it starts, for about ten seconds. What it finds is saved under `devices` in the settings file, so the next start uses the same tuner. One tuner is called `tuner`; several are called `tuner-<DeviceID>`, each on the next port up from `5004`.
 This needs to see your network's broadcasts, so in Docker use host networking.
 
-**If none answers, Antennarr starts anyway**, with no tuner and only the web page, on port `5004`. Open it (step 3) and press **Find tuners**, or add the tuner by its address. The first tuner you add takes over port `5004`, so the page stays where it is. You can add more tuners, or remove one, later under *Settings → Tuners*.
+**If none answers, Antennarr starts anyway**, with no tuner and only the web page, on port `5004`. Open it (step 3) and press **Find tuners**, or add the tuner by its address. The first tuner you add takes over port `5004`, so the page stays where it is. You can add more tuners, or remove one, later on the *Tuners* page.
 
 To name a tuner yourself in the settings file or on the command line, list what is on your network:
 
@@ -112,7 +112,7 @@ If you lose access to the web page, you can always get back in by one of these:
 
 ## 5. Point a media server at it
 
-Antennarr looks like an ordinary HDHomeRun at `<address>:<port>`. The **Setup** page in the web app writes out the steps for the viewer you pick, with your real addresses filled in.
+Antennarr looks like an ordinary HDHomeRun at `<address>:<port>`. The **Connect** page in the web app writes out the steps for the viewer you pick, with your real addresses filled in.
 For the full walk-through, see [Media servers](media-servers.md).
 
 ## 6. Check it works

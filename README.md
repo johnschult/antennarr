@@ -41,7 +41,7 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
 <table>
   <tr>
     <td width="50%"><img src="docs/screenshots/viewers.jpg" alt="The Viewers page: who can use the tuner, from which addresses, and how many tuners each gets"><br><sub><b>Viewers:</b> who can use the tuner, from where, and how many tuners each gets.</sub></td>
-    <td width="50%"><img src="docs/screenshots/setup.jpg" alt="The Setup page, offering this machine's Tailscale and LAN addresses and the steps for the chosen connection"><br><sub><b>Setup guide:</b> it spots this machine's Tailscale address and writes out the steps with your real addresses.</sub></td>
+    <td width="50%"><img src="docs/screenshots/setup.jpg" alt="The Connect page, offering this machine's Tailscale and LAN addresses and the steps for the chosen connection"><br><sub><b>Connect guide:</b> it spots this machine's Tailscale address and writes out the steps with your real addresses.</sub></td>
   </tr>
 </table>
 
@@ -76,7 +76,7 @@ To name a tuner yourself (say it's on another network), find it and pass its add
 ./antennarr -tuner 192.168.1.50
 ```
 
-Look in the log for the first-run **setup link** and open it from your own computer to become the admin (or open `http://localhost:5004/antennarr/` on the machine itself). The Setup page in the UI writes out the steps for a viewer, with your addresses filled in.
+Look in the log for the first-run **setup link** and open it from your own computer to become the admin (or open `http://localhost:5004/antennarr/` on the machine itself). The Connect page in the UI writes out the steps for a viewer, with your addresses filled in.
 
 A viewer then adds the tuner to their media server as `<this machine>:5004`, for example in Plex under
 *Settings → Live TV & DVR → Set Up Plex DVR → enter its network address manually*.
@@ -90,7 +90,7 @@ docker pull ghcr.io/johnschult/antennarr:latest
 ```
 
 Or copy [docker-compose.example.yml](docker-compose.example.yml) next to your `antennarr.json` and run `docker compose up -d`.
-It uses host networking, which Antennarr needs to recognise its own streams and to offer your Tailscale and LAN addresses on the Setup page.
+It uses host networking, which Antennarr needs to recognise its own streams and to offer your Tailscale and LAN addresses on the Connect page.
 Images are published for `amd64` and `arm64`. To build one yourself: `docker build -t antennarr https://github.com/johnschult/antennarr.git#main`.
 
 ### Versions
@@ -192,7 +192,7 @@ The design notes, including what is built and what is planned, are in [docs/DESI
 
 ## Roadmap
 
-Planned, roughly in this order: Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuner page. Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Planned, roughly in this order: Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuners page. Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

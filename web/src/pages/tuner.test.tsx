@@ -1,11 +1,18 @@
-import { act, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot, updateAvailable } from '@/test/fixtures'
 import { mockPhone } from '@/test/match-media'
-import { renderWithApp } from '@/test/render'
+import { renderWithApp, stubFetch } from '@/test/render'
 import { channelIconUrl } from '@/lib/api'
 import { formatMbps } from '@/lib/format'
 import { TunerPage } from './tuner'
+
+afterEach(() => vi.unstubAllGlobals())
+
+const section = (name: string) => screen.getByRole('region', { name })
+const saveButton = (scope: HTMLElement) => within(scope).queryByRole('button', { name: 'Save' })
+const okState = { 'GET /state': () => ({ body: makeState() }) }
 
 describe('TunerPage', () => {
   it('shows what we know about the device', () => {
@@ -74,11 +81,12 @@ describe('TunerPage', () => {
     expect(screen.getByRole('region', { name: 'Firmware' })).toBeInTheDocument()
   })
 
-  it('titles the page with the name given to a single tuner', () => {
+  it('is titled Tuners, like the navigation, even with a single named tuner', () => {
     const s = makeState()
     s.devices[0].label = 'Living room antenna'
     renderWithApp(<TunerPage />, s)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Living room antenna')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
+    expect(screen.getByRole('region', { name: 'Manage' })).toBeInTheDocument()
   })
 })
 
@@ -153,5 +161,62 @@ describe('TunerPage on a phone', () => {
     act(() => viewport.set(false))
     expect(screen.getByRole('table')).toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Tuners' })).not.toBeInTheDocument()
+  })
+})
+
+describe('TunerPage', () => {
+  describe('naming a tuner', () => {
+    it('saves the name, trimmed, on that tuner', async () => {
+      const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      renderWithApp(<TunerPage />, makeState())
+
+      const box = screen.getByLabelText('Name')
+      expect(saveButton(section('Manage'))).toBeNull()
+      await user.type(box, '  Antenna (Steve)  ')
+      await user.click(saveButton(section('Manage'))!)
+      await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')).toBeDefined())
+      expect(calls.find((c) => c.method === 'PATCH')).toMatchObject({ url: expect.stringContaining('/devices/antenna'), body: { label: 'Antenna (Steve)' } })
+      expect(await screen.findByText('Settings saved')).toBeInTheDocument()
+    })
+
+    it('saves with Enter', async () => {
+      const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      renderWithApp(<TunerPage />, makeState())
+      await user.type(screen.getByLabelText('Name'), 'Antenna{Enter}')
+      await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ label: 'Antenna' }))
+    })
+
+    it('can be cleared to go back to the tuner’s own name', async () => {
+      const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      const s = makeState()
+      s.devices[0].label = 'Antenna (Steve)'
+      renderWithApp(<TunerPage />, s)
+
+      expect(screen.getByLabelText('Name')).toHaveValue('Antenna (Steve)')
+      await user.clear(screen.getByLabelText('Name'))
+      await user.click(saveButton(section('Manage'))!)
+      await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ label: '' }))
+    })
+
+    it('stops at 60 characters, the most the server accepts', () => {
+      renderWithApp(<TunerPage />, makeState())
+      expect(screen.getByLabelText('Name')).toHaveAttribute('maxlength', '60')
+    })
+
+    it("shows the server's objection on the row", async () => {
+      const { fn } = stubFetch({ 'PATCH /devices/antenna': () => ({ status: 400, body: { error: 'name for "antenna": can\'t contain control characters' } }) })
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      renderWithApp(<TunerPage />, makeState())
+      await user.type(screen.getByLabelText('Name'), 'x')
+      await user.click(saveButton(section('Manage'))!)
+      expect(await within(section('Manage')).findByRole('alert')).toHaveTextContent('control characters')
+    })
   })
 })

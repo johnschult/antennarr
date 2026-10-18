@@ -1,4 +1,4 @@
-import { Menu, X } from 'lucide-react'
+import { Antenna, Cable, Menu, Radio, Settings, Users, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { Banners } from '@/components/banners'
@@ -12,13 +12,26 @@ import { signOut } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import { cn } from '@/lib/utils'
 
-const nav = [
-  { to: '/', label: 'Live', end: true },
-  { to: '/viewers', label: 'Viewers' },
-  { to: '/setup', label: 'Setup' },
-  { to: '/tuner', label: 'Tuner' },
-  { to: '/settings', label: 'Settings' },
+// The pages, in the order they are used: watching, who may watch, the hardware,
+// how to connect a viewer, then everything else. The paths of /setup and /tuner
+// are older than their names here and stay, so existing links keep working.
+const nav: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
+  { to: '/', label: 'Live', icon: Radio, end: true },
+  { to: '/viewers', label: 'Viewers', icon: Users },
+  { to: '/tuner', label: 'Tuners', icon: Antenna },
+  { to: '/setup', label: 'Connect', icon: Cable },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ]
+
+/** A page's name with its icon: always in the phone menu, which has room, and only on the current page in the top bar. */
+function NavLabel({ item, active, always }: { item: (typeof nav)[number]; active: boolean; always?: boolean }) {
+  return (
+    <>
+      {(active || always) && <item.icon aria-hidden className="size-4 shrink-0" />}
+      {item.label}
+    </>
+  )
+}
 
 /** Where the project lives, for the footer. */
 const REPO_URL = 'https://github.com/johnschult/antennarr'
@@ -82,11 +95,11 @@ function SignedIn() {
 }
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  cn('rounded-full px-3 py-1 text-sm whitespace-nowrap', isActive ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground')
+  cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm whitespace-nowrap', isActive ? 'bg-foreground font-medium text-background' : 'text-muted-foreground hover:text-foreground')
 
 const menuLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'flex items-center rounded-lg px-3 py-3 text-base',
+    'flex items-center gap-3 rounded-lg px-3 py-3 text-base',
     isActive ? 'bg-foreground font-medium text-background' : 'text-foreground hover:bg-muted',
   )
 
@@ -122,7 +135,7 @@ export function Shell() {
           <nav aria-label="Main" className="hidden gap-1 md:flex">
             {nav.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} className={linkClass}>
-                {n.label}
+                {({ isActive }) => <NavLabel item={n} active={isActive} />}
               </NavLink>
             ))}
           </nav>
@@ -154,7 +167,7 @@ export function Shell() {
               <nav aria-label="Main menu" className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
                 {nav.map((n) => (
                   <NavLink key={n.to} to={n.to} end={n.end} className={menuLinkClass}>
-                    {n.label}
+                    {({ isActive }) => <NavLabel item={n} active={isActive} always />}
                   </NavLink>
                 ))}
               </nav>

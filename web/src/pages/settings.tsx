@@ -1,7 +1,6 @@
 import { EditRow } from '@/components/settings/edit-row'
 import { PlexRows } from '@/components/settings/plex-rows'
 import { Row, Section } from '@/components/settings/section'
-import { TunersSection } from '@/components/settings/tuners-section'
 import { SwitchRow } from '@/components/settings/switch-row'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
@@ -24,26 +23,12 @@ export function SettingsPage() {
     <div className="max-w-3xl space-y-8">
       <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
 
-      <TunersSection />
-
       {devices.map((d) => (
         <Section
           key={d.name}
-          title={several ? deviceTitle(d) : (d.label ?? 'Tuner')}
-          description={`${d.tuner.friendlyName ?? 'HDHomeRun'} · ${d.tuner.tunerCount} tuners · listening on ${d.listen}`}
+          title={several ? `Limits: ${deviceTitle(d)}` : 'Limits'}
+          description={`How much of ${several ? 'this tuner' : (d.label ?? 'your tuner')} viewers may use. ${d.tuner.friendlyName ?? 'HDHomeRun'} · ${d.tuner.tunerCount} tuners.`}
         >
-          <EditRow
-            key={`label-${d.name}-${d.label ?? ''}`}
-            kind="text"
-            maxLength={60}
-            id={`setting-${d.name}-label`}
-            title="Name"
-            description="What this tuner is called here, and to the media servers that use it."
-            initial={d.label ?? ''}
-            placeholder={d.tuner.friendlyName ?? d.name}
-            disabled={!editable}
-            onSave={(text) => saveDevice(d.name, { label: text.trim() })}
-          />
           <EditRow
             key={`reserve-${d.name}-${d.ownerReserve}`}
             kind="number"
@@ -91,7 +76,7 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Updates">
+      <Section title="Privacy and updates">
         <SwitchRow
           id="setting-firmwareCheck"
           title="Check for new tuner firmware"
@@ -108,14 +93,6 @@ export function SettingsPage() {
           disabled={!editable}
           onChange={(next) => update.mutateAsync({ guide: next })}
         />
-      </Section>
-
-      <Section title="Network" description="Antennarr listens on a port for each tuner. How viewers reach it (LAN, VPN, Tailscale) is up to you; built-in Tailscale is planned.">
-        {devices.map((d) => (
-          <Row key={d.name} title={deviceTitle(d)} description={several ? undefined : 'The port media servers connect to.'}>
-            <span className="font-mono text-xs text-muted-foreground">{d.listen}</span>
-          </Row>
-        ))}
       </Section>
     </div>
   )
