@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FirmwareStatus } from '@/lib/types'
@@ -124,17 +124,46 @@ describe('FirmwareSection', () => {
   })
 
   describe('Check now', () => {
-    it('reads the changelog and says so', async () => {
-      const { fn, calls } = stubFetch({
-        'POST /firmware/check': () => ({ body: { checkedAt: '2026-10-17T10:00:00Z' } }),
-        'GET /state': () => ({ body: makeState() }),
-      })
+    const checkRoutes = (device: FirmwareStatus) => ({
+      'POST /firmware/check': () => ({ body: { checkedAt: '2026-10-17T10:00:00Z' } }),
+      'GET /state': () => ({ body: makeState({ devices: [makeDevice({ firmware: device })] }) }),
+    })
+
+    it('says there is no new firmware when the tuner is up to date', async () => {
+      const { fn, calls } = stubFetch(checkRoutes(upToDate))
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
       show(upToDate)
       await user.click(screen.getByRole('button', { name: 'Check now' }))
-      await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/firmware/check'))).toBe(true))
-      expect(await screen.findByText("Read SiliconDust's changelog")).toBeInTheDocument()
+      expect(await screen.findByText('No new firmware')).toBeInTheDocument()
+      expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/firmware/check'))).toBe(true)
+      expect(screen.queryByText(/Read SiliconDust/)).not.toBeInTheDocument()
+    })
+
+    it('says when new firmware is found', async () => {
+      const { fn } = stubFetch(checkRoutes(updateAvailable))
+      vi.stubGlobal('fetch', fn)
+      const user = userEvent.setup()
+      show(upToDate)
+      await user.click(screen.getByRole('button', { name: 'Check now' }))
+      expect(await screen.findByText('New firmware found')).toBeInTheDocument()
+    })
+
+    it('is disabled and says it is checking until the answer is in', async () => {
+      const { fn } = stubFetch(checkRoutes(upToDate))
+      let release!: () => void
+      const gate = new Promise<void>((resolve) => (release = resolve))
+      vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === 'POST') await gate
+        return fn(input, init)
+      })
+      const user = userEvent.setup()
+      show(upToDate)
+      await user.click(screen.getByRole('button', { name: 'Check now' }))
+      expect(await screen.findByRole('button', { name: 'Checking…' })).toBeDisabled()
+      expect(screen.queryByText(/checking/i, { selector: '[data-sonner-toast] *' })).not.toBeInTheDocument()
+      release()
+      expect(await screen.findByRole('button', { name: 'Check now' })).toBeEnabled()
     })
 
     it("shows the server's reason when it can't", async () => {

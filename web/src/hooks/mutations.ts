@@ -1,9 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addDevice, addViewer, checkFirmware, deleteDevice, deleteViewer, patchDevice, patchSettings, replaceViewer } from '@/lib/api'
+import { addDevice, addViewer, checkFirmware, deleteDevice, deleteViewer, getState, patchDevice, patchSettings, replaceViewer } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
-import type { DeviceInput, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
+import type { AppState, DeviceInput, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
+
+/** What a firmware check turned up across the tuners: newer firmware, none, or no clear answer. */
+function firmwareFound(state: AppState | undefined): 'update' | 'none' | 'unclear' {
+  const states = state?.devices.map((d) => d.firmware.state) ?? []
+  if (states.some((s) => s === 'update-available' || s === 'possible-update')) return 'update'
+  return states.length > 0 && states.every((s) => s === 'up-to-date') ? 'none' : 'unclear'
+}
 
 /**
  * Edits go to the server, which saves them and pushes the new state over the
@@ -51,9 +58,13 @@ export function useEdits() {
   })
   const firmware = useMutation({
     mutationFn: () => checkFirmware(),
-    onSuccess: () => {
-      toast.success("Read SiliconDust's changelog")
-      void refresh()
+    onSuccess: async () => {
+      // The check has finished by the time the server answers; wait for the new status so the
+      // toast can say what it found, and the button stays busy until then.
+      const found = firmwareFound(await qc.fetchQuery({ queryKey: STATE_KEY, queryFn: getState, staleTime: 0 }))
+      if (found === 'update') toast.success('New firmware found')
+      else if (found === 'none') toast.success('No new firmware')
+      else toast.info("Couldn't tell whether there is new firmware")
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not check for firmware'),
   })
