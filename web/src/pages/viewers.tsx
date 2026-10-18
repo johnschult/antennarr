@@ -1,4 +1,4 @@
-import { Antenna, Cable, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Antenna, Cable, Info, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { DeleteViewerDialog } from '@/components/delete-viewer-dialog'
@@ -178,9 +178,12 @@ export function ViewersPage() {
         )
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Over-limit requests get a 503, the same answer a busy tuner gives, so media servers handle it cleanly.
-      </p>
+      <div className="flex items-start gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-900 dark:text-sky-200">
+        <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+        <p>
+          <strong>Over a viewer's limit?</strong> Antennarr answers with a 503, the same as a busy tuner does, so media servers handle it cleanly.
+        </p>
+      </div>
 
       <ViewerWizard open={wizard !== null} onOpenChange={(open) => !open && setWizard(null)} devices={devices} viewer={wizard?.viewer} />
       <ViewerDialog open={dialogOpen} onOpenChange={setDialogOpen} viewer={editing} devices={devices} />
