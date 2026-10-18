@@ -53,6 +53,7 @@ cd web && npm run dev                     # the UI with hot reload, against a ru
 
 - **It has tests.** The Go side uses the standard library only (there are no third-party Go dependencies, and that is on purpose), and tests use fake tuners and fake plex.tv and SiliconDust servers. **A test must never reach the real network.** Run Go tests with `-race`.
 - **The UI tests** use Vitest and Testing Library. The admin API's types in `web/src/lib/types.ts` must be kept in step with `internal/api/api.go`.
+- **Accessibility is checked with axe** in `web/src/a11y.test.tsx`: every page in each of its states, the phone menu, and every dialog. Add a new page or dialog there. jsdom has no layout, so colour contrast and focus order still need a look in a browser.
 - **Tests don't depend on the date they run.** Use an injected clock or build times relative to now.
 - **Nothing leaves the network without a setting** that turns it off, and it is listed in [Security](docs/security.md#what-leaves-your-network).
 - **It fails loudly.** The settings file rejects unknown keys on purpose. Prefer a clear error to a guess.

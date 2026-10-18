@@ -153,7 +153,9 @@ export function ViewersPage() {
                   <TableHead>Addresses</TableHead>
                   <TableHead>Tuners</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-32" />
+                  <TableHead className="w-32">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
