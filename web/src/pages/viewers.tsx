@@ -149,7 +149,7 @@ export function ViewersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Viewer</TableHead>
+                  <TableHead className="pl-4">Viewer</TableHead>
                   <TableHead>Addresses</TableHead>
                   <TableHead>Tuners</TableHead>
                   <TableHead>Status</TableHead>
@@ -159,7 +159,7 @@ export function ViewersPage() {
               <TableBody>
                 {viewers.map((v) => (
                   <TableRow key={v.name}>
-                    <TableCell className="font-medium">{v.name}</TableCell>
+                    <TableCell className="pl-4 font-medium">{v.name}</TableCell>
                     <TableCell className="font-mono text-xs">{v.addresses.join(', ')}</TableCell>
                     <TableCell>
                       <Usage v={v} devices={devices} />
