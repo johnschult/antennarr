@@ -50,7 +50,7 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
       data-testid="tuner-tile"
       data-owner={owner.kind}
       className={cn(
-        'relative flex h-[17rem] flex-col overflow-hidden rounded-2xl border p-5',
+        'relative flex h-[18rem] flex-col overflow-hidden rounded-2xl border p-5',
         live ? 'border-border bg-card/70' : 'border-dashed border-border bg-muted/30',
         dimmed && 'opacity-50',
       )}
@@ -68,10 +68,11 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
 
       {live ? (
         <>
-          <div className="mt-auto">
+          {/* pt-3: however little room is left, the logo never touches the pill above it */}
+          <div className="mt-auto pt-3">
             <div className="flex items-end justify-between gap-3">
               <div className="text-5xl font-bold tracking-tight tabular-nums">{slot.channel ?? '—'}</div>
-              {guide?.icon && iconSrc && <ChannelLogo key={iconSrc} src={iconSrc} name={slot.channelName ?? guide.name ?? 'Channel'} className="h-12 max-w-24" />}
+              {guide?.icon && iconSrc && <ChannelLogo key={iconSrc} src={iconSrc} name={slot.channelName ?? guide.name ?? 'Channel'} className="h-10 max-w-24" />}
             </div>
             <div className="text-lg text-foreground">{slot.channelName ?? 'Tuning…'}</div>
             {guide?.now && (
