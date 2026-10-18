@@ -1,4 +1,6 @@
 bin/
+# a settings file made by running Antennarr from this directory: it can hold secrets
+/antennarr*.json
 *.test
 .DS_Store
 .claude/settings.local.json

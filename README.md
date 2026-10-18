@@ -184,7 +184,8 @@ Run `antennarr -h` for every flag.
 ```sh
 go test -race ./...               # the server
 cd web && npm test                # the UI (Vitest)
-cd web && npm run dev             # hot-reloading UI against a running Antennarr; see web/README.md
+go run ./cmd/antennarr -config /tmp/antennarr-dev.json   # the Go server, in one terminal
+cd web && npm run dev             # hot-reloading UI in another, using that server; see web/README.md
 ```
 
 Everything is in the standard library on the Go side (no third-party Go dependencies). The tests use fake tuners and fake plex.tv / SiliconDust servers and never touch the real network.
