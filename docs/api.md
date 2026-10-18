@@ -46,7 +46,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `PATCH devices/{name}` | Change a device's `label` (display name; `""` clears it), `listen` (move it to another port, e.g. `":5010"`; the new port is opened first, so one that is taken is refused with `409` and nothing changes; streams on the old port are cut and the page itself is no longer served there), `ownerReserve` or `sharedCap`. |
 | `GET devices/{name}/guide/{channel}/icon` | A channel's logo (a PNG), fetched by Antennarr, `404` when there isn't one. |
 | `POST firmware/check` | Read the firmware changelog now. `429` if it was read a moment ago. |
-| `GET network` | This machine's Tailscale and LAN addresses, and which firewall looks switched on, for the Connect page. |
+| `GET network` | This machine's Tailscale and LAN addresses, and which firewall looks switched on, for the connect step of adding a viewer. |
 | `DELETE plex/admins/{id}` | Stop a Plex account from signing in. |
 
 ### The state document

@@ -1,7 +1,9 @@
-import { Antenna, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { Antenna, Cable, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { DeleteViewerDialog } from '@/components/delete-viewer-dialog'
 import { ViewerDialog } from '@/components/viewer-dialog'
+import { ViewerWizard } from '@/components/viewer-wizard/viewer-wizard'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -47,9 +49,24 @@ function ViewerStatus({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
   return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300">Waiting for first contact</Badge>
 }
 
-function RowActions({ v, editable, onEdit, onRemove }: { v: Viewer; editable: boolean; onEdit: (v: Viewer) => void; onRemove: (v: Viewer) => void }) {
+function RowActions({
+  v,
+  editable,
+  onConnect,
+  onEdit,
+  onRemove,
+}: {
+  v: Viewer
+  editable: boolean
+  onConnect: (v: Viewer) => void
+  onEdit: (v: Viewer) => void
+  onRemove: (v: Viewer) => void
+}) {
   return (
     <>
+      <Button variant="ghost" size="icon" aria-label={`Connection steps for ${v.name}`} title="Connection steps" onClick={() => onConnect(v)}>
+        <Cable />
+      </Button>
       <Button variant="ghost" size="icon" aria-label={`Edit ${v.name}`} disabled={!editable} onClick={() => onEdit(v)}>
         <Pencil />
       </Button>
@@ -64,13 +81,22 @@ export function ViewersPage() {
   const { state } = useApp()
   const { viewers, devices, editable } = state
   const phone = useIsPhone()
+  const [params, setParams] = useSearchParams()
   const [editing, setEditing] = useState<Viewer | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [removing, setRemoving] = useState<Viewer | null>(null)
+  // The add-viewer wizard, or the connection steps for one viewer. A link with ?add opens it.
+  const [wizard, setWizard] = useState<{ viewer?: Viewer } | null>(() => (params.has('add') && editable ? {} : null))
+
+  useEffect(() => {
+    if (params.has('add')) setParams({}, { replace: true })
+  }, [params, setParams])
 
   function openAdd() {
-    setEditing(undefined)
-    setDialogOpen(true)
+    setWizard({})
+  }
+  function openConnect(v: Viewer) {
+    setWizard({ viewer: v })
   }
   function openEdit(v: Viewer) {
     setEditing(v)
@@ -95,6 +121,9 @@ export function ViewersPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Add the person you share with. Only the addresses you list will be able to use the tuner.
           </p>
+          <Button className="mt-4" onClick={openAdd} disabled={!editable}>
+            <Plus /> Add viewer
+          </Button>
         </div>
       ) : (
         phone ? (
@@ -107,7 +136,7 @@ export function ViewersPage() {
                     <div className="mt-0.5 font-mono text-xs break-all text-muted-foreground">{v.addresses.join(', ')}</div>
                   </div>
                   <div className="-mt-1 -mr-2 flex shrink-0">
-                    <RowActions v={v} editable={editable} onEdit={openEdit} onRemove={setRemoving} />
+                    <RowActions v={v} editable={editable} onConnect={openConnect} onEdit={openEdit} onRemove={setRemoving} />
                   </div>
                 </div>
                 <ViewerStatus v={v} devices={devices} />
@@ -124,7 +153,7 @@ export function ViewersPage() {
                   <TableHead>Addresses</TableHead>
                   <TableHead>Tuners</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-24" />
+                  <TableHead className="w-32" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -139,7 +168,7 @@ export function ViewersPage() {
                       <ViewerStatus v={v} devices={devices} />
                     </TableCell>
                     <TableCell className="text-right">
-                      <RowActions v={v} editable={editable} onEdit={openEdit} onRemove={setRemoving} />
+                      <RowActions v={v} editable={editable} onConnect={openConnect} onEdit={openEdit} onRemove={setRemoving} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -153,6 +182,7 @@ export function ViewersPage() {
         Over-limit requests get a 503, the same answer a busy tuner gives, so media servers handle it cleanly.
       </p>
 
+      <ViewerWizard open={wizard !== null} onOpenChange={(open) => !open && setWizard(null)} devices={devices} viewer={wizard?.viewer} />
       <ViewerDialog open={dialogOpen} onOpenChange={setDialogOpen} viewer={editing} devices={devices} />
       <DeleteViewerDialog viewer={removing} isLast={viewers.length === 1} onClose={() => setRemoving(null)} />
     </div>

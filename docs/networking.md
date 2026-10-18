@@ -1,7 +1,7 @@
 # Networking
 
 Antennarr just listens on a port. How a viewer's media server reaches that port is up to you, and there are four common ways.
-The **Connect** page in the web app writes out the steps for each, with your addresses filled in.
+Adding a viewer in the web app writes out the steps for each, with your addresses filled in. For a viewer you have already added, use **Connection steps** on their row on the Viewers page.
 
 Two ideas to keep in mind:
 
@@ -13,7 +13,7 @@ Two ideas to keep in mind:
 [Tailscale](https://tailscale.com) is the easiest way: nothing is opened to the internet, and the addresses don't change.
 
 1. Put Tailscale on the machine running Antennarr and on the viewer's media server, signed in to the same tailnet. If they are on different tailnets, share the Antennarr machine with the viewer's tailnet from the Tailscale admin console (*Machines → ⋯ → Share*).
-2. On the Antennarr machine, `tailscale ip -4` prints its Tailscale address (it looks like `100.x.y.z`). The Connect page shows it for you when Antennarr is running on the machine itself. In Docker, use host networking, or it can't see it.
+2. On the Antennarr machine, `tailscale ip -4` prints its Tailscale address (it looks like `100.x.y.z`). The connect step shows it for you when Antennarr is running on the machine itself. In Docker, use host networking, or it can't see it.
 3. In Antennarr, add the **viewer's** Tailscale address under *Viewers*. (On the viewer's machine, `tailscale ip -4`.)
 4. The viewer adds the tuner in their media server as `<Antennarr's Tailscale address>:5004`. See [Media servers](media-servers.md).
 
@@ -40,7 +40,7 @@ Their public address changes when their ISP changes it, which is a good reason n
 ## The machine's firewall
 
 If the machine running Antennarr has a firewall that blocks the port, viewers' connections time out. They don't get a "refused" message, they just hang. Allow each viewer's address to reach Antennarr's port, and only that.
-The **Connect** page shows the commands. It offers `ufw`, `firewalld` and `iptables`, and it opens the firewall step by itself when it can tell `ufw` or `firewalld` is switched on.
+The connect step shows the commands. It offers `ufw`, `firewalld` and `iptables`, and it opens the firewall step by itself when it can tell `ufw` or `firewalld` is switched on.
 
 ```sh
 # ufw
@@ -66,7 +66,7 @@ Use host networking (`network_mode: host`). Without it, Antennarr:
 - can't tell its own streams from your own TVs' (it compares addresses with the tuner's idea of who is watching).
 
 A consequence of host networking: published ports (`ports:`) don't apply, so set the listening port with `listen` in the settings file.
-Antennarr inside a container can't see the host's firewall either, so the Connect page's firewall detection stays off.
+Antennarr inside a container can't see the host's firewall either, so the connect step's firewall detection stays off.
 
 ## Checking each step
 

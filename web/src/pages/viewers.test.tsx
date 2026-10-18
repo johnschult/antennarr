@@ -48,7 +48,7 @@ describe('ViewersPage', () => {
   })
 
   describe('adding', () => {
-    it('sends the form to the server and closes the dialog', async () => {
+    it('sends the form to the server, then goes on to how they connect', async () => {
       const { fn, calls } = stubFetch({
         'POST /viewers': () => ({ status: 201, body: {} }),
         'GET /state': () => ({ body: makeState() }),
@@ -65,7 +65,7 @@ describe('ViewersPage', () => {
       await user.type(within(dialog).getByLabelText('Tuners at once'), '2')
       await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
 
-      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(await within(dialog).findByRole('region', { name: 'The address' })).toBeInTheDocument() // the next step
       expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
         name: 'Cabin',
         addresses: ['10.9.0.6', '10.9.0.7', '10.9.1.0/24'],
@@ -450,5 +450,53 @@ describe('ViewersPage on a phone', () => {
     mockPhone(true)
     renderWithApp(<ViewersPage />, makeState({ viewers: [] }))
     expect(screen.getByText('No viewers yet')).toBeInTheDocument()
+  })
+})
+
+describe('ViewersPage: the connection steps', () => {
+  it('opens how to connect for the viewer in that row, without changing them', async () => {
+    const { fn, calls } = stubFetch({ 'GET /network': () => ({ body: { addresses: [] } }) })
+    vi.stubGlobal('fetch', fn)
+    const user = userEvent.setup()
+    renderWithApp(<ViewersPage />, makeState())
+
+    await user.click(within(row('Mom')).getByRole('button', { name: 'Connection steps for Mom' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'Connect Mom' })).toBeInTheDocument()
+    expect(await within(dialog).findByRole('region', { name: 'The address' })).toBeInTheDocument()
+    expect(calls.some((c) => c.method !== 'GET')).toBe(false)
+  })
+
+  it('is on the phone layout too', async () => {
+    mockPhone(true)
+    vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses: [] } }) }).fn)
+    renderWithApp(<ViewersPage />, makeState())
+    await userEvent.setup().click(screen.getAllByRole('button', { name: 'Connection steps for John' })[0])
+    expect(await screen.findByRole('heading', { name: 'Connect John' })).toBeInTheDocument()
+  })
+
+  it('opens the add-viewer wizard from a link with ?add', async () => {
+    renderWithApp(<ViewersPage />, makeState({ viewers: [] }), { route: '/viewers?add' })
+    expect(await screen.findByRole('heading', { name: 'Add a viewer' })).toBeInTheDocument()
+  })
+
+  it('does not open from ?add when settings cannot be saved', () => {
+    renderWithApp(<ViewersPage />, makeState({ editable: false }), { route: '/viewers?add' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('has an Add viewer button in the empty state too', async () => {
+    renderWithApp(<ViewersPage />, makeState({ viewers: [] }))
+    const empty = screen.getByText('No viewers yet').parentElement!
+    await userEvent.setup().click(within(empty).getByRole('button', { name: /Add viewer/ }))
+    expect(await screen.findByRole('heading', { name: 'Add a viewer' })).toBeInTheDocument()
+  })
+
+  it('still edits a viewer in the single form', async () => {
+    renderWithApp(<ViewersPage />, makeState())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Edit John' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'Edit John' })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('list', { name: 'Steps' })).not.toBeInTheDocument()
   })
 })

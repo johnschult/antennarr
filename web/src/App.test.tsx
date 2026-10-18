@@ -8,13 +8,17 @@ describe('App routes', () => {
   it.each([
     ['/', 'tuners live'],
     ['/viewers', 'Viewers'],
-    ['/setup', 'Connect a viewer'],
     ['/tuner', 'Tuner'],
     ['/settings', 'Settings'],
   ])('renders %s inside the shell', (route, heading) => {
     renderWithApp(<App />, makeState(), { route })
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(heading)
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+  })
+
+  it('sends the old Connect page to Viewers, where adding a viewer now walks through it', () => {
+    renderWithApp(<App />, makeState(), { route: '/setup' })
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Viewers')
   })
 
   it('sends unknown paths to the live page', () => {
