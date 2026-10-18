@@ -45,15 +45,18 @@ go build -o antennarr ./cmd/antennarr
 Run it with `./antennarr -config antennarr.json`. To start it on boot, use whatever your system uses (a systemd unit, launchd, an
 Unraid User Script). `./antennarr -version` prints the version.
 
-## 2. Tell it about your tuner
+## 2. Your tuner
 
-Find the tuner on your network:
+**Usually there is nothing to do.** If you don't name a tuner, Antennarr looks for HDHomeRuns on the network when it starts, and keeps looking (saying so in the log) until one answers. What it finds is saved under `devices` in the settings file, so the next start uses the same tuner and you can edit it from then on. One tuner is called `tuner`; several are called `tuner-<DeviceID>`, each on the next port up from `5004`.
+This needs to see your network's broadcasts, so in Docker use host networking. If the tuner is on a network that broadcasts don't reach, name it yourself, as below.
+
+To find or name a tuner yourself, list what is on your network:
 
 ```sh
 antennarr discover          # in Docker: docker exec antennarr antennarr discover
 ```
 
-It prints one line for each HDHomeRun it finds: its DeviceID, its address and how many tuners it has, for example `10C03B06  http://192.168.1.50  4 tuners`. Then write the settings file. The smallest useful one is:
+It prints one line for each HDHomeRun it finds: its DeviceID, its address and how many tuners it has, for example `10C03B06  http://192.168.1.50  4 tuners`. Then say which one to use, either with `-tuner 192.168.1.50` or in the settings file. The smallest useful file is:
 
 ```json
 {
