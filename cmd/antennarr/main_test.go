@@ -1,6 +1,10 @@
 package main
 
 import (
+	"io"
+	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -73,5 +77,82 @@ func TestFlagsAndFileDevicesDoNotMix(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "-poll") {
 		t.Errorf("-poll is not a device flag: %v", err)
+	}
+}
+
+func quietLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
+
+// With no settings file, one is created holding the defaults, and it is the
+// file edits are saved to.
+func TestMissingSettingsFileIsCreated(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "antennarr.json")
+	s, save, err := loadOrCreateSettings(path, false, quietLog())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if save != path {
+		t.Errorf("save path = %q, want %q", save, path)
+	}
+	if s.OwnerReserve != access.DefaultSettings().OwnerReserve {
+		t.Errorf("not the defaults: %+v", s)
+	}
+	got, exists, err := access.LoadSettings(path)
+	if err != nil || !exists {
+		t.Fatalf("the file wasn't created: exists=%v err=%v", exists, err)
+	}
+	if len(got.Viewers) != 0 || len(got.Devices) != 0 {
+		t.Errorf("a new file should hold no viewers or devices: %+v", got)
+	}
+}
+
+// An existing file is read, not overwritten.
+func TestExistingSettingsFileIsKept(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "antennarr.json")
+	want := access.DefaultSettings()
+	want.Viewers = []access.Viewer{{Name: "Mom", Addresses: []string{"10.8.0.5"}, Limit: 1}}
+	if err := access.SaveSettings(path, want); err != nil {
+		t.Fatal(err)
+	}
+	s, save, err := loadOrCreateSettings(path, true, quietLog())
+	if err != nil || save != path {
+		t.Fatalf("save=%q err=%v", save, err)
+	}
+	if len(s.Viewers) != 1 || s.Viewers[0].Name != "Mom" {
+		t.Errorf("the existing file was not used: %+v", s)
+	}
+}
+
+// A file that can't be created is an error when the user named it, and only a
+// warning for the default path.
+func TestUncreatableSettingsFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "no-such-dir", "antennarr.json")
+
+	if _, _, err := loadOrCreateSettings(path, true, quietLog()); err == nil {
+		t.Error("an explicit -config that can't be created should be an error")
+	}
+	s, save, err := loadOrCreateSettings(path, false, quietLog())
+	if err != nil {
+		t.Fatalf("the default path failing should only warn: %v", err)
+	}
+	if save != "" {
+		t.Errorf("save path = %q, want empty (read-only)", save)
+	}
+	if s.OwnerReserve != access.DefaultSettings().OwnerReserve {
+		t.Errorf("not the defaults: %+v", s)
+	}
+}
+
+// A damaged file stops start-up rather than being replaced by defaults.
+func TestBrokenSettingsFileIsNotOverwritten(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "antennarr.json")
+	if err := os.WriteFile(path, []byte(`{"viewrs": []}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadOrCreateSettings(path, false, quietLog()); err == nil {
+		t.Fatal("a file with an unknown key should fail to load")
+	}
+	b, _ := os.ReadFile(path)
+	if string(b) != `{"viewrs": []}` {
+		t.Errorf("the broken file was overwritten: %s", b)
 	}
 }

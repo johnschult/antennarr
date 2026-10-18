@@ -288,22 +288,15 @@ func TestViewerErrors(t *testing.T) {
 	}
 }
 
-func TestDeletingTheLastViewerNeedsConfirmation(t *testing.T) {
+// Removing the last viewer is allowed: with no viewers nobody can use the tuner,
+// so it closes rather than opens.
+func TestDeletingTheLastViewerClosesTheTuner(t *testing.T) {
 	e := newEnv(t, access.Settings{Viewers: []access.Viewer{{Name: "John", Addresses: []string{"100.67.117.32"}, Limit: 1}}}, true)
-
-	code, v := e.call(t, "DELETE", "/antennarr/api/viewers/John", "")
-	if code != 409 || !strings.Contains(errText(v), "open the tuner to everyone") {
-		t.Fatalf("%d %v", code, v)
+	if code, _ := e.call(t, "DELETE", "/antennarr/api/viewers/John", ""); code != 204 {
+		t.Fatalf("delete: %d", code)
 	}
-	if e.pol.Mode() != "enforced" || len(viewerNames(t, e)) != 1 {
-		t.Fatal("the viewer was removed without confirmation")
-	}
-
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/viewers/John?allowOpen=true", ""); code != 204 {
-		t.Fatalf("confirmed delete: %d", code)
-	}
-	if e.pol.Mode() != "open" {
-		t.Error("expected open mode after removing the last viewer on purpose")
+	if e.pol.Mode() != "no-viewers" || len(viewerNames(t, e)) != 0 {
+		t.Errorf("mode = %q, viewers = %v", e.pol.Mode(), viewerNames(t, e))
 	}
 }
 

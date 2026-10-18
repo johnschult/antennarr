@@ -28,7 +28,7 @@ export function useEdits() {
     },
   })
   const remove = useMutation({
-    mutationFn: ({ name, allowOpen }: { name: string; allowOpen: boolean }) => deleteViewer(name, allowOpen),
+    mutationFn: ({ name }: { name: string }) => deleteViewer(name),
     onSuccess: (_, { name }) => {
       toast.success(`Removed ${name}`)
       void refresh()

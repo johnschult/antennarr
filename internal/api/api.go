@@ -117,7 +117,7 @@ type Summary struct {
 // SettingsDoc is the part of the settings that isn't per device or per viewer.
 // OwnerReserve and SharedCap are the defaults devices fall back to.
 type SettingsDoc struct {
-	Mode          string   `json:"mode"` // "open" or "enforced"
+	Mode          string   `json:"mode"` // "no-viewers" or "enforced"
 	SharedCap     int      `json:"sharedCap"`
 	OwnerReserve  int      `json:"ownerReserve"`
 	Admin         []string `json:"admin"`
@@ -404,11 +404,6 @@ func (a *API) deleteViewer(w http.ResponseWriter, r *http.Request) {
 		i := indexOf(s.Viewers, name)
 		if i < 0 {
 			return &httpErr{http.StatusNotFound, fmt.Sprintf("no viewer named %q", name)}
-		}
-		// With no viewers the tuner is open to everyone, so removing the last
-		// one needs an explicit say-so.
-		if len(s.Viewers) == 1 && r.URL.Query().Get("allowOpen") != "true" {
-			return &httpErr{http.StatusConflict, "removing the last viewer would open the tuner to everyone; repeat with ?allowOpen=true to confirm"}
 		}
 		s.Viewers = append(s.Viewers[:i:i], s.Viewers[i+1:]...)
 		return nil

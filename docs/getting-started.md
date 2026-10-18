@@ -67,16 +67,28 @@ It prints one line for each HDHomeRun it finds: its DeviceID, its address and ho
 - `listen` is the port viewers' servers connect to. `:5004` means every address on this machine.
 - `tuner` is where the tuner is now. `id` is its DeviceID: with it, Antennarr finds the tuner again if its address changes (DHCP). You can leave `id` out and Antennarr learns it the first time it reaches the tuner, but then it can't search for a tuner it has never seen, so adding it now is better.
 
-If the file doesn't exist, Antennarr starts with defaults and creates it the first time you change something in the web page.
-You can also run one tuner straight from the command line with no file at all (`antennarr -tuner 192.168.1.50`), but then settings you change in the web page can't be saved.
+If the file doesn't exist, Antennarr creates it with the defaults when it starts, and saves the changes you make in the web page to it.
+You can also run one tuner straight from the command line (`antennarr -tuner 192.168.1.50`); the settings file is then `antennarr.json` in the directory you ran it from.
 The full list of settings is in [Configuration](configuration.md).
 
 ## 3. Open the web page
 
-Go to `http://<this machine>:5004/antennarr/`.
+A new install is closed: **nobody can use the tuner yet, and only the machine Antennarr runs on can open the web page.**
+To open it from your own computer, use the **setup link** Antennarr writes to its log when it starts for the first time:
 
-**Right now, anyone who can reach that address can open it and change anything**, because there are no viewers yet. That is why the next step is to add one.
-(Antennarr writes "no viewers configured: anyone who can reach these ports can use the tuners" to its log when it starts like this.)
+```
+FIRST RUN: nobody is an admin yet. To set up, open one of these links from the device you want to use as the admin. ...
+  setup link url=http://100.64.0.5:5004/antennarr/claim?token=...
+  setup link url=http://192.168.1.5:5004/antennarr/claim?token=...
+```
+
+(`docker logs antennarr`, or wherever you run it.) Open the link that matches how you reach the machine, from the computer you want to use as your admin, and press **Make this device an admin**. Antennarr saves that computer's address under `admin` in the settings file and sends you to the web page, `http://<this machine>:5004/antennarr/`.
+
+- The link works **once**, only from a private network (your LAN, Tailscale, a VPN), and only until Antennarr restarts. If you restart before using it, a new link is written to the log. Anyone who can read the log can use it, so treat the log like a password until you have.
+- Five wrong tries from one address lock that address out for ten minutes.
+- If you open the web page on the machine itself (`http://localhost:5004/antennarr/`) you don't need the link: that machine is always an admin.
+- If your computer's address changes (a new DHCP lease, say), add the new one under *Settings → Access*, or turn on Sign in with Plex (see [Security](security.md)).
+- If the settings file can't be saved there is nothing to claim into, and no link is offered: fix where the file lives (`-config`) first.
 
 ## 4. Add a viewer
 
@@ -86,13 +98,12 @@ A *viewer* is a person or a server you share the tuner with. Open **Viewers → 
 - **Addresses:** the address their media server will connect *from*, as your Antennarr sees it. Single addresses (`100.64.0.7`) or ranges (`10.8.0.0/24`). On Tailscale it is the viewer machine's Tailscale address. [Networking](networking.md) explains how to find it.
 - **Tuners:** how many tuners they may use at once.
 
-As soon as the first viewer exists, Antennarr locks down: only listed viewers can use the tuner, and only loopback (this machine),
-the addresses under `admin` in the settings, and signed-in Plex accounts can open the admin pages.
-So **before you add your first viewer, decide how you will get back in**. The easiest ways:
+Only listed viewers can use the tuner, and only loopback (this machine), the addresses under `admin` in the settings, and signed-in Plex accounts can open the admin pages.
+If you lose access to the web page, you can always get back in by one of these:
 
 - **Open it from the machine Antennarr runs on** (`http://localhost:5004/antennarr/`), or through an SSH tunnel: `ssh -L 5004:127.0.0.1:5004 yourserver`, then browse to `http://localhost:5004/antennarr/`.
-- **Add your own computer's address to `admin`** in the settings (in the web page under *Settings → Access*, or in the file).
-- **Turn on Sign in with Plex** (*Settings → Access*), then add your Plex account. After that you can open the page from any address that can reach the port. See [Security](security.md).
+- **Add your own computer's address to `admin`** in the settings file, then send Antennarr `SIGHUP` (or restart it).
+- **Turn on Sign in with Plex** (*Settings → Access*) while you still have access, then add your Plex account. After that you can open the page from any address that can reach the port. See [Security](security.md).
 
 ## 5. Point a media server at it
 

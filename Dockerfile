@@ -28,5 +28,8 @@ LABEL org.opencontainers.image.source="https://github.com/johnschult/antennarr" 
       org.opencontainers.image.licenses="MIT"
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=build /out/antennarr /usr/local/bin/antennarr
+# Run from /config, so the default settings file (antennarr.json) lands in the volume
+# you mount there.
+WORKDIR /config
 EXPOSE 5004
 ENTRYPOINT ["/usr/local/bin/antennarr"]

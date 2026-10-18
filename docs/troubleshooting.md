@@ -90,7 +90,7 @@ Media servers treat devices with the **same DeviceID as the same device**. If th
 
 ## Settings I change don't stick
 
-- **"Start Antennarr with -config to edit settings"**: it was started without `-config`, so there is nowhere to save. Start it with `-config /path/to/antennarr.json`.
+- **"Start Antennarr with -config to edit settings"**: it could not create its settings file where it was started (a read-only directory, usually), so there is nowhere to save. The log says so at start-up. Start it with `-config /path/to/antennarr.json` somewhere writable.
 - **Changes to `devices` don't apply**: the list of devices only changes on restart. The log says "restart Antennarr to apply that". Everything else reloads (`SIGHUP`, or any change made in the web page).
 - **Hand edits are ignored**: tell it to reload (`SIGHUP`), or restart. A mistake in the file keeps the old settings and logs the error ("settings reload failed, keeping the current ones").
 - **Saving fails with a permissions error**: Antennarr needs to be able to create files in the settings file's folder (it saves by writing a temporary file and renaming it). In Docker, make `./config` owned by the user in `user:`.
@@ -107,7 +107,7 @@ The message says why. The common ones:
 
 ## I'm signed out after a restart, or the page says "Reconnecting…"
 
-- Sign-ins are kept in a file beside the settings file, `<settings>.sessions.json`, so a restart shouldn't sign you out. If it does, Antennarr was started **without** `-config`, or it couldn't write that file (check the log), or the sign-in had expired (12 hours idle, 7 days at most).
+- Sign-ins are kept in a file beside the settings file, `<settings>.sessions.json`, so a restart shouldn't sign you out. If it does, Antennarr couldn't create its settings file, or it couldn't write the sessions file (check the log), or the sign-in had expired (12 hours idle, 7 days at most).
 - A page left open while Antennarr restarts shows **Reconnecting…**. It opens a new connection by itself, so it recovers on its own. If the server no longer recognises you, it shows the sign-in screen.
 
 ## No channel logos or "what's on"

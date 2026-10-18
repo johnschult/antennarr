@@ -3,6 +3,10 @@
 # Host networking is recommended. Antennarr tells its own streams from your local
 # ones by address, and offers your Tailscale and LAN addresses on the Setup page,
 # and both need to see the machine's real network.
+#
+# A new install is closed: nobody can use the tuner and only this machine can open the
+# web page. On first start the log (docker logs antennarr) has a one-time setup link;
+# open it from your own computer to become the admin, then add a viewer.
 services:
   antennarr:
     image: ghcr.io/johnschult/antennarr:latest   # or pin a release, e.g. :2026.10.0

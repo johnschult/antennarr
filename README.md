@@ -69,12 +69,12 @@ Find your tuner, then run Antennarr in front of it:
 ./antennarr -tuner 192.168.1.50 -config antennarr.json
 ```
 
-Open `http://<this machine>:5004/antennarr/`. The Setup page in the UI writes out the steps for a viewer, with your addresses filled in.
+Look in the log for the first-run **setup link** and open it from your own computer to become the admin (or open `http://localhost:5004/antennarr/` on the machine itself). The Setup page in the UI writes out the steps for a viewer, with your addresses filled in.
 
 A viewer then adds the tuner to their media server as `<this machine>:5004`, for example in Plex under
 *Settings → Live TV & DVR → Set Up Plex DVR → enter its network address manually*.
 
-Without `-config`, Antennarr runs with defaults and can't save changes made in the UI. With it, the file is created the first time you change something, and from then on changes are saved to it. It is read again when the process gets `SIGHUP`. The tuner on the command line stays a flag until you move it into the file's `devices` (see below).
+The settings file is `antennarr.json` in the directory you run from, or wherever `-config` says. If it doesn't exist, Antennarr creates it with the defaults when it starts, and from then on changes made in the UI are saved to it. It is read again when the process gets `SIGHUP`. If the file can't be created in the default place (a read-only directory), Antennarr still runs, but changes can't be saved; use `-config` to put it somewhere writable. The tuner on the command line stays a flag until you move it into the file's `devices` (see below).
 
 ### Docker
 
@@ -107,11 +107,12 @@ The app's **Help** link, at the bottom of its web page, opens the docs for the v
 **HDHomeRun tuners have no authentication, and neither do their streams.** Antennarr's protection is the address a request comes from.
 Please keep that in mind:
 
-- **With no viewers configured, everything is open**, including the admin page and its settings, to anyone who can reach the port.
-  Add a viewer first (Viewers page, or `viewers` in the settings file). Once there is one, only listed addresses can use the tuner, and
-  only loopback and your `admin` addresses (or a signed-in Plex account) can use the admin pages.
+- **A new install is closed.** With no viewers nobody can use the tuner, and only this machine can open the admin page. On first start Antennarr writes a one-time **setup link** to its log;
+  open it from your own computer (LAN, Tailscale or VPN) and confirm to make that computer an admin. Then add a viewer (Viewers page, or `viewers` in the settings file).
+  Only listed addresses can use the tuner, and only loopback, your `admin` addresses and a signed-in Plex account can use the admin pages.
 - **Viewers only get what a media server needs.** Besides `discover.json`, `lineup.json` and the streams, only `status.json` and `lineup_status.json` are passed to the tuner, read-only.
   Everything else the tuner serves (rescans, firmware upgrade, its own web pages) answers `404`.
+- **Keep viewers out of your `admin` range.** A viewer whose address is inside an `admin` range is an admin too. Antennarr logs a warning if that happens.
 - **Don't put Antennarr on the open internet.** Use Tailscale, a VPN, or a private network. If you must, allow only the viewer's address in both Antennarr and your firewall.
 - **Admin by address** trusts the address a request arrives from. If you run Antennarr behind a reverse proxy, every request looks like it came from the proxy.
 - The admin API refuses cross-site writes and only accepts JSON. The web page is served with a strict Content-Security-Policy.
@@ -149,7 +150,7 @@ All of this can be changed in the UI. The file is JSON, written atomically, and 
   ],
   "sharedCap": 0,
   "ownerReserve": 1,
-  "admin": ["100.64.0.0/10"],
+  "admin": ["100.64.0.1"],
   "labels": { "antenna": "Living room antenna" },
   "firmwareCheck": true,
   "guide": true,

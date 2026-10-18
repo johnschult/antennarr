@@ -40,11 +40,11 @@ describe('SettingsPage', () => {
     expect(within(section('Access')).getByText('Viewers only')).toBeInTheDocument()
   })
 
-  it('says when access is open', () => {
+  it('says when there are no viewers yet', () => {
     const s = state()
-    s.settings.mode = 'open'
+    s.settings.mode = 'no-viewers'
     renderWithApp(<SettingsPage />, s)
-    expect(within(section('Access')).getByText('Open to anyone')).toBeInTheDocument()
+    expect(within(section('Access')).getByText('No viewers yet')).toBeInTheDocument()
   })
 
   describe('naming a tuner', () => {

@@ -18,10 +18,12 @@ import (
 
 	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/api"
+	"github.com/johnschult/antennarr/internal/claim"
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/live"
+	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/plexauth"
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
@@ -77,6 +79,7 @@ type Server struct {
 	firmware *firmware.Checker
 	guide    *guide.Service
 	plex     *plexauth.Auth
+	claim    *claim.Claimer
 
 	mu        sync.Mutex
 	announced map[string]string // device -> the firmware version we last told the owner about
@@ -149,6 +152,10 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 
 	store := access.NewStore(cfg.ConfigPath, policy)
 
+	// While nobody has been made an admin, a one-time link in the log lets the
+	// owner become one from another device.
+	s.claim = claim.New(claim.Config{Policy: policy, Store: store, Log: cfg.Log})
+
 	// Signing in with Plex is a second way to be an admin, next to the address.
 	s.plex = plexauth.New(plexauth.Config{
 		Base: cfg.PlexURL, AuthBase: cfg.PlexAuthURL,
@@ -174,6 +181,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		// Signing in has to be reachable by someone who isn't signed in yet; each
 		// endpoint checks for itself what it will allow.
 		mux.Handle("/antennarr/auth/", s.plex.Handler())
+		mux.Handle(claim.Path, s.claim.Handler())
 		tunerAPI := proxy.New(proxy.Config{
 			Upstream: d.mon, Policy: policy.Device(d.cfg.Name),
 			Advertise: d.cfg.Advertise, DeviceID: d.cfg.ReportID, Logger: cfg.Log.With("device", d.cfg.Name),
@@ -188,7 +196,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	}
 
 	if len(cfg.Settings.Viewers) == 0 {
-		s.log.Warn("no viewers configured: anyone who can reach these ports can use the tuners")
+		s.log.Warn("no viewers configured: nobody can use the tuners until you add one")
 	}
 	return s, nil
 }
@@ -217,6 +225,8 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 		lns[i] = ln
 	}
+
+	s.logClaimLinks(lns)
 
 	go s.firmware.Run(ctx)
 	go s.guide.Run(ctx)
@@ -248,6 +258,30 @@ func (s *Server) Run(ctx context.Context) error {
 		_ = srv.Shutdown(shutdown)
 	}
 	return first
+}
+
+// logClaimLinks writes the first-run setup link to the log, once for each
+// address the machine can be reached at, if there is still an admin to claim.
+func (s *Server) logClaimLinks(lns []net.Listener) {
+	tok := s.claim.Token()
+	if tok == "" || len(lns) == 0 {
+		return
+	}
+	port := "5004"
+	if a, ok := lns[0].Addr().(*net.TCPAddr); ok {
+		port = fmt.Sprint(a.Port)
+	}
+	var hosts []string
+	for _, a := range netinfo.Detect() {
+		hosts = append(hosts, a.IP)
+	}
+	if len(hosts) == 0 {
+		hosts = []string{"<this-machine>"}
+	}
+	s.log.Info("FIRST RUN: nobody is an admin yet. To set up, open one of these links from the device you want to use as the admin. It works once, and only from a private network")
+	for _, u := range claim.URLs(tok, port, hosts) {
+		s.log.Info("  setup link", "url", u)
+	}
 }
 
 // announceFirmware tells the owner, once per release, when a tuner has newer

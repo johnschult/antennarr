@@ -19,7 +19,7 @@ Antennarr is configured with a **settings file** (JSON), which you can edit by h
   ],
   "sharedCap": 0,
   "ownerReserve": 1,
-  "admin": ["100.64.0.0/10"],
+  "admin": ["100.64.0.1"],
   "labels": { "antenna": "Living room antenna" },
   "firmwareCheck": true,
   "guide": true,
@@ -46,7 +46,7 @@ The tuners to front. Each looks like its own HDHomeRun to media servers, on its 
 
 ### `viewers`
 
-Who you share with. With **no viewers, the tuner is open to anyone who can reach it** (and so are the admin pages).
+Who you share with. **With no viewers, nobody can use the tuner**: a new install is closed until you add one.
 
 | Key | Meaning |
 |---|---|
@@ -61,7 +61,7 @@ Who you share with. With **no viewers, the tuner is open to anyone who can reach
 |---|---|
 | `sharedCap` | The most tuners *all* viewers together may use on a device. `0` means no cap. |
 | `ownerReserve` | Tuners always kept free for your own devices (default `1`), **in addition to** any your own devices are using at the moment. |
-| `admin` | Extra addresses (single or ranges) allowed to open the admin pages. Loopback is always allowed once a viewer exists. |
+| `admin` | Extra addresses (single or ranges) allowed to open the admin pages. Loopback is always allowed once a viewer exists. Keep this narrow, and keep viewers' addresses out of it: a viewer inside an admin range is an admin too (Antennarr logs a warning). |
 | `labels` | Display names, by device name: `{ "antenna": "Living room antenna" }`, up to 60 characters. This is also what media servers are told the tuner is called, and it changes live. |
 | `firmwareCheck` | Look at SiliconDust's firmware changelog every 12 hours (default `true`). |
 | `guide` | Read SiliconDust's programme guide so Live tiles can show the channel logo and what's on (default `true`). |
@@ -89,7 +89,7 @@ Example, with a 4-tuner device, `ownerReserve: 1` and one of *your* TVs watching
 
 | Flag | Meaning |
 |---|---|
-| `-config PATH` | The settings file. Without one, anyone who can reach a port may use the tuner, and settings can't be saved. If the file doesn't exist yet it is created the first time you change something. |
+| `-config PATH` | The settings file, `antennarr.json` in the current directory by default (`/config/antennarr.json` in the Docker image). If it doesn't exist it is created with the defaults at start-up. If the default one can't be created, Antennarr runs without saving; a `-config` you name that can't be created is an error. |
 | `-tuner HOST` | A tuner's address, to run one device without a settings file. |
 | `-tuner-id ID` | A tuner's DeviceID to search for if its address changes. |
 | `-listen ADDR` | Where to listen (default `:5004`). |

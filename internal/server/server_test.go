@@ -129,6 +129,13 @@ func ephemeral(t *testing.T) net.Listener {
 	return ln
 }
 
+// loopbackViewer adds the one viewer the tests connect as (127.0.0.1): with no
+// viewers a server serves nobody.
+func loopbackViewer(s access.Settings) access.Settings {
+	s.Viewers = []access.Viewer{{Name: "test", Addresses: []string{"127.0.0.1"}, Limit: 8}}
+	return s
+}
+
 // start builds a server with the given devices on ephemeral ports and runs it.
 func start(t *testing.T, s access.Settings, devices []access.Device, tuners ...*fakeTuner) *rig {
 	t.Helper()
@@ -231,7 +238,7 @@ var twoDevs = func(a, c *fakeTuner) []access.Device {
 
 func TestEachDeviceServesItsOwnTuner(t *testing.T) {
 	a, c := newFakeTuner(t, "10ABCC87", "antenna-box"), newFakeTuner(t, "1111AAA2", "cable-box")
-	r := start(t, access.DefaultSettings(), twoDevs(a, c), a, c)
+	r := start(t, loopbackViewer(access.DefaultSettings()), twoDevs(a, c), a, c)
 
 	for dev, want := range map[string]string{"antenna": "antenna-box", "cable": "cable-box"} {
 		code, body := r.get(t, dev, "/discover.json")
@@ -599,7 +606,7 @@ func TestParseTuner(t *testing.T) {
 
 func TestRenamingATunerChangesWhatMediaServersSeeAtOnce(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
-	s := access.Settings{}
+	s := loopbackViewer(access.Settings{})
 	r := start(t, s, oneDevice(a), a)
 
 	friendly := func() string {
