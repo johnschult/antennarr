@@ -17,6 +17,8 @@ import { deviceTitle } from '@/lib/device'
 import { formatMbps, timeAgo } from '@/lib/format'
 import type { DeviceState, Slot } from '@/lib/types'
 
+const asset = (name: string) => `${import.meta.env.BASE_URL}${name}`
+
 export function TunerPage() {
   const { state } = useApp()
   const several = state.devices.length > 1
@@ -122,6 +124,7 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
             title={tuner.online ? 'Online' : 'Offline'}
             className={`size-2.5 shrink-0 rounded-full ${tuner.online ? 'bg-emerald-500' : 'bg-red-500'}`}
           />
+          <img src={asset('hdhomerun-icon.png')} alt="" aria-hidden="true" className="size-8 shrink-0 rounded-md" draggable={false} />
           <span className="min-w-0">
             <span className="block truncate font-semibold tracking-tight">{deviceTitle(device)}</span>
             <span className="block truncate font-mono text-xs text-muted-foreground">
