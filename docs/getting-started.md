@@ -28,7 +28,7 @@ Then `mkdir config && chown 1000:1000 config` (use the same numbers as `user:`),
 (step 2), and run `docker compose up -d`.
 
 Use **host networking** (`network_mode: host`). Antennarr tells its own streams from the ones your own TVs open by comparing addresses,
-looks for the tuner with a broadcast on your network, and offers this machine's Tailscale and LAN addresses on the Setup page. All three need to see the machine's real network, which a container on its own bridge network can't.
+looks for the tuner with a broadcast on your network, and offers this machine's Tailscale and LAN addresses on the Connect page. All three need to see the machine's real network, which a container on its own bridge network can't.
 (With host networking you can't also remap the port: set `listen` in the settings file instead.)
 
 ### A program, without Docker
@@ -112,7 +112,7 @@ If you lose access to the web page, you can always get back in by one of these:
 
 ## 5. Point a media server at it
 
-Antennarr looks like an ordinary HDHomeRun at `<address>:<port>`. The **Setup** page in the web app writes out the steps for the viewer you pick, with your real addresses filled in.
+Antennarr looks like an ordinary HDHomeRun at `<address>:<port>`. The **Connect** page in the web app writes out the steps for the viewer you pick, with your real addresses filled in.
 For the full walk-through, see [Media servers](media-servers.md).
 
 ## 6. Check it works

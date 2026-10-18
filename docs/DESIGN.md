@@ -76,7 +76,7 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 
 **Chosen layout: "Control room"** (chosen from a throwaway HTML mockup, since removed):
 
-- **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Setup, Tuner, Settings). Tuner name, IP and a live dot on the right.
+- **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Tuners, Connect, Settings). Tuner name, IP and a live dot on the right.
 - **Hero:** a short "On air now" summary ("2 of 4 tuners live", remote/local/reserved, total Mbps), with a 24h upload sparkline beside it.
 - **One big tile per tuner:**
   - Live tiles show a large channel number, call sign and network, with a subtle scanline texture. Below that: who's watching and the bitrate. A red REC badge marks recordings.

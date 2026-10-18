@@ -44,7 +44,7 @@ cd web && npm run dev                     # the UI with hot reload, against a ru
 | `internal/server` | Puts it together: one listener per device, the admin pages, the sign-in, the checks. |
 | `internal/plexauth` | Sign in with Plex (server side), with sessions kept across restarts. |
 | `internal/firmware`, `internal/guide` | The firmware changelog and the programme guide. |
-| `internal/netinfo` | This machine's addresses and firewall, for the Setup page. |
+| `internal/netinfo` | This machine's addresses and firewall, for the Connect page. |
 | `internal/live`, `internal/httpx`, `internal/version`, `internal/ui` | Event notifications, shared HTTP helpers, the version, the embedded web page. |
 | `web` | The web UI: React, TypeScript, Vite, Tailwind and shadcn/ui. See `web/README.md`. |
 | `docs` | The documentation, and the design notes in `docs/DESIGN.md`. |

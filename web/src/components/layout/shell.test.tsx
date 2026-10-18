@@ -55,7 +55,7 @@ describe('Shell menu on a phone', () => {
     expect(button()).toHaveAttribute('aria-expanded', 'true')
     expect(button()).toHaveAccessibleName('Close menu')
     const menu = within(screen.getByRole('navigation', { name: 'Main menu' }))
-    expect(menu.getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Setup', 'Tuner', 'Settings'])
+    expect(menu.getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Connect', 'Settings'])
   })
 
   it('also holds the tuner status and sign-out that the phone header has no room for', async () => {
@@ -66,6 +66,14 @@ describe('Shell menu on a phone', () => {
     expect(within(panel).getByText('Steve FLEX 4K', { exact: false })).toBeInTheDocument()
     expect(within(panel).getByTestId('connection')).toBeInTheDocument()
     expect(await within(panel).findByRole('button', { name: /john/ })).toBeInTheDocument()
+  })
+
+  it('shows an icon beside the page you are on, and only that one', async () => {
+    mount('/viewers')
+    await userEvent.setup().click(button())
+    const menu = within(screen.getByRole('navigation', { name: 'Main menu' }))
+    const withIcon = menu.getAllByRole('link').filter((l) => l.querySelector('svg'))
+    expect(withIcon.map((l) => l.textContent)).toEqual(['Viewers'])
   })
 
   it('marks the page you are on', async () => {
