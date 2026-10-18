@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./shadcn.css";
 @import "@fontsource-variable/open-sans";
 @import "@fontsource-variable/mozilla-headline";
 @import "@fontsource-variable/jetbrains-mono";
