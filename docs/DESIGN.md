@@ -142,10 +142,9 @@ Next, roughly in this order. Each is a real piece of work, not a tweak:
 
 1. **Plex-verified viewer enrollment** (later): an invite link leads to a Plex sign-in, and the viewer's server addresses are read from plex.tv and allowlisted.
 2. **Tailscale, set up from the web UI.** An optional built-in tailnet node (tsnet): enable it, sign in with a link or an auth key, see the node's name and address, and have viewers identified by their tailnet identity instead of an IP. Needs no firewall rules on the host.
-3. **Manage tuners from the UI.** Renaming is done. Adding and removing tuners, and changing a tuner's address, port or DeviceID, need listeners to be opened and closed while running (or an honest "applies on restart").
+3. **Manage tuners from the UI.** Renaming, adding, removing and changing the port are done, live. Still to do: changing a tuner's address or DeviceID.
 4. **The setup guide generator** (above): per-viewer commands for firewall, routing and the media server, with verify and rollback steps, replacing the placeholder Setup page.
 5. **Cutover:** replace the socat relay and the viewer-side DNAT that serve a friend's tuner today.
-6. **Redesign the Tuner page.** It wastes space: a big facts grid and a full-width tuner table that is mostly empty cells when idle. A denser layout, with the details as compact rows (like Settings), tuners shown as a strip rather than a table, and firmware alongside, would use the page better, especially with several tuners.
 
 ## Notes
 

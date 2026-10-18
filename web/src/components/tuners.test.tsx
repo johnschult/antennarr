@@ -93,9 +93,14 @@ describe('with no tuner yet', () => {
 
 describe('adding and removing tuners on the Tuners page', () => {
   const two = () => makeState({ devices: [makeDevice(), makeCableDevice()] })
+  // With several tuners each starts folded.
+  const openAll = async () => {
+    for (const b of screen.getAllByRole('button', { expanded: false })) await userEvent.click(b)
+  }
 
-  it('gives each tuner its port and a way to remove it, and the page a way to add another', () => {
+  it('gives each tuner its port and a way to remove it, and the page a way to add another', async () => {
     renderWithApp(<TunerPage />, two())
+    await openAll()
     const antenna = screen.getByRole('region', { name: 'Manage antenna' })
     expect(within(antenna).getByLabelText('Port')).toHaveValue(5004)
     expect(within(antenna).getByRole('button', { name: 'Remove antenna' })).toBeEnabled()
@@ -108,6 +113,7 @@ describe('adding and removing tuners on the Tuners page', () => {
     const { fn, calls } = stubFetch({ 'DELETE /devices/antenna': () => ({ status: 204 }), ...okState })
     vi.stubGlobal('fetch', fn)
     renderWithApp(<TunerPage />, two())
+    await openAll()
     await userEvent.click(screen.getByRole('button', { name: 'Remove antenna' }))
     const dialog = await screen.findByRole('alertdialog')
     expect(within(dialog).getByText('Remove antenna?')).toBeInTheDocument()
@@ -123,6 +129,7 @@ describe('adding and removing tuners on the Tuners page', () => {
     const { fn, calls } = stubFetch({ 'DELETE /devices/cable': () => ({ status: 409, body: { error: 'the tuner was set with command-line flags' } }) })
     vi.stubGlobal('fetch', fn)
     renderWithApp(<TunerPage />, two())
+    await openAll()
     await userEvent.click(screen.getByRole('button', { name: 'Remove cable' }))
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Keep' }))
     expect(calls).toHaveLength(0)
@@ -132,8 +139,9 @@ describe('adding and removing tuners on the Tuners page', () => {
     expect(await screen.findByText('the tuner was set with command-line flags')).toBeInTheDocument()
   })
 
-  it('cannot be changed when there is no settings file, and says why', () => {
+  it('cannot be changed when there is no settings file, and says why', async () => {
     renderWithApp(<TunerPage />, { ...two(), editable: false })
+    await openAll()
     expect(screen.getByRole('button', { name: 'Remove antenna' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Add tuner' })).toBeDisabled()
     expect(screen.getByText(/no settings file to save tuners in/)).toBeInTheDocument()
