@@ -94,6 +94,20 @@ over two lines.
     expect(parseChangelog('')).toEqual([])
     expect(parseChangelog('## 2026.10.2\r\n\r\n- Hello\r\n')).toEqual([{ version: '2026.10.2', date: '', intro: null, sections: [{ title: null, items: ['Hello'] }] }])
   })
+  it('skips comments wherever they are, on one line or several, and keeps what is around them', () => {
+    const r = parseChangelog('<!-- one line -->\n## 2026.10.5 (2026-10-18)\n\n- Before\n<!-- a comment\nover two lines\n- Not an item\n## 2026.10.4 (2026-10-17)\n-->\n- After\n')
+    expect(r.map((x) => x.version)).toEqual(['2026.10.5'])
+    expect(r[0].sections[0].items).toEqual(['Before', 'After'])
+  })
+  it('does not put a comment back together out of the pieces of two', () => {
+    // Cutting out the inner comment of this would leave a new <!-- behind; it is just text, shown as it is.
+    const r = parseChangelog('## 2026.10.5 (2026-10-18)\n\n- <!<!-- x -->-- not a comment\n')
+    expect(r[0].sections[0].items).toEqual(['<!<!-- x -->-- not a comment'])
+  })
+  it('stops at an unterminated comment rather than reading on as if it were not there', () => {
+    const r = parseChangelog('## 2026.10.5 (2026-10-18)\n\n- Kept\n<!-- never closed\n- Gone\n')
+    expect(r[0].sections[0].items).toEqual(['Kept'])
+  })
   it('ignores text that is not a release heading', () => {
     expect(parseChangelog('## Unreleased\n\n- Not yet\n')).toEqual([])
   })

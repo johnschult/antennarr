@@ -36,7 +36,7 @@ const BULLET = /^[-*]\s+(.*)$/
  * item is left as written, Markdown and all, for InlineMarkdown to draw. Newest first, as in the file.
  */
 export function parseChangelog(text: string): Release[] {
-  const lines = text.replace(/<!--[\s\S]*?-->/g, '').split(/\r?\n/)
+  const lines = text.split(/\r?\n/)
   const releases: Release[] = []
   let release: Release | null = null
   let section: ChangeSection | null = null
@@ -55,7 +55,20 @@ export function parseChangelog(text: string): Release[] {
     return section
   }
 
+  // A comment is a line (or lines) that starts with <!-- and runs to -->. They are skipped as they are met, not
+  // cut out of the text, so there is nothing left over to put a comment back together.
+  let inComment = false
+
   for (const raw of lines) {
+    if (inComment) {
+      if (raw.includes('-->')) inComment = false
+      continue
+    }
+    const start = raw.trimStart().startsWith('<!--') ? raw.indexOf('<!--') : -1
+    if (start >= 0) {
+      if (raw.indexOf('-->', start + 4) < 0) inComment = true
+      continue
+    }
     const heading = RELEASE_HEADING.exec(raw)
     if (heading) {
       finishIntro()
