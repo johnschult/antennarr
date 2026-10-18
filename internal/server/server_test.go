@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/antennarr/internal/discovery"
 )
 
 // ---- fakes ----
@@ -115,6 +117,12 @@ func locateFrom(tuners ...*fakeTuner) Locator {
 	}
 }
 
+// noFind is the finder every test server uses: a fake tuner that goes quiet must not send the monitor looking
+// for a real one on this network (the fakes have the DeviceID of a real FLEX, so one could be found).
+func noFind(context.Context, string, string) (discovery.Device, error) {
+	return discovery.Device{}, errors.New("not found: tests never look")
+}
+
 type lockedBuf struct {
 	mu sync.Mutex
 	b  bytes.Buffer
@@ -197,6 +205,7 @@ func startConfigured(t *testing.T, s access.Settings, devices []access.Device, f
 		Settings: s, Devices: devices, Poll: 50 * time.Millisecond, Locate: locateFrom(tuners...),
 		Log: slog.New(slog.NewTextHandler(r.logs, nil)), Listeners: lns, FirmwareURL: fwURL,
 	}
+	cfg.Find = noFind
 	if tweak != nil {
 		tweak(&cfg)
 	}
@@ -431,7 +440,7 @@ func TestAPortInUseFailsEverythingCleanly(t *testing.T) {
 		{Name: "cable", Listen: taken.Addr().String(), Tuner: c.name, StreamPort: c.streamPort},
 	}
 	srv, err := New(context.Background(), Config{
-		Settings: access.DefaultSettings(), Devices: devs, Locate: locateFrom(a, c),
+		Find: noFind, Settings: access.DefaultSettings(), Devices: devs, Locate: locateFrom(a, c),
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)), Listeners: map[string]net.Listener{"antenna": first},
 	})
 	if err != nil {

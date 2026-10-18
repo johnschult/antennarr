@@ -59,6 +59,9 @@ type State struct {
 	LastSeen     time.Time `json:"lastSeen"`
 	Since        time.Time `json:"since"` // when Online last changed
 	Events       []Event   `json:"events"`
+	// Updating is true while Antennarr is installing firmware: the tuner is expected to go away and
+	// come back, so that is not an outage.
+	Updating bool `json:"updating"`
 }
 
 // InUse counts slots in use, and how many of those are ours.
@@ -109,6 +112,8 @@ type Monitor struct {
 	st         State
 	fails      int
 	lastSearch time.Time
+	// updatingSince is when SetUpdating(true) was called.
+	updatingSince time.Time
 	// deviceAuth is the tuner's token for SiliconDust's guide service. It is
 	// kept out of State on purpose, so it can't end up in an API response.
 	deviceAuth string
@@ -123,6 +128,37 @@ func (m *Monitor) DeviceAuth() string {
 }
 
 const maxEvents = 50
+
+// maxUpdating is the longest a tuner is believed to be updating. An upgrade that dies without saying so
+// must not leave the tuner marked as updating, and so unreported as offline, for good.
+const maxUpdating = 30 * time.Minute
+
+// SetUpdating says Antennarr is about to install firmware on the tuner (or has finished). While it is set
+// the tuner going away is expected: no "offline" event, no notification, no search for it at another
+// address, and State.Updating tells the page to say "updating" and not "offline". Clearing it polls the
+// tuner at once. It clears itself after maxUpdating.
+func (m *Monitor) SetUpdating(on bool) {
+	m.mu.Lock()
+	m.st.Updating = on
+	if on {
+		m.updatingSince = time.Now()
+	}
+	m.mu.Unlock()
+	if m.cfg.OnChange != nil {
+		m.cfg.OnChange()
+	}
+	if !on {
+		m.Kick()
+	}
+}
+
+// updatingLocked says whether the tuner is being updated; m.mu must be held.
+func (m *Monitor) updatingLocked() bool {
+	if m.st.Updating && time.Since(m.updatingSince) > maxUpdating {
+		m.st.Updating = false
+	}
+	return m.st.Updating
+}
 
 func NewMonitor(cfg Config) *Monitor {
 	if cfg.StreamPort == "" {
@@ -307,10 +343,12 @@ func (m *Monitor) check(ctx context.Context, base string) error {
 		m.st.Slots = slotsFrom(raw, local)
 	}
 	if !wasOnline {
-		cameOnline = true
 		m.st.Online, m.st.Since = true, time.Now()
-		m.addEvent("ok", fmt.Sprintf("Tuner online at %s", base))
-		m.log.Info("tuner online", "id", id, "base", base)
+		if !m.updatingLocked() { // coming back from a restart that was planned is not news
+			cameOnline = true
+			m.addEvent("ok", fmt.Sprintf("Tuner online at %s", base))
+			m.log.Info("tuner online", "id", id, "base", base)
+		}
 	}
 	return nil
 }
@@ -347,9 +385,16 @@ func (m *Monitor) fail(ctx context.Context, err error) {
 	if m.st.Online {
 		m.st.Online, m.st.Since = false, time.Now()
 		m.st.Slots = nil
-		m.addEvent("err", fmt.Sprintf("Tuner offline: %v", err))
-		m.log.Warn("tuner offline", "err", err)
-		wentOffline = true
+		if !m.updatingLocked() {
+			m.addEvent("err", fmt.Sprintf("Tuner offline: %v", err))
+			m.log.Warn("tuner offline", "err", err)
+			wentOffline = true
+		}
+	}
+	if m.updatingLocked() {
+		// It is restarting, and will be back where it was: don't go looking for it elsewhere.
+		m.mu.Unlock()
+		return
 	}
 	// Don't hammer the network: search at most every 30s.
 	if time.Since(m.lastSearch) < 30*time.Second {

@@ -47,6 +47,7 @@ func startFleet(t *testing.T, s access.Settings, devices []access.Device, withFi
 	s.Devices = devices
 	port := freePort(t)
 	cfg := Config{
+		Find:     noFind,
 		Settings: s, Devices: devices, Poll: 50 * time.Millisecond, Locate: locateFrom(tuners...),
 		Log: slog.New(slog.NewTextHandler(f.logs, nil)), AdminListen: "127.0.0.1:" + port,
 	}
@@ -273,7 +274,7 @@ func TestTunersFromFlagsCannotBeAddedToOrRemoved(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	srv, err := New(ctx, Config{Settings: s, Devices: []access.Device{dev}, ConfigPath: f.path, Poll: 50 * time.Millisecond,
+	srv, err := New(ctx, Config{Find: noFind, Settings: s, Devices: []access.Device{dev}, ConfigPath: f.path, Poll: 50 * time.Millisecond,
 		Locate: locateFrom(a), Log: slog.New(slog.NewTextHandler(f.logs, nil))})
 	if err != nil {
 		t.Fatal(err)

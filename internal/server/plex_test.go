@@ -106,7 +106,7 @@ func newSite(t *testing.T, s access.Settings, withFile bool) *site {
 		}
 	}
 	srv, err := New(context.Background(), Config{
-		Settings: s, Devices: oneDevice(a), ConfigPath: st.path, Locate: locateFrom(a),
+		Find: noFind, Settings: s, Devices: oneDevice(a), ConfigPath: st.path, Locate: locateFrom(a),
 		Log: slog.New(slog.NewTextHandler(io.Discard, nil)), PlexURL: st.tv.URL,
 	})
 	if err != nil {

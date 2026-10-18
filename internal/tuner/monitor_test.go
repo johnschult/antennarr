@@ -499,3 +499,98 @@ func TestNoOnTransitionIsFine(t *testing.T) {
 		t.Error("should be offline")
 	}
 }
+
+func TestAnUpdatingTunerGoingAwayAndComingBackIsNotAnOutage(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	defer f.Close()
+	var mu sync.Mutex
+	var transitions []bool
+	searched := 0
+	m := NewMonitor(Config{
+		BaseURL: f.URL, ID: "10ABCC87", Failures: 2,
+		Find: func(context.Context, string, string) (discovery.Device, error) {
+			mu.Lock()
+			searched++
+			mu.Unlock()
+			return discovery.Device{}, errors.New("not found")
+		},
+		LocalIPs:     func() []string { return nil },
+		OnTransition: func(online bool) { mu.Lock(); transitions = append(transitions, online); mu.Unlock() },
+	})
+	m.Poll(context.Background())
+	mu.Lock()
+	transitions = nil // the first sighting is not what is being looked at
+	mu.Unlock()
+	eventsBefore := len(m.Snapshot().Events)
+
+	m.SetUpdating(true)
+	if !m.Snapshot().Updating {
+		t.Fatal("not marked as updating")
+	}
+	f.mu.Lock()
+	f.id = "SOMEONE1" // it is gone: whatever answers is not our tuner
+	f.mu.Unlock()
+	for i := 0; i < 4; i++ {
+		m.Poll(context.Background())
+	}
+	s := m.Snapshot()
+	if s.Online {
+		t.Error("a tuner that does not answer is shown online")
+	}
+	if !s.Updating {
+		t.Error("the update flag was lost")
+	}
+	if len(s.Events) != eventsBefore {
+		t.Errorf("events were recorded for a planned restart: %+v", s.Events[eventsBefore:])
+	}
+
+	f.mu.Lock()
+	f.id = "10ABCC87"
+	f.mu.Unlock()
+	m.Poll(context.Background())
+	m.Poll(context.Background())
+	s = m.Snapshot()
+	if !s.Online || len(s.Events) != eventsBefore {
+		t.Errorf("back online: online=%v, events %+v", s.Online, s.Events[eventsBefore:])
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(transitions) != 0 || searched != 0 {
+		t.Errorf("transitions %v, searches %d: a planned restart should cause neither", transitions, searched)
+	}
+}
+
+func TestAfterTheUpdateTheTunerIsWatchedAsUsual(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	m := monitorFor(f.URL, "10ABCC87", neverFind)
+	m.Poll(context.Background())
+	m.SetUpdating(true)
+	m.SetUpdating(false)
+	if m.Snapshot().Updating {
+		t.Fatal("still updating")
+	}
+	f.Close()
+	m.Poll(context.Background())
+	m.Poll(context.Background())
+	s := m.Snapshot()
+	if s.Online || s.Events[len(s.Events)-1].Kind != "err" {
+		t.Errorf("an outage after the update was not reported: %+v", s.Events)
+	}
+}
+
+func TestTheUpdatingFlagCannotStickForever(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	m := monitorFor(f.URL, "10ABCC87", neverFind)
+	m.Poll(context.Background())
+	m.SetUpdating(true)
+	m.mu.Lock()
+	m.updatingSince = time.Now().Add(-maxUpdating - time.Minute) // an upgrade that died without clearing it
+	m.mu.Unlock()
+	f.Close()
+	m.Poll(context.Background())
+	m.Poll(context.Background())
+	s := m.Snapshot()
+	if s.Updating || s.Events[len(s.Events)-1].Kind != "err" {
+		t.Errorf("updating=%v events=%+v: a stale flag should not hide an outage", s.Updating, s.Events)
+	}
+}

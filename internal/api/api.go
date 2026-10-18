@@ -25,6 +25,7 @@ import (
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/antennarr/internal/upgrade"
 	"github.com/johnschult/antennarr/internal/version"
 )
 
@@ -79,6 +80,8 @@ type API struct {
 	// proxies don't drop it. Zero means 20s.
 	KeepAlive time.Duration
 
+	// Upgrade installs firmware on a tuner; nil means it can't.
+	Upgrade *upgrade.Manager
 	// Notify sends test messages to a notification channel; nil means there is no
 	// notifying, and the test button says so.
 	Notify Tester
@@ -119,6 +122,7 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/guide/{channel}/icon", map[string]http.HandlerFunc{"GET": a.channelIcon}},
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
+		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
 		{"notifications/channels", map[string]http.HandlerFunc{"POST": a.addChannel}},
 		{"notifications/channels/{id}", map[string]http.HandlerFunc{"PUT": a.replaceChannel, "DELETE": a.deleteChannel}},
@@ -189,6 +193,9 @@ type DeviceDoc struct {
 	OwnerReserve int             `json:"ownerReserve"`
 	SharedCap    int             `json:"sharedCap"`
 	Firmware     firmware.Status `json:"firmware"`
+	// Upgrade is the latest firmware install on this tuner, while it runs and after: what it is doing, or
+	// how it ended. Absent when there has been none.
+	Upgrade *upgrade.Status `json:"upgrade,omitempty"`
 	// Guide is what the programme guide says about each channel being watched
 	// right now, by channel number. Empty when the guide is off or unknown.
 	Guide map[string]guide.Entry `json:"guide"`
@@ -223,6 +230,9 @@ func (a *API) deviceDoc(d Device, streams []access.Active) DeviceDoc {
 			Model: t.Model, FirmwareName: t.Firmware.Name, Version: t.Firmware.Version, UpgradeAvailable: t.Firmware.UpgradeAvailable,
 		}),
 		Summary: Summary{Total: t.TunerCount, InUse: total, Remote: via, Local: total - via, Reserved: reserve, Free: free},
+	}
+	if a.Upgrade != nil {
+		doc.Upgrade = a.Upgrade.Status(d.Name)
 	}
 	doc.Guide = map[string]guide.Entry{}
 	if a.Guide != nil && a.Pol.Settings().GuideEnabled() {
