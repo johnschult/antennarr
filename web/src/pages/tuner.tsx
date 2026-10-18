@@ -26,7 +26,7 @@ export function TunerPage() {
     <div className="space-y-10">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">{several || state.devices.length === 0 ? 'Tuners' : (state.devices[0].label ?? 'Tuner')}</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Tuners</h1>
           <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Antennarr follows a tuner if its address changes.</p>
         </div>
         {state.devices.length > 0 && (

@@ -81,11 +81,12 @@ describe('TunerPage', () => {
     expect(screen.getByRole('region', { name: 'Firmware' })).toBeInTheDocument()
   })
 
-  it('titles the page with the name given to a single tuner', () => {
+  it('is titled Tuners, like the navigation, even with a single named tuner', () => {
     const s = makeState()
     s.devices[0].label = 'Living room antenna'
     renderWithApp(<TunerPage />, s)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Living room antenna')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
+    expect(screen.getByRole('region', { name: 'Manage' })).toBeInTheDocument()
   })
 })
 
