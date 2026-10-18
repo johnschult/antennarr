@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LivePage } from '@/pages/live'
-import { SettingsPage } from '@/pages/settings'
+import { TunerPage } from '@/pages/tuner'
 import { makeCableDevice, makeDevice, makeState } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
 
@@ -91,22 +91,23 @@ describe('with no tuner yet', () => {
   })
 })
 
-describe('tuners in the settings', () => {
+describe('adding and removing tuners on the Tuners page', () => {
   const two = () => makeState({ devices: [makeDevice(), makeCableDevice()] })
 
-  it('lists each tuner with a way to remove it, and a way to add another', () => {
-    renderWithApp(<SettingsPage />, two())
-    const section = screen.getByRole('region', { name: 'Tuners' })
-    expect(within(section).getByText('antenna')).toBeInTheDocument()
-    expect(within(section).getByText('Steve FLEX 4K · 10ABCC87 · port 5004')).toBeInTheDocument()
-    expect(within(section).getByRole('button', { name: 'Remove cable' })).toBeEnabled()
-    expect(within(section).getByRole('button', { name: 'Add tuner' })).toBeEnabled()
+  it('gives each tuner its port and a way to remove it, and the page a way to add another', () => {
+    renderWithApp(<TunerPage />, two())
+    const antenna = screen.getByRole('region', { name: 'Manage antenna' })
+    expect(within(antenna).getByText(':5004')).toBeInTheDocument()
+    expect(within(antenna).getByRole('button', { name: 'Remove antenna' })).toBeEnabled()
+    expect(within(screen.getByRole('region', { name: 'Manage cable' })).getByText(':5005')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove cable' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add tuner' })).toBeEnabled()
   })
 
   it('asks before removing, warning about streams that will be cut, then removes it', async () => {
     const { fn, calls } = stubFetch({ 'DELETE /devices/antenna': () => ({ status: 204 }), ...okState })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<SettingsPage />, two())
+    renderWithApp(<TunerPage />, two())
     await userEvent.click(screen.getByRole('button', { name: 'Remove antenna' }))
     const dialog = await screen.findByRole('alertdialog')
     expect(within(dialog).getByText('Remove antenna?')).toBeInTheDocument()
@@ -121,7 +122,7 @@ describe('tuners in the settings', () => {
   it('keeping it sends nothing; a refusal stays on screen', async () => {
     const { fn, calls } = stubFetch({ 'DELETE /devices/cable': () => ({ status: 409, body: { error: 'the tuner was set with command-line flags' } }) })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<SettingsPage />, two())
+    renderWithApp(<TunerPage />, two())
     await userEvent.click(screen.getByRole('button', { name: 'Remove cable' }))
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Keep' }))
     expect(calls).toHaveLength(0)
@@ -131,10 +132,10 @@ describe('tuners in the settings', () => {
     expect(await screen.findByText('the tuner was set with command-line flags')).toBeInTheDocument()
   })
 
-  it('cannot be changed when there is no settings file', () => {
-    renderWithApp(<SettingsPage />, { ...two(), editable: false })
-    const section = screen.getByRole('region', { name: 'Tuners' })
-    expect(within(section).getByRole('button', { name: 'Remove antenna' })).toBeDisabled()
-    expect(within(section).getByRole('button', { name: 'Add tuner' })).toBeDisabled()
+  it('cannot be changed when there is no settings file, and says why', () => {
+    renderWithApp(<TunerPage />, { ...two(), editable: false })
+    expect(screen.getByRole('button', { name: 'Remove antenna' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add tuner' })).toBeDisabled()
+    expect(screen.getByText(/no settings file to save tuners in/)).toBeInTheDocument()
   })
 })

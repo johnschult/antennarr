@@ -50,7 +50,7 @@ Unraid User Script). `./antennarr -version` prints the version.
 **Usually there is nothing to do.** If you don't name a tuner, Antennarr looks for HDHomeRuns on the network when it starts, for about ten seconds. What it finds is saved under `devices` in the settings file, so the next start uses the same tuner. One tuner is called `tuner`; several are called `tuner-<DeviceID>`, each on the next port up from `5004`.
 This needs to see your network's broadcasts, so in Docker use host networking.
 
-**If none answers, Antennarr starts anyway**, with no tuner and only the web page, on port `5004`. Open it (step 3) and press **Find tuners**, or add the tuner by its address. The first tuner you add takes over port `5004`, so the page stays where it is. You can add more tuners, or remove one, later under *Settings → Tuners*.
+**If none answers, Antennarr starts anyway**, with no tuner and only the web page, on port `5004`. Open it (step 3) and press **Find tuners**, or add the tuner by its address. The first tuner you add takes over port `5004`, so the page stays where it is. You can add more tuners, or remove one, later on the *Tuners* page.
 
 To name a tuner yourself in the settings file or on the command line, list what is on your network:
 

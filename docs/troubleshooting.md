@@ -51,7 +51,7 @@ If you open Antennarr by a name like `mini.local`, your phone or laptop may conn
 Antennarr checks the tuner every 5 seconds. After 3 failures in a row it shows it offline, and then searches for it by its DeviceID (a broadcast, and a scan of the nearby subnet) every 30 seconds.
 
 - **Is the tuner on?** Power, the Ethernet cable (an extender or switch can fail), and the router. Can you reach `http://<tuner address>/discover.json` from the Antennarr machine?
-- **Is it listed at all?** *Settings → Tuners* shows the tuners being shared. Press *Add tuner* to search the network again or add one by its address. In Docker, searching needs host networking.
+- **Is it listed at all?** The *Tuners* page shows the tuners being shared. Press *Add tuner* to search the network again or add one by its address. In Docker, searching needs host networking.
 - **Did its address change?** If you gave the tuner's `id` in the settings (or Antennarr has reached it before), it finds the new address by itself, usually within a minute, and the Live page's timeline records "Tuner moved … (found by DeviceID …)". If you didn't, run `antennarr discover` and put the address and `id` in the settings.
 - **A restart starts at the address in the settings file** and then searches, so it can take half a minute to come back. Put the tuner's current address in `tuner`, and reserve it in your router, to avoid the wait.
 - **A broadcast can't cross networks.** If the tuner is on a different subnet or VLAN from Antennarr, the search can't find it. Give its address in `tuner`.
@@ -77,7 +77,7 @@ A `503` is Antennarr deliberately saying "no tuner for you right now", the same 
 | Reason | What happened | What to change |
 |---|---|---|
 | `viewer-limit` | This viewer is already using all their tuners. | Raise their limit under *Viewers*, or stop a stream. |
-| `shared-cap` | All viewers together are using the shared cap. | Raise *Most for viewers* in *Settings → Tuner*. |
+| `shared-cap` | All viewers together are using the shared cap. | Raise *Most for viewers* in *Settings → Limits*. |
 | `owner-reserve` | The tuners left are being held for your own devices. | Lower *Keep free for you*. Remember the reserve is **in addition to** what your own TVs are using right now. |
 | `tuner-offline` | The tuner is offline. | See above. |
 
@@ -113,7 +113,7 @@ The message says why. The common ones:
 
 ## No channel logos or "what's on"
 
-- It is on by default: check *Settings → Updates → Show what's on*.
+- It is on by default: check *Settings → Privacy and updates → Show what's on*.
 - It needs the machine to reach `api.hdhomerun.com` and `img.hdhomerun.com`, and the tuner has to have reported its guide key. The log shows `guide fetch failed` with the reason.
 - It only appears for channels being watched right now.
 
