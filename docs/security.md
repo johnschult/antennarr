@@ -6,13 +6,15 @@
 
 | Who | Can do | How they are recognised |
 |---|---|---|
-| A **viewer** | Use the tuner: `discover.json`, `lineup.json`, `status.json` and the streams, within their limits. | Their address is listed under *Viewers*. |
+| A **viewer** | Use the tuner: `discover.json`, `lineup.json`, `status.json`, `lineup_status.json` and the streams, within their limits. Read-only: nothing else the tuner offers (rescans, firmware upgrade, its web pages) is reachable and answers `404`. | Their address is listed under *Viewers*. |
 | An **admin** | Open the web page and change settings: add viewers, change limits, and so on. | They connect from this machine (loopback), from an address listed under `admin`, or they are signed in with an allowed Plex account. |
 | Anyone else | Nothing. The tuner side answers `403`. The admin pages answer `403` (the page itself loads so you can sign in, but shows nothing). | |
 
 **A new install is closed.** With no viewers nobody can use the tuner, and only this machine can open the admin page. Nothing is open to the network until you decide.
 To let you in from another computer, Antennarr writes a **one-time setup link** to its log while nobody is an admin yet (see [Getting started](getting-started.md)). The token in it is random (256 bits), kept only in memory, works once, and changes at every start; it can only be used from a private network (LAN, Tailscale, a VPN), five wrong tries lock an address out for ten minutes, and opening the link only shows a confirmation page: the address is saved as an admin only when you press the button. Because the link is in the log, anyone who can read the log can claim it until you do.
 A viewer is not an admin: being allowed to watch doesn't let you change anything. The exception is a viewer whose address falls inside an `admin` range: they are an admin too, and Antennarr logs a warning. Keep `admin` to the addresses that are really yours.
+
+If a media server needs a tuner page that isn't on the list, Antennarr logs `path not served` with the path. Please open an issue with that line.
 
 ## Keep it off the open internet
 

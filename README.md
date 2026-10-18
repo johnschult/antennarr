@@ -110,6 +110,8 @@ Please keep that in mind:
 - **A new install is closed.** With no viewers nobody can use the tuner, and only this machine can open the admin page. On first start Antennarr writes a one-time **setup link** to its log;
   open it from your own computer (LAN, Tailscale or VPN) and confirm to make that computer an admin. Then add a viewer (Viewers page, or `viewers` in the settings file).
   Only listed addresses can use the tuner, and only loopback, your `admin` addresses and a signed-in Plex account can use the admin pages.
+- **Viewers only get what a media server needs.** Besides `discover.json`, `lineup.json` and the streams, only `status.json` and `lineup_status.json` are passed to the tuner, read-only.
+  Everything else the tuner serves (rescans, firmware upgrade, its own web pages) answers `404`.
 - **Keep viewers out of your `admin` range.** A viewer whose address is inside an `admin` range is an admin too. Antennarr logs a warning if that happens.
 - **Don't put Antennarr on the open internet.** Use Tailscale, a VPN, or a private network. If you must, allow only the viewer's address in both Antennarr and your firewall.
 - **Admin by address** trusts the address a request arrives from. If you run Antennarr behind a reverse proxy, every request looks like it came from the proxy.

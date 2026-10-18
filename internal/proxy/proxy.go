@@ -153,10 +153,23 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case r.URL.Path == "/discover.json":
+		if !readOnly(w, r) {
+			return
+		}
 		p.discover(w, r)
 	case r.URL.Path == "/lineup.json":
+		if !readOnly(w, r) {
+			return
+		}
 		p.lineup(w, r)
 	case isStream(r.URL.Path):
+		// A stream is opened by GET only; anything else would reach the tuner
+		// without being counted against the viewer's limit.
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		if p.cfg.Policy != nil {
 			release, err := p.cfg.Policy.Stream(r)
 			if err != nil {
@@ -174,13 +187,62 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			p.log.Info("stream closed", "path", r.URL.Path, "client", r.RemoteAddr, "after", time.Since(start).Round(time.Second))
 		}()
 		p.stream.ServeHTTP(w, r)
-	default:
+	case passthrough[r.URL.Path]:
+		if !readOnly(w, r) {
+			return
+		}
 		p.api.ServeHTTP(w, r)
+	default:
+		// Everything else the tuner serves (rescans, firmware upgrade, its web
+		// pages, ...) is for its owner, not for the people it is shared with.
+		// Say so in the log: a media server that really needs another path
+		// shows up here, and the path can be added to passthrough.
+		p.log.Warn("path not served", "method", r.Method, "path", r.URL.RequestURI(), "client", r.RemoteAddr, "ua", r.UserAgent())
+		http.NotFound(w, r)
 	}
 }
 
+// passthrough lists the tuner endpoints, besides the ones Antennarr rewrites
+// itself (discover.json, lineup.json) and the streams, that are handed to the
+// tuner as they are. They are read-only status pages. Anything not listed here
+// is refused with a 404, so a viewer can't reach the tuner's management API.
+var passthrough = map[string]bool{
+	"/status.json":        true,
+	"/lineup_status.json": true,
+}
+
+// readOnly lets GET and HEAD through and answers anything else with a 405.
+func readOnly(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+		return true
+	}
+	w.Header().Set("Allow", "GET, HEAD")
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	return false
+}
+
+// isStream reports whether path asks for a live stream: /auto/<channel> or
+// /tunerN/<channel>. It is deliberately narrower than "starts with /tuner",
+// which would also take the tuner's own pages (/tuners.html) for a stream.
 func isStream(path string) bool {
-	return strings.HasPrefix(path, "/auto/") || strings.HasPrefix(path, "/tuner")
+	rest, ok := strings.CutPrefix(path, "/auto/")
+	if !ok {
+		rest, ok = strings.CutPrefix(path, "/tuner")
+		if !ok {
+			return false
+		}
+		i := strings.IndexByte(rest, '/')
+		if i < 1 {
+			return false
+		}
+		for _, c := range rest[:i] {
+			if c < '0' || c > '9' {
+				return false
+			}
+		}
+		rest = rest[i+1:]
+	}
+	return rest != "" && !strings.Contains(rest, "/")
 }
 
 // base is the address clients should use to reach us.
