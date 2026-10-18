@@ -25,6 +25,7 @@ import (
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/antennarr/internal/tunerinfo"
 	"github.com/johnschult/antennarr/internal/upgrade"
 	"github.com/johnschult/antennarr/internal/version"
 )
@@ -82,6 +83,8 @@ type API struct {
 
 	// Upgrade installs firmware on a tuner; nil means it can't.
 	Upgrade *upgrade.Manager
+	// Device reads what a tuner says about itself, for the Device panel; nil means it can't.
+	Device *tunerinfo.Reader
 	// Notify sends test messages to a notification channel; nil means there is no
 	// notifying, and the test button says so.
 	Notify Tester
@@ -122,6 +125,7 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/guide/{channel}/icon", map[string]http.HandlerFunc{"GET": a.channelIcon}},
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
+		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
 		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
 		{"notifications/channels", map[string]http.HandlerFunc{"POST": a.addChannel}},

@@ -302,3 +302,19 @@ export interface FirewallInfo {
   tool: '' | 'ufw' | 'firewalld' | 'iptables'
   active: boolean
 }
+
+/** What a tuner says about itself (the Device panel). A field that could not be read is missing, and `problems` says why. */
+export interface DeviceInfo {
+  model?: string
+  hardwareModel?: string
+  version?: string
+  channelMaps?: string[]
+  modulations?: string[]
+  deviceId?: string
+  drm?: string
+  mac?: string
+  ip?: string
+  subnet?: string
+  readAt: string
+  problems?: string[]
+}

@@ -29,6 +29,7 @@ import (
 	"github.com/johnschult/antennarr/internal/plexauth"
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/antennarr/internal/tunerinfo"
 	"github.com/johnschult/antennarr/internal/ui"
 	"github.com/johnschult/antennarr/internal/upgrade"
 )
@@ -98,18 +99,19 @@ type device struct {
 
 // Server runs the devices.
 type Server struct {
-	cfg      Config
-	log      *slog.Logger
-	policy   *access.Policy
-	store    *access.Store
-	hub      *live.Hub
-	firmware *firmware.Checker
-	guide    *guide.Service
-	notify   *notify.Notifier
-	upgrade  *upgrade.Manager
-	plex     *plexauth.Auth
-	claim    *claim.Claimer
-	admin    http.Handler // the admin pages, shared by every listener
+	cfg       Config
+	log       *slog.Logger
+	policy    *access.Policy
+	store     *access.Store
+	hub       *live.Hub
+	firmware  *firmware.Checker
+	guide     *guide.Service
+	notify    *notify.Notifier
+	upgrade   *upgrade.Manager
+	tunerinfo *tunerinfo.Reader
+	plex      *plexauth.Auth
+	claim     *claim.Claimer
+	admin     http.Handler // the admin pages, shared by every listener
 	// fromFlags: the devices came from command-line flags, so there is no
 	// devices list in the settings file to add to or remove from.
 	fromFlags bool
@@ -200,6 +202,13 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		cfg.UpgradeConfig(&ucfg)
 	}
 	s.upgrade = upgrade.New(ctx, ucfg)
+	dial := ucfg.Dial
+	if dial == nil {
+		dial = func(ctx context.Context, host string) (*hdhr.Conn, error) {
+			return hdhr.Dial(ctx, net.JoinHostPort(host, hdhr.ControlPort))
+		}
+	}
+	s.tunerinfo = &tunerinfo.Reader{Dial: dial}
 
 	// A stream starting or ending changes the tuners' own status too: tell the
 	// dashboards now, and have the monitors look again straight away.
@@ -228,7 +237,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;

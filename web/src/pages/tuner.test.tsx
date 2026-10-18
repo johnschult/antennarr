@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { moveToPort } from '@/lib/navigate'
-import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot, updateAvailable } from '@/test/fixtures'
+import { idleSlot, localSlot, makeDevice, makeState, makeTwoDeviceState, remoteSlot, updateAvailable } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { channelIconUrl } from '@/lib/api'
 import { TunerPage } from './tuner'
@@ -19,6 +19,20 @@ const saveButton = (scope: HTMLElement) => within(scope).queryByRole('button', {
 const okState = { 'GET /state': () => ({ body: makeState() }) }
 
 describe('TunerPage', () => {
+  it('says what the device is under a name of your own, and never shows its model number', () => {
+    renderWithApp(<TunerPage />, makeState({ devices: [makeDevice({ label: 'Living room antenna' })] }))
+    const header = screen.getByRole('button', { name: /^Living room antenna/ })
+    expect(header).toHaveTextContent('Steve FLEX 4K · 192.168.1.132')
+    expect(header).not.toHaveTextContent('HDFX-4K')
+  })
+
+  it('does not say the device twice when it has no name of your own', () => {
+    renderWithApp(<TunerPage />, makeState())
+    const header = screen.getByRole('button', { name: /^Steve FLEX 4K/ })
+    expect(header).not.toHaveTextContent('HDFX-4K')
+    expect(header.textContent?.match(/Steve FLEX 4K/g)).toHaveLength(1)
+  })
+
   it('shows what we know about the device', () => {
     renderWithApp(<TunerPage />, makeState())
     const facts = screen.getByText('DeviceID').closest('dl')!
@@ -64,7 +78,6 @@ describe('TunerPage', () => {
     const cable = screen.getByRole('region', { name: 'Cable HDHR' })
     expect(within(antenna).getByRole('button', { name: /^Steve FLEX 4K/ })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('10ABCC87')).not.toBeInTheDocument()
-    expect(antenna).toHaveTextContent('HDFX-4K')
     expect(antenna).toHaveTextContent('port 5004')
     expect(antenna).toHaveTextContent('2 of 4 in use')
     expect(cable).toHaveTextContent('0 of 2 in use')
@@ -242,7 +255,7 @@ describe('the port', () => {
     await user.type(box, '70000')
     await user.click(saveButton(section('Manage'))!)
     expect(within(section('Manage')).getByText('Enter a port from 1 to 65535.')).toBeInTheDocument()
-    expect(calls).toHaveLength(0)
+    expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0)
 
     await user.clear(box)
     await user.type(box, '80')
