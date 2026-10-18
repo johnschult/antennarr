@@ -109,6 +109,13 @@ func (s *Service) Watch(device string, auth func() string) {
 	s.mu.Unlock()
 }
 
+// Unwatch forgets a device that has been removed.
+func (s *Service) Unwatch(device string) {
+	s.mu.Lock()
+	delete(s.devices, device)
+	s.mu.Unlock()
+}
+
 // Run looks now and then every Interval until ctx ends. Kick makes it look
 // early, but only for a guide that has never been read or has gone stale (for
 // when the setting is switched on, or a tuner has just appeared).

@@ -1,3 +1,4 @@
+import { NoTuners } from '@/components/no-tuners'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useApp } from '@/hooks/app-context'
@@ -15,9 +16,10 @@ export function TunerPage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{several ? 'Tuners' : (state.devices[0].label ?? 'Tuner')}</h1>
+        <h1 className="text-xl font-semibold tracking-tight">{several || state.devices.length === 0 ? 'Tuners' : (state.devices[0].label ?? 'Tuner')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Antennarr follows a tuner if its address changes.</p>
       </div>
+      {state.devices.length === 0 && <NoTuners />}
       {state.devices.map((d) => (
         <DeviceDetails key={d.name} device={d} showName={several} />
       ))}

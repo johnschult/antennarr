@@ -51,6 +51,7 @@ If you open Antennarr by a name like `mini.local`, your phone or laptop may conn
 Antennarr checks the tuner every 5 seconds. After 3 failures in a row it shows it offline, and then searches for it by its DeviceID (a broadcast, and a scan of the nearby subnet) every 30 seconds.
 
 - **Is the tuner on?** Power, the Ethernet cable (an extender or switch can fail), and the router. Can you reach `http://<tuner address>/discover.json` from the Antennarr machine?
+- **Is it listed at all?** *Settings → Tuners* shows the tuners being shared. Press *Add tuner* to search the network again or add one by its address. In Docker, searching needs host networking.
 - **Did its address change?** If you gave the tuner's `id` in the settings (or Antennarr has reached it before), it finds the new address by itself, usually within a minute, and the Live page's timeline records "Tuner moved … (found by DeviceID …)". If you didn't, run `antennarr discover` and put the address and `id` in the settings.
 - **A restart starts at the address in the settings file** and then searches, so it can take half a minute to come back. Put the tuner's current address in `tuner`, and reserve it in your router, to avoid the wait.
 - **A broadcast can't cross networks.** If the tuner is on a different subnet or VLAN from Antennarr, the search can't find it. Give its address in `tuner`.
@@ -101,7 +102,7 @@ The message says why. The common ones:
 
 - **An unknown key**: the settings file is strict, so a typo is an error: `json: unknown field "viewrs"`.
 - **A bad value**: a device name with a space, a `listen` without a port, an `id` that isn't 8 hex digits, a viewer with no addresses, the same address listed for two viewers, two devices on one port.
-- **"give -tuner (an address) or -tuner-id …"**: there are no `devices` in the file and no flag naming a tuner.
+- **"no tuner found, so starting without one"** is not an error: Antennarr is running with only the web page. Open it and add a tuner (*Find tuners*, or by address).
 - **"… can't be combined with devices declared in the settings file"**: you passed `-tuner`/`-listen`/… and also have `devices` in the file. Choose one.
 - **"address already in use"**: something else has that port. Pick another `listen`.
 

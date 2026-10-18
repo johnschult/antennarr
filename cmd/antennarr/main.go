@@ -70,25 +70,33 @@ func main() {
 	// config file before the first start. What is found is saved to the settings
 	// file, so it is the same tuner next time and can be edited from then on.
 	if wantsAutoDiscovery(settings, set) {
-		found, err := findTuners(ctx, f.listen, func(ctx context.Context, wait time.Duration) ([]discovery.Device, error) {
+		// Look for a short while. If nothing answers, start anyway with no tuner:
+		// the admin page is there, and a tuner can be added from it (or found
+		// again with its Find button) once it is plugged in or reachable.
+		sctx, cancel := context.WithTimeout(ctx, startupSearch)
+		found, err := findTuners(sctx, f.listen, func(ctx context.Context, wait time.Duration) ([]discovery.Device, error) {
 			return discovery.Discover(ctx, wait)
 		}, discoverRetry, log)
-		if err != nil {
-			if ctx.Err() != nil {
-				return // asked to stop while still looking
+		cancel()
+		switch {
+		case err == nil:
+			settings.Devices = found
+			for _, d := range found {
+				log.Info("found a tuner", "device", d.Name, "id", d.ID, "at", d.Tuner, "listen", d.Listen)
 			}
+			if savePath != "" {
+				if err := access.SaveSettings(savePath, settings); err != nil {
+					log.Warn("couldn't save the tuners that were found; they will be looked for again next start", "path", savePath, "err", err)
+				} else {
+					log.Info("saved them to the settings file", "path", savePath)
+				}
+			}
+		case ctx.Err() != nil:
+			return // asked to stop while still looking
+		case errors.Is(err, context.DeadlineExceeded):
+			log.Info("no tuner found, so starting without one. Open the admin page to add one; if yours is on another network, add it by its address", "listen", f.listen)
+		default:
 			fail(err)
-		}
-		settings.Devices = found
-		for _, d := range found {
-			log.Info("found a tuner", "device", d.Name, "id", d.ID, "at", d.Tuner, "listen", d.Listen)
-		}
-		if savePath != "" {
-			if err := access.SaveSettings(savePath, settings); err != nil {
-				log.Warn("couldn't save the tuners that were found; they will be looked for again next start", "path", savePath, "err", err)
-			} else {
-				log.Info("saved them to the settings file", "path", savePath)
-			}
 		}
 	}
 	devices, err := devicesFor(settings, f, set)
@@ -97,7 +105,7 @@ func main() {
 	}
 
 	srv, err := server.New(ctx, server.Config{
-		Settings: settings, Devices: devices, ConfigPath: savePath, Poll: *poll, Log: log, FirmwareURL: *firmwareURL,
+		Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: f.listen, Poll: *poll, Log: log, FirmwareURL: *firmwareURL,
 	})
 	if err != nil {
 		fail(err)
@@ -113,6 +121,10 @@ func main() {
 // defaultConfigPath is where the settings live when -config isn't given: next
 // to wherever Antennarr is run from. (The Docker image runs from /config.)
 const defaultConfigPath = "antennarr.json"
+
+// startupSearch is how long a start with no tuner named looks for one before
+// giving up and starting without.
+const startupSearch = 10 * time.Second
 
 // loadOrCreateSettings reads the settings file, and writes one with the
 // defaults if there is none yet, so there is always a file to edit and the
@@ -147,8 +159,9 @@ func fail(err error) {
 }
 
 // devicesFor decides which devices to run: those declared in the settings
-// file, or else the single one described by the flags. Mixing the two would
-// leave it unclear which wins, so that is an error.
+// file, or else the single one described by the flags, or none at all (tuners
+// can be added from the admin page). Mixing the first two would leave it
+// unclear which wins, so that is an error.
 func devicesFor(s access.Settings, f deviceFlags, set map[string]bool) ([]access.Device, error) {
 	if len(s.Devices) > 0 {
 		var given []string
@@ -163,7 +176,9 @@ func devicesFor(s access.Settings, f deviceFlags, set map[string]bool) ([]access
 		return s.Devices, nil
 	}
 	if f.tuner == "" && f.id == "" {
-		return nil, errors.New("give -tuner (an address) or -tuner-id (a DeviceID to search for), or declare devices in a -config file; or leave the tuner flags out and Antennarr will look for one")
+		// None named and none found: start without one. Tuners are added from the
+		// admin page.
+		return nil, nil
 	}
 	d := access.Device{
 		Name: "tuner", Listen: f.listen, Tuner: f.tuner, ID: f.id,

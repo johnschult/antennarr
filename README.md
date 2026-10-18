@@ -63,7 +63,7 @@ cd antennarr
 go build -o antennarr ./cmd/antennarr
 ```
 
-Run it. With no `-tuner`, Antennarr finds your HDHomeRun on the network and remembers it in `antennarr.json`:
+Run it. With no `-tuner`, Antennarr finds your HDHomeRun on the network and remembers it in `antennarr.json`. If none answers it starts anyway, and you add one from the web page (*Find tuners*, or by its address):
 
 ```sh
 ./antennarr

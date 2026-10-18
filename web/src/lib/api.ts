@@ -1,4 +1,4 @@
-import type { AppState, FirewallInfo, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
+import type { AppState, DeviceInput, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -51,6 +51,11 @@ export const deleteViewer = (name: string) => request<void>('DELETE', `/viewers/
 export const patchSettings = (p: SettingsPatch) => request<Settings>('PATCH', '/settings', p)
 export const patchDevice = (name: string, p: DevicePatch) =>
   request<DeviceState>('PATCH', `/devices/${encodeURIComponent(name)}`, p)
+
+/** Search the network for tuners now. Takes a few seconds. */
+export const discoverTuners = () => request<{ tuners: FoundTuner[] }>('POST', '/discover').then((r) => r.tuners)
+export const addDevice = (d: DeviceInput) => request<DeviceState>('POST', '/devices', d)
+export const deleteDevice = (name: string) => request<void>('DELETE', `/devices/${encodeURIComponent(name)}`)
 
 /** Read SiliconDust's changelog now. The new status arrives over the event stream. */
 export const checkFirmware = () => request<{ checkedAt: string }>('POST', '/firmware/check')

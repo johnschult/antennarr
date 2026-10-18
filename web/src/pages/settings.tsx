@@ -1,6 +1,7 @@
 import { EditRow } from '@/components/settings/edit-row'
 import { PlexRows } from '@/components/settings/plex-rows'
 import { Row, Section } from '@/components/settings/section'
+import { TunersSection } from '@/components/settings/tuners-section'
 import { SwitchRow } from '@/components/settings/switch-row'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
@@ -22,6 +23,8 @@ export function SettingsPage() {
   return (
     <div className="max-w-3xl space-y-8">
       <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
+
+      <TunersSection />
 
       {devices.map((d) => (
         <Section

@@ -43,8 +43,12 @@ type Config struct {
 	// devices list into the settings file when someone edits a viewer.
 	Devices    []access.Device
 	ConfigPath string // where edits are saved; empty means read-only
-	Poll       time.Duration
-	Log        *slog.Logger
+	// AdminListen is where the admin pages are served while there are no tuners
+	// to put them on (default ":5004"). With tuners, the admin pages are on
+	// each tuner's port instead.
+	AdminListen string
+	Poll        time.Duration
+	Log         *slog.Logger
 	// Locate is DefaultLocate unless a test supplies another.
 	Locate Locator
 	// Listeners are pre-bound listeners by device name; any device without one
@@ -67,6 +71,11 @@ type device struct {
 	cfg     access.Device
 	mon     *tuner.Monitor
 	handler http.Handler
+
+	// Set when the device is serving.
+	cancel context.CancelFunc
+	srv    *http.Server
+	ln     net.Listener
 }
 
 // Server runs the devices.
@@ -74,23 +83,42 @@ type Server struct {
 	cfg      Config
 	log      *slog.Logger
 	policy   *access.Policy
+	store    *access.Store
 	hub      *live.Hub
-	devices  []*device
 	firmware *firmware.Checker
 	guide    *guide.Service
 	plex     *plexauth.Auth
 	claim    *claim.Claimer
+	admin    http.Handler // the admin pages, shared by every listener
+	// fromFlags: the devices came from command-line flags, so there is no
+	// devices list in the settings file to add to or remove from.
+	fromFlags bool
+
+	devMu   sync.RWMutex
+	devices []*device
 
 	mu        sync.Mutex
 	announced map[string]string // device -> the firmware version we last told the owner about
+
+	// fleetMu serialises adding and removing devices. The fields below it are
+	// set by Run and used by them.
+	fleetMu sync.Mutex
+	runCtx  context.Context // nil until Run
+	errc    chan error
+	bare    *bareListener // serves the admin pages while there are no devices
+}
+
+// deviceList is a copy of the devices now running.
+func (s *Server) deviceList() []*device {
+	s.devMu.RLock()
+	defer s.devMu.RUnlock()
+	return append([]*device(nil), s.devices...)
 }
 
 // New builds the server: it finds each tuner and prepares everything, but
-// listens on nothing until Run.
+// listens on nothing until Run. With no tuners it still works: the admin pages
+// are served on their own so tuners can be added from there.
 func New(ctx context.Context, cfg Config) (*Server, error) {
-	if len(cfg.Devices) == 0 {
-		return nil, errors.New("no devices to run")
-	}
 	if err := (access.Settings{Devices: cfg.Devices}).Validate(); err != nil {
 		return nil, err
 	}
@@ -103,12 +131,18 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	if cfg.Locate == nil {
 		cfg.Locate = DefaultLocate
 	}
+	if cfg.AdminListen == "" {
+		cfg.AdminListen = ":5004"
+	}
 
 	policy, err := access.NewPolicy(cfg.Settings, cfg.Log)
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{cfg: cfg, log: cfg.Log, policy: policy, hub: live.NewHub(), announced: map[string]string{}}
+	s := &Server{
+		cfg: cfg, log: cfg.Log, policy: policy, hub: live.NewHub(), announced: map[string]string{},
+		fromFlags: len(cfg.Settings.Devices) == 0 && len(cfg.Devices) > 0,
+	}
 	s.firmware = firmware.NewChecker(firmware.Config{
 		URL: cfg.FirmwareURL, Interval: cfg.FirmwareInterval, Logger: cfg.Log,
 		// Read live, so switching the setting takes effect at once.
@@ -122,44 +156,26 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		OnChange: s.hub.Notify,
 	})
 
-	var apiDevices []api.Device
-	for _, d := range cfg.Devices {
-		base, err := cfg.Locate(ctx, d.Tuner, d.ID)
-		if err != nil {
-			return nil, fmt.Errorf("device %q: %w", d.Name, err)
-		}
-		log := cfg.Log.With("device", d.Name)
-		mon := tuner.NewMonitor(tuner.Config{
-			Name: d.Name, BaseURL: base, ID: d.ID, StreamPort: d.StreamPort,
-			Interval: cfg.Poll, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() }, Logger: log,
-		})
-		policy.AddDevice(d.Name, mon, mon)
-		s.guide.Watch(d.Name, mon.DeviceAuth)
-		s.devices = append(s.devices, &device{cfg: d, mon: mon})
-		apiDevices = append(apiDevices, api.Device{Name: d.Name, Listen: d.Listen, Mon: mon})
-		log.Info("device ready", "listen", d.Listen, "tuner", base, "tunerID", strings.ToUpper(d.ID))
-	}
-
 	// A stream starting or ending changes the tuners' own status too: tell the
 	// dashboards now, and have the monitors look again straight away.
 	policy.SetOnChange(func() {
 		s.hub.Notify()
 		s.firmware.Kick() // a no-op unless the firmware check was just switched on
-		for _, d := range s.devices {
+		for _, d := range s.deviceList() {
 			d.mon.Kick()
 		}
 	})
 
-	store := access.NewStore(cfg.ConfigPath, policy)
+	s.store = access.NewStore(cfg.ConfigPath, policy)
 
 	// While nobody has been made an admin, a one-time link in the log lets the
 	// owner become one from another device.
-	s.claim = claim.New(claim.Config{Policy: policy, Store: store, Log: cfg.Log})
+	s.claim = claim.New(claim.Config{Policy: policy, Store: s.store, Log: cfg.Log})
 
 	// Signing in with Plex is a second way to be an admin, next to the address.
 	s.plex = plexauth.New(plexauth.Config{
 		Base: cfg.PlexURL, AuthBase: cfg.PlexAuthURL,
-		Settings: policy.Settings, Edit: store.Edit, IsAdmin: policy.IsAdmin, Log: cfg.Log,
+		Settings: policy.Settings, Edit: s.store.Edit, IsAdmin: policy.IsAdmin, Log: cfg.Log,
 		SessionsFile: sessionsFile(cfg.ConfigPath),
 	})
 	policy.SetSessionCheck(s.plex.IsSignedInAdmin)
@@ -167,38 +183,63 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Devices: apiDevices, Firmware: s.firmware, Guide: s.guide, Pol: policy, Store: store, Hub: s.hub, Log: cfg.Log,
+		Fleet: s, Firmware: s.firmware, Guide: s.guide, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
 	// everything it shows comes from the admin-only API above.
 	admin.Handle("/antennarr/", ui.Handler("/antennarr/"))
+	s.admin = admin
 
-	for _, d := range s.devices {
-		name := d.cfg.Name
-		mux := http.NewServeMux()
-		mux.Handle("/antennarr/", admin) // the admin pages are reachable on every device's port
-		// Signing in has to be reachable by someone who isn't signed in yet; each
-		// endpoint checks for itself what it will allow.
-		mux.Handle("/antennarr/auth/", s.plex.Handler())
-		mux.Handle(claim.Path, s.claim.Handler())
-		tunerAPI := proxy.New(proxy.Config{
-			Upstream: d.mon, Policy: policy.Device(d.cfg.Name),
-			Advertise: d.cfg.Advertise, DeviceID: d.cfg.ReportID, Logger: cfg.Log.With("device", d.cfg.Name),
-			FriendlyName: func() string { return policy.Label(name) },
-		})
-		mux.Handle("/", tunerAPI)
-		// Someone who types the bare address into a browser wants the admin
-		// page, not the tuner's own front page. Everyone else (viewers, media
-		// servers) is handled as before.
-		mux.Handle("GET /{$}", policy.AdminHome("/antennarr/", tunerAPI))
-		d.handler = mux
+	for _, d := range cfg.Devices {
+		dev, err := s.build(ctx, d)
+		if err != nil {
+			return nil, err
+		}
+		s.devices = append(s.devices, dev)
+		s.log.Info("device ready", "device", d.Name, "listen", d.Listen, "tuner", dev.mon.Snapshot().BaseURL, "tunerID", strings.ToUpper(d.ID))
 	}
 
 	if len(cfg.Settings.Viewers) == 0 {
 		s.log.Warn("no viewers configured: nobody can use the tuners until you add one")
 	}
 	return s, nil
+}
+
+// build finds one tuner and prepares everything to serve it, without listening.
+func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
+	base, err := s.cfg.Locate(ctx, d.Tuner, d.ID)
+	if err != nil {
+		return nil, fmt.Errorf("device %q: %w", d.Name, err)
+	}
+	log := s.cfg.Log.With("device", d.Name)
+	mon := tuner.NewMonitor(tuner.Config{
+		Name: d.Name, BaseURL: base, ID: d.ID, StreamPort: d.StreamPort,
+		Interval: s.cfg.Poll, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() }, Logger: log,
+	})
+	s.policy.AddDevice(d.Name, mon, mon)
+	s.guide.Watch(d.Name, mon.DeviceAuth)
+
+	name := d.Name
+	mux := http.NewServeMux()
+	mux.Handle("/antennarr/", s.admin) // the admin pages are reachable on every device's port
+	// Signing in has to be reachable by someone who isn't signed in yet; each
+	// endpoint checks for itself what it will allow.
+	mux.Handle("/antennarr/auth/", s.plex.Handler())
+	mux.Handle(claim.Path, s.claim.Handler())
+	tunerAPI := proxy.New(proxy.Config{
+		Upstream: mon, Policy: s.policy.Device(name),
+		Advertise: d.Advertise, DeviceID: d.ReportID, Logger: log,
+		FriendlyName: func() string { return s.policy.Label(name) },
+	})
+	mux.Handle("/", tunerAPI)
+	// Someone who types the bare address into a browser wants the admin
+	// page, not the tuner's own front page. Everyone else (viewers, media
+	// servers) is handled as before.
+	mux.Handle("GET /{$}", s.policy.AdminHome("/antennarr/", tunerAPI))
+
+	log.Debug("device built", "listen", d.Listen, "tuner", base)
+	return &device{cfg: d, mon: mon, handler: mux}, nil
 }
 
 // Policy is the access policy, for reloading settings.
@@ -209,42 +250,59 @@ func (s *Server) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	s.fleetMu.Lock()
 	// Bind everything first, so a port that's already taken fails the whole
 	// start-up instead of leaving some devices running and others not.
-	lns := make([]net.Listener, len(s.devices))
-	for i, d := range s.devices {
+	devs := s.deviceList()
+	lns := make([]net.Listener, len(devs))
+	closeAll := func() {
+		for _, l := range lns {
+			if l != nil {
+				l.Close()
+			}
+		}
+	}
+	for i, d := range devs {
 		ln, ok := s.cfg.Listeners[d.cfg.Name]
 		if !ok {
 			var err error
 			if ln, err = net.Listen("tcp", d.cfg.Listen); err != nil {
-				for _, l := range lns[:i] {
-					l.Close()
-				}
+				closeAll()
+				s.fleetMu.Unlock()
 				return fmt.Errorf("device %q: %w", d.cfg.Name, err)
 			}
 		}
 		lns[i] = ln
 	}
+	var bareLn net.Listener
+	if len(devs) == 0 {
+		ln, ok := s.cfg.Listeners[bareName]
+		if !ok {
+			var err error
+			if ln, err = net.Listen("tcp", s.cfg.AdminListen); err != nil {
+				s.fleetMu.Unlock()
+				return fmt.Errorf("admin pages: %w", err)
+			}
+		}
+		bareLn = ln
+		lns = append(lns, ln)
+	}
 
+	s.runCtx = ctx
+	s.errc = make(chan error, 8)
 	s.logClaimLinks(lns)
 
 	go s.firmware.Run(ctx)
 	go s.guide.Run(ctx)
 
-	servers := make([]*http.Server, len(s.devices))
-	errc := make(chan error, len(s.devices))
-	for i, d := range s.devices {
-		go d.mon.Run(ctx)
-		// No overall timeouts: streams run for hours. Only the header read is
-		// bounded, so a stalled client can't hold a connection open for free.
-		servers[i] = &http.Server{Handler: d.handler, ReadHeaderTimeout: 10 * time.Second}
-		s.log.Info("listening", "device", d.cfg.Name, "addr", lns[i].Addr().String())
-		go func(srv *http.Server, ln net.Listener, name string) {
-			if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				errc <- fmt.Errorf("device %q: %w", name, err)
-			}
-		}(servers[i], lns[i], d.cfg.Name)
+	for i, d := range devs {
+		s.start(d, lns[i])
 	}
+	if bareLn != nil {
+		s.startBare(bareLn)
+	}
+	errc := s.errc
+	s.fleetMu.Unlock()
 
 	var first error
 	select {
@@ -252,12 +310,43 @@ func (s *Server) Run(ctx context.Context) error {
 	case first = <-errc:
 	}
 	cancel()
+
+	s.fleetMu.Lock()
+	servers := []*http.Server{}
+	for _, d := range s.deviceList() {
+		servers = append(servers, d.srv)
+	}
+	if s.bare != nil {
+		servers = append(servers, s.bare.srv)
+	}
+	s.fleetMu.Unlock()
 	shutdown, stop := context.WithTimeout(context.Background(), 5*time.Second)
 	defer stop()
 	for _, srv := range servers {
-		_ = srv.Shutdown(shutdown)
+		if srv != nil {
+			_ = srv.Shutdown(shutdown)
+		}
 	}
 	return first
+}
+
+// start begins serving a device on ln. The caller holds fleetMu.
+func (s *Server) start(d *device, ln net.Listener) {
+	dctx, cancel := context.WithCancel(s.runCtx)
+	d.cancel, d.ln = cancel, ln
+	go d.mon.Run(dctx)
+	// No overall timeouts: streams run for hours. Only the header read is
+	// bounded, so a stalled client can't hold a connection open for free.
+	d.srv = &http.Server{Handler: d.handler, ReadHeaderTimeout: 10 * time.Second}
+	s.log.Info("listening", "device", d.cfg.Name, "addr", ln.Addr().String())
+	go func(srv *http.Server, name string) {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
+			select {
+			case s.errc <- fmt.Errorf("device %q: %w", name, err):
+			default:
+			}
+		}
+	}(d.srv, d.cfg.Name)
 }
 
 // logClaimLinks writes the first-run setup link to the log, once for each
@@ -292,7 +381,7 @@ func (s *Server) announceFirmware() {
 	var notes []note
 
 	s.mu.Lock()
-	for _, d := range s.devices {
+	for _, d := range s.deviceList() {
 		t := d.mon.Snapshot()
 		if !t.Online {
 			continue
@@ -322,7 +411,7 @@ func (s *Server) announceFirmware() {
 
 	// Outside the lock: noting an event calls back into the monitors.
 	for _, n := range notes {
-		for _, d := range s.devices {
+		for _, d := range s.deviceList() {
 			if d.cfg.Name == n.device {
 				d.mon.Note("info", n.text)
 			}
@@ -337,7 +426,7 @@ func (s *Server) Reload(next access.Settings) error {
 	if err := s.policy.Update(next); err != nil {
 		return err
 	}
-	if len(next.Devices) > 0 && !equal(restartKeys(next.Devices), restartKeys(s.cfg.Devices)) {
+	if len(next.Devices) > 0 && !equal(restartKeys(next.Devices), restartKeys(s.runningConfigs())) {
 		s.log.Warn("the devices in the settings file changed; restart Antennarr to apply that (everything else was reloaded)")
 	}
 	s.log.Info("settings reloaded", "viewers", len(next.Viewers))

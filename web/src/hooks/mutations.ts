@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addViewer, checkFirmware, deleteViewer, patchDevice, patchSettings, replaceViewer } from '@/lib/api'
-import type { DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
+import { addDevice, addViewer, checkFirmware, deleteDevice, deleteViewer, patchDevice, patchSettings, replaceViewer } from '@/lib/api'
+import { deviceTitle } from '@/lib/device'
+import type { DeviceInput, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
 
 /**
@@ -56,5 +57,19 @@ export function useEdits() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not check for firmware'),
   })
-  return { add, replace, remove, settings, device, firmware }
+  const addTuner = useMutation({
+    mutationFn: (v: DeviceInput) => addDevice(v),
+    onSuccess: (d) => {
+      toast.success(`Added ${deviceTitle(d)}`)
+      void refresh()
+    },
+  })
+  const removeTuner = useMutation({
+    mutationFn: ({ name }: { name: string }) => deleteDevice(name),
+    onSuccess: (_, { name }) => {
+      toast.success(`Removed ${name}`)
+      void refresh()
+    },
+  })
+  return { add, replace, remove, settings, device, firmware, addTuner, removeTuner }
 }

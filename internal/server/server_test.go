@@ -429,7 +429,6 @@ func TestNewRefusesBadConfiguration(t *testing.T) {
 	good := access.Device{Name: "antenna", Listen: ":5004", Tuner: a.name, StreamPort: a.streamPort}
 
 	for name, cfg := range map[string]Config{
-		"no devices":      {Settings: access.DefaultSettings(), Log: log},
 		"duplicate ports": {Settings: access.DefaultSettings(), Devices: []access.Device{good, {Name: "b", Listen: ":5004", Tuner: a.name}}, Log: log, Locate: locateFrom(a)},
 		"bad device":      {Settings: access.DefaultSettings(), Devices: []access.Device{{Name: "bad name", Listen: ":5004", Tuner: "x"}}, Log: log},
 		"bad settings":    {Settings: access.Settings{OwnerReserve: -1}, Devices: []access.Device{good}, Log: log, Locate: locateFrom(a)},

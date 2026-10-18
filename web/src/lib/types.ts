@@ -176,6 +176,22 @@ export interface AppState {
   docsUrl: string
 }
 
+/** A tuner found on the network by a search. `added` is the device it already is, if any. */
+export interface FoundTuner {
+  id: string
+  address: string
+  tuners: number
+  added: string
+}
+
+/** A tuner to start sharing. Only the address (or DeviceID) is needed; the rest is chosen. */
+export interface DeviceInput {
+  tuner: string
+  id?: string
+  name?: string
+  listen?: string
+}
+
 export interface ViewerInput {
   name: string
   addresses: string[]
