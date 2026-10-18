@@ -19,6 +19,8 @@ type fakeFleet struct {
 	added   []access.Device
 	removed []string
 	addErr  error
+	moved   map[string]string
+	moveErr error
 }
 
 func (f *fakeFleet) Devices() []Device { f.mu.Lock(); defer f.mu.Unlock(); return f.devs }
@@ -36,6 +38,19 @@ func (f *fakeFleet) RemoveDevice(name string) error {
 	defer f.mu.Unlock()
 	f.removed = append(f.removed, name)
 	return nil
+}
+
+func (f *fakeFleet) SetListen(name, listen string) (access.Device, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.moveErr != nil {
+		return access.Device{}, f.moveErr
+	}
+	if f.moved == nil {
+		f.moved = map[string]string{}
+	}
+	f.moved[name] = listen
+	return access.Device{Name: name, Listen: listen}, nil
 }
 
 func withFleet(t *testing.T, e *env) *fakeFleet {
@@ -148,5 +163,33 @@ func TestDiscoverFailureAndOneSearchAtATime(t *testing.T) {
 	close(release)
 	if c := <-done; c != http.StatusOK {
 		t.Errorf("first search = %d", c)
+	}
+}
+
+func TestChangingATunersPortGoesToTheFleet(t *testing.T) {
+	e := newEnv(t, access.DefaultSettings(), true)
+	f := withFleet(t, e)
+	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"listen":":5010","ownerReserve":1}`)
+	if code != http.StatusOK {
+		t.Fatalf("= %d %v", code, v)
+	}
+	if f.moved["antenna"] != ":5010" {
+		t.Errorf("fleet was asked to move %v, want antenna to :5010", f.moved)
+	}
+
+	f.moveErr = NewError(http.StatusConflict, "can't listen on :80: in use")
+	code, v = e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"listen":":80","ownerReserve":0}`)
+	if code != http.StatusConflict || errText(v) != "can't listen on :80: in use" {
+		t.Errorf("= %d %v, want the fleet's refusal", code, v)
+	}
+	if res, _ := e.api.Pol.Limits("antenna"); res != 1 {
+		t.Errorf("owner reserve = %d: other fields in a refused request must not be applied", res)
+	}
+}
+
+func TestChangingThePortNeedsAFleet(t *testing.T) {
+	e := newEnv(t, access.DefaultSettings(), true)
+	if code, _ := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"listen":":5010"}`); code != http.StatusConflict {
+		t.Errorf("without a fleet = %d, want 409", code)
 	}
 }

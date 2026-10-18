@@ -29,7 +29,9 @@ type bareListener struct {
 
 // Devices lists the tuners now being fronted.
 func (s *Server) Devices() []api.Device {
-	list := s.deviceList()
+	s.devMu.RLock()
+	defer s.devMu.RUnlock()
+	list := s.devices
 	out := make([]api.Device, len(list))
 	for i, d := range list {
 		out[i] = api.Device{Name: d.cfg.Name, Listen: d.cfg.Listen, Mon: d.mon}
@@ -39,7 +41,9 @@ func (s *Server) Devices() []api.Device {
 
 // runningConfigs is the settings of the devices now running.
 func (s *Server) runningConfigs() []access.Device {
-	list := s.deviceList()
+	s.devMu.RLock()
+	defer s.devMu.RUnlock()
+	list := s.devices
 	out := make([]access.Device, len(list))
 	for i, d := range list {
 		out[i] = d.cfg
@@ -189,6 +193,74 @@ func (s *Server) RemoveDevice(name string) error {
 	}
 	s.hub.Notify()
 	return nil
+}
+
+// SetListen moves a tuner to another port (or address). The new one is opened
+// before the old one is let go, so a port that is taken leaves everything as it
+// was. Streams on the old port are cut after a moment, and anything that
+// connects to it, a viewer's media server for one, has to be pointed at the new
+// one.
+func (s *Server) SetListen(name, listen string) (access.Device, error) {
+	s.fleetMu.Lock()
+	defer s.fleetMu.Unlock()
+	if err := s.canEditDevices(); err != nil {
+		return access.Device{}, err
+	}
+	var dev *device
+	for _, d := range s.deviceList() {
+		if d.cfg.Name == name {
+			dev = d
+		}
+	}
+	if dev == nil {
+		return access.Device{}, api.NewError(http.StatusNotFound, fmt.Sprintf("no device named %q", name))
+	}
+	listen = strings.TrimSpace(listen)
+	if listen != "" && strings.Trim(listen, "0123456789") == "" {
+		listen = ":" + listen // just a port number
+	}
+	if listen == dev.cfg.Listen {
+		return dev.cfg, nil
+	}
+	cfg := dev.cfg
+	cfg.Listen = listen
+	set := s.policy.Settings()
+	for i := range set.Devices {
+		if set.Devices[i].Name == name {
+			set.Devices[i] = cfg
+		}
+	}
+	if err := set.Validate(); err != nil {
+		return dev.cfg, api.NewError(http.StatusBadRequest, err.Error())
+	}
+
+	ln, err := net.Listen("tcp", listen)
+	if err != nil {
+		return dev.cfg, api.NewError(http.StatusConflict, fmt.Sprintf("can't listen on %s: %v", listen, err))
+	}
+	if _, err := s.store.Edit(func(set *access.Settings) error {
+		for i := range set.Devices {
+			if set.Devices[i].Name == name {
+				set.Devices[i].Listen = listen
+			}
+		}
+		return nil
+	}); err != nil {
+		ln.Close()
+		return dev.cfg, err
+	}
+
+	old := dev.srv
+	s.devMu.Lock()
+	dev.cfg.Listen = listen
+	s.devMu.Unlock()
+	s.serve(dev, ln)
+	if old != nil {
+		go retire(old) // closes its listener; the reply to this request still gets out
+	}
+	s.hub.Notify()
+	s.log.Info("tuner moved to another port", "device", name, "listen", listen)
+	return dev.cfg, nil
 }
 
 // drop forgets a device everywhere and, if it was serving, stops it. Streams

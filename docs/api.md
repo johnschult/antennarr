@@ -43,7 +43,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `POST discover` | Search the network for HDHomeRun tuners (takes about 3 seconds). Replies `{"tuners": [{"id", "address", "tuners", "added"}]}`; `added` is the device a tuner already is, or `""`. `429` while another search is running. |
 | `POST devices` | Start sharing a tuner: `{"tuner": "192.168.1.50"}`, optionally with `"id"`, `"name"` and `"listen"`. The name (`tuner`, then `tuner-<id>`), the port and the DeviceID are chosen if left out. Replies `201` with the device. `422` if nothing answers at the address, `409` if that tuner is already added, the port can't be used, there is no settings file, or the tuner came from command-line flags. |
 | `DELETE devices/{name}` | Stop sharing a tuner, `204`. Streams on it are cut, its port is freed, and its label and any per-device viewer limits are removed from the settings. `409` in the same cases as adding. |
-| `PATCH devices/{name}` | Change a device's `label` (display name; `""` clears it), `ownerReserve` or `sharedCap`. |
+| `PATCH devices/{name}` | Change a device's `label` (display name; `""` clears it), `listen` (move it to another port, e.g. `":5010"`; the new port is opened first, so one that is taken is refused with `409` and nothing changes; streams on the old port are cut and the page itself is no longer served there), `ownerReserve` or `sharedCap`. |
 | `GET devices/{name}/guide/{channel}/icon` | A channel's logo (a PNG), fetched by Antennarr, `404` when there isn't one. |
 | `POST firmware/check` | Read the firmware changelog now. `429` if it was read a moment ago. |
 | `GET network` | This machine's Tailscale and LAN addresses, and which firewall looks switched on, for the Connect page. |

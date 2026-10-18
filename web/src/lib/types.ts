@@ -213,6 +213,8 @@ export interface DevicePatch {
   ownerReserve?: number
   /** The display name; an empty string clears it. */
   label?: string
+  /** Where the tuner is reached, e.g. ":5010". The server opens it before letting go of the old one. */
+  listen?: string
 }
 
 /** One way to reach the machine running Antennarr, read from its network interfaces. */

@@ -218,7 +218,7 @@ func TestDevicePatchErrors(t *testing.T) {
 	for name, c := range map[string][3]string{
 		"unknown device": {"PATCH", "/antennarr/api/devices/satellite", `{"sharedCap":1}`},
 		"negative":       {"PATCH", "/antennarr/api/devices/antenna", `{"ownerReserve":-1}`},
-		"unknown field":  {"PATCH", "/antennarr/api/devices/antenna", `{"listen":":9999"}`}, // devices can't be rewired from the API
+		"unknown field":  {"PATCH", "/antennarr/api/devices/antenna", `{"tuner":"10.0.0.9"}`}, // a device's tuner can't be changed; remove it and add the other
 		"wrong type":     {"PATCH", "/antennarr/api/devices/antenna", `{"sharedCap":"two"}`},
 	} {
 		code, v := e.call(t, c[0], c[1], c[2])

@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { moveToPort } from '@/lib/navigate'
 import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot, updateAvailable } from '@/test/fixtures'
 import { mockPhone } from '@/test/match-media'
 import { renderWithApp, stubFetch } from '@/test/render'
@@ -8,7 +9,12 @@ import { channelIconUrl } from '@/lib/api'
 import { formatMbps } from '@/lib/format'
 import { TunerPage } from './tuner'
 
-afterEach(() => vi.unstubAllGlobals())
+vi.mock('@/lib/navigate', () => ({ moveToPort: vi.fn() }))
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.mocked(moveToPort).mockClear()
+})
 
 const section = (name: string) => screen.getByRole('region', { name })
 const saveButton = (scope: HTMLElement) => within(scope).queryByRole('button', { name: 'Save' })
@@ -218,5 +224,59 @@ describe('TunerPage', () => {
       await user.click(saveButton(section('Manage'))!)
       expect(await within(section('Manage')).findByRole('alert')).toHaveTextContent('control characters')
     })
+  })
+})
+
+describe('the port', () => {
+  it('shows the port number, and Remove is red', () => {
+    renderWithApp(<TunerPage />, makeState())
+    expect(screen.getByLabelText('Port')).toHaveValue(5004)
+    expect(screen.getByRole('button', { name: /^Remove / }).className).toContain('text-destructive')
+  })
+
+  it('saves a new port on that tuner, then moves the page there', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    const user = userEvent.setup()
+    renderWithApp(<TunerPage />, makeState())
+    const box = screen.getByLabelText('Port')
+    await user.clear(box)
+    await user.type(box, '5010')
+    await user.click(saveButton(section('Manage'))!)
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')).toBeDefined())
+    expect(calls.find((c) => c.method === 'PATCH')).toMatchObject({ url: expect.stringContaining('/devices/antenna'), body: { listen: ':5010' } })
+    await waitFor(() => expect(moveToPort).toHaveBeenCalledWith(5010))
+  })
+
+  it('keeps the address part of where it listens', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    const s = makeState()
+    s.devices[0].listen = '127.0.0.1:5004'
+    const user = userEvent.setup()
+    renderWithApp(<TunerPage />, s)
+    await user.clear(screen.getByLabelText('Port'))
+    await user.type(screen.getByLabelText('Port'), '5010')
+    await user.click(saveButton(section('Manage'))!)
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ listen: '127.0.0.1:5010' }))
+  })
+
+  it('rejects nonsense locally, and stays put when the server refuses', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ status: 409, body: { error: "can't listen on :80: in use" } }) })
+    vi.stubGlobal('fetch', fn)
+    const user = userEvent.setup()
+    renderWithApp(<TunerPage />, makeState())
+    const box = screen.getByLabelText('Port')
+    await user.clear(box)
+    await user.type(box, '70000')
+    await user.click(saveButton(section('Manage'))!)
+    expect(within(section('Manage')).getByText('Enter a port from 1 to 65535.')).toBeInTheDocument()
+    expect(calls).toHaveLength(0)
+
+    await user.clear(box)
+    await user.type(box, '80')
+    await user.click(saveButton(section('Manage'))!)
+    expect(await within(section('Manage')).findByRole('alert')).toHaveTextContent("can't listen on :80: in use")
+    expect(moveToPort).not.toHaveBeenCalled()
   })
 })
