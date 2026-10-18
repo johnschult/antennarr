@@ -1,3 +1,4 @@
+import { Trash2, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 import {
   AlertDialog,
@@ -51,9 +52,11 @@ export function DeleteViewerDialog({ viewer, isLast, onClose }: Props) {
           </p>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep</AlertDialogCancel>
+          <AlertDialogCancel>
+            <Undo2 data-icon="inline-start" /> Keep
+          </AlertDialogCancel>
           <AlertDialogAction variant="destructive" onClick={confirm} disabled={remove.isPending}>
-            Remove
+            <Trash2 data-icon="inline-start" /> Remove
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

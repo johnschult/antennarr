@@ -30,8 +30,8 @@ describe('SettingsPage', () => {
   it("shows each setting's current value", () => {
     renderWithApp(<SettingsPage />, state())
     const tuner = section('Limits')
-    expect(within(tuner).getByLabelText('Keep free for you')).toHaveValue(1)
-    expect(within(tuner).getByLabelText('Most for viewers')).toHaveValue(2)
+    expect(within(tuner).getByLabelText('Tuners reserved for you')).toHaveValue(1)
+    expect(within(tuner).getByLabelText('Max tuners for viewers')).toHaveValue(2)
     expect(within(tuner).getByText(/4 tuners/)).toBeInTheDocument()
     expect(screen.getByLabelText('Admin addresses')).toHaveValue('100.64.0.0/10')
     expect(screen.getByRole('switch', { name: 'Check for new tuner firmware' })).toBeChecked()
@@ -49,7 +49,7 @@ describe('SettingsPage', () => {
     it('offers Save and Reset only once a value has changed, and Reset puts it back', async () => {
       const user = userEvent.setup()
       renderWithApp(<SettingsPage />, state())
-      const box = screen.getByLabelText('Keep free for you')
+      const box = screen.getByLabelText('Tuners reserved for you')
       expect(saveButton(section('Limits'))).toBeNull()
 
       await user.clear(box)
@@ -70,7 +70,7 @@ describe('SettingsPage', () => {
       const user = userEvent.setup()
       renderWithApp(<SettingsPage />, state())
 
-      const box = screen.getByLabelText('Keep free for you')
+      const box = screen.getByLabelText('Tuners reserved for you')
       await user.clear(box)
       await user.type(box, '2')
       await user.click(saveButton(section('Limits'))!)
@@ -83,8 +83,8 @@ describe('SettingsPage', () => {
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
       renderWithApp(<SettingsPage />, state())
-      await user.clear(screen.getByLabelText('Most for viewers'))
-      await user.type(screen.getByLabelText('Most for viewers'), '0')
+      await user.clear(screen.getByLabelText('Max tuners for viewers'))
+      await user.type(screen.getByLabelText('Max tuners for viewers'), '0')
       await user.click(saveButton(section('Limits'))!)
       await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ sharedCap: 0 }))
     })
@@ -96,7 +96,7 @@ describe('SettingsPage', () => {
       renderWithApp(<SettingsPage />, state())
 
       for (const bad of ['-1', '1.5', '']) {
-        const input = screen.getByLabelText('Keep free for you')
+        const input = screen.getByLabelText('Tuners reserved for you')
         await user.clear(input)
         if (bad) await user.type(input, bad)
         await user.click(saveButton(section('Limits'))!)
@@ -186,9 +186,9 @@ describe('SettingsPage', () => {
   it('cannot be edited when there is no settings file', async () => {
     const user = userEvent.setup()
     renderWithApp(<SettingsPage />, { ...state(), editable: false })
-    for (const label of ['Keep free for you', 'Most for viewers', 'Admin addresses']) expect(screen.getByLabelText(label)).toBeDisabled()
+    for (const label of ['Tuners reserved for you', 'Max tuners for viewers', 'Admin addresses']) expect(screen.getByLabelText(label)).toBeDisabled()
     expect(screen.getByRole('switch', { name: 'Check for new tuner firmware' })).toHaveAttribute('aria-disabled', 'true')
-    await user.type(screen.getByLabelText('Keep free for you'), '1') // typing into a disabled box does nothing
+    await user.type(screen.getByLabelText('Tuners reserved for you'), '1') // typing into a disabled box does nothing
     expect(saveButton(section('Limits'))).toBeNull()
   })
 
@@ -201,9 +201,9 @@ describe('SettingsPage', () => {
 
       const antenna = section('Limits: antenna')
       const cable = section('Limits: Cable box')
-      expect(within(antenna).getByLabelText('Keep free for you')).toHaveValue(1)
-      expect(within(antenna).getByLabelText('Most for viewers')).toHaveValue(2)
-      expect(within(cable).getByLabelText('Keep free for you')).toHaveValue(0)
+      expect(within(antenna).getByLabelText('Tuners reserved for you')).toHaveValue(1)
+      expect(within(antenna).getByLabelText('Max tuners for viewers')).toHaveValue(2)
+      expect(within(cable).getByLabelText('Tuners reserved for you')).toHaveValue(0)
       expect(within(cable).getByText(/Cable HDHR · 2 tuners/)).toBeInTheDocument()
     })
 
@@ -214,7 +214,7 @@ describe('SettingsPage', () => {
       renderWithApp(<SettingsPage />, makeTwoDeviceState())
 
       const cable = section('Limits: cable')
-      const box = within(cable).getByLabelText('Keep free for you')
+      const box = within(cable).getByLabelText('Tuners reserved for you')
       await user.clear(box)
       await user.type(box, '1')
       await user.click(saveButton(cable)!)

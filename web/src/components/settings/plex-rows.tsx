@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { PlexFlowMessage, PlexIcon } from '@/components/plex-button'
@@ -81,6 +81,7 @@ function PlexAccounts() {
           ))}
         </ul>
         <Button size="sm" variant="outline" onClick={start} disabled={!editable || busy}>
+          {busy ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Plus data-icon="inline-start" />}
           {busy ? 'Waiting for Plex…' : 'Add a Plex account'}
         </Button>
         <PlexFlowMessage flow={flow} onCancel={cancel} adding />

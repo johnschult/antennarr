@@ -1,3 +1,4 @@
+import { Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -69,7 +70,7 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium">On your network</h3>
           <Button type="button" variant="ghost" size="sm" disabled={search.isPending} onClick={() => search.mutate()}>
-            Search again
+            <RefreshCw data-icon="inline-start" /> Search again
           </Button>
         </div>
         {search.isPending && <p className="text-sm text-muted-foreground">Looking for tuners…</p>}
@@ -97,7 +98,7 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
                   <span className="shrink-0 text-xs text-muted-foreground">Already added as {f.added}</span>
                 ) : (
                   <Button type="button" size="sm" disabled={busy} aria-label={`Add ${f.id}`} onClick={() => void add({ tuner: f.address, id: f.id })}>
-                    Add
+                    <Plus data-icon="inline-start" /> Add
                   </Button>
                 )}
               </li>
@@ -111,7 +112,7 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
         <div className="flex gap-2">
           <Input id="tuner-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="192.168.1.50" spellCheck={false} autoComplete="off" className="font-mono" />
           <Button type="submit" disabled={busy}>
-            Add
+            <Plus data-icon="inline-start" /> Add
           </Button>
         </div>
       </form>

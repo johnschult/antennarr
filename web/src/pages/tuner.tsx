@@ -1,3 +1,4 @@
+import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { AddTunerDialog } from '@/components/add-tuner-dialog'
 import { NoTuners } from '@/components/no-tuners'
@@ -33,7 +34,7 @@ export function TunerPage() {
         {state.devices.length > 0 && (
           <div className="flex flex-col items-end gap-1">
             <Button size="sm" disabled={!state.editable} onClick={() => setAdding(true)}>
-              Add tuner
+              <Plus data-icon="inline-start" /> Add tuner
             </Button>
             {!state.editable && <p className="max-w-xs text-right text-xs text-muted-foreground">Antennarr has no settings file to save tuners in.</p>}
           </div>
@@ -137,7 +138,7 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
         />
         <Row title="Remove this tuner" description="Antennarr stops sharing it. Streams running on it are cut off. The tuner itself is untouched.">
           <Button variant="destructive" size="sm" disabled={!state.editable} aria-label={`Remove ${deviceTitle(device)}`} onClick={onRemove}>
-            Remove
+            <Trash2 data-icon="inline-start" /> Remove
           </Button>
         </Row>
       </Section>

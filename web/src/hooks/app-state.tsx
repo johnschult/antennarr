@@ -1,3 +1,4 @@
+import { RefreshCw } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { Logo } from '@/components/logo'
@@ -70,7 +71,7 @@ function Splash({ error }: { error?: Error | null }) {
             <h1 className="text-lg font-semibold">Can't reach Antennarr</h1>
             <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
             <Button className="mt-4" variant="outline" onClick={() => window.location.reload()}>
-              Try again
+              <RefreshCw data-icon="inline-start" /> Try again
             </Button>
           </>
         )}

@@ -1,3 +1,4 @@
+import { Check, Plus, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -147,9 +148,10 @@ function ViewerForm({ viewer, devices, onDone }: { viewer?: Viewer; devices: Dev
 
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>
-          Cancel
+          <X data-icon="inline-start" /> Cancel
         </Button>
         <Button type="submit" disabled={busy}>
+          {viewer ? <Check data-icon="inline-start" /> : <Plus data-icon="inline-start" />}
           {viewer ? 'Save' : 'Add viewer'}
         </Button>
       </DialogFooter>

@@ -77,8 +77,8 @@ A `503` is Antennarr deliberately saying "no tuner for you right now", the same 
 | Reason | What happened | What to change |
 |---|---|---|
 | `viewer-limit` | This viewer is already using all their tuners. | Raise their limit under *Viewers*, or stop a stream. |
-| `shared-cap` | All viewers together are using the shared cap. | Raise *Most for viewers* in *Settings → Limits*. |
-| `owner-reserve` | The tuners left are being held for your own devices. | Lower *Keep free for you*. Remember the reserve is **in addition to** what your own TVs are using right now. |
+| `shared-cap` | All viewers together are using the shared cap. | Raise *Max tuners for viewers* in *Settings → Limits*. |
+| `owner-reserve` | The tuners left are being held for your own devices. | Lower *Tuners reserved for you*. Remember the reserve is **in addition to** what your own TVs are using right now. |
 | `tuner-offline` | The tuner is offline. | See above. |
 
 ## Plex shows the tuner twice, or with the wrong channels

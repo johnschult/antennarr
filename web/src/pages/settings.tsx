@@ -35,7 +35,7 @@ export function SettingsPage() {
             min={0}
             max={d.tuner.tunerCount}
             id={`setting-${d.name}-ownerReserve`}
-            title="Keep free for you"
+            title="Tuners reserved for you"
             description="Tuners always held back for your own TVs and apps. Viewers are refused instead of taking the last ones."
             initial={String(d.ownerReserve)}
             validate={wholeNumber}
@@ -48,8 +48,8 @@ export function SettingsPage() {
             min={0}
             max={d.tuner.tunerCount}
             id={`setting-${d.name}-sharedCap`}
-            title="Most for viewers"
-            description="The most tuners all viewers together may use. 0 means no cap beyond what you keep free."
+            title="Max tuners for viewers"
+            description="The most tuners all viewers together may use. 0 means no cap beyond what you reserve."
             initial={String(d.sharedCap)}
             validate={wholeNumber}
             disabled={!editable}
