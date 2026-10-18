@@ -2,12 +2,14 @@ import { Antenna, Menu, Radio, Settings, Users, X, type LucideIcon } from 'lucid
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { Banners } from '@/components/banners'
+import { WhatsNewDialog } from '@/components/whats-new-dialog'
 import { Logo } from '@/components/logo'
 import { GithubIcon } from '@/components/github-icon'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { PlexIcon } from '@/components/plex-button'
 import { useApp } from '@/hooks/app-context'
 import { useAuthStatus } from '@/hooks/use-auth'
+import { useWhatsNew } from '@/hooks/use-whats-new'
 import { signOut } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -81,6 +83,7 @@ const menuLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function Shell() {
   const { state } = useApp()
+  const whatsNew = useWhatsNew(state.version)
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
@@ -159,6 +162,7 @@ export function Shell() {
         <Banners state={state} />
         <Outlet />
       </main>
+      <WhatsNewDialog open={whatsNew.open} onClose={whatsNew.dismiss} version={whatsNew.current} releases={whatsNew.releases} updated={whatsNew.byItself} />
       <footer className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 pb-8 text-xs text-muted-foreground sm:px-6">
         <span>
           Antennarr{' '}
@@ -167,6 +171,11 @@ export function Shell() {
           </a>
         </span>
         <div className="flex items-center gap-1">
+          {whatsNew.canShow && (
+            <button type="button" onClick={whatsNew.show} className="rounded-md px-2 py-1 underline-offset-2 hover:bg-muted hover:text-foreground">
+              What's new
+            </button>
+          )}
           <a href={state.docsUrl} target="_blank" rel="noopener noreferrer" className="rounded-md px-2 py-1 underline-offset-2 hover:bg-muted hover:text-foreground">
             Help
           </a>

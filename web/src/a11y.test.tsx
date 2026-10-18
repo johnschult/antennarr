@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { App } from '@/App'
+import { SEEN_KEY } from '@/hooks/use-whats-new'
 import { discord, makeDevice, makeState, makeTwoDeviceState, phone, pushover, updateAvailable, withChannels } from '@/test/fixtures'
 import { mockPhone } from '@/test/match-media'
 import { renderWithApp, stubFetch } from '@/test/render'
@@ -92,6 +93,25 @@ describe('axe: notification dialogs', () => {
     const user = settings(withChannels(makeState(), phone))
     await user.click(screen.getByRole('button', { name: 'Remove Phone' }))
     await screen.findByRole('alertdialog')
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
+describe("axe: what's new", () => {
+  it('after an update, with several releases', async () => {
+    localStorage.setItem(SEEN_KEY, '2026.10.2')
+    render(makeState({ version: '2026.10.5' }), '/viewers')
+    await screen.findByRole('dialog', { name: /What's new/ })
+    await screen.findAllByRole('heading', { level: 3 })
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('from the footer, for the current release', async () => {
+    localStorage.setItem(SEEN_KEY, '2026.10.5')
+    render(makeState({ version: '2026.10.5' }), '/viewers')
+    await userEvent.setup().click(screen.getByRole('button', { name: "What's new" }))
+    await screen.findByRole('dialog', { name: /What's new/ })
+    await screen.findByRole('region', { name: 'Release notes' })
     expect(await check()).toHaveNoViolations()
   })
 })

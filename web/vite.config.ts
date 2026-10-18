@@ -18,7 +18,8 @@ export default defineConfig({
     outDir: '../internal/ui/dist',
     emptyOutDir: false,
   },
-  server: { proxy: { '/antennarr/api': backend } },
+  // The release notes are CHANGELOG.md at the repository root, bundled into the page (see use-whats-new.ts).
+  server: { fs: { allow: ['..'] }, proxy: { '/antennarr/api': backend } },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

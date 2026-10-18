@@ -6,6 +6,8 @@ WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
+# The release notes the page shows after an update are bundled from CHANGELOG.md (web/src/hooks/use-whats-new.ts).
+COPY CHANGELOG.md /src/CHANGELOG.md
 RUN mkdir -p /src/internal/ui/dist && npm run build
 
 # 2. Build the server, with the UI inside it. It is cross-compiled on the build machine's
