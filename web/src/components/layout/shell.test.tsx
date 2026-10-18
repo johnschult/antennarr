@@ -68,12 +68,17 @@ describe('Shell menu on a phone', () => {
     expect(await within(panel).findByRole('button', { name: /john/ })).toBeInTheDocument()
   })
 
-  it('shows an icon beside the page you are on, and only that one', async () => {
+  it('has an icon on every page in the phone menu', async () => {
     mount('/viewers')
     await userEvent.setup().click(button())
     const menu = within(screen.getByRole('navigation', { name: 'Main menu' }))
-    const withIcon = menu.getAllByRole('link').filter((l) => l.querySelector('svg'))
-    expect(withIcon.map((l) => l.textContent)).toEqual(['Viewers'])
+    expect(menu.getAllByRole('link').every((l) => l.querySelector('svg'))).toBe(true)
+  })
+
+  it('shows an icon in the top bar only beside the page you are on', () => {
+    mount('/viewers')
+    const bar = within(screen.getByRole('navigation', { name: 'Main' }))
+    expect(bar.getAllByRole('link').filter((l) => l.querySelector('svg')).map((l) => l.textContent)).toEqual(['Viewers'])
   })
 
   it('marks the page you are on', async () => {

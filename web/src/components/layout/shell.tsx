@@ -23,11 +23,11 @@ const nav: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-/** A page's name, with its icon shown only while you are on that page. */
-function NavLabel({ item, active }: { item: (typeof nav)[number]; active: boolean }) {
+/** A page's name with its icon: always in the phone menu, which has room, and only on the current page in the top bar. */
+function NavLabel({ item, active, always }: { item: (typeof nav)[number]; active: boolean; always?: boolean }) {
   return (
     <>
-      {active && <item.icon aria-hidden className="size-4 shrink-0" />}
+      {(active || always) && <item.icon aria-hidden className="size-4 shrink-0" />}
       {item.label}
     </>
   )
@@ -99,7 +99,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 const menuLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'flex items-center gap-2 rounded-lg px-3 py-3 text-base',
+    'flex items-center gap-3 rounded-lg px-3 py-3 text-base',
     isActive ? 'bg-foreground font-medium text-background' : 'text-foreground hover:bg-muted',
   )
 
@@ -167,7 +167,7 @@ export function Shell() {
               <nav aria-label="Main menu" className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
                 {nav.map((n) => (
                   <NavLink key={n.to} to={n.to} end={n.end} className={menuLinkClass}>
-                    {({ isActive }) => <NavLabel item={n} active={isActive} />}
+                    {({ isActive }) => <NavLabel item={n} active={isActive} always />}
                   </NavLink>
                 ))}
               </nav>
