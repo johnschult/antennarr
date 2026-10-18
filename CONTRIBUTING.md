@@ -27,7 +27,8 @@ You need Go (see `go.mod` for the version) and Node 22.12 or newer.
 go test -race ./...                       # the server
 cd web && npm ci && npm test              # the web UI (Vitest)
 cd web && npx tsc -b                      # type-check the UI
-cd web && npm run dev                     # the UI with hot reload, against a running Antennarr (see web/README.md)
+go run ./cmd/antennarr -config /tmp/antennarr-dev.json   # the Go server (the API), on :5004; start this first
+cd web && npm run dev                     # the UI with hot reload, in a second terminal; it proxies to the server above (see web/README.md)
 (cd web && npm run build) && go build -o antennarr ./cmd/antennarr    # the real thing: the UI is built first, because the program embeds it
 ```
 
