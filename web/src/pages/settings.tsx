@@ -1,3 +1,4 @@
+import { Gauge, KeyRound, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { EditRow } from '@/components/settings/edit-row'
@@ -28,6 +29,7 @@ export function SettingsPage() {
       {devices.map((d) => (
         <Section
           key={d.name}
+          icon={Gauge}
           title={several ? `Limits: ${deviceTitle(d)}` : 'Limits'}
           description={`How much of ${several ? 'this tuner' : (d.label ?? 'your tuner')} viewers may use. ${d.tuner.friendlyName ?? 'HDHomeRun'} · ${d.tuner.tunerCount} tuners.`}
         >
@@ -60,7 +62,7 @@ export function SettingsPage() {
         </Section>
       ))}
 
-      <Section title="Access">
+      <Section title="Access" icon={KeyRound}>
         <EditRow
           key={`admin-${settings.admin.join(',')}`}
           kind="lines"
@@ -80,7 +82,7 @@ export function SettingsPage() {
         </Row>
       </Section>
 
-      <Section title="Privacy and updates">
+      <Section title="Privacy and updates" icon={ShieldCheck}>
         <SwitchRow
           id="setting-firmwareCheck"
           title="Check for new tuner firmware"

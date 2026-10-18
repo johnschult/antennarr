@@ -80,7 +80,7 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 - **Hero:** a short "On air now" summary ("2 of 4 tuners live", remote/local/reserved, total Mbps), with a 24h upload sparkline beside it.
 - **One big tile per tuner:**
   - Live tiles show a large channel number, call sign and network, with a subtle scanline texture. Below that: who's watching and the bitrate. A red REC badge marks recordings.
-  - Idle tiles are dashed and read "Ready" or "Held for your TVs" (owner reserve).
+  - Idle tiles are dashed and read "Idle" or "Held for your TVs" (owner reserve).
   - A badge on each tile says who holds it: viewer (cyan), local (violet), reserve (grey), free (green).
 - **Below the tiles:** a Viewers list with per-viewer tuner-slot pips, and a vertical Timeline of events (started recording, limit hit, IP changed, tuner offline).
 - **Background:** a radial teal glow at the top over near-black.

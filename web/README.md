@@ -25,15 +25,16 @@ The UI talks only to the JSON API in `internal/api`. Its types are in
 
 ## Third-party assets
 
-- `public/plex-wordmark.png` and `public/plex-icon.png` are resized copies of the Plex logos from
+- `public/plex-wordmark.png` is a resized copy of the Plex wordmark from
   [homarr-labs/dashboard-icons](https://github.com/homarr-labs/dashboard-icons) and
-  [selfhst/icons](https://github.com/selfhst/icons). Plex is a trademark of Plex, Inc.; they are used only to
-  label the optional "Sign in with Plex" button. They are bundled rather than loaded from a CDN, so the page makes no
+  [selfhst/icons](https://github.com/selfhst/icons). Plex is a trademark of Plex, Inc.; it is used only to
+  label the optional "Sign in with Plex" button. It is bundled rather than loaded from a CDN, so the page makes no
   outside requests.
-- `public/jellyfin-icon.png` and `public/emby-icon.png` are resized copies of the app icons from
-  [selfhst/icons](https://github.com/selfhst/icons), shown beside the media server names on the Setup page
-  (`plex-icon.png` above is from the same set). Jellyfin and Emby are trademarks of their owners; the icons only label
-  the matching instructions and don't imply any affiliation. They are bundled, not loaded from a CDN.
+- `public/plex-icon.svg`, `public/jellyfin-icon.svg`, `public/emby-icon.svg` and `public/hdhomerun-icon.svg` are the
+  SVG icons from [homarr-labs/dashboard-icons](https://github.com/homarr-labs/dashboard-icons) (dashboardicons.com),
+  shown beside the media server names on the Setup page and on each tuner. Plex, Jellyfin, Emby and HDHomeRun are
+  trademarks of their owners; the icons only label the matching instructions and tuners and don't imply any
+  affiliation. They are bundled, not loaded from a CDN.
 - Fonts (Open Sans, Mozilla Headline, JetBrains Mono) come from Google Fonts via the Fontsource npm packages, also
   bundled.
 

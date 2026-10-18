@@ -1,4 +1,4 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Antenna, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { DeleteViewerDialog } from '@/components/delete-viewer-dialog'
 import { ViewerDialog } from '@/components/viewer-dialog'
@@ -13,7 +13,7 @@ import { limitFor } from '@/lib/slots'
 import type { DeviceState, Viewer } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-/** How many of a viewer's tuners are in use, per device, as pips and a count. */
+/** How many of a viewer's tuners are in use, per device, as antennas and a count. */
 function Usage({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
   const several = devices.length > 1
   return (
@@ -26,7 +26,7 @@ function Usage({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
             {several && <span className="w-16 truncate text-xs text-muted-foreground">{deviceTitle(d)}</span>}
             <div className="flex gap-1" aria-hidden="true">
               {Array.from({ length: limit }).map((_, i) => (
-                <div key={i} className={cn('h-4 w-2 rounded-sm', i < inUse ? 'bg-cyan-400' : 'bg-muted')} />
+                <Antenna key={i} className={cn('size-4', i < inUse ? 'text-cyan-400' : 'text-muted-foreground/40')} />
               ))}
             </div>
             <span className="text-xs text-muted-foreground tabular-nums">

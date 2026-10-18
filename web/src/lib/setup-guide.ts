@@ -24,9 +24,9 @@ export const FIREWALLS: { id: Firewall; label: string }[] = [
 
 /** `icon` is a file in the app's public folder. */
 export const MEDIA_SERVERS: { id: MediaServer; label: string; icon: string }[] = [
-  { id: 'plex', label: 'Plex', icon: 'plex-icon.png' },
-  { id: 'jellyfin', label: 'Jellyfin', icon: 'jellyfin-icon.png' },
-  { id: 'emby', label: 'Emby', icon: 'emby-icon.png' },
+  { id: 'plex', label: 'Plex', icon: 'plex-icon.svg' },
+  { id: 'jellyfin', label: 'Jellyfin', icon: 'jellyfin-icon.svg' },
+  { id: 'emby', label: 'Emby', icon: 'emby-icon.svg' },
 ]
 
 /** The port from a listen address like ":5004" or "127.0.0.1:5004". */

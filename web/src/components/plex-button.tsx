@@ -10,7 +10,7 @@ export function PlexWordmark({ className, dark }: { className?: string; dark?: b
 
 /** The Plex app icon: a dark tile that reads on a light or dark page. */
 export function PlexIcon({ className }: { className?: string }) {
-  return <img src={asset('plex-icon.png')} alt="" aria-hidden="true" className={cn('size-6 rounded-md', className)} draggable={false} />
+  return <img src={asset('plex-icon.svg')} alt="" aria-hidden="true" className={cn('size-6 rounded-md', className)} draggable={false} />
 }
 
 /** "Sign in with Plex": Plex's own yellow-orange with black lettering, in either theme. */

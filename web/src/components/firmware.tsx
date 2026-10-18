@@ -1,4 +1,4 @@
-import { ArrowUpCircle, ChevronDown, ChevronUp, ExternalLink, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowUpCircle, ChevronDown, ChevronUp, Cpu, ExternalLink, Loader2, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Row, Section } from '@/components/settings/section'
@@ -51,7 +51,7 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
   const shown = showAll ? s.updates : s.updates.slice(0, 2)
 
   return (
-    <Section title={several ? `Firmware — ${deviceTitle(device)}` : 'Firmware'}>
+    <Section icon={Cpu} title={several ? `Firmware — ${deviceTitle(device)}` : 'Firmware'}>
       <Row
         title="Version"
         description={`${tuner.firmware.name ?? tuner.model ?? 'Tuner'} · ${s.current || tuner.firmware.version || 'unknown'}`}

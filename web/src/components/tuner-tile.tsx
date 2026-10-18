@@ -1,4 +1,4 @@
-import { Antenna, Crown } from 'lucide-react'
+import { Crown, Tv } from 'lucide-react'
 import { ChannelLogo } from '@/components/channel-logo'
 import { SignalMeter } from '@/components/signal-meter'
 import { Sparkline } from '@/components/sparkline'
@@ -96,8 +96,8 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
         </>
       ) : (
         <div className="m-auto text-center text-sm text-muted-foreground">
-          <Antenna className="mx-auto mb-2 size-6" />
-          {owner.kind === 'reserved' ? 'Held for your TVs' : 'Ready'}
+          {owner.kind === 'reserved' && <Tv className="mx-auto mb-2 size-6" />}
+          {owner.kind === 'reserved' ? 'Held for your TVs' : 'Idle'}
         </div>
       )}
     </div>

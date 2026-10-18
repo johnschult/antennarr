@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { Row } from './section'
 
@@ -7,6 +7,7 @@ export function SwitchRow({
   id,
   title,
   description,
+  icon,
   checked,
   onChange,
   disabled,
@@ -14,6 +15,7 @@ export function SwitchRow({
   id: string
   title: string
   description?: string
+  icon?: ReactNode
   checked: boolean
   onChange: (next: boolean) => Promise<unknown>
   disabled?: boolean
@@ -34,7 +36,7 @@ export function SwitchRow({
   }
 
   return (
-    <Row title={title} description={description} htmlFor={id} error={error}>
+    <Row title={title} description={description} icon={icon} htmlFor={id} error={error}>
       <Switch id={id} checked={checked} onCheckedChange={flip} disabled={disabled || busy} />
     </Row>
   )

@@ -24,6 +24,7 @@ export function PlexRows() {
       <SwitchRow
         id="setting-plex"
         title="Sign in with Plex"
+        icon={<PlexIcon className="size-8" />}
         description="Lets the Plex accounts you choose open this page from anywhere Antennarr can be reached, without listing their addresses. Nothing contacts plex.tv until someone signs in."
         checked={plex.enabled}
         disabled={!editable}
