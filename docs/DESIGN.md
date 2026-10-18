@@ -130,6 +130,15 @@ Built. Settings > Notifications. Messages to ntfy, Pushover or a webhook about f
 - A channel can be tested before it is saved: Test sends the form's values, or a saved channel's values with the form's changes, and saves nothing.
 - Not done: routing a kind of event to particular channels (every channel gets every enabled event), quiet hours, a daily digest, and more kinds of event. They would want a small scheduler of their own.
 
+## What's new
+
+Built. After an update, a dialog shows the release notes, like the "What's new" of any app, and *What's new* in the footer opens the current release's notes at any time.
+
+- **Where the text comes from:** `CHANGELOG.md`, bundled into the web page by Vite (`?raw`, as a separate chunk that is only fetched when the dialog is needed), so the notes always match the version that is running, work offline, and nothing leaves the network. The `Dockerfile` copies the file into the web build stage; without it the build fails rather than shipping an empty dialog.
+- **When it opens by itself:** the build is a release (not `dev`) and the browser last saw an older one, which it remembers in `localStorage` (`antennarr.lastSeenVersion`). It shows every release since, newest first, at most five. *Got it!*, the X and Escape all count as seen. A browser that has never been here records the version and shows nothing (a new install has no use for the history), and one that won't let the page remember anything never opens it by itself rather than at every visit. Going back to an older build is not an update.
+- **How it is drawn:** a small parser for the changelog's own format (`lib/changelog.ts`) and a renderer for the few inline marks it uses (`components/inline-markdown.tsx`). The text becomes React elements, never HTML, and only `http` and `https` links are made, so nothing in a changelog can add markup or a `javascript:` link.
+- It is per browser, not per install: each browser that opens the page after an update sees it once.
+
 ## Sign in with Plex
 
 Built. Off by default; switched on in Settings > Access. An admin can open the web UI from a listed address (loopback or `admin` CIDRs) or by signing in with an allowed Plex account, so it works from anywhere the port is reachable.
