@@ -72,9 +72,6 @@ type deviceState struct {
 	notes Notifier
 }
 
-// openViewer stands in for everyone while no viewers are configured.
-var openViewer = parsedViewer{Viewer: Viewer{Name: "anyone", Limit: -1}}
-
 func NewPolicy(s Settings, log *slog.Logger) (*Policy, error) {
 	cfg, err := s.Clone().parse() // our own copy: the caller may go on changing theirs
 	if err != nil {
@@ -82,6 +79,9 @@ func NewPolicy(s Settings, log *slog.Logger) (*Policy, error) {
 	}
 	if log == nil {
 		log = slog.Default()
+	}
+	for _, w := range cfg.warnings() {
+		log.Warn(w)
 	}
 	return &Policy{
 		log: log, now: time.Now, cfg: cfg,
@@ -127,6 +127,9 @@ func (p *Policy) Update(s Settings) error {
 	p.mu.Lock()
 	p.cfg = cfg
 	p.mu.Unlock()
+	for _, w := range cfg.warnings() {
+		p.log.Warn(w)
+	}
 	p.changed()
 	return nil
 }
@@ -181,13 +184,12 @@ func clientIP(r *http.Request) (netip.Addr, bool) {
 // identify finds the viewer a request belongs to, preferring the most specific
 // matching address. p.mu must be held.
 func (p *Policy) identify(r *http.Request) (parsedViewer, bool) {
-	if len(p.cfg.viewers) == 0 {
-		return openViewer, true
-	}
 	ip, ok := clientIP(r)
 	if !ok {
 		return parsedViewer{}, false
 	}
+	// With no viewers configured nobody matches: the tuner stays closed until
+	// the owner adds one.
 	best, bestBits, found := parsedViewer{}, -1, false
 	for _, v := range p.cfg.viewers {
 		for _, pre := range v.prefixes {
@@ -197,6 +199,33 @@ func (p *Policy) identify(r *http.Request) (parsedViewer, bool) {
 		}
 	}
 	return best, found
+}
+
+// cgnat is 100.64.0.0/10, the range Tailscale hands out.
+var cgnat = netip.MustParsePrefix("100.64.0.0/10")
+
+// privateAddr reports whether ip is on a network that isn't the public
+// internet: loopback, private (10/8, 172.16/12, 192.168/16, fc00::/7, which
+// includes Tailscale's IPv6 range), link-local, or Tailscale's 100.64.0.0/10.
+func privateAddr(ip netip.Addr) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || cgnat.Contains(ip)
+}
+
+// ClientAddr is the address a request came from, without any IPv6 zone and
+// with IPv4-mapped addresses unmapped. ok is false if it can't be read.
+func ClientAddr(r *http.Request) (netip.Addr, bool) { return clientIP(r) }
+
+// PrivateAddr reports whether ip is on a network that isn't the public
+// internet: loopback, private, link-local or Tailscale.
+func PrivateAddr(ip netip.Addr) bool { return privateAddr(ip) }
+
+// HasAdmin reports whether anyone other than this machine can open the admin
+// pages: an address under admin, or an allowed Plex account. While it is false
+// the owner has not yet "claimed" the install.
+func (p *Policy) HasAdmin() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.cfg.admin) > 0 || (p.cfg.Settings.PlexEnabled() && len(p.cfg.Plex.Admins) > 0)
 }
 
 func notAllowed() error {
@@ -400,19 +429,20 @@ func (v Viewer) clone() Viewer {
 	return out
 }
 
-// Mode is "open" while no viewers are configured, otherwise "enforced".
+// Mode is "no-viewers" while no viewers are configured (so nobody can use the
+// tuner yet), otherwise "enforced".
 func (p *Policy) Mode() string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if len(p.cfg.viewers) == 0 {
-		return "open"
+		return "no-viewers"
 	}
 	return "enforced"
 }
 
 // AdminOnly restricts a handler (the /antennarr/* endpoints) to the owner.
-// With no viewers configured everything is open; otherwise only loopback and
-// the configured admin addresses get through.
+// Only loopback, the configured admin addresses and a signed-in Plex admin get
+// through.
 func (p *Policy) AdminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !p.IsAdmin(r) {
@@ -444,14 +474,10 @@ func (p *Policy) IsAdmin(r *http.Request) bool {
 	return check != nil && check(r) // asked without our lock: it reads the settings
 }
 
-// isAdminAddress is the address-based part: open mode, loopback, or an
-// admin address.
+// isAdminAddress is the address-based part: loopback, or an admin address.
 func (p *Policy) isAdminAddress(r *http.Request) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if len(p.cfg.viewers) == 0 {
-		return true
-	}
 	ip, ok := clientIP(r)
 	if !ok {
 		return false

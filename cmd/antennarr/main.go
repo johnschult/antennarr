@@ -41,7 +41,7 @@ func main() {
 	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuners")
 	firmwareURL := flag.String("firmware-url", "", "read the firmware changelog from here instead of SiliconDust's page (for a mirror, or testing)")
 	showVersion := flag.Bool("version", false, "print the version and exit")
-	configPath := flag.String("config", "", "settings file (devices, viewers, limits); reloaded on SIGHUP. Without one, anyone who can reach a port may use the tuner")
+	configPath := flag.String("config", defaultConfigPath, "settings file (devices, viewers, limits); created with defaults if it doesn't exist, reloaded on SIGHUP")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: antennarr [flags]\n       antennarr discover [-wait 3s] [host ...]\n\n"+
 			"Run one device with -tuner or -tuner-id, or declare several under \"devices\" in the -config file.\n\n")
@@ -61,16 +61,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	settings := access.DefaultSettings()
-	if *configPath != "" {
-		var exists bool
-		var err error
-		if settings, exists, err = access.LoadSettings(*configPath); err != nil {
-			fail(err)
-		}
-		if !exists {
-			log.Warn("settings file not found, using defaults", "path", *configPath)
-		}
+	settings, savePath, err := loadOrCreateSettings(*configPath, set["config"], log)
+	if err != nil {
+		fail(err)
 	}
 	devices, err := devicesFor(settings, f, set)
 	if err != nil {
@@ -78,17 +71,48 @@ func main() {
 	}
 
 	srv, err := server.New(ctx, server.Config{
-		Settings: settings, Devices: devices, ConfigPath: *configPath, Poll: *poll, Log: log, FirmwareURL: *firmwareURL,
+		Settings: settings, Devices: devices, ConfigPath: savePath, Poll: *poll, Log: log, FirmwareURL: *firmwareURL,
 	})
 	if err != nil {
 		fail(err)
 	}
-	go reloadOnHUP(ctx, *configPath, srv, log)
+	go reloadOnHUP(ctx, savePath, srv, log)
 
 	if err := srv.Run(ctx); err != nil {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
+}
+
+// defaultConfigPath is where the settings live when -config isn't given: next
+// to wherever Antennarr is run from. (The Docker image runs from /config.)
+const defaultConfigPath = "antennarr.json"
+
+// loadOrCreateSettings reads the settings file, and writes one with the
+// defaults if there is none yet, so there is always a file to edit and the
+// admin page can always save. It returns the settings and the path they are
+// kept at.
+//
+// If the file can't be created, a -config the user asked for by name is an
+// error. The default path is not: Antennarr then runs as it always did without
+// a file, with edits turned off (savePath is empty), and says so.
+func loadOrCreateSettings(path string, explicit bool, log *slog.Logger) (s access.Settings, savePath string, err error) {
+	s, exists, err := access.LoadSettings(path)
+	if err != nil {
+		return s, "", err
+	}
+	if exists {
+		return s, path, nil
+	}
+	if err := access.SaveSettings(path, s); err != nil {
+		if explicit {
+			return s, "", fmt.Errorf("creating the settings file: %w", err)
+		}
+		log.Warn("couldn't create a settings file; running with the defaults, and settings can't be saved. Use -config to say where it should go", "path", path, "err", err)
+		return s, "", nil
+	}
+	log.Info("created a settings file with the defaults", "path", path)
+	return s, path, nil
 }
 
 func fail(err error) {

@@ -17,11 +17,11 @@ describe('Banners', () => {
     expect(screen.queryAllByRole('status')).toHaveLength(0)
   })
 
-  it('warns that the tuner is open to everyone while there are no viewers', () => {
+  it('says nobody can use the tuner while there are no viewers', () => {
     const s = makeState({ viewers: [] })
-    s.settings.mode = 'open'
+    s.settings.mode = 'no-viewers'
     show(s)
-    expect(screen.getByRole('status')).toHaveTextContent('Anyone who can reach this port can use your tuner')
+    expect(screen.getByRole('status')).toHaveTextContent('Nobody can use your tuner yet')
     expect(screen.getByRole('link', { name: 'Add a viewer' })).toHaveAttribute('href', '/viewers')
   })
 
@@ -41,7 +41,7 @@ describe('Banners', () => {
   it('can show several at once', () => {
     const s = makeState({ editable: false })
     s.devices[0].tuner.online = false
-    s.settings.mode = 'open'
+    s.settings.mode = 'no-viewers'
     show(s)
     expect(screen.getAllByRole('status')).toHaveLength(3)
   })
@@ -56,11 +56,11 @@ describe('Banners', () => {
     expect(screen.getAllByRole('status')[1]).toHaveTextContent('2 tuners are offline: antenna, cable.')
   })
 
-  it('talks about ports and tuners in the plural when open with several devices', () => {
+  it('talks about tuners in the plural with no viewers and several devices', () => {
     const s = makeTwoDeviceState()
-    s.settings.mode = 'open'
+    s.settings.mode = 'no-viewers'
     show(s)
-    expect(screen.getByRole('status')).toHaveTextContent('Anyone who can reach these ports can use your tuners.')
+    expect(screen.getByRole('status')).toHaveTextContent('Nobody can use your tuners yet.')
   })
 
   it('names offline tuners by the name the owner gave them', () => {

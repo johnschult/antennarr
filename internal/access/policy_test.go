@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -81,18 +82,29 @@ func denied(t *testing.T, err error) *proxy.Denied {
 	return d
 }
 
+// oneViewer is a single viewer on 192.168.1.9 with plenty of tuners: the setup
+// for tests that need someone allowed to stream.
+func oneViewer() Settings {
+	s := DefaultSettings()
+	s.Viewers = []Viewer{{Name: "Guest", Addresses: []string{"192.168.1.9"}, Limit: 8}}
+	return s
+}
+
 var twoViewers = Settings{Viewers: []Viewer{
 	{Name: "John", Addresses: []string{"100.67.117.32"}, Limit: 2},
 	{Name: "Mom", Addresses: []string{"10.8.0.0/24"}, Limit: 1},
 }}
 
-func TestOpenModeAllowsAnyone(t *testing.T) {
+// Until a viewer is added nobody can use the tuner: the install fails closed.
+func TestNoViewersMeansNobodyCanStream(t *testing.T) {
 	p, _ := newPolicy(t, DefaultSettings(), &fakeMon{})
-	if err := p.Authorize(req("203.0.113.9:5555")); err != nil {
-		t.Errorf("open mode refused a client: %v", err)
+	for _, remote := range []string{"127.0.0.1:1", "192.168.1.9:1", "100.64.0.7:1", "203.0.113.9:1"} {
+		if err := p.Authorize(req(remote)); err == nil {
+			t.Errorf("%s was allowed to use the tuner with no viewers", remote)
+		}
 	}
-	if !p.IsAdmin(req("203.0.113.9:5555")) {
-		t.Error("open mode should leave /antennarr open")
+	if p.Mode() != "no-viewers" {
+		t.Errorf("mode = %q", p.Mode())
 	}
 }
 
@@ -202,23 +214,23 @@ func TestSharedCapAcrossViewers(t *testing.T) {
 func TestOwnerReserveCountsOurStreamsImmediately(t *testing.T) {
 	mon := &fakeMon{}
 	mon.set(true, 4) // nothing in use on the tuner yet
-	s := Settings{OwnerReserve: 1}
+	s := oneViewer()
 	p, _ := newPolicy(t, s, mon)
 
 	var rels []func()
 	for i := 0; i < 3; i++ { // 4 tuners - 1 reserved = 3 for viewers
-		rel, err := p.Stream(req("203.0.113.9:1"))
+		rel, err := p.Stream(req("192.168.1.9:1"))
 		if err != nil {
 			t.Fatalf("stream %d: %v", i+1, err)
 		}
 		rels = append(rels, rel)
 	}
-	_, err := p.Stream(req("203.0.113.9:1"))
+	_, err := p.Stream(req("192.168.1.9:1"))
 	if d := denied(t, err); d.Reason != ReasonOwnerReserve {
 		t.Errorf("fourth stream: %+v", d)
 	}
 	rels[0]()
-	if _, err := p.Stream(req("203.0.113.9:1")); err != nil {
+	if _, err := p.Stream(req("192.168.1.9:1")); err != nil {
 		t.Errorf("after one ended: %v", err)
 	}
 }
@@ -228,13 +240,13 @@ func TestOwnerReserveCountsLocalUseButNotOurOwn(t *testing.T) {
 	// The owner's TVs hold two tuners. A stream of ours shows up in status too,
 	// but must not be counted twice (we count our own streams ourselves).
 	mon.set(true, 4, local, local, ours, idle)
-	p, _ := newPolicy(t, Settings{OwnerReserve: 1}, mon)
+	p, _ := newPolicy(t, oneViewer(), mon)
 
 	// 4 total - 1 reserved - 2 local = 1 available for viewers.
-	if _, err := p.Stream(req("203.0.113.9:1")); err != nil {
+	if _, err := p.Stream(req("192.168.1.9:1")); err != nil {
 		t.Fatalf("first: %v", err)
 	}
-	_, err := p.Stream(req("203.0.113.9:1"))
+	_, err := p.Stream(req("192.168.1.9:1"))
 	if d := denied(t, err); d.Reason != ReasonOwnerReserve {
 		t.Errorf("second: %+v", d)
 	}
@@ -243,13 +255,15 @@ func TestOwnerReserveCountsLocalUseButNotOurOwn(t *testing.T) {
 func TestOwnerReserveZeroUsesEveryTuner(t *testing.T) {
 	mon := &fakeMon{}
 	mon.set(true, 2)
-	p, _ := newPolicy(t, Settings{}, mon)
+	zero := oneViewer()
+	zero.OwnerReserve = 0
+	p, _ := newPolicy(t, zero, mon)
 	for i := 0; i < 2; i++ {
-		if _, err := p.Stream(req("203.0.113.9:1")); err != nil {
+		if _, err := p.Stream(req("192.168.1.9:1")); err != nil {
 			t.Fatalf("stream %d: %v", i+1, err)
 		}
 	}
-	if _, err := p.Stream(req("203.0.113.9:1")); err == nil {
+	if _, err := p.Stream(req("192.168.1.9:1")); err == nil {
 		t.Error("a third stream fit on a two-tuner device")
 	}
 }
@@ -257,8 +271,8 @@ func TestOwnerReserveZeroUsesEveryTuner(t *testing.T) {
 func TestUnknownTunerCountSkipsReserveCheck(t *testing.T) {
 	mon := &fakeMon{}
 	mon.set(true, 0)
-	p, _ := newPolicy(t, Settings{OwnerReserve: 1}, mon)
-	if _, err := p.Stream(req("203.0.113.9:1")); err != nil {
+	p, _ := newPolicy(t, oneViewer(), mon)
+	if _, err := p.Stream(req("192.168.1.9:1")); err != nil {
 		t.Errorf("refused when the tuner count is unknown: %v", err)
 	}
 }
@@ -266,8 +280,8 @@ func TestUnknownTunerCountSkipsReserveCheck(t *testing.T) {
 func TestOfflineTunerRefusesStreams(t *testing.T) {
 	mon := &fakeMon{}
 	mon.set(false, 4)
-	p, _ := newPolicy(t, DefaultSettings(), mon)
-	_, err := p.Stream(req("203.0.113.9:1"))
+	p, _ := newPolicy(t, oneViewer(), mon)
+	_, err := p.Stream(req("192.168.1.9:1"))
 	if d := denied(t, err); d.Code != http.StatusServiceUnavailable || d.Reason != ReasonOffline {
 		t.Errorf("%+v", d)
 	}
@@ -277,7 +291,7 @@ func TestStreamFromUnknownAddressIsForbidden(t *testing.T) {
 	mon := &fakeMon{}
 	mon.set(true, 4)
 	p, _ := newPolicy(t, twoViewers, mon)
-	_, err := p.Stream(req("203.0.113.9:1"))
+	_, err := p.Stream(req("192.168.1.9:1"))
 	if d := denied(t, err); d.Code != http.StatusForbidden {
 		t.Errorf("%+v", d)
 	}
@@ -461,12 +475,15 @@ func TestConcurrentStreamsNeverExceedLimit(t *testing.T) {
 func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "tuner front page") })
 
-	t.Run("open mode: everyone is an admin", func(t *testing.T) {
+	t.Run("no viewers: only this machine is an admin", func(t *testing.T) {
 		p, _ := newPolicy(t, DefaultSettings(), &fakeMon{})
-		rec := httptest.NewRecorder()
-		p.AdminHome("/antennarr/", next).ServeHTTP(rec, req("203.0.113.9:1"))
-		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/antennarr/" {
-			t.Errorf("%d %q", rec.Code, rec.Header().Get("Location"))
+		h := p.AdminHome("/antennarr/", next)
+		for remote, want := range map[string]int{"127.0.0.1:1": http.StatusFound, "192.168.1.9:1": http.StatusOK} {
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req(remote))
+			if rec.Code != want {
+				t.Errorf("%s: %d, want %d", remote, rec.Code, want)
+			}
 		}
 	})
 
@@ -546,5 +563,63 @@ func TestIPv6LinkLocalAddressesCanBeListedDespiteTheirInterfaceName(t *testing.T
 	r.RemoteAddr = "[fe80::1822:6815:bce3:f6e9%en0]:1"
 	if err := p.Authorize(r); err != nil {
 		t.Errorf("a viewer listed by its link-local address was refused: %v", err)
+	}
+}
+
+// Admin never depends on viewers: it is this machine, an admin address or a
+// signed-in Plex account, whether or not any viewer exists.
+func TestAdminIsIndependentOfViewers(t *testing.T) {
+	for name, s := range map[string]Settings{"no viewers": DefaultSettings(), "viewers": twoViewers} {
+		s.Admin = []string{"192.168.68.0/22"}
+		p, _ := newPolicy(t, s, &fakeMon{})
+		for remote, want := range map[string]bool{
+			"127.0.0.1:1":    true,
+			"[::1]:1":        true,
+			"192.168.68.9:1": true,
+			"192.168.1.9:1":  false,
+			"203.0.113.9:1":  false,
+			"100.64.0.7:1":   false,
+		} {
+			if got := p.IsAdmin(req(remote)); got != want {
+				t.Errorf("%s: %s admin = %v, want %v", name, remote, got, want)
+			}
+		}
+	}
+}
+
+func TestHasAdmin(t *testing.T) {
+	p, _ := newPolicy(t, DefaultSettings(), &fakeMon{})
+	if p.HasAdmin() {
+		t.Error("a fresh install has no admin")
+	}
+	s := DefaultSettings()
+	s.Admin = []string{"100.64.0.1"}
+	p, _ = newPolicy(t, s, &fakeMon{})
+	if !p.HasAdmin() {
+		t.Error("an admin address is an admin")
+	}
+	s = DefaultSettings()
+	s.Plex = &PlexSettings{Enabled: true, Admins: []PlexAccount{{ID: 1, Name: "john"}}}
+	p, _ = newPolicy(t, s, &fakeMon{})
+	if !p.HasAdmin() {
+		t.Error("an allowed Plex account is an admin")
+	}
+	s.Plex.Enabled = false
+	p, _ = newPolicy(t, s, &fakeMon{})
+	if p.HasAdmin() {
+		t.Error("Plex accounts count only while Plex sign-in is on")
+	}
+}
+
+func TestPrivateAddr(t *testing.T) {
+	for remote, want := range map[string]bool{
+		"127.0.0.1": true, "::1": true, "192.168.1.9": true, "10.1.2.3": true, "172.16.5.5": true,
+		"100.64.0.7": true, "fd7a:115c:a1e0::1": true, "fe80::1": true,
+		"203.0.113.9": false, "8.8.8.8": false, "2001:db8::1": false, "100.128.0.1": false, "172.32.0.1": false,
+	} {
+		ip := netip.MustParseAddr(remote)
+		if got := PrivateAddr(ip); got != want {
+			t.Errorf("PrivateAddr(%s) = %v, want %v", remote, got, want)
+		}
 	}
 }

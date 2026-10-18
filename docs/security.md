@@ -10,8 +10,9 @@
 | An **admin** | Open the web page and change settings: add viewers, change limits, and so on. | They connect from this machine (loopback), from an address listed under `admin`, or they are signed in with an allowed Plex account. |
 | Anyone else | Nothing. The tuner side answers `403`. The admin pages answer `403` (the page itself loads so you can sign in, but shows nothing). | |
 
-**With no viewers configured, everything is open**, including the admin page, to anyone who can reach the port. Antennarr says so in its log at startup. As soon as you add a viewer it locks down as in the table.
-A viewer is not an admin: being allowed to watch doesn't let you change anything.
+**A new install is closed.** With no viewers nobody can use the tuner, and only this machine can open the admin page. Nothing is open to the network until you decide.
+To let you in from another computer, Antennarr writes a **one-time setup link** to its log while nobody is an admin yet (see [Getting started](getting-started.md)). The token in it is random (256 bits), kept only in memory, works once, and changes at every start; it can only be used from a private network (LAN, Tailscale, a VPN), five wrong tries lock an address out for ten minutes, and opening the link only shows a confirmation page: the address is saved as an admin only when you press the button. Because the link is in the log, anyone who can read the log can claim it until you do.
+A viewer is not an admin: being allowed to watch doesn't let you change anything. The exception is a viewer whose address falls inside an `admin` range: they are an admin too, and Antennarr logs a warning. Keep `admin` to the addresses that are really yours.
 
 ## Keep it off the open internet
 
@@ -37,7 +38,7 @@ Optional, off by default, and switched on under *Settings → Access*. It lets c
 - The admin API refuses cross-site writes: they must be JSON, and an `Origin` header, if there is one, must be this host. A page you happen to visit can't change Antennarr's settings from your browser.
 - Request bodies are limited to 64 KB and unknown fields are rejected.
 - The web page is served with a strict Content-Security-Policy: it loads nothing from other sites, so channel logos come through Antennarr, not straight from SiliconDust.
-- Settings are validated before they are saved, and removing the last viewer (which would open the tuner to everyone) needs an explicit confirmation.
+- Settings are validated before they are saved.
 
 ## What leaves your network
 

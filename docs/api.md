@@ -28,7 +28,7 @@ All paths are under `/antennarr/api/` and need admin access (see [Security](secu
 Replies are JSON and never cached. An error is `{"error": "a message safe to show a person"}` with a suitable status.
 
 **Writes** (`POST`, `PUT`, `PATCH`, `DELETE`) must send `Content-Type: application/json` when they have a body, and an `Origin` header, if sent, must be the host you are talking to.
-Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. Without `-config` there is nowhere to save, so writes fail with a message saying so.
+Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. If Antennarr couldn't create its settings file there is nowhere to save, so writes fail with a message saying so.
 
 | Request | What it does |
 |---|---|
@@ -37,7 +37,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `GET viewers` | The viewers, with their current use and when they were last seen. |
 | `POST viewers` | Add a viewer: `{"name": "Mom", "addresses": ["100.64.0.7"], "limit": 1}`, and optionally `"limits": {"device": 2}`. Replies `201` with the viewer. |
 | `PUT viewers/{name}` | Replace a viewer (the same body). |
-| `DELETE viewers/{name}` | Remove a viewer, `204`. Removing the **last** viewer would open the tuner to everyone, so it answers `409` unless you add `?allowOpen=true`. |
+| `DELETE viewers/{name}` | Remove a viewer, `204`. Removing the last viewer leaves nobody able to use the tuner. The `mode` in the settings is then `no-viewers`. |
 | `GET settings` | The general settings. |
 | `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `plexEnabled`. Only the fields you send change. |
 | `PATCH devices/{name}` | Change a device's `label` (display name; `""` clears it), `ownerReserve` or `sharedCap`. |
@@ -62,7 +62,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 }
 ```
 
-`editable` is false when Antennarr was started without `-config`. For the exact fields, see `internal/api/api.go` and the TypeScript types in `web/src/lib/types.ts`, which are kept in step with it.
+`editable` is false when Antennarr couldn't create its settings file. For the exact fields, see `internal/api/api.go` and the TypeScript types in `web/src/lib/types.ts`, which are kept in step with it.
 The tuner's guide key (`DeviceAuth`) and the Plex client ID are never in the state document.
 
 ## Signing in

@@ -151,8 +151,8 @@ func TestChannelFromPath(t *testing.T) {
 func TestStreamRecordsChannel(t *testing.T) {
 	mon := &fakeMon{}
 	mon.set(true, 4)
-	p, _ := newPolicy(t, DefaultSettings(), mon)
-	r := req("203.0.113.9:1")
+	p, _ := newPolicy(t, oneViewer(), mon)
+	r := req("192.168.1.9:1")
 	r.URL.Path = "/auto/v5.1"
 	if _, err := p.Stream(r); err != nil {
 		t.Fatal(err)
@@ -194,13 +194,13 @@ func TestViewerStatusesAndLastSeen(t *testing.T) {
 	}
 }
 
-func TestOpenModeRecordsNoViewers(t *testing.T) {
+func TestModeFollowsViewers(t *testing.T) {
 	p, _ := newPolicy(t, DefaultSettings(), &fakeMon{})
 	p.Authorize(req("203.0.113.9:1"))
 	if n := len(p.ViewerStatuses()); n != 0 {
-		t.Errorf("%d viewers in open mode", n)
+		t.Errorf("%d viewers with none configured", n)
 	}
-	if p.Mode() != "open" {
+	if p.Mode() != "no-viewers" {
 		t.Errorf("mode = %q", p.Mode())
 	}
 	p.Update(twoViewers)

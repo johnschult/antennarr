@@ -44,14 +44,13 @@ export function Banners({ state }: { state: AppState }) {
           Antennarr will keep looking and follow {several ? 'them' : 'it'} if the address changes.
         </Banner>
       )}
-      {state.settings.mode === 'open' && (
+      {state.settings.mode === 'no-viewers' && (
         <Banner tone="amber" icon={<AlertTriangle className="size-4" />}>
-          <strong>Anyone who can reach {several ? 'these ports' : 'this port'} can use your {several ? 'tuners' : 'tuner'}.</strong>{' '}
-          No viewers are set up yet.{' '}
+          <strong>Nobody can use your {several ? 'tuners' : 'tuner'} yet.</strong> No viewers are set up.{' '}
           <Link to="/viewers" className="underline underline-offset-2">
             Add a viewer
           </Link>{' '}
-          to restrict access to their addresses.
+          to let a media server in.
         </Banner>
       )}
       {!state.editable && (

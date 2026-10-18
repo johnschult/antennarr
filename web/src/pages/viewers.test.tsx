@@ -180,7 +180,7 @@ describe('ViewersPage', () => {
 
       await user.click(within(dialog).getByRole('button', { name: 'Remove' }))
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-      expect(calls.find((c) => c.method === 'DELETE')?.url).toMatch(/\/viewers\/Mom$/) // no allowOpen
+      expect(calls.find((c) => c.method === 'DELETE')?.url).toMatch(/\/viewers\/Mom$/)
     })
 
     it('does nothing if you keep them', async () => {
@@ -195,9 +195,9 @@ describe('ViewersPage', () => {
       expect(calls).toHaveLength(0)
     })
 
-    it('warns clearly before removing the last viewer, and confirms with allowOpen', async () => {
+    it('warns clearly before removing the last viewer', async () => {
       const { fn, calls } = stubFetch({
-        'DELETE /viewers/John?allowOpen=true': () => ({ status: 204 }),
+        'DELETE /viewers/John': () => ({ status: 204 }),
         'GET /state': () => ({ body: makeState() }),
       })
       vi.stubGlobal('fetch', fn)
@@ -206,11 +206,11 @@ describe('ViewersPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'Remove John' }))
       const dialog = await screen.findByRole('alertdialog')
-      expect(within(dialog).getByText(/anyone who can reach this port can use your tuner/)).toBeInTheDocument()
+      expect(within(dialog).getByText(/nobody can use your tuner/)).toBeInTheDocument()
 
-      await user.click(within(dialog).getByRole('button', { name: 'Remove and open access' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Remove' }))
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
-      expect(calls.find((c) => c.method === 'DELETE')?.url).toMatch(/\/viewers\/John\?allowOpen=true$/)
+      expect(calls.find((c) => c.method === 'DELETE')?.url).toMatch(/\/viewers\/John$/)
     })
 
     it('shows a failure and stays open', async () => {

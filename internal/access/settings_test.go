@@ -146,3 +146,26 @@ func TestSaveToMissingDirFails(t *testing.T) {
 		t.Error("expected an error")
 	}
 }
+
+func TestWarnsWhenAViewerIsInsideAnAdminRange(t *testing.T) {
+	s := Settings{
+		Admin:   []string{"100.64.0.0/10"},
+		Viewers: []Viewer{{Name: "Mom", Addresses: []string{"100.64.0.7"}, Limit: 1}},
+	}
+	if err := s.Validate(); err != nil {
+		t.Fatalf("an overlap must not stop the settings loading: %v", err)
+	}
+	w := s.Warnings()
+	if len(w) != 1 || !strings.Contains(w[0], "Mom") || !strings.Contains(w[0], "100.64.0.0/10") {
+		t.Errorf("warnings = %q", w)
+	}
+
+	s.Admin = []string{"100.64.0.1/32"}
+	if w := s.Warnings(); len(w) != 0 {
+		t.Errorf("a narrow admin range still warned: %q", w)
+	}
+	s.Admin = nil
+	if w := s.Warnings(); len(w) != 0 {
+		t.Errorf("no admin range warned: %q", w)
+	}
+}

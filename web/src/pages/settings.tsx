@@ -76,15 +76,15 @@ export function SettingsPage() {
           kind="lines"
           id="setting-admin"
           title="Admin addresses"
-          description="Addresses allowed to open this page, besides the machine Antennarr runs on. One per line: an IP or a range like 100.64.0.0/10. Viewers are never admins; take care not to lock yourself out."
+          description="Addresses allowed to open this page, besides the machine Antennarr runs on. One per line: an IP or a range like 192.168.1.0/24. Keep viewers out of these ranges: anyone listed here can change settings. Take care not to lock yourself out."
           initial={settings.admin.join('\n')}
-          placeholder="100.64.0.0/10"
+          placeholder="100.64.0.1"
           disabled={!editable}
           onSave={(text) => update.mutateAsync({ admin: parseAddresses(text) })}
         />
         <PlexRows />
-        <Row title="Who can use your tuners" description="Only the addresses of the viewers you add. With no viewers, anyone who can reach a port can.">
-          <span className="text-sm font-medium">{settings.mode === 'open' ? 'Open to anyone' : 'Viewers only'}</span>
+        <Row title="Who can use your tuners" description="Only the addresses of the viewers you add. With no viewers, nobody can.">
+          <span className="text-sm font-medium">{settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}</span>
         </Row>
       </Section>
 

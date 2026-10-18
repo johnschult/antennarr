@@ -47,8 +47,7 @@ export const getState = () => request<AppState>('GET', '/state')
 export const addViewer = (v: ViewerInput) => request<Viewer>('POST', '/viewers', v)
 export const replaceViewer = (name: string, v: ViewerInput) =>
   request<Viewer>('PUT', `/viewers/${encodeURIComponent(name)}`, v)
-export const deleteViewer = (name: string, allowOpen = false) =>
-  request<void>('DELETE', `/viewers/${encodeURIComponent(name)}${allowOpen ? '?allowOpen=true' : ''}`)
+export const deleteViewer = (name: string) => request<void>('DELETE', `/viewers/${encodeURIComponent(name)}`)
 export const patchSettings = (p: SettingsPatch) => request<Settings>('PATCH', '/settings', p)
 export const patchDevice = (name: string, p: DevicePatch) =>
   request<DeviceState>('PATCH', `/devices/${encodeURIComponent(name)}`, p)

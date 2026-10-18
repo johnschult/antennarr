@@ -14,7 +14,7 @@ import type { Viewer } from '@/lib/types'
 
 interface Props {
   viewer: Viewer | null
-  /** True when this is the only viewer: removing it opens the tuner to everyone. */
+  /** True when this is the only viewer: removing it leaves nobody able to use the tuner. */
   isLast: boolean
   onClose: () => void
 }
@@ -27,7 +27,7 @@ export function DeleteViewerDialog({ viewer, isLast, onClose }: Props) {
     if (!viewer) return
     setError(null)
     try {
-      await remove.mutateAsync({ name: viewer.name, allowOpen: isLast })
+      await remove.mutateAsync({ name: viewer.name })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -41,7 +41,7 @@ export function DeleteViewerDialog({ viewer, isLast, onClose }: Props) {
           <AlertDialogTitle>Remove {viewer?.name}?</AlertDialogTitle>
           <AlertDialogDescription>
             {isLast
-              ? 'This is your only viewer. With no viewers, anyone who can reach this port can use your tuner.'
+              ? 'This is your only viewer. With no viewers, nobody can use your tuner.'
               : 'Their media server will no longer be able to use your tuner. A stream already running is not cut off.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -53,7 +53,7 @@ export function DeleteViewerDialog({ viewer, isLast, onClose }: Props) {
         <AlertDialogFooter>
           <AlertDialogCancel>Keep</AlertDialogCancel>
           <AlertDialogAction variant="destructive" onClick={confirm} disabled={remove.isPending}>
-            {isLast ? 'Remove and open access' : 'Remove'}
+            Remove
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

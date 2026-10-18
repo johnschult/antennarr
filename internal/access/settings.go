@@ -81,8 +81,9 @@ type PlexSettings struct {
 	ClientID string `json:"clientId,omitempty"`
 }
 
-// Settings is everything that decides access. With no viewers the tuners are
-// open to anyone who can reach them, bounded only by SharedCap and OwnerReserve.
+// Settings is everything that decides access. With no viewers nobody can use
+// the tuners; each viewer gets what SharedCap, OwnerReserve and their own limit
+// leave.
 type Settings struct {
 	// Devices to front. If empty, Antennarr is started with one device from
 	// its command-line flags.
@@ -437,6 +438,33 @@ func (s Settings) parse() (parsed, error) {
 		out.viewers = append(out.viewers, pv)
 	}
 	return out, nil
+}
+
+// Warnings lists things in the settings that are allowed but probably not what
+// the owner meant. Today that is a viewer address inside an admin range, which
+// makes that viewer an admin too: they could open the admin page and change
+// their own limits. It is a warning rather than an error so that a settings
+// file that already works still loads.
+func (s Settings) Warnings() []string {
+	c, err := s.parse()
+	if err != nil {
+		return nil
+	}
+	return c.warnings()
+}
+
+func (c parsed) warnings() []string {
+	var out []string
+	for _, v := range c.viewers {
+		for _, vp := range v.prefixes {
+			for _, ap := range c.admin {
+				if vp.Overlaps(ap) {
+					out = append(out, fmt.Sprintf("viewer %q (%s) is inside the admin range %s, so they can open the admin page and change settings; narrow the admin range", v.Name, vp, ap))
+				}
+			}
+		}
+	}
+	return out
 }
 
 // Validate reports the first problem with the settings, if any.

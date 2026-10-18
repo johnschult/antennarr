@@ -20,20 +20,17 @@ describe('api client', () => {
     expect(calls[1].init?.body).toBeUndefined()
   })
 
-  it('escapes viewer names in the path and passes the open-access confirmation', async () => {
+  it('escapes viewer names in the path', async () => {
     const { fn, calls } = stubFetch({
       'PUT /viewers/Mom%20%26%20Dad': () => ({ body: {} }),
       'DELETE /viewers/Mom%20%26%20Dad': () => ({ status: 204 }),
-      'DELETE /viewers/Mom%20%26%20Dad?allowOpen=true': () => ({ status: 204 }),
     })
     vi.stubGlobal('fetch', fn)
     await replaceViewer('Mom & Dad', { name: 'Mom & Dad', addresses: ['1.2.3.4'], limit: 1 })
     await expect(deleteViewer('Mom & Dad')).resolves.toBeUndefined() // 204: no body to parse
-    await deleteViewer('Mom & Dad', true)
     expect(calls.map((c) => `${c.method} ${c.url.replace(/^.*api/, '')}`)).toEqual([
       'PUT /viewers/Mom%20%26%20Dad',
       'DELETE /viewers/Mom%20%26%20Dad',
-      'DELETE /viewers/Mom%20%26%20Dad?allowOpen=true',
     ])
   })
 

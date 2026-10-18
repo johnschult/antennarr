@@ -117,7 +117,7 @@ export type PlexPollStatus =
   | { status: 'denied'; user: { name: string } }
 
 export interface Settings {
-  mode: 'open' | 'enforced'
+  mode: 'no-viewers' | 'enforced'
   sharedCap: number
   ownerReserve: number
   admin: string[]
