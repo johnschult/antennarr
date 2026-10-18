@@ -17,7 +17,7 @@ git checkout -b my-change
 git push -u origin my-change     # then open a pull request
 ```
 
-Keep a pull request to one thing. Say what changed and why, and how you tested it. If it changes what people see or do, update the docs in `docs/` in the same pull request.
+Keep a pull request to one thing. Say what changed and why, and how you tested it. If it changes what people see or do, update the docs in `docs/` in the same pull request. Releases get their notes from [`CHANGELOG.md`](CHANGELOG.md), which is written when a release is made, not in every pull request.
 
 ### Setting up
 

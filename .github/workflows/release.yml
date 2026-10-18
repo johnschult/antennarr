@@ -1,7 +1,8 @@
 name: Release
 
 # A tag named vYYYY.MM.PATCH (for example v2026.10.0) publishes the container image
-# to ghcr.io and creates a GitHub release. Changes to the Dockerfile or this file
+# to ghcr.io and creates a GitHub release whose notes are that version's section of
+# CHANGELOG.md (a tag with no section fails before anything is published). Changes to the Dockerfile or this file
 # only build the image, so a broken release can't be a surprise.
 on:
   push:
@@ -33,6 +34,16 @@ jobs:
             version="${GITHUB_REF_NAME#v}"
             if [[ ! "$version" =~ ^[0-9]{4}\.(0?[1-9]|1[0-2])\.[0-9]+$ ]]; then
               echo "::error::the tag must look like vYYYY.MM.PATCH (v2026.10.0), not $GITHUB_REF_NAME"
+              exit 1
+            fi
+            # The release notes are this version's section of CHANGELOG.md. Check now,
+            # before anything is published, so a forgotten entry can't ship.
+            awk -v v="$version" '
+              /^## / { if (found) exit; split($0, h, " "); if (h[2] == v) { found = 1; next } }
+              found { print }
+            ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+            if [[ -z "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes.md")" ]]; then
+              echo "::error::CHANGELOG.md has no entry for $version; add a '## $version (date)' section and tag again"
               exit 1
             fi
             echo "release=true" >> "$GITHUB_OUTPUT"
@@ -73,4 +84,4 @@ jobs:
         if: steps.v.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
