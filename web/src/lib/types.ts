@@ -116,6 +116,48 @@ export type PlexPollStatus =
   | { status: 'ok'; user?: { id: number; name: string }; account?: { id: number; name: string } }
   | { status: 'denied'; user: { name: string } }
 
+export type ChannelType = 'ntfy' | 'pushover' | 'webhook'
+
+/**
+ * A place notifications go. Its secrets are not here: the server says whether it
+ * has them, never what they are, and a webhook's address (which often holds one) is
+ * shown as its host.
+ */
+export interface NotifyChannel {
+  id: string
+  name: string
+  type: ChannelType
+  /** The ntfy server. */
+  url?: string
+  /** A webhook's host. */
+  host?: string
+  topic?: string
+  /** A ntfy or webhook token, or the Pushover application token, is saved. */
+  hasToken: boolean
+  /** The Pushover user key is saved. */
+  hasUser: boolean
+}
+
+export type NotifyEvent = 'firmware' | 'tuner' | 'viewer' | 'unknown'
+export type NotifyEvents = Record<NotifyEvent, boolean>
+
+export interface Notifications {
+  channels: NotifyChannel[]
+  events: NotifyEvents
+}
+
+/** What is sent to add or change a channel. A secret left empty keeps the saved one. */
+export interface ChannelInput {
+  name: string
+  type: ChannelType
+  url?: string
+  topic?: string
+  token?: string
+  user?: string
+  /** Remove the saved token (an empty token means "keep it"). */
+  clearToken?: boolean
+}
+
 export interface Settings {
   mode: 'no-viewers' | 'enforced'
   sharedCap: number
@@ -125,6 +167,7 @@ export interface Settings {
   firmwareCheck: boolean
   guide: boolean
   plex: PlexSettings
+  notifications: Notifications
 }
 
 export interface Summary {
@@ -206,6 +249,7 @@ export interface SettingsPatch {
   firmwareCheck?: boolean
   guide?: boolean
   plexEnabled?: boolean
+  notifyEvents?: Partial<NotifyEvents>
 }
 
 export interface DevicePatch {

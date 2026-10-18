@@ -26,6 +26,18 @@ type Notifier interface {
 	Note(kind, text string)
 }
 
+// Events is told, beyond the timeline, about requests that were turned away, so
+// the owner can be messaged about them (the notify.Notifier). Its methods are
+// called without the policy's lock and must not block. A refusal reaches it at
+// most once a minute per viewer, tuner and reason, like the timeline.
+type Events interface {
+	// Refused is a known viewer turned away for a reason other than the address.
+	// title is the tuner's display name.
+	Refused(device, title, viewer, reason string)
+	// Unknown is a request from an address that isn't a viewer, one call per request.
+	Unknown(device, title, addr string)
+}
+
 // Active is one stream flowing through us right now.
 type Active struct {
 	ID      uint64    `json:"id"`
@@ -64,6 +76,7 @@ type Policy struct {
 	lastNote map[string]time.Time
 	lastSeen map[string]time.Time // by viewer name
 	onChange func()
+	events   Events
 	session  func(*http.Request) bool // an admin signed in some other way (Plex)
 }
 
@@ -122,6 +135,28 @@ func (p *Policy) SetOnChange(f func()) {
 	p.mu.Lock()
 	p.onChange = f
 	p.mu.Unlock()
+}
+
+// SetEvents registers who is told about refusals, for notifications.
+func (p *Policy) SetEvents(e Events) {
+	p.mu.Lock()
+	p.events = e
+	p.mu.Unlock()
+}
+
+// unknown tells the events, if there are any, that an address that isn't a viewer asked for a tuner.
+func (p *Policy) unknown(device string, r *http.Request) {
+	ip, ok := clientIP(r)
+	p.mu.Lock()
+	e, title := p.events, p.cfg.Labels[device]
+	p.mu.Unlock()
+	if e == nil || !ok {
+		return
+	}
+	if title == "" {
+		title = device
+	}
+	e.Unknown(device, title, ip.String())
 }
 
 func (p *Policy) changed() {
@@ -264,6 +299,7 @@ func (d *DeviceView) Authorize(r *http.Request) error {
 	}
 	p.mu.Unlock()
 	if !ok {
+		p.unknown(d.name, r)
 		return notAllowed()
 	}
 	return nil
@@ -304,6 +340,7 @@ func (d *DeviceView) Stream(r *http.Request) (func(), error) {
 	v, ok := p.identify(r)
 	if !ok {
 		p.mu.Unlock()
+		p.unknown(d.name, r)
 		return nil, notAllowed()
 	}
 
@@ -379,16 +416,20 @@ func (p *Policy) note(device, viewer, reason, text string) {
 		return
 	}
 	p.lastNote[key] = p.now()
+	title := p.cfg.Labels[device]
+	if title == "" {
+		title = device
+	}
 	where := ""
 	if len(p.devices) > 1 { // only mention the device when there is more than one
-		title := p.cfg.Labels[device]
-		if title == "" {
-			title = device
-		}
 		where = " on " + title
 	}
+	events := p.events
 	p.mu.Unlock()
 	notes.Note("warn", fmt.Sprintf("%s was refused a tuner%s: %s", viewer, where, text))
+	if events != nil {
+		events.Refused(device, title, viewer, reason)
+	}
 }
 
 // channelFromPath pulls "5.1" out of /auto/v5.1 or /tuner0/v5.1. Streams

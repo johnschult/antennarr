@@ -1,4 +1,4 @@
-import type { AppState, DeviceInput, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
+import type { AppState, ChannelInput, DeviceInput, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -59,6 +59,12 @@ export const deleteDevice = (name: string) => request<void>('DELETE', `/devices/
 
 /** Read SiliconDust's changelog now. The new status arrives over the event stream. */
 export const checkFirmware = () => request<{ checkedAt: string }>('POST', '/firmware/check')
+
+export const addChannel = (c: ChannelInput) => request<NotifyChannel>('POST', '/notifications/channels', c)
+export const replaceChannel = (id: string, c: ChannelInput) => request<NotifyChannel>('PUT', `/notifications/channels/${encodeURIComponent(id)}`, c)
+export const deleteChannel = (id: string) => request<void>('DELETE', `/notifications/channels/${encodeURIComponent(id)}`)
+/** Send one test message to a channel: a saved one by `id`, or the form's values, or a saved one with edits not yet saved. */
+export const testChannel = (t: { id?: string; channel?: ChannelInput }) => request<{ ok: true }>('POST', '/notifications/test', t)
 
 export const removePlexAdmin = (id: number) => request<void>('DELETE', `/plex/admins/${id}`)
 

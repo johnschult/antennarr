@@ -117,6 +117,19 @@ Built. Live tiles and the Tuner page's table show each watched channel's logo, a
 - The switch is Settings > Updates > Show what's on (default on). While off, nothing is sent to SiliconDust. Turning it on, or a tuner appearing, fetches a guide that has never been read or has gone stale, and nothing else.
 - Not done: a full guide page, and serving the guide to viewers (Jellyfin and Channels can read XMLTV; Plex gets its guide from Plex).
 
+## Notifications
+
+Built. Settings > Notifications. Messages to ntfy, Pushover or a webhook about firmware, tuner and viewer events, each switched on or off. Off until a channel is added, and nothing is contacted until then.
+
+- `internal/notify` takes events from the places that already notice them and sends them from one goroutine through a small queue, so the code that noticed never waits on a network. There is no scheduler: firmware hangs off the existing 12-hour check (`announceFirmware`, which already announced once per release), tuner state off the monitor's online/offline change, and refusals off `Policy.note` and the unknown-address refusal.
+- The settings are read on every event, so adding a channel or switching an event needs no restart.
+- **Offline** is sent only if the tuner is still down after two minutes, and **back online** only if the offline message was sent, so a reboot, a blip, or Antennarr's own start says nothing. A restart doesn't repeat a firmware message either: the release last announced per tuner is kept in `<settings>.notified.json`.
+- **Unknown addresses** are the noisy one and are off by default: once per address per day, at most six an hour in all, and an address held back by the hourly limit isn't marked as reported.
+- Nothing is retried. A late, out-of-order message is worse than a missing one, and the log says what failed.
+- **Secrets are write-only.** Tokens, user keys and webhook addresses are in the settings file (0600) and never in the API's output, the logs or error text (Go's own errors repeat the URL, so they are rewritten). A webhook is shown as its host. Redirects aren't followed, so a token can't be sent somewhere else.
+- A channel can be tested before it is saved: Test sends the form's values, or a saved channel's values with the form's changes, and saves nothing.
+- Not done: routing a kind of event to particular channels (every channel gets every enabled event), quiet hours, a daily digest, and more kinds of event. They would want a small scheduler of their own.
+
 ## Sign in with Plex
 
 Built. Off by default; switched on in Settings > Access. An admin can open the web UI from a listed address (loopback or `admin` CIDRs) or by signing in with an allowed Plex account, so it works from anywhere the port is reachable.

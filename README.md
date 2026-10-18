@@ -30,6 +30,7 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
 - **A web UI.** Live tiles for each tuner (channel, logo, what's on, who's watching, bitrate, signal), viewers, settings,
   a copy-paste setup guide, light and dark themes.
 - **Firmware news.** Tells you when SiliconDust releases firmware for your model. It never installs anything.
+- **Notifications.** Optional messages to ntfy, Pushover or a webhook when there is new firmware, a tuner is offline for a couple of minutes (and when it's back), or a viewer is turned away. Each kind can be switched off, and each channel has a Test button.
 - **Any network.** Plain LAN, Tailscale, WireGuard, ZeroTier… Antennarr just listens on a port. Getting the two servers to reach each other is up to you.
 
 > [!WARNING]
@@ -133,13 +134,14 @@ Nothing contacts plex.tv until someone signs in.
 
 ## What Antennarr contacts
 
-Only your tuners, plus these, each of which can be switched off in Settings:
+Only your tuners, plus these, each of which can be switched off or left unset in Settings:
 
 | What | Where | How often | Sends |
 |---|---|---|---|
 | Firmware changelog | `silicondust.com` | every 12 hours | nothing about you or your tuners |
 | Programme guide and channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | your tuner's guide key (its `DeviceAuth`), which SiliconDust uses to know which channels to list |
 | Sign in with Plex | `plex.tv` | only when someone signs in | the sign-in request |
+| Notifications | the ntfy server, `api.pushover.net` or the webhook address you set up | when something you switched on happens, and on Test | a short message naming a tuner, viewer or address. Nothing is contacted until you add a channel |
 
 Logos are fetched by Antennarr, not by your browser, and the web page itself loads nothing from outside.
 
@@ -175,6 +177,7 @@ All of this can be changed in the UI. The file is JSON, written atomically, and 
 | `labels` | Display names by device name; also what media servers are told the tuner is called. |
 | `firmwareCheck`, `guide` | Turn the firmware changelog check and the programme guide off. On by default. |
 | `plex` | Sign in with Plex: `enabled`, and the allowed `admins` (`id`, `name`). |
+| `notifications` | `channels` (ntfy, Pushover or webhook, with their tokens) and which `events` to send. See [Configuration](docs/configuration.md#notifications). |
 
 With no `devices`, Antennarr runs one device from the command line: `-tuner` (an address) or `-tuner-id` (a DeviceID to search for), with `-listen`, `-stream-port`, `-advertise`. You can't mix the two.
 Run `antennarr -h` for every flag.

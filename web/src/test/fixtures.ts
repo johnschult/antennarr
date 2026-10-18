@@ -1,4 +1,4 @@
-import type { AppState, DeviceState, FirmwareStatus, Slot, Viewer } from '@/lib/types'
+import type { AppState, DeviceState, FirmwareStatus, Notifications, NotifyChannel, Slot, Viewer } from '@/lib/types'
 
 export const idleSlot = (n: number): Slot => ({ resource: `tuner${n}`, inUse: false, viaAntennarr: false })
 
@@ -68,12 +68,24 @@ export function makeCableDevice(over: Partial<DeviceState> = {}): DeviceState {
   })
 }
 
+export const noNotifications = (): Notifications => ({ channels: [], events: { firmware: true, tuner: true, viewer: true, unknown: false } })
+
+export const phone: NotifyChannel = { id: 'c1', name: 'Phone', type: 'ntfy', url: 'https://ntfy.sh', topic: 'antennarr', hasToken: true, hasUser: false }
+export const pushover: NotifyChannel = { id: 'c2', name: 'Pushover', type: 'pushover', hasToken: true, hasUser: true }
+export const discord: NotifyChannel = { id: 'c3', name: 'Discord', type: 'webhook', host: 'discord.com', hasToken: false, hasUser: false }
+
+/** A state with these channels set up. */
+export function withChannels(state: AppState, ...channels: NotifyChannel[]): AppState {
+  state.settings.notifications.channels = channels
+  return state
+}
+
 export function makeState(over: Partial<AppState> = {}): AppState {
   return {
     time: '2026-10-17T10:05:00Z',
     devices: [makeDevice()],
     viewers: [john, mom],
-    settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true, guide: true, plex: { enabled: false, admins: [] } },
+    settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true, guide: true, plex: { enabled: false, admins: [] }, notifications: noNotifications() },
     editable: true,
     version: '2026.10.0',
     versionUrl: 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0',

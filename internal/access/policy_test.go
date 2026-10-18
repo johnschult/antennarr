@@ -623,3 +623,92 @@ func TestPrivateAddr(t *testing.T) {
 		}
 	}
 }
+
+// fakeEvents records what the policy tells the notifier about.
+type fakeEvents struct {
+	mu      sync.Mutex
+	refused []string
+	unknown []string
+}
+
+func (f *fakeEvents) Refused(device, title, viewer, reason string) {
+	f.mu.Lock()
+	f.refused = append(f.refused, device+"|"+title+"|"+viewer+"|"+reason)
+	f.mu.Unlock()
+}
+func (f *fakeEvents) Unknown(device, title, addr string) {
+	f.mu.Lock()
+	f.unknown = append(f.unknown, device+"|"+title+"|"+addr)
+	f.mu.Unlock()
+}
+func (f *fakeEvents) get() (refused, unknown []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.refused...), append([]string(nil), f.unknown...)
+}
+
+func TestARefusalReachesTheEventsOnceAMinuteWithTheTunersName(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	s := twoViewers
+	s.Labels = map[string]string{testDevice: "Living room"}
+	p, _ := newPolicy(t, s, mon)
+	ev := &fakeEvents{}
+	p.SetEvents(ev)
+	now := time.Unix(1_000_000, 0)
+	p.now = func() time.Time { return now }
+
+	mom := req("10.8.0.5:1")
+	if _, err := p.Stream(mom); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 10; i++ {
+		p.Stream(mom)
+	}
+	refused, unknown := ev.get()
+	if len(refused) != 1 || refused[0] != "antenna|Living room|Mom|viewer-limit" || len(unknown) != 0 {
+		t.Errorf("refused = %v, unknown = %v", refused, unknown)
+	}
+	now = now.Add(61 * time.Second)
+	p.Stream(mom)
+	if refused, _ := ev.get(); len(refused) != 2 {
+		t.Errorf("a minute later: %v", refused)
+	}
+}
+
+func TestAnUnknownAddressReachesTheEventsFromAuthorizeAndStream(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	p, _ := newPolicy(t, twoViewers, mon)
+	ev := &fakeEvents{}
+	p.SetEvents(ev)
+
+	if err := p.Authorize(req("203.0.113.9:5555")); err == nil {
+		t.Fatal("an unknown address was allowed")
+	}
+	if _, err := p.Stream(req("203.0.113.10:5555")); err == nil {
+		t.Fatal("an unknown address got a stream")
+	}
+	_, unknown := ev.get()
+	if len(unknown) != 2 || unknown[0] != "antenna|antenna|203.0.113.9" || unknown[1] != "antenna|antenna|203.0.113.10" {
+		t.Errorf("unknown = %v", unknown)
+	}
+
+	// A viewer, even refused, is not an unknown address.
+	if err := p.Authorize(req("10.8.0.5:1")); err != nil {
+		t.Fatal(err)
+	}
+	if _, unknown := ev.get(); len(unknown) != 2 {
+		t.Errorf("a viewer was reported as unknown: %v", unknown)
+	}
+}
+
+func TestPolicyWorksWithoutEvents(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	p, _ := newPolicy(t, twoViewers, mon)
+	p.Authorize(req("203.0.113.9:1")) // nobody is listening: it must not panic
+	mom := req("10.8.0.5:1")
+	p.Stream(mom)
+	p.Stream(mom)
+}

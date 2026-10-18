@@ -39,7 +39,11 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `PUT viewers/{name}` | Replace a viewer (the same body). |
 | `DELETE viewers/{name}` | Remove a viewer, `204`. Removing the last viewer leaves nobody able to use the tuner. The `mode` in the settings is then `no-viewers`. |
 | `GET settings` | The general settings. |
-| `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `plexEnabled`. Only the fields you send change. |
+| `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `plexEnabled`, `notifyEvents` (`{"firmware": false, "unknown": true}`: any of `firmware`, `tuner`, `viewer`, `unknown`; `firmware: true` is refused with `400` while `firmwareCheck` is off). Only the fields you send change. |
+| `POST notifications/channels` | Add a channel: `{"name", "type": "ntfy"\|"pushover"\|"webhook", "url", "topic", "token", "user"}`. Replies `201` with the channel, without its secrets. `400` with the reason if it isn't valid; `409` without a settings file. |
+| `PUT notifications/channels/{id}` | Change a channel. A `token`, `user` or (for a webhook) `url` left empty keeps the saved one; `"clearToken": true` removes the token. Secrets aren't carried to a different `type`. `404` if there is no such channel. |
+| `DELETE notifications/channels/{id}` | Remove a channel, `204`. |
+| `POST notifications/test` | Send one message to a channel and say whether it got through: `{"id": "…"}` for a saved one, `{"channel": {…}}` for one that isn't saved yet, or both (the saved channel with those changes, saving nothing). Replies `{"ok": true}`, or `502` with why not. `429` if that channel was tested a moment ago. |
 | `POST discover` | Search the network for HDHomeRun tuners (takes about 3 seconds). Replies `{"tuners": [{"id", "address", "tuners", "added"}]}`; `added` is the device a tuner already is, or `""`. `429` while another search is running. |
 | `POST devices` | Start sharing a tuner: `{"tuner": "192.168.1.50"}`, optionally with `"id"`, `"name"` and `"listen"`. The name (`tuner`, then `tuner-<id>`), the port and the DeviceID are chosen if left out. Replies `201` with the device. `422` if nothing answers at the address, `409` if that tuner is already added, the port can't be used, there is no settings file, or the tuner came from command-line flags. |
 | `DELETE devices/{name}` | Stop sharing a tuner, `204`. Streams on it are cut, its port is freed, and its label and any per-device viewer limits are removed from the settings. `409` in the same cases as adding. |
@@ -58,7 +62,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
   "time": "2026-10-17T20:00:00Z",
   "devices": [ { "name": "antenna", "label": "…", "listen": ":5004", "tuner": { "online": true, "id": "10C03B06", "baseURL": "http://192.168.1.50", "tunerCount": 4, "slots": [ … ], "events": [ … ] }, "streams": [ … ], "summary": { … }, "firmware": { … }, "guide": { … } } ],
   "viewers": [ … ],
-  "settings": { "mode": "enforced", "sharedCap": 0, "ownerReserve": 1, "admin": [], "firmwareCheck": true, "guide": true, "plex": { "enabled": false, "admins": [] } },
+  "settings": { "mode": "enforced", "sharedCap": 0, "ownerReserve": 1, "admin": [], "firmwareCheck": true, "guide": true, "plex": { "enabled": false, "admins": [] }, "notifications": { "channels": [ … ], "events": { "firmware": true, "tuner": true, "viewer": true, "unknown": false } } },
   "editable": true,
   "version": "2026.10.0",
   "versionUrl": "https://github.com/johnschult/antennarr/releases/tag/v2026.10.0"
@@ -66,7 +70,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 ```
 
 `editable` is false when Antennarr couldn't create its settings file. For the exact fields, see `internal/api/api.go` and the TypeScript types in `web/src/lib/types.ts`, which are kept in step with it.
-The tuner's guide key (`DeviceAuth`) and the Plex client ID are never in the state document.
+The tuner's guide key (`DeviceAuth`), the Plex client ID and the secrets in notification channels (tokens, user keys, and a webhook's address, of which only the host is shown) are never in the state document.
 
 ## Signing in
 

@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addDevice, addViewer, checkFirmware, deleteDevice, deleteViewer, getState, patchDevice, patchSettings, replaceViewer } from '@/lib/api'
+import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, getState, patchDevice, patchSettings, replaceChannel, replaceViewer, testChannel } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
-import type { AppState, DeviceInput, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
+import type { AppState, ChannelInput, DeviceInput, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
 
 /** What a firmware check turned up across the tuners: newer firmware, none, or no clear answer. */
@@ -82,5 +82,32 @@ export function useEdits() {
       void refresh()
     },
   })
-  return { add, replace, remove, settings, device, firmware, addTuner, removeTuner }
+  const channelAdd = useMutation({
+    mutationFn: (c: ChannelInput) => addChannel(c),
+    onSuccess: (c) => {
+      toast.success(`Added ${c.name}`)
+      void refresh()
+    },
+  })
+  const channelReplace = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ChannelInput }) => replaceChannel(id, input),
+    onSuccess: (c) => {
+      toast.success(`Saved ${c.name}`)
+      void refresh()
+    },
+  })
+  const channelRemove = useMutation({
+    mutationFn: ({ id }: { id: string; name: string }) => deleteChannel(id),
+    onSuccess: (_, { name }) => {
+      toast.success(`Removed ${name}`)
+      void refresh()
+    },
+  })
+  // Like the firmware check: the button shows it is working, and the one toast says how it went.
+  const channelTest = useMutation({
+    mutationFn: ({ request }: { name: string; request: Parameters<typeof testChannel>[0] }) => testChannel(request),
+    onSuccess: (_, { name }) => toast.success(`Test sent to ${name}`),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'The test did not go through'),
+  })
+  return { add, replace, remove, settings, device, firmware, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
 }

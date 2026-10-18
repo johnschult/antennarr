@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fakeWindow, stubOpen } from '@/test/fake-window'
-import { makeDevice, makeState, makeTwoDeviceState } from '@/test/fixtures'
+import { makeDevice, makeState, makeTwoDeviceState, noNotifications } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { SettingsPage } from './settings'
 
@@ -10,7 +10,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, plex: { enabled: false, admins: [] } }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, plex: { enabled: false, admins: [] }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s

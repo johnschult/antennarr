@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -78,7 +79,13 @@ type API struct {
 	// proxies don't drop it. Zero means 20s.
 	KeepAlive time.Duration
 
+	// Notify sends test messages to a notification channel; nil means there is no
+	// notifying, and the test button says so.
+	Notify Tester
+
 	searching atomic.Bool // a network search is under way
+	testMu    sync.Mutex
+	tested    map[string]time.Time // when each channel was last tested
 }
 
 // Device is one fronted tuner: its name, where media servers reach it, and the
@@ -113,6 +120,9 @@ func (a *API) Handler() http.Handler {
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
+		{"notifications/channels", map[string]http.HandlerFunc{"POST": a.addChannel}},
+		{"notifications/channels/{id}", map[string]http.HandlerFunc{"PUT": a.replaceChannel, "DELETE": a.deleteChannel}},
+		{"notifications/test", map[string]http.HandlerFunc{"POST": a.testChannel}},
 	}
 	for _, rt := range routes {
 		var allow []string
@@ -155,6 +165,9 @@ type SettingsDoc struct {
 	FirmwareCheck bool     `json:"firmwareCheck"`
 	Guide         bool     `json:"guide"`
 	Plex          PlexDoc  `json:"plex"`
+	// Notifications is where messages go and which events send them, without
+	// the secrets in the channels.
+	Notifications NotificationsDoc `json:"notifications"`
 }
 
 // PlexDoc is the state of signing in with Plex. The client ID is deliberately
@@ -254,6 +267,7 @@ func (a *API) state() State {
 			FirmwareCheck: set.FirmwareCheckEnabled(),
 			Guide:         set.GuideEnabled(),
 			Plex:          plexDoc(set),
+			Notifications: notificationsDoc(set),
 		},
 		Editable:   a.Store.Editable(),
 		Version:    version.Get(),
@@ -463,6 +477,8 @@ type settingsPatch struct {
 	FirmwareCheck *bool     `json:"firmwareCheck"`
 	Guide         *bool     `json:"guide"`
 	PlexEnabled   *bool     `json:"plexEnabled"`
+	// NotifyEvents switches kinds of event on and off for notifications.
+	NotifyEvents *notifyEventsPatch `json:"notifyEvents"`
 }
 
 func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
@@ -493,6 +509,17 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 				s.Plex = &access.PlexSettings{}
 			}
 			s.Plex.Enabled = *in.PlexEnabled
+		}
+		if in.NotifyEvents != nil {
+			// There is nothing to be told about while the firmware check is off. (Turning the check
+			// off later leaves the switch as it was, and it takes effect again when the check is on.)
+			if in.NotifyEvents.Firmware != nil && *in.NotifyEvents.Firmware && !s.FirmwareCheckEnabled() {
+				return &httpErr{http.StatusBadRequest, "turn on “Check for new tuner firmware” first: there is nothing to tell you about while it is off"}
+			}
+			if s.Notifications == nil {
+				s.Notifications = &access.Notifications{}
+			}
+			in.NotifyEvents.apply(s.Notifications)
 		}
 		return nil
 	})

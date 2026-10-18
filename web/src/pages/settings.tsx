@@ -1,7 +1,8 @@
-import { Gauge, KeyRound, ShieldCheck } from 'lucide-react'
+import { Bell, Gauge, KeyRound, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { EditRow } from '@/components/settings/edit-row'
+import { NotificationRows } from '@/components/settings/notification-rows'
 import { PlexRows } from '@/components/settings/plex-rows'
 import { Row, Section } from '@/components/settings/section'
 import { SwitchRow } from '@/components/settings/switch-row'
@@ -80,6 +81,14 @@ export function SettingsPage() {
             {settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}
           </Link>
         </Row>
+      </Section>
+
+      <Section
+        title="Notifications"
+        icon={Bell}
+        description="Messages about firmware, tuners and viewers, to your phone or another service."
+      >
+        <NotificationRows />
       </Section>
 
       <Section title="Privacy and updates" icon={ShieldCheck}>
