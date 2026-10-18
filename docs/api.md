@@ -40,6 +40,9 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `DELETE viewers/{name}` | Remove a viewer, `204`. Removing the last viewer leaves nobody able to use the tuner. The `mode` in the settings is then `no-viewers`. |
 | `GET settings` | The general settings. |
 | `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `plexEnabled`. Only the fields you send change. |
+| `POST discover` | Search the network for HDHomeRun tuners (takes about 3 seconds). Replies `{"tuners": [{"id", "address", "tuners", "added"}]}`; `added` is the device a tuner already is, or `""`. `429` while another search is running. |
+| `POST devices` | Start sharing a tuner: `{"tuner": "192.168.1.50"}`, optionally with `"id"`, `"name"` and `"listen"`. The name (`tuner`, then `tuner-<id>`), the port and the DeviceID are chosen if left out. Replies `201` with the device. `422` if nothing answers at the address, `409` if that tuner is already added, the port can't be used, there is no settings file, or the tuner came from command-line flags. |
+| `DELETE devices/{name}` | Stop sharing a tuner, `204`. Streams on it are cut, its port is freed, and its label and any per-device viewer limits are removed from the settings. `409` in the same cases as adding. |
 | `PATCH devices/{name}` | Change a device's `label` (display name; `""` clears it), `ownerReserve` or `sharedCap`. |
 | `GET devices/{name}/guide/{channel}/icon` | A channel's logo (a PNG), fetched by Antennarr, `404` when there isn't one. |
 | `POST firmware/check` | Read the firmware changelog now. `429` if it was read a moment ago. |

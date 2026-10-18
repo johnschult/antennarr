@@ -1,4 +1,5 @@
 import { FirmwareBadge } from '@/components/firmware'
+import { NoTuners } from '@/components/no-tuners'
 import { TunerTile } from '@/components/tuner-tile'
 import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/hooks/app-context'
@@ -44,12 +45,13 @@ export function LivePage() {
         <div>
           <div className="text-xs tracking-[0.2em] text-cyan-700 dark:text-cyan-700 dark:text-cyan-300/80 uppercase">On air now</div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            {sum(devices, (d) => d.summary.inUse)} of {sum(devices, (d) => d.summary.total)} tuners live
+            {devices.length === 0 ? 'No tuners yet' : `${sum(devices, (d) => d.summary.inUse)} of ${sum(devices, (d) => d.summary.total)} tuners live`}
           </h1>
-          <p className="mt-1 text-muted-foreground">{parts.join(' · ')}</p>
+          {devices.length > 0 && <p className="mt-1 text-muted-foreground">{parts.join(' · ')}</p>}
         </div>
       </div>
 
+      {devices.length === 0 && <NoTuners />}
       {devices.map((d) => (
         <DeviceSection key={d.name} device={d} showHeader={several || !!d.label} tick={state.time} />
       ))}

@@ -197,6 +197,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 			return nil, err
 		}
 		s.devices = append(s.devices, dev)
+		s.log.Info("device ready", "device", d.Name, "listen", d.Listen, "tuner", dev.mon.Snapshot().BaseURL, "tunerID", strings.ToUpper(d.ID))
 	}
 
 	if len(cfg.Settings.Viewers) == 0 {
@@ -237,7 +238,7 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 	// servers) is handled as before.
 	mux.Handle("GET /{$}", s.policy.AdminHome("/antennarr/", tunerAPI))
 
-	log.Info("device ready", "listen", d.Listen, "tuner", base, "tunerID", strings.ToUpper(d.ID))
+	log.Debug("device built", "listen", d.Listen, "tuner", base)
 	return &device{cfg: d, mon: mon, handler: mux}, nil
 }
 

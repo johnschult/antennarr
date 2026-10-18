@@ -30,7 +30,12 @@ function Status() {
   const one = devices.length === 1 ? devices[0] : null
   return (
     <>
-      {one ? (
+      {devices.length === 0 ? (
+        <span className="flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-amber-400" />
+          No tuners yet
+        </span>
+      ) : one ? (
         <span className="flex items-center gap-1.5" title={one.tuner.online ? 'Tuner online' : 'Tuner offline'}>
           <span className={cn('size-2 rounded-full', one.tuner.online ? 'bg-emerald-400' : 'bg-red-400')} />
           {one.label ?? one.tuner.friendlyName ?? 'Tuner'} · <span className="font-mono">{one.tuner.baseURL.replace(/^https?:\/\//, '')}</span>
