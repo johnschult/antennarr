@@ -116,6 +116,17 @@ describe("axe: what's new", () => {
   })
 })
 
+describe('axe: the Device panel', () => {
+  const info = { hardwareModel: 'HDFX-4K', model: 'hdhomerun_dvr_atsc3', version: '20260326', drm: 'SD20230420', mac: '00:18:DD:00:00:01', ip: '192.168.1.50', subnet: '255.255.255.0', channelMaps: ['us-bcast'], modulations: ['atsc3'], readAt: new Date().toISOString(), problems: ['the tuner has no System Menu page to read'] }
+
+  it('with the details read, and with a note on what could not be', async () => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /devices/antenna/info': () => ({ body: info }) }).fn)
+    render(makeState(), '/tuner')
+    await screen.findByText('SD20230420')
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
 describe('axe: installing firmware', () => {
   const upgrading = (u?: { phase: 'downloading' | 'sending' | 'restarting' | 'verifying' | 'done' | 'failed'; error?: string }, over: Partial<ReturnType<typeof makeDevice>> = {}) =>
     makeState({

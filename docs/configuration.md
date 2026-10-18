@@ -68,7 +68,7 @@ Who you share with. **With no viewers, nobody can use the tuner**: a new install
 | `sharedCap` | The most tuners *all* viewers together may use on a device. `0` means no cap. |
 | `ownerReserve` | Tuners always kept free for your own devices (default `1`), **in addition to** any your own devices are using at the moment. |
 | `admin` | Extra addresses (single or ranges) allowed to open the admin pages. Loopback is always allowed once a viewer exists. Keep this narrow, and keep viewers' addresses out of it: a viewer inside an admin range is an admin too (Antennarr logs a warning). |
-| `labels` | Display names, by device name: `{ "antenna": "Living room antenna" }`, up to 60 characters. It is for the web page only, and changes live. Media servers are always told the tuner's own name (its model, such as `HDHomeRun FLEX 4K`), so a name you give it here never reaches Plex: renaming doesn't change what Plex shows, and a media server can name its own DVR as it likes. |
+| `labels` | Display names, by device name: `{ "antenna": "Living room antenna" }`, up to 60 characters. It is for the web page only, and changes live. Media servers are always told the device (such as `HDHomeRun FLEX 4K`), so a name you give it here never reaches Plex: renaming doesn't change what Plex shows, and a media server can name its own DVR as it likes. |
 | `firmwareCheck` | Look at SiliconDust's firmware changelog every 12 hours (default `true`). |
 | `guide` | Read SiliconDust's programme guide so Live tiles can show the channel logo and what's on (default `true`). |
 | `notifications` | Messages to your phone or another service. `channels` is a list (at most 8); `events` switches kinds of event on or off. See [Notifications](#notifications) below. |

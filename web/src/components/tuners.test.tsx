@@ -132,7 +132,7 @@ describe('adding and removing tuners on the Tuners page', () => {
     await openAll()
     await userEvent.click(screen.getByRole('button', { name: 'Remove Cable HDHR' }))
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Keep' }))
-    expect(calls).toHaveLength(0)
+    expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0)
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove Cable HDHR' }))
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove' }))

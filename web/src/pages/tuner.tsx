@@ -11,6 +11,7 @@ import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
 import { moveToPort } from '@/lib/navigate'
 import { ChannelLogo } from '@/components/channel-logo'
+import { DevicePanel } from '@/components/device-panel'
 import { FirmwareBadge, FirmwareSection } from '@/components/firmware'
 import { channelIconUrl } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
@@ -128,7 +129,7 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
           <span className="min-w-0">
             <span className="block truncate font-semibold tracking-tight">{deviceTitle(device)}</span>
             <span className="block truncate font-mono text-xs text-muted-foreground">
-              {[tuner.model, tuner.baseURL.replace(/^https?:\/\//, ''), `port ${port}`].filter(Boolean).join(' · ')}
+              {[tuner.friendlyName !== deviceTitle(device) ? tuner.friendlyName : undefined, tuner.baseURL.replace(/^https?:\/\//, ''), `port ${port}`].filter(Boolean).join(' · ')}
             </span>
           </span>
         </button>
@@ -179,7 +180,7 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
                 maxLength={60}
                 id={`setting-${device.name}-label`}
                 title="Name"
-                description="What it is called on this page. Plex and other media servers always see the tuner's own name."
+                description="What it is called on this page. Plex and other media servers always see the device, e.g. HDHomeRun FLEX 4K."
                 initial={device.label ?? ''}
                 placeholder={tuner.friendlyName ?? device.name}
                 disabled={!state.editable}
@@ -208,6 +209,8 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
                 </Button>
               </Row>
             </Section>
+
+            <DevicePanel device={device} showName={showName} />
 
             <FirmwareSection device={device} />
           </div>

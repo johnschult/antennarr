@@ -95,7 +95,7 @@ Tuner health and last-seen IP; tuners in use by viewer vs. local; current channe
 
 Built. Devices are declared in the settings file (`devices`), each looking like its own HDHomeRun to media servers on its own port, with its own monitor following the tuner by DeviceID. Viewers and the allowlist are shared; stream counts, the shared cap and the owner reserve are per device (with per-device overrides of the defaults), and a viewer's limit can be overridden per device. Running with just `-tuner` or `-tuner-id` is the same thing with one device. A pool mode (several devices behind one virtual tuner, with failover) is still a later option; it needs the lineups to match.
 
-A device's `name` is a stable key (settings, limits, URLs); what people see on the web page is its **display name** (`labels`), which changes live, or the model the tuner reports (HDHomeRun FLEX 4K) when it has none, shown once. The display name is local: media servers are always told the tuner's own name, so it stays the same whatever the tuner is called here, and the model always shows up in Plex (where a DVR can be renamed on Plex's side).
+A device's `name` is a stable key (settings, limits, URLs); what people see on the web page is its **display name** (`labels`), which changes live, or the model the tuner reports (HDHomeRun FLEX 4K) when it has none, shown once. The display name is local: media servers are always told the device, so it stays the same whatever the tuner is called here, and the model always shows up in Plex (where a DVR can be renamed on Plex's side).
 
 ## Firmware
 
@@ -115,6 +115,14 @@ Built. The Tuners page has an Install button when the check is certain there is 
 - `internal/upgrade` runs one install at a time per tuner in the background: downloading, sending, restarting, verifying. The server re-checks everything when the button is pressed (the version is the current release, the tuner is online, the check is on) and refuses with `409` if anything is in use unless the request says `interrupt`. It never retries a flash. It is done only when the tuner's control port reports the new version; if it comes back on the old one, or doesn't come back, it says so and tells you to power-cycle it.
 - While an install runs the monitor does not call the tuner offline, send an offline message or start searching for it elsewhere (`Monitor.SetUpdating`, which expires after 30 minutes).
 - The viewer proxy still answers `404` for the tuner's own upgrade path: this is an admin-only route.
+
+## Device panel
+
+Built. The Tuners page shows what each tuner says about itself: hardware model, firmware, ATSC 3.0 DRM version, device ID, MAC, IP, subnet, channel maps and modulations.
+
+- `internal/tunerinfo` reads a fixed list of values (`/sys/model`, `/sys/hwmodel`, `/sys/version`, `/sys/features`) over the control port, and the tuner's System Menu page (`/system.html`) for what the control protocol doesn't have (DRM, MAC, subnet). It never sends a value to set, and no name comes from a request. The page is a plain HTML table with no JSON behind it, so a layout change leaves those fields out and the panel says why: it never guesses.
+- It reads when the panel opens and when someone presses Refresh, not on a timer, and remembers each answer for 30 seconds.
+- Admin-only, like the rest of the API. Not yet: reboot and rescan, which change the tuner and wait for their own confirmation and tests.
 
 ## Guide
 

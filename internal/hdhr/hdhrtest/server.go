@@ -28,7 +28,7 @@ type Frame struct {
 type Options struct {
 	DeviceID string // 8 hex digits; "10ABCC87" if empty
 	Version  string // /sys/version; "20250815" if empty
-	Model    string // /sys/model; "HDFX-4K" if empty
+	Model    string // /sys/hwmodel; "HDFX-4K" if empty
 	Tuners   int    // how many tuners; 4 if zero
 
 	// RejectUpgrade, if set, is the error the tuner answers the end of an upgrade with.
@@ -93,7 +93,10 @@ func New(addr string, o Options) (*Server, error) {
 	if o.Tuners == 0 {
 		o.Tuners = 4
 	}
-	s := &Server{opts: o, tcp: tcp, udp: udp, values: map[string]string{"/sys/version": o.Version, "/sys/model": o.Model, "/sys/hwmodel": o.Model}}
+	s := &Server{opts: o, tcp: tcp, udp: udp, values: map[string]string{
+		"/sys/version": o.Version, "/sys/model": "hdhomerun_dvr_atsc3", "/sys/hwmodel": o.Model,
+		"/sys/features": "channelmap: us-bcast us-cable us-hrc us-irc kr-bcast kr-cable\nmodulation: atsc3 8vsb qam256 qam64\nauto-modulation: auto auto6t auto6c qam\n",
+	}}
 	for i := 0; i < o.Tuners; i++ {
 		s.values[fmt.Sprintf("/tuner%d/channel", i)] = "none"
 		s.values[fmt.Sprintf("/tuner%d/lockkey", i)] = "none"

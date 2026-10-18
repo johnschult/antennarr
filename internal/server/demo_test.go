@@ -166,6 +166,8 @@ func TestDemo(t *testing.T) {
 			return
 		}
 		switch r.URL.Path {
+		case "/system.html":
+			http.ServeFile(w, r, "../tunerinfo/testdata/system.html")
 		case "/discover.json":
 			fmt.Fprintf(w, `{"DeviceAuth":"DEMO-AUTH","FriendlyName":"HDHomeRun FLEX 4K","ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":%q,"DeviceID":"10ABCC87","TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"}`, ver)
 		case "/lineup.json":
@@ -267,6 +269,16 @@ func TestDemo(t *testing.T) {
 		Find: func(context.Context, string, string) (discovery.Device, error) {
 			return discovery.Device{}, errors.New("demo")
 		},
+	}
+	// The Device panel reads the tuner's control port and its System Menu page: a fake of each.
+	if !update.on {
+		var err error
+		update.ctrl, err = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20260326"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer update.ctrl.Close()
+		cfg.ControlPort = update.ctrl.Addr()[strings.LastIndex(update.ctrl.Addr(), ":")+1:]
 	}
 	if update.on {
 		cfg.FirmwareURL = update.changelog.URL
