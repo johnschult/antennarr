@@ -110,6 +110,8 @@ Please keep that in mind:
 - **With no viewers configured, everything is open**, including the admin page and its settings, to anyone who can reach the port.
   Add a viewer first (Viewers page, or `viewers` in the settings file). Once there is one, only listed addresses can use the tuner, and
   only loopback and your `admin` addresses (or a signed-in Plex account) can use the admin pages.
+- **Viewers only get what a media server needs.** Besides `discover.json`, `lineup.json` and the streams, only `status.json` and `lineup_status.json` are passed to the tuner, read-only.
+  Everything else the tuner serves (rescans, firmware upgrade, its own web pages) answers `404`.
 - **Don't put Antennarr on the open internet.** Use Tailscale, a VPN, or a private network. If you must, allow only the viewer's address in both Antennarr and your firewall.
 - **Admin by address** trusts the address a request arrives from. If you run Antennarr behind a reverse proxy, every request looks like it came from the proxy.
 - The admin API refuses cross-site writes and only accepts JSON. The web page is served with a strict Content-Security-Policy.

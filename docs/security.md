@@ -6,12 +6,14 @@
 
 | Who | Can do | How they are recognised |
 |---|---|---|
-| A **viewer** | Use the tuner: `discover.json`, `lineup.json`, `status.json` and the streams, within their limits. | Their address is listed under *Viewers*. |
+| A **viewer** | Use the tuner: `discover.json`, `lineup.json`, `status.json`, `lineup_status.json` and the streams, within their limits. Read-only: nothing else the tuner offers (rescans, firmware upgrade, its web pages) is reachable and answers `404`. | Their address is listed under *Viewers*. |
 | An **admin** | Open the web page and change settings: add viewers, change limits, and so on. | They connect from this machine (loopback), from an address listed under `admin`, or they are signed in with an allowed Plex account. |
 | Anyone else | Nothing. The tuner side answers `403`. The admin pages answer `403` (the page itself loads so you can sign in, but shows nothing). | |
 
 **With no viewers configured, everything is open**, including the admin page, to anyone who can reach the port. Antennarr says so in its log at startup. As soon as you add a viewer it locks down as in the table.
 A viewer is not an admin: being allowed to watch doesn't let you change anything.
+
+If a media server needs a tuner page that isn't on the list, Antennarr logs `path not served` with the path. Please open an issue with that line.
 
 ## Keep it off the open internet
 
