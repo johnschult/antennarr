@@ -32,6 +32,7 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
 - **Firmware news.** Tells you when SiliconDust releases firmware for your model. It never installs anything.
 - **Any network.** Plain LAN, Tailscale, WireGuard, ZeroTier… Antennarr just listens on a port. Getting the two servers to reach each other is up to you.
 
+> [!WARNING]
 > **Status: early.** It runs a real FLEX 4K and is tested with the Go race detector and a UI test suite, but it is young software.
 > Expect rough edges, and please read [Security](#security) before exposing it to anything beyond a network you trust.
 
