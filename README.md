@@ -192,7 +192,7 @@ The design notes, including what is built and what is planned, are in [docs/DESI
 
 ## Roadmap
 
-Planned, roughly in this order: Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), adding and removing tuners from the UI, and a redesigned Tuners page. Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Planned, roughly in this order: Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), and editing a tuner's address from the UI. Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

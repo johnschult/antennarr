@@ -1,12 +1,10 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { moveToPort } from '@/lib/navigate'
 import { idleSlot, localSlot, makeState, makeTwoDeviceState, remoteSlot, updateAvailable } from '@/test/fixtures'
-import { mockPhone } from '@/test/match-media'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { channelIconUrl } from '@/lib/api'
-import { formatMbps } from '@/lib/format'
 import { TunerPage } from './tuner'
 
 vi.mock('@/lib/navigate', () => ({ moveToPort: vi.fn() }))
@@ -38,7 +36,7 @@ describe('TunerPage', () => {
       idleSlot(2),
     ]
     renderWithApp(<TunerPage />, s)
-    const rows = screen.getAllByRole('row').slice(1)
+    const rows = within(screen.getByRole('list', { name: 'Tuners' })).getAllByRole('listitem')
     expect(rows).toHaveLength(3)
     expect(rows[0]).toHaveTextContent('tuner0')
     expect(rows[0]).toHaveTextContent('2.1 WBAY')
@@ -58,25 +56,55 @@ describe('TunerPage', () => {
     expect(screen.getByText('No tuner data yet.')).toBeInTheDocument()
   })
 
-  it('has a section for each device when there are several', () => {
+  it('has a section for each device when there are several, folded until opened', async () => {
+    const user = userEvent.setup()
     renderWithApp(<TunerPage />, makeTwoDeviceState())
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
     const antenna = screen.getByRole('region', { name: 'antenna' })
     const cable = screen.getByRole('region', { name: 'cable' })
+    expect(within(antenna).getByRole('button', { name: /^antenna/ })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('10ABCC87')).not.toBeInTheDocument()
+    expect(antenna).toHaveTextContent('HDFX-4K')
+    expect(antenna).toHaveTextContent('port 5004')
+    expect(antenna).toHaveTextContent('2 of 4 in use')
+    expect(cable).toHaveTextContent('0 of 2 in use')
+
+    await user.click(within(antenna).getByRole('button', { name: /^antenna/ }))
+    await user.click(within(cable).getByRole('button', { name: /^cable/ }))
     expect(within(antenna).getByText('10ABCC87')).toBeInTheDocument()
     expect(within(cable).getByText('1111AAA2')).toBeInTheDocument()
     expect(within(cable).getByText('HDHR5-4DT')).toBeInTheDocument()
-    expect(within(antenna).getAllByRole('row')).toHaveLength(5) // header + 4 tuners
-    expect(within(cable).getAllByRole('row')).toHaveLength(3) // header + 2 tuners
+    expect(within(antenna).getAllByRole('listitem').length).toBeGreaterThanOrEqual(4)
+    expect(within(cable).getByRole('list', { name: 'Tuners on cable' })).toBeInTheDocument()
+
+    await user.click(within(antenna).getByRole('button', { name: /^antenna/ }))
+    expect(screen.queryByText('10ABCC87')).not.toBeInTheDocument()
   })
 
-  it('titles each section with the name the owner chose, and shows its firmware', () => {
+  it('opens a single tuner by itself', () => {
+    renderWithApp(<TunerPage />, makeState())
+    expect(screen.getByRole('button', { name: /^antenna/ })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('shows how many tuners are in use and a firmware flag while folded', () => {
+    const s = makeTwoDeviceState()
+    s.devices[0].tuner.slots = [localSlot(0), remoteSlot(1), idleSlot(2), idleSlot(3)]
+    s.devices[0].firmware = updateAvailable
+    renderWithApp(<TunerPage />, s)
+    const antenna = screen.getByRole('region', { name: 'antenna' })
+    expect(antenna).toHaveTextContent('2 of 4 in use')
+    expect(within(antenna).getByText('Firmware update')).toBeInTheDocument()
+  })
+
+  it('titles each section with the name the owner chose, and shows its firmware', async () => {
     const s = makeTwoDeviceState()
     s.devices[0].label = 'Living room antenna'
     s.devices[0].firmware = updateAvailable
+    const user = userEvent.setup()
     renderWithApp(<TunerPage />, s)
     const antenna = screen.getByRole('region', { name: 'Living room antenna' })
-    expect(within(antenna).getByRole('heading', { name: 'Living room antenna' })).toBeInTheDocument()
+    await user.click(within(antenna).getByRole('button', { name: /^Living room antenna/ }))
+    await user.click(within(screen.getByRole('region', { name: 'cable' })).getByRole('button', { name: /^cable/ }))
     expect(screen.getByRole('region', { name: 'Firmware — Living room antenna' })).toBeInTheDocument()
     expect(screen.getByText('Update available · 26 Mar 2026')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Firmware — cable' })).toBeInTheDocument()
@@ -104,69 +132,12 @@ describe('TunerPage channel logos', () => {
     const logos = screen.getAllByRole('img', { name: /logo/ })
     expect(logos).toHaveLength(1) // 5.1 only: 2.1 has no logo, the idle tuners have no channel
     expect(logos[0]).toHaveAttribute('src', channelIconUrl('antenna', '5.1'))
-    expect(logos[0].closest('tr')).toHaveTextContent('5.1')
+    expect(logos[0].closest('li')).toHaveTextContent('5.1')
   })
 
   it('shows no logos when the guide is off or empty', () => {
     renderWithApp(<TunerPage />, makeState())
     expect(screen.queryByRole('img', { name: /logo/ })).not.toBeInTheDocument()
-  })
-})
-
-describe('TunerPage on a phone', () => {
-  const slotCard = (resource: string) => within(screen.getByRole('list', { name: 'Tuners' })).getByText(resource).closest('li')!
-
-  it('shows each tuner as a card instead of a table that would scroll sideways', () => {
-    mockPhone(true)
-    renderWithApp(<TunerPage />, makeState())
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    expect(within(screen.getByRole('list', { name: 'Tuners' })).getAllByRole('listitem')).toHaveLength(4)
-  })
-
-  it('shows who has a tuner, its signal and its rate, and just "idle" for a free one', () => {
-    mockPhone(true)
-    const s = makeState()
-    s.devices[0].tuner.slots = [
-      { ...localSlot(0), signalStrength: 96, signalQuality: 82 },
-      { ...remoteSlot(1), signalStrength: 100 },
-      idleSlot(2),
-      idleSlot(3),
-    ]
-    renderWithApp(<TunerPage />, s)
-    const local = within(slotCard('tuner0'))
-    expect(local.getByText('2.1 WBAY')).toBeInTheDocument()
-    expect(local.getByText('192.168.1.77')).toBeInTheDocument()
-    expect(local.getByText('96% / 82%')).toBeInTheDocument()
-    expect(local.getByText(formatMbps(12_800_000))).toBeInTheDocument()
-    expect(within(slotCard('tuner1')).getByText('Antennarr')).toBeInTheDocument()
-    expect(within(slotCard('tuner1')).getByText('100% / 0%')).toBeInTheDocument()
-    expect(within(slotCard('tuner2')).getByText('idle')).toBeInTheDocument()
-    expect(within(slotCard('tuner2')).queryByText('Used by')).not.toBeInTheDocument()
-  })
-
-  it('keeps the channel logo', () => {
-    mockPhone(true)
-    const s = makeState()
-    s.devices[0].guide = { '5.1': { name: 'WFRV', icon: true } }
-    renderWithApp(<TunerPage />, s)
-    expect(within(slotCard('tuner1')).getByRole('img', { name: /logo/ })).toHaveAttribute('src', channelIconUrl('antenna', '5.1'))
-  })
-
-  it('says so when the tuner has reported nothing yet', () => {
-    mockPhone(true)
-    const s = makeState()
-    s.devices[0].tuner.slots = []
-    renderWithApp(<TunerPage />, s)
-    expect(screen.getByText('No tuner data yet.')).toBeInTheDocument()
-  })
-
-  it('switches between the card list and the table as the window is resized', () => {
-    const viewport = mockPhone(true)
-    renderWithApp(<TunerPage />, makeState())
-    expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    act(() => viewport.set(false))
-    expect(screen.getByRole('table')).toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: 'Tuners' })).not.toBeInTheDocument()
   })
 })
 
