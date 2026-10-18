@@ -338,7 +338,7 @@ func TestUpdate(t *testing.T) {
 		t.Fatal("accepted invalid settings")
 	}
 	if err := p.Authorize(req("100.67.117.32:1")); err != nil {
-		t.Errorf("invalid update changed behaviour: %v", err)
+		t.Errorf("invalid update changed behavior: %v", err)
 	}
 
 	// Valid settings take effect; Mom's running stream is left alone.

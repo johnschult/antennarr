@@ -1,4 +1,4 @@
-// Package guide reads the programme guide SiliconDust publishes for a tuner
+// Package guide reads the program guide SiliconDust publishes for a tuner
 // (XMLTV) so the dashboard can show what's on a channel, with its logo.
 package guide
 
@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-// Programme is one show on one channel.
-type Programme struct {
+// Program is one show on one channel.
+type Program struct {
 	Title    string    `json:"title"`
 	SubTitle string    `json:"subTitle,omitempty"`
 	Start    time.Time `json:"start"`
@@ -23,22 +23,22 @@ type Programme struct {
 // Channel is what the guide knows about one channel, found by the number the
 // tuner's lineup gives it (11.1).
 type Channel struct {
-	Number     string
-	Name       string
-	Icon       string // an https URL from the feed; never from a request
-	Programmes []Programme
+	Number   string
+	Name     string
+	Icon     string // an https URL from the feed; never from a request
+	Programs []Program
 }
 
 const timeLayout = "20060102150405 -0700"
 
 // Parse reads an XMLTV document into channels keyed by channel number. It
 // streams, so a large guide is never held as a tree, and it keeps only what
-// has not finished by `now`. Programmes for channels it doesn't know, or with
+// has not finished by `now`. Programs for channels it doesn't know, or with
 // times it can't read, are skipped rather than failing the whole guide.
 func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 	dec := xml.NewDecoder(r)
 	byID := map[string]*Channel{}
-	progs := map[string][]Programme{}
+	progs := map[string][]Program{}
 	sawRoot := false
 
 	for {
@@ -86,14 +86,14 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 				SubTitle string `xml:"sub-title"`
 			}
 			if err := dec.DecodeElement(&p, &el); err != nil {
-				return nil, fmt.Errorf("the guide has a broken programme: %w", err)
+				return nil, fmt.Errorf("the guide has a broken program: %w", err)
 			}
 			start, err1 := time.Parse(timeLayout, p.Start)
 			stop, err2 := time.Parse(timeLayout, p.Stop)
 			if err1 != nil || err2 != nil || !stop.After(start) || !stop.After(now) || strings.TrimSpace(p.Title) == "" {
 				continue
 			}
-			progs[p.Channel] = append(progs[p.Channel], Programme{
+			progs[p.Channel] = append(progs[p.Channel], Program{
 				Title: strings.TrimSpace(p.Title), SubTitle: strings.TrimSpace(p.SubTitle), Start: start.UTC(), Stop: stop.UTC(),
 			})
 		}
@@ -106,7 +106,7 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 	for id, ch := range byID {
 		ps := progs[id]
 		sort.Slice(ps, func(i, j int) bool { return ps[i].Start.Before(ps[j].Start) })
-		ch.Programmes = ps
+		ch.Programs = ps
 		out[ch.Number] = ch
 	}
 	if len(out) == 0 {
@@ -116,9 +116,9 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 }
 
 // Now returns what is on at `at`, or nil in a gap in the guide.
-func (c *Channel) Now(at time.Time) *Programme {
-	for i := range c.Programmes {
-		p := &c.Programmes[i]
+func (c *Channel) Now(at time.Time) *Program {
+	for i := range c.Programs {
+		p := &c.Programs[i]
 		if !p.Start.After(at) && p.Stop.After(at) {
 			return p
 		}

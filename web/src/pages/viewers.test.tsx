@@ -228,7 +228,7 @@ describe('ViewersPage', () => {
   })
 
   describe('with several devices', () => {
-    it("shows a viewer's use on each device, honouring per-device limits", () => {
+    it("shows a viewer's use on each device, honoring per-device limits", () => {
       renderWithApp(<ViewersPage />, makeTwoDeviceState())
       const john = row('John')
       expect(within(john).getByText('Steve FLEX 4K')).toBeInTheDocument()

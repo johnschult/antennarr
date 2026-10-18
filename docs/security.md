@@ -4,7 +4,7 @@
 
 **HDHomeRun tuners have no passwords, and neither does the tuner side of Antennarr.** The protection is the *address a request comes from*.
 
-| Who | Can do | How they are recognised |
+| Who | Can do | How they are recognized |
 |---|---|---|
 | A **viewer** | Use the tuner: `discover.json`, `lineup.json`, `status.json`, `lineup_status.json` and the streams, within their limits. Read-only: nothing else the tuner offers (rescans, firmware upgrade, its web pages) is reachable and answers `404`. | Their address is listed under *Viewers*. |
 | An **admin** | Open the web page and change settings: add viewers, change limits, and so on. | They connect from this machine (loopback), from an address listed under `admin`, or they are signed in with an allowed Plex account. |
@@ -50,7 +50,7 @@ Only your tuners, plus these. Each can be switched off or left unset, and Antenn
 |---|---|---|---|
 | Firmware changelog | `silicondust.com` | every 12 hours | Nothing about you or your tuners. |
 | Firmware file | `download.silicondust.com` | only when an admin presses Install | Nothing about you or your tuners. |
-| Programme guide, channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | Your tuner's guide key (its `DeviceAuth`), which is how SiliconDust knows which channels to list. |
+| Program guide, channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | Your tuner's guide key (its `DeviceAuth`), which is how SiliconDust knows which channels to list. |
 | Sign in with Plex | `plex.tv` | when someone signs in | The sign-in request. |
 | Notifications | the ntfy server, `api.pushover.net`, or the webhook address **you** set up | when something you switched on happens, and when you press Test | A short message: a title and a sentence naming a tuner, a viewer or an address, for example `Mom was refused a tuner`, `192.0.2.9 tried to use Living room`, or `Living room is offline`. Nothing is sent, and nothing is contacted, until you add a channel. |
 

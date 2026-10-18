@@ -171,7 +171,7 @@ func startWith(t *testing.T, s access.Settings, devices []access.Device, fwURL s
 	return startFull(t, s, devices, fwURL, "", tuners...)
 }
 
-// startFull is startWith, also reading the programme guide from guideURL (and
+// startFull is startWith, also reading the program guide from guideURL (and
 // logos from the same server). With no guideURL the guide is off, so a test
 // can never reach SiliconDust.
 func startFull(t *testing.T, s access.Settings, devices []access.Device, fwURL, guideURL string, tuners ...*fakeTuner) *rig {
@@ -611,9 +611,9 @@ func TestDefaultLocate(t *testing.T) {
 	if _, err := DefaultLocate(ctx, "", ""); err == nil {
 		t.Error("with neither an address nor an id there is nothing to look for")
 	}
-	cancelled, cancel := context.WithCancel(ctx)
+	canceled, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, err := DefaultLocate(cancelled, "", "10ABCC87"); err == nil {
+	if _, err := DefaultLocate(canceled, "", "10ABCC87"); err == nil {
 		t.Error("expected a not-found error when the search can't find the tuner")
 	}
 }

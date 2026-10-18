@@ -81,7 +81,7 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 - **One big tile per tuner:**
   - Live tiles show a large channel number, call sign and network, with a subtle scanline texture. Below that: who's watching and the bitrate. A red REC badge marks recordings.
   - Idle tiles are dashed and read "Idle" or "Held for your TVs" (owner reserve).
-  - A badge on each tile says who holds it: viewer (cyan), local (violet), reserve (grey), free (green).
+  - A badge on each tile says who holds it: viewer (cyan), local (violet), reserve (gray), free (green).
 - **Adding a viewer is a short dialog of three steps** (Who, Connect, Media server), not a separate Connect page. The first step saves the viewer; the next two write out how their server reaches this one and what to do in their media server, with this machine's addresses filled in. **Connection steps** on a viewer's row reopens it at the second step. `/setup` redirects to Viewers.
 - **Below the tiles:** a Viewers list with per-viewer tuner-slot pips, and a vertical Timeline of events (started recording, limit hit, IP changed, tuner offline).
 - **Background:** a radial teal glow at the top over near-black.
@@ -103,7 +103,7 @@ Built. Antennarr tells you when SiliconDust has released firmware for a tuner, a
 
 - Versions are dates (`20260326`), so comparing is plain string comparison. The tuner reports its own version (`FirmwareVersion`) and, if it knows of a newer one, `UpgradeAvailable`; when present, the tuner's own word wins.
 - Otherwise Antennarr reads SiliconDust's public changelog page (HTML only, no feed) once every 12 hours with a conditional request. Nothing about you or your tuners is sent. The check can be switched off in Settings, and nothing is fetched while it is off.
-- Not every release is for every model, and notes are scoped in prose ("ATSC3 models:", "HDHR5-2DT/4DT:", "All models:"). A release counts as **update available** only when a note in it is plainly for this model; if the only match is a scope that isn't recognised it is a **possible update**; `TECH`/`DEV` narrow a scope. If the model isn't recognised at all, every note is shown. If the page's layout changes, the parser fails loudly and the status is "unknown" with the reason, never a guess.
+- Not every release is for every model, and notes are scoped in prose ("ATSC3 models:", "HDHR5-2DT/4DT:", "All models:"). A release counts as **update available** only when a note in it is plainly for this model; if the only match is a scope that isn't recognized it is a **possible update**; `TECH`/`DEV` narrow a scope. If the model isn't recognized at all, every note is shown. If the page's layout changes, the parser fails loudly and the status is "unknown" with the reason, never a guess.
 - New releases are announced once in the device's timeline; the Tuner page shows what changed, when the page was last read, and a Check now button.
 
 ### Installing firmware

@@ -65,7 +65,7 @@ type API struct {
 	Discover func(ctx context.Context, wait time.Duration) ([]discovery.Device, error)
 	// Firmware reads SiliconDust's changelog; nil means no firmware checking.
 	Firmware *firmware.Checker
-	// Guide reads SiliconDust's programme guide; nil means no guide.
+	// Guide reads SiliconDust's program guide; nil means no guide.
 	Guide *guide.Service
 	Pol   *access.Policy
 	Store *access.Store
@@ -200,7 +200,7 @@ type DeviceDoc struct {
 	// Upgrade is the latest firmware install on this tuner, while it runs and after: what it is doing, or
 	// how it ended. Absent when there has been none.
 	Upgrade *upgrade.Status `json:"upgrade,omitempty"`
-	// Guide is what the programme guide says about each channel being watched
+	// Guide is what the program guide says about each channel being watched
 	// right now, by channel number. Empty when the guide is off or unknown.
 	Guide map[string]guide.Entry `json:"guide"`
 }

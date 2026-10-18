@@ -126,7 +126,7 @@ describe('TunerTile', () => {
       expect(screen.queryByTestId('tile-now')).not.toBeInTheDocument()
     })
 
-    it('shows the programme without a logo when there is none, or it will not load', () => {
+    it('shows the program without a logo when there is none, or it will not load', () => {
       const { rerender } = render(<TunerTile tile={watching} guide={{ ...entry, icon: false }} iconSrc={icon} />)
       expect(screen.queryByRole('img', { name: /logo/ })).not.toBeInTheDocument()
       expect(screen.getByTestId('tile-now')).toBeInTheDocument()
@@ -137,7 +137,7 @@ describe('TunerTile', () => {
       expect(screen.getByTestId('tile-now')).toBeInTheDocument()
     })
 
-    it('shows the logo without a programme in a gap in the guide', () => {
+    it('shows the logo without a program in a gap in the guide', () => {
       render(<TunerTile tile={watching} guide={{ ...entry, now: undefined }} iconSrc={icon} />)
       expect(screen.getByRole('img', { name: 'WFRV logo' })).toBeInTheDocument()
       expect(screen.queryByTestId('tile-now')).not.toBeInTheDocument()
@@ -180,7 +180,7 @@ describe('TunerTile', () => {
       expect(meter.getByRole('group')).toHaveAccessibleName('Signal strength 92%, quality 88%')
     })
 
-    it('colours each by how good it is', () => {
+    it('colors each by how good it is', () => {
       render(<TunerTile tile={withSignal(95, 60)} />)
       expect(screen.getByTestId('signal-signal')).toHaveAttribute('data-tone', 'good')
       expect(screen.getByTestId('signal-quality')).toHaveAttribute('data-tone', 'fair')

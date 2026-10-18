@@ -150,7 +150,7 @@ func reason(err error) string {
 	case errors.Is(err, context.DeadlineExceeded):
 		return "it took too long to answer"
 	case errors.Is(err, context.Canceled):
-		return "the request was cancelled"
+		return "the request was canceled"
 	}
 	var ue *url.Error
 	if errors.As(err, &ue) {

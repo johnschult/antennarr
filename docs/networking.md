@@ -78,6 +78,6 @@ curl -i http://<antennarr address>:5004/discover.json
 ```
 
 - A timeout means the connection never arrived: a firewall, or the wrong network or address.
-- `403` with `X-Antennarr-Reason: not-allowed` means it arrived and Antennarr doesn't recognise the sender's address. The log shows the address it saw. Add that.
+- `403` with `X-Antennarr-Reason: not-allowed` means it arrived and Antennarr doesn't recognize the sender's address. The log shows the address it saw. Add that.
 - `502 tuner unreachable` means it got through and the tuner is offline.
 - `200` with your tuner's name and Antennarr's address means it works.

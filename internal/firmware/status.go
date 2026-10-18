@@ -35,9 +35,9 @@ type Status struct {
 	DeviceReported string `json:"deviceReported,omitempty"`
 	// Updates lists the applicable newer releases, newest first.
 	Updates []Update `json:"updates"`
-	// ModelRecognised is false when we couldn't place the model number, so the
+	// ModelRecognized is false when we couldn't place the model number, so the
 	// scoping of notes is a guess.
-	ModelRecognised bool      `json:"modelRecognised"`
+	ModelRecognized bool      `json:"modelRecognized"`
 	CheckedAt       time.Time `json:"checkedAt"`
 	// Error says why the state is unknown: the page couldn't be read, or the
 	// check is off.
@@ -51,7 +51,7 @@ var versionRe = regexp.MustCompile(`^\d{8}$`)
 func Evaluate(releases []Release, d Device) Status {
 	st := Status{State: StateUnknown, Current: d.Version, Latest: d.Version, DeviceReported: d.UpgradeAvailable, Updates: []Update{}}
 	p := newProfile(d)
-	st.ModelRecognised = p.known
+	st.ModelRecognized = p.known
 
 	if versionRe.MatchString(d.Version) {
 		for _, r := range releases {

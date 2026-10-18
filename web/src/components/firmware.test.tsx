@@ -86,9 +86,9 @@ describe('FirmwareSection', () => {
     expect(within(sec).getByText('may not apply to your model')).toBeInTheDocument()
   })
 
-  it("says so when the model isn't recognised", () => {
-    show({ ...updateAvailable, modelRecognised: false })
-    expect(screen.getByText(/doesn't recognise this model/)).toBeInTheDocument()
+  it("says so when the model isn't recognized", () => {
+    show({ ...updateAvailable, modelRecognized: false })
+    expect(screen.getByText(/doesn't recognize this model/)).toBeInTheDocument()
   })
 
   it("mentions the tuner's own report", () => {

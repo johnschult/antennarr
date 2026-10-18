@@ -18,7 +18,7 @@ afterEach(() => {
 })
 
 /**
- * jsdom does no layout, so axe can't judge colour contrast here, or whether something is hidden by CSS.
+ * jsdom does no layout, so axe can't judge color contrast here, or whether something is hidden by CSS.
  * Those need a real browser. Everything else axe knows (names, roles, labels, structure) is checked.
  * Dialogs render in a portal, so check the whole body.
  */

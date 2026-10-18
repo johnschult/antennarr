@@ -91,7 +91,7 @@ docker pull ghcr.io/johnschult/antennarr:latest
 ```
 
 Or copy [docker-compose.example.yml](docker-compose.example.yml) next to your `antennarr.json` and run `docker compose up -d`.
-It uses host networking, which Antennarr needs to recognise its own streams and to offer your Tailscale and LAN addresses in the Add viewer steps.
+It uses host networking, which Antennarr needs to recognize its own streams and to offer your Tailscale and LAN addresses in the Add viewer steps.
 Images are published for `amd64` and `arm64`. To build one yourself: `docker build -t antennarr https://github.com/johnschult/antennarr.git#main`.
 
 ### Versions
@@ -140,7 +140,7 @@ Only your tuners, plus these, each of which can be switched off or left unset in
 |---|---|---|---|
 | Firmware changelog | `silicondust.com` | every 12 hours | nothing about you or your tuners |
 | Firmware file | `download.silicondust.com` | only when you press Install | nothing about you or your tuners |
-| Programme guide and channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | your tuner's guide key (its `DeviceAuth`), which SiliconDust uses to know which channels to list |
+| Program guide and channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | your tuner's guide key (its `DeviceAuth`), which SiliconDust uses to know which channels to list |
 | Sign in with Plex | `plex.tv` | only when someone signs in | the sign-in request |
 | Notifications | the ntfy server, `api.pushover.net` or the webhook address you set up | when something you switched on happens, and on Test | a short message naming a tuner, viewer or address. Nothing is contacted until you add a channel |
 
@@ -176,7 +176,7 @@ All of this can be changed in the UI. The file is JSON, written atomically, and 
 | `ownerReserve` | Tuners kept free for your own devices, in addition to any you are using. |
 | `admin` | Extra addresses (IPs or CIDRs) allowed to use the admin pages. Loopback always is, once a viewer exists. |
 | `labels` | Display names by device name, for the web page only. Media servers are always told the device (such as HDHomeRun FLEX 4K), so renaming doesn't change what Plex shows. |
-| `firmwareCheck`, `guide` | Turn the firmware changelog check and the programme guide off. On by default. |
+| `firmwareCheck`, `guide` | Turn the firmware changelog check and the program guide off. On by default. |
 | `plex` | Sign in with Plex: `enabled`, and the allowed `admins` (`id`, `name`). |
 | `notifications` | `channels` (ntfy, Pushover or webhook, with their tokens) and which `events` to send. See [Configuration](docs/configuration.md#notifications). |
 

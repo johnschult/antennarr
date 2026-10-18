@@ -85,7 +85,7 @@ function Wizard({ devices, viewer, onDone }: { devices: DeviceState[]; viewer?: 
 
   const description =
     current === 'Who'
-      ? "A viewer is someone's media server. It is recognised by the address it connects from."
+      ? "A viewer is someone's media server. It is recognized by the address it connects from."
       : current === 'Connect'
         ? `How ${who?.name ?? 'the viewer'}'s media server will reach this machine.`
         : `What to do in ${who?.name ?? 'the viewer'}'s media server.`

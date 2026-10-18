@@ -31,7 +31,7 @@ export function resolveTheme(p: ThemePreference, systemPrefersDark: boolean): Re
   return p === 'system' ? (systemPrefersDark ? 'dark' : 'light') : p
 }
 
-/** Put the theme on the page: Tailwind's `dark` class and the browser's colour scheme. */
+/** Put the theme on the page: Tailwind's `dark` class and the browser's color scheme. */
 export function applyTheme(t: ResolvedTheme, root: HTMLElement = document.documentElement): void {
   root.classList.toggle('dark', t === 'dark')
   root.style.colorScheme = t

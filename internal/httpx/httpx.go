@@ -48,7 +48,7 @@ func Decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	return true
 }
 
-// GuardWrites is the CSRF defence for endpoints that trust who is calling (by
+// GuardWrites is the CSRF defense for endpoints that trust who is calling (by
 // address or by cookie): a web page the owner happens to visit must not be
 // able to change anything from their browser. Writes have to be JSON (which a
 // cross-origin page can't send without a CORS preflight that we never

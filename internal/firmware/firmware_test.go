@@ -151,7 +151,7 @@ var flex4k = Device{Model: "HDFX-4K", FirmwareName: "hdhomerun_dvr_atsc3", Versi
 func TestScopesForAFlex4K(t *testing.T) {
 	p := newProfile(flex4k)
 	if !p.known {
-		t.Fatal("HDFX should be a recognised model")
+		t.Fatal("HDFX should be a recognized model")
 	}
 	cases := map[string]applies{
 		"": yes, "All models": yes, "ALL": yes, "all": yes,
@@ -190,19 +190,19 @@ func TestScopesForOtherModels(t *testing.T) {
 	}
 }
 
-func TestAnUnrecognisedModelNeverRulesNotesOut(t *testing.T) {
+func TestAnUnrecognizedModelNeverRulesNotesOut(t *testing.T) {
 	p := newProfile(Device{Model: "ZZZ-9000"})
 	if p.known {
-		t.Fatal("should not be recognised")
+		t.Fatal("should not be recognized")
 	}
 	if p.appliesTo(Note{Scope: "CC models"}) != maybe {
-		t.Error("a scoped note for an unrecognised model should be 'maybe', not 'no'")
+		t.Error("a scoped note for an unrecognized model should be 'maybe', not 'no'")
 	}
 	if p.appliesTo(Note{Scope: "All models"}) != yes || p.appliesTo(Note{}) != yes {
 		t.Error("notes for everyone still apply")
 	}
 	if newProfile(Device{}).known {
-		t.Error("an empty model is not recognised")
+		t.Error("an empty model is not recognized")
 	}
 }
 
@@ -218,7 +218,7 @@ func TestProfileUsesTheFirmwareName(t *testing.T) {
 
 func TestUpToDateOnTheNewestRelease(t *testing.T) {
 	st := Evaluate(fixture(t), flex4k)
-	if st.State != StateUpToDate || st.Current != "20260326" || st.Latest != "20260326" || len(st.Updates) != 0 || !st.ModelRecognised {
+	if st.State != StateUpToDate || st.Current != "20260326" || st.Latest != "20260326" || len(st.Updates) != 0 || !st.ModelRecognized {
 		t.Errorf("%+v", st)
 	}
 	if st.Updates == nil {
@@ -317,13 +317,13 @@ func TestUnknownWhenThereIsNothingToCompare(t *testing.T) {
 	}
 }
 
-func TestAnUnrecognisedModelGetsUnscopedNotesAsCertain(t *testing.T) {
+func TestAnUnrecognizedModelGetsUnscopedNotesAsCertain(t *testing.T) {
 	rs := []Release{
 		{Version: "20260402", Notes: []Note{{Text: "for everyone"}}},
 		{Version: "20260401", Notes: []Note{{Scope: "CC models", Text: "cable only?"}}},
 	}
 	st := Evaluate(rs, Device{Model: "ZZZ-9", Version: "20260101"})
-	if st.ModelRecognised || st.State != StateUpdateAvailable || len(st.Updates) != 2 || !st.Updates[0].Certain || st.Updates[1].Certain {
+	if st.ModelRecognized || st.State != StateUpdateAvailable || len(st.Updates) != 2 || !st.Updates[0].Certain || st.Updates[1].Certain {
 		t.Errorf("%+v", st)
 	}
 }
@@ -361,6 +361,6 @@ func TestTechAndDevNarrowAScope(t *testing.T) {
 	}
 	// With a model we can't place, a narrowed scope is only a maybe.
 	if got := newProfile(Device{Model: "ZZZ-9"}).appliesTo(Note{Scope: "ATSC3 TECH/DEV models"}); got != maybe {
-		t.Errorf("unrecognised model: %v", got)
+		t.Errorf("unrecognized model: %v", got)
 	}
 }

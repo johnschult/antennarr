@@ -48,7 +48,7 @@ export interface FirmwareStatus {
   latest: string
   deviceReported?: string
   updates: FirmwareUpdate[]
-  modelRecognised: boolean
+  modelRecognized: boolean
   /** Zero time ("0001-01-01...") when it has never been read. */
   checkedAt: string
   error?: string
@@ -222,11 +222,11 @@ export interface DeviceState {
   firmware: FirmwareStatus
   /** The latest firmware install on this tuner, running or finished. Absent when there has been none. */
   upgrade?: UpgradeStatus
-  /** What the programme guide says about each channel being watched, by channel number. */
+  /** What the program guide says about each channel being watched, by channel number. */
   guide: Record<string, GuideEntry>
 }
 
-/** A channel as the programme guide knows it. */
+/** A channel as the program guide knows it. */
 export interface GuideEntry {
   name?: string
   /** Whether a logo can be fetched (see channelIconUrl). */

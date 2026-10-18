@@ -114,7 +114,7 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
           <>
             {isNever(s.checkedAt) ? 'Not read yet.' : `Last read ${timeAgo(s.checkedAt)}.`}
             {s.deviceReported && <> The tuner itself reports {firmwareDate(s.deviceReported)} as available.</>}
-            {s.error && <> {capitalise(s.error)}.</>}
+            {s.error && <> {capitalize(s.error)}.</>}
           </>
         }
       >
@@ -165,8 +165,8 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
               {showAll ? 'Show fewer' : `Show all ${s.updates.length} releases`}
             </Button>
           )}
-          {!s.modelRecognised && (
-            <p className="text-xs text-muted-foreground">Antennarr doesn't recognise this model, so it can't tell which notes are for it; they are all shown.</p>
+          {!s.modelRecognized && (
+            <p className="text-xs text-muted-foreground">Antennarr doesn't recognize this model, so it can't tell which notes are for it; they are all shown.</p>
           )}
           <p className="text-xs text-muted-foreground">
             {canInstall
@@ -180,4 +180,4 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
   )
 }
 
-const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)

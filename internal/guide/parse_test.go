@@ -37,14 +37,14 @@ func TestParseKeysChannelsByNumber(t *testing.T) {
 func TestParseKeepsOnlyWhatHasNotFinished(t *testing.T) {
 	nbc := load(t)["11.1"]
 	var titles []string
-	for _, p := range nbc.Programmes {
+	for _, p := range nbc.Programs {
 		titles = append(titles, p.Title)
 	}
 	// "Already Over" ended, "Bad Time" can't be read, "Ghost" is for no known channel.
 	if got := strings.Join(titles, "|"); got != "Rosie's Rules|Evening News" {
-		t.Errorf("programmes = %s", got)
+		t.Errorf("programs = %s", got)
 	}
-	p := nbc.Programmes[0]
+	p := nbc.Programs[0]
 	if p.SubTitle != "The Catrina Mystery" || !p.Start.Equal(time.Date(2026, 10, 17, 17, 30, 0, 0, time.UTC)) {
 		t.Errorf("first = %+v", p)
 	}

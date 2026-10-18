@@ -95,7 +95,7 @@ func (p *Proxy) reverse(target func() *url.URL, rt http.RoundTripper) *httputil.
 		Transport:     rt,
 		FlushInterval: -1,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			// A cancelled request is just the viewer going away; the tuner
+			// A canceled request is just the viewer going away; the tuner
 			// connection has already been closed with it.
 			if r.Context().Err() != nil {
 				return

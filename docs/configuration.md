@@ -70,7 +70,7 @@ Who you share with. **With no viewers, nobody can use the tuner**: a new install
 | `admin` | Extra addresses (single or ranges) allowed to open the admin pages. Loopback is always allowed once a viewer exists. Keep this narrow, and keep viewers' addresses out of it: a viewer inside an admin range is an admin too (Antennarr logs a warning). |
 | `labels` | Display names, by device name: `{ "antenna": "Living room antenna" }`, up to 60 characters. It is for the web page only, and changes live. Media servers are always told the device (such as `HDHomeRun FLEX 4K`), so a name you give it here never reaches Plex: renaming doesn't change what Plex shows, and a media server can name its own DVR as it likes. |
 | `firmwareCheck` | Look at SiliconDust's firmware changelog every 12 hours (default `true`). |
-| `guide` | Read SiliconDust's programme guide so Live tiles can show the channel logo and what's on (default `true`). |
+| `guide` | Read SiliconDust's program guide so Live tiles can show the channel logo and what's on (default `true`). |
 | `notifications` | Messages to your phone or another service. `channels` is a list (at most 8); `events` switches kinds of event on or off. See [Notifications](#notifications) below. |
 | `plex` | Sign in to the admin pages with a Plex account. `enabled`, the allowed `admins` (each with an `id` and a `name`, at most 50), and a `clientId` Antennarr creates and keeps for you. See [Security](security.md). |
 
@@ -153,7 +153,7 @@ Back them up with your other configuration. There is no database, and nothing el
 | The tuners | every 5 seconds (`-poll`) | After 3 failures in a row a tuner is shown offline, and Antennarr starts searching for it by DeviceID (at most every 30 seconds), using a broadcast and a scan of the nearby subnet. |
 | Firmware changelog | every 12 hours | Only when `firmwareCheck` is on. |
 | Firmware file | never on a schedule | Downloaded only when an admin presses Install on the Tuners page, and sent to that tuner over its control port (TCP 65001). Needs `firmwareCheck` on. |
-| Programme guide | every 6 hours | Only when `guide` is on. About 3.5 MB for a FLEX 4K. |
+| Program guide | every 6 hours | Only when `guide` is on. About 3.5 MB for a FLEX 4K. |
 
 Notifications aren't on a schedule of their own: they are sent when the firmware check, the tuner check or a viewer's request notices something.
 
