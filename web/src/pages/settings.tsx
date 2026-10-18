@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 import { EditRow } from '@/components/settings/edit-row'
 import { PlexRows } from '@/components/settings/plex-rows'
 import { Row, Section } from '@/components/settings/section'
@@ -35,7 +37,7 @@ export function SettingsPage() {
             min={0}
             max={d.tuner.tunerCount}
             id={`setting-${d.name}-ownerReserve`}
-            title="Keep free for you"
+            title="Tuners reserved for you"
             description="Tuners always held back for your own TVs and apps. Viewers are refused instead of taking the last ones."
             initial={String(d.ownerReserve)}
             validate={wholeNumber}
@@ -48,8 +50,8 @@ export function SettingsPage() {
             min={0}
             max={d.tuner.tunerCount}
             id={`setting-${d.name}-sharedCap`}
-            title="Most for viewers"
-            description="The most tuners all viewers together may use. 0 means no cap beyond what you keep free."
+            title="Max tuners for viewers"
+            description="The most tuners all viewers together may use. 0 means no cap beyond what you reserve."
             initial={String(d.sharedCap)}
             validate={wholeNumber}
             disabled={!editable}
@@ -72,7 +74,9 @@ export function SettingsPage() {
         />
         <PlexRows />
         <Row title="Who can use your tuners" description="Only the addresses of the viewers you add. With no viewers, nobody can.">
-          <span className="text-sm font-medium">{settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}</span>
+          <Link to="/viewers" className="text-sm font-medium underline underline-offset-2 hover:text-foreground">
+            {settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}
+          </Link>
         </Row>
       </Section>
 

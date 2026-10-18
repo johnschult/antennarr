@@ -5,6 +5,27 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.3 (2026-10-18)
+
+### Read before updating
+
+- **The first-run setup link in 2026.10.2 could not be used from a browser.** Pressing *Make this device an admin* answered "cross-origin requests are not allowed". It is fixed here; update first, then use the link in the log (a new one is written each start).
+- **Tuners moved.** Adding, finding, renaming and removing tuners is now on the *Tuners* page (it was in *Settings*). *Settings → Limits* keeps each tuner's limits, and *Settings → Access* and *Privacy and updates* hold the rest.
+
+### Added
+
+- **Change a tuner's port** from *Tuners → Manage*, without a restart. The page follows to the new port. A port that is taken or not valid is refused and the tuner stays where it was. The [API](https://github.com/johnschult/antennarr/blob/main/docs/api.md) takes `listen` on `PATCH devices/{name}`.
+- **Icons on every button**, and on the current page in the navigation (always shown in the phone menu).
+
+### Changed
+
+- **Navigation is now Live, Viewers, Tuners, Connect, Settings.** The page you reach from *Connect* is headed "Connect a viewer", and the Tuners page is always headed "Tuners".
+- **The two limits are named for what they do:** *Tuners reserved for you* and *Max tuners for viewers*.
+- *Remove* on a tuner is red. It already asked you to confirm.
+- On *Settings → Access*, the *Who can use your tuners* line links to *Viewers*.
+- The README screenshots are retaken with made-up data, and `docs/screenshots/retake.sh` makes them again.
+- The web page's build no longer pulls in the `shadcn` package, so `npm audit` is clean.
+
 ## 2026.10.2 (2026-10-18)
 
 ### Read before updating

@@ -1,4 +1,4 @@
-import { ArrowUpCircle, ExternalLink } from 'lucide-react'
+import { ArrowUpCircle, ChevronDown, ChevronUp, ExternalLink, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Row, Section } from '@/components/settings/section'
@@ -77,7 +77,7 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
           onClick={() => check.mutate()}
           title={checking ? undefined : 'The firmware check is turned off in Settings'}
         >
-          Check now
+          <RefreshCw data-icon="inline-start" /> Check now
         </Button>
         <a
           href={CHANGELOG_URL}
@@ -112,6 +112,7 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
           </ul>
           {s.updates.length > 2 && (
             <Button size="sm" variant="ghost" onClick={() => setShowAll(!showAll)}>
+              {showAll ? <ChevronUp data-icon="inline-start" /> : <ChevronDown data-icon="inline-start" />}
               {showAll ? 'Show fewer' : `Show all ${s.updates.length} releases`}
             </Button>
           )}

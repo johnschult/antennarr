@@ -1,3 +1,4 @@
+import { Check, RotateCcw } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,10 +62,10 @@ export function EditRow(props: Props & Kind) {
         {dirty && (
           <>
             <Button type="submit" size="sm" disabled={busy || disabled}>
-              Save
+              <Check data-icon="inline-start" /> Save
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => (setText(initial), setError(null))}>
-              Reset
+              <RotateCcw data-icon="inline-start" /> Reset
             </Button>
           </>
         )}

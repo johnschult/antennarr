@@ -1,4 +1,4 @@
-import { Radar } from 'lucide-react'
+import { Radar, Search } from 'lucide-react'
 import { useState } from 'react'
 import { AddTunerDialog } from '@/components/add-tuner-dialog'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ export function NoTuners() {
         Antennarr looks for HDHomeRun tuners on your network when it starts, and none answered. Search again, or add one by its address.
       </p>
       <Button onClick={() => setOpen(true)} disabled={!state.editable}>
-        Find tuners
+        <Search data-icon="inline-start" /> Find tuners
       </Button>
       {!state.editable && <p className="text-xs text-muted-foreground">Antennarr has no settings file to save a tuner in, so none can be added here. Start it with -config to choose one.</p>}
       <AddTunerDialog open={open} onOpenChange={setOpen} />

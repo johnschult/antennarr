@@ -70,3 +70,7 @@ Releases are numbered by calendar, `YYYY.MM.PATCH`, and are made by tagging `mai
 ## License
 
 By contributing you agree that your work is released under the [MIT License](LICENSE).
+
+## Retaking the README screenshots
+
+`docs/screenshots/retake.sh` regenerates every image in `docs/screenshots/`. It runs the demo harness (`internal/server/demo_test.go`, build tag `demo`), which serves the real UI against a fake HDHomeRun, a fake guide and made-up viewers, then drives Chromium with `shoot.py` (needs Python with Playwright). Nothing real appears in the images. Build the web UI first (`npm run build` in `web/`), then run the script from the repo root.
