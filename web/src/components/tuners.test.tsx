@@ -97,9 +97,9 @@ describe('adding and removing tuners on the Tuners page', () => {
   it('gives each tuner its port and a way to remove it, and the page a way to add another', () => {
     renderWithApp(<TunerPage />, two())
     const antenna = screen.getByRole('region', { name: 'Manage antenna' })
-    expect(within(antenna).getByText(':5004')).toBeInTheDocument()
+    expect(within(antenna).getByLabelText('Port')).toHaveValue(5004)
     expect(within(antenna).getByRole('button', { name: 'Remove antenna' })).toBeEnabled()
-    expect(within(screen.getByRole('region', { name: 'Manage cable' })).getByText(':5005')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Manage cable' })).getByLabelText('Port')).toHaveValue(5005)
     expect(screen.getByRole('button', { name: 'Remove cable' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Add tuner' })).toBeEnabled()
   })

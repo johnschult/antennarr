@@ -43,6 +43,9 @@ type Fleet interface {
 	// RemoveDevice stops fronting a tuner, ends any streams on it and removes it
 	// from the settings.
 	RemoveDevice(name string) error
+	// SetListen moves a tuner to another port, keeping the old one if the new
+	// can't be opened. It returns the device as saved.
+	SetListen(name, listen string) (access.Device, error)
 }
 
 // NewError is an error that reaches the person as this status and message.
@@ -510,10 +513,11 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 type devicePatch struct {
 	SharedCap    *int    `json:"sharedCap"`
 	OwnerReserve *int    `json:"ownerReserve"`
-	Label        *string `json:"label"` // "" clears it
+	Label        *string `json:"label"`  // "" clears it
+	Listen       *string `json:"listen"` // ":5010"; a bare port number also works
 }
 
-// patchDevice sets a device's display name, owner reserve and shared cap. A device declared
+// patchDevice sets a device's display name, port, owner reserve and shared cap. A device declared
 // in the settings file keeps its own values; a device that comes from
 // command-line flags has none of its own, so the top-level ones are changed.
 func (a *API) patchDevice(w http.ResponseWriter, r *http.Request) {
@@ -526,6 +530,19 @@ func (a *API) patchDevice(w http.ResponseWriter, r *http.Request) {
 	var in devicePatch
 	if !decode(w, r, &in) {
 		return
+	}
+	if in.Listen != nil {
+		if a.Fleet == nil {
+			writeErr(w, http.StatusConflict, "the port can't be changed here")
+			return
+		}
+		if _, err := a.Fleet.SetListen(name, *in.Listen); err != nil {
+			a.fail(w, err)
+			return
+		}
+		if d := a.device(name); d != nil {
+			dev = d
+		}
 	}
 	_, err := a.Store.Edit(func(s *access.Settings) error {
 		if in.Label != nil {

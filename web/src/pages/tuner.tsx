@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
 import { useIsPhone } from '@/hooks/use-media-query'
+import { moveToPort } from '@/lib/navigate'
 import { ChannelLogo } from '@/components/channel-logo'
 import { FirmwareSection } from '@/components/firmware'
 import { channelIconUrl } from '@/lib/api'
@@ -61,6 +62,11 @@ function ChannelCell({ s, device }: { s: Slot; device: DeviceState }) {
   )
 }
 
+const validPort = (text: string) => {
+  const n = Number(text)
+  return text.trim() === '' || !Number.isInteger(n) || n < 1 || n > 65535 ? 'Enter a port from 1 to 65535.' : null
+}
+
 const usedBy = (s: Slot) => (s.inUse ? (s.viaAntennarr ? 'Antennarr' : (s.targetIP ?? 'Local device')) : '—')
 const signalOf = (s: Slot) => (s.inUse && s.signalStrength !== undefined ? `${s.signalStrength}% / ${s.signalQuality ?? 0}%` : '—')
 const rateOf = (s: Slot) => (s.inUse ? formatMbps(s.bitsPerSecond) : '—')
@@ -70,6 +76,7 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
   const { state } = useApp()
   const { device: edit } = useEdits()
   const phone = useIsPhone()
+  const port = device.listen.slice(device.listen.lastIndexOf(':') + 1)
   const facts: [string, string][] = [
     ['Device', tuner.friendlyName ?? 'Unknown'],
     ['Model', tuner.model ?? 'Unknown'],
@@ -111,11 +118,25 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
           disabled={!state.editable}
           onSave={(text) => edit.mutateAsync({ name: device.name, patch: { label: text.trim() } })}
         />
-        <Row title="Port" description="Where media servers reach this tuner. Each tuner has its own.">
-          <span className="font-mono text-xs text-muted-foreground">{device.listen}</span>
-        </Row>
+        <EditRow
+          key={`port-${device.name}-${device.listen}`}
+          kind="number"
+          min={1}
+          max={65535}
+          id={`setting-${device.name}-port`}
+          title="Port"
+          description="Where media servers reach this tuner. Each tuner has its own. Changing it cuts streams running on it, viewers must be given the new port, and this page moves there."
+          initial={port}
+          validate={validPort}
+          disabled={!state.editable}
+          onSave={async (text) => {
+            const host = device.listen.slice(0, device.listen.lastIndexOf(':'))
+            await edit.mutateAsync({ name: device.name, patch: { listen: `${host}:${Number(text)}` } })
+            moveToPort(Number(text))
+          }}
+        />
         <Row title="Remove this tuner" description="Antennarr stops sharing it. Streams running on it are cut off. The tuner itself is untouched.">
-          <Button variant="outline" size="sm" disabled={!state.editable} aria-label={`Remove ${deviceTitle(device)}`} onClick={onRemove}>
+          <Button variant="destructive" size="sm" disabled={!state.editable} aria-label={`Remove ${deviceTitle(device)}`} onClick={onRemove}>
             Remove
           </Button>
         </Row>

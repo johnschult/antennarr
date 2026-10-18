@@ -396,3 +396,76 @@ func waitOnline(t *testing.T, f *fleet, n int) {
 	}
 	t.Fatalf("%d tuners never came online\n%s", n, f.logs.String())
 }
+
+func TestMovingATunerToAnotherPort(t *testing.T) {
+	a := newFakeTuner(t, "10ABCC87", "antenna-box")
+	p1, p2 := freePort(t), freePort(t)
+	dev := access.Device{Name: "antenna", Listen: "127.0.0.1:" + p1, Tuner: "antenna-box", ID: "10ABCC87"}
+	f := startFleet(t, access.DefaultSettings(), []access.Device{dev}, true, a)
+
+	code, body := call(t, "PATCH", f.base+"/antennarr/api/devices/antenna", map[string]string{"listen": "127.0.0.1:" + p2})
+	if code != http.StatusOK {
+		t.Fatalf("move = %d %s\n%s", code, body, f.logs.String())
+	}
+	newBase := "http://127.0.0.1:" + p2
+	if code, _ := call(t, "GET", newBase+"/antennarr/api/state", nil); code != http.StatusOK {
+		t.Errorf("new port = %d, want the tuner and admin pages there", code)
+	}
+	if got := f.saved(t).Devices[0].Listen; got != "127.0.0.1:"+p2 {
+		t.Errorf("saved listen = %q", got)
+	}
+	// The old port is let go after a moment.
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		c, err := net.DialTimeout("tcp", "127.0.0.1:"+p1, 200*time.Millisecond)
+		if err != nil {
+			break
+		}
+		c.Close()
+		if time.Now().After(deadline) {
+			t.Fatal("the old port is still open")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+func TestMovingATunerToAPortInUseChangesNothing(t *testing.T) {
+	a := newFakeTuner(t, "10ABCC87", "antenna-box")
+	p1 := freePort(t)
+	busy, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer busy.Close()
+	dev := access.Device{Name: "antenna", Listen: "127.0.0.1:" + p1, Tuner: "antenna-box", ID: "10ABCC87"}
+	f := startFleet(t, access.DefaultSettings(), []access.Device{dev}, true, a)
+
+	code, _ := call(t, "PATCH", f.base+"/antennarr/api/devices/antenna", map[string]string{"listen": busy.Addr().String()})
+	if code != http.StatusConflict {
+		t.Errorf("= %d, want 409", code)
+	}
+	if code, _ := call(t, "GET", f.base+"/antennarr/api/state", nil); code != http.StatusOK {
+		t.Errorf("the old port stopped answering (%d)", code)
+	}
+	if got := f.saved(t).Devices[0].Listen; got != dev.Listen {
+		t.Errorf("saved listen = %q, want it unchanged", got)
+	}
+}
+
+func TestMovingATunerOntoAnotherTunersPortIsRefused(t *testing.T) {
+	a := newFakeTuner(t, "10ABCC87", "antenna-box")
+	b := newFakeTuner(t, "10DEF123", "cable-box")
+	p1, p2 := freePort(t), freePort(t)
+	devs := []access.Device{
+		{Name: "antenna", Listen: "127.0.0.1:" + p1, Tuner: "antenna-box", ID: "10ABCC87"},
+		{Name: "cable", Listen: "127.0.0.1:" + p2, Tuner: "cable-box", ID: "10DEF123"},
+	}
+	f := startFleet(t, access.DefaultSettings(), devs, true, a, b)
+	code, _ := call(t, "PATCH", f.base+"/antennarr/api/devices/antenna", map[string]string{"listen": "127.0.0.1:" + p2})
+	if code != http.StatusBadRequest {
+		t.Errorf("= %d, want 400", code)
+	}
+	if code, _ := call(t, "PATCH", f.base+"/antennarr/api/devices/antenna", map[string]string{"listen": "banana"}); code != http.StatusBadRequest {
+		t.Errorf("nonsense = %d, want 400", code)
+	}
+}

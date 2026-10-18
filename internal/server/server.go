@@ -333,8 +333,14 @@ func (s *Server) Run(ctx context.Context) error {
 // start begins serving a device on ln. The caller holds fleetMu.
 func (s *Server) start(d *device, ln net.Listener) {
 	dctx, cancel := context.WithCancel(s.runCtx)
-	d.cancel, d.ln = cancel, ln
+	d.cancel = cancel
 	go d.mon.Run(dctx)
+	s.serve(d, ln)
+}
+
+// serve answers requests for a device on ln.
+func (s *Server) serve(d *device, ln net.Listener) {
+	d.ln = ln
 	// No overall timeouts: streams run for hours. Only the header read is
 	// bounded, so a stalled client can't hold a connection open for free.
 	d.srv = &http.Server{Handler: d.handler, ReadHeaderTimeout: 10 * time.Second}
