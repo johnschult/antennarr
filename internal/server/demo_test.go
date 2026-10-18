@@ -4,6 +4,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -27,9 +28,38 @@ import (
 // the normal tests: it only builds with -tags demo.
 //
 // The tuner is an HDHomeRun FLEX 4K with one stream from a viewer (Alex)
-// through Antennarr and one local device, plus three made-up viewers. The
-// channel logos are plain badges, not any network's marks. The address it
-// listens on is written to $DEMO_DIR/addr.
+// through Antennarr and one or two local devices, plus three made-up viewers.
+// The address it listens on is written to $DEMO_DIR/addr.
+//
+// The channels are two with plain badges, not any network's marks, unless
+// $DEMO_LOGOS/channels.json lists others: a JSON array of {"number", "name",
+// "logo", "title"}, where logo is a file in that folder. retake.sh makes one from
+// a real tuner's guide (fetch-logos.py) so the screenshots can show real logos
+// without them being kept in the repository.
+// The first channel is what Alex watches; the next two are on local devices.
+
+// demoChannel is one channel of the made-up lineup.
+type demoChannel struct {
+	Number string `json:"number"`
+	Name   string `json:"name"`
+	Logo   string `json:"logo"`  // a file in the logos folder
+	Title  string `json:"title"` // what is on now
+}
+
+func demoChannels(logos string) []demoChannel {
+	chs := []demoChannel{
+		{"2.1", "WSB-HD", "wsb.png", "College Football"},
+		{"69.1", "WUPA-HD", "wupa.png", "College Football"},
+	}
+	if b, err := os.ReadFile(filepath.Join(logos, "channels.json")); err == nil {
+		var read []demoChannel
+		if json.Unmarshal(b, &read) == nil && len(read) > 0 {
+			chs = read
+		}
+	}
+	return chs
+}
+
 // wobble varies a bit rate over time, as a real broadcast does.
 func wobble(rate float64, phase float64) int {
 	t := float64(time.Now().UnixNano()) / 1e9
@@ -45,8 +75,9 @@ func TestDemo(t *testing.T) {
 	if logos == "" {
 		logos = "../../docs/screenshots/demo"
 	}
+	chs := demoChannels(logos)
 	var mu sync.Mutex
-	remote := false // Alex is watching 2.1 through Antennarr
+	remote := false // Alex is watching the first channel through Antennarr
 
 	stream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -73,16 +104,29 @@ func TestDemo(t *testing.T) {
 		case "/discover.json":
 			fmt.Fprint(w, `{"DeviceAuth":"DEMO-AUTH","FriendlyName":"HDHomeRun FLEX 4K","ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":"20260326","DeviceID":"10ABCC87","TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"}`)
 		case "/lineup.json":
-			fmt.Fprintf(w, `[{"GuideNumber":"2.1","GuideName":"WSB-HD","URL":"http://127.0.0.1:%s/auto/v2.1"},{"GuideNumber":"69.1","GuideName":"WUPA-HD","URL":"http://127.0.0.1:%s/auto/v69.1"}]`, sport, sport)
+			var items []string
+			for _, c := range chs {
+				items = append(items, fmt.Sprintf(`{"GuideNumber":%q,"GuideName":%q,"URL":"http://127.0.0.1:%s/auto/v%s"}`, c.Number, c.Name, sport, c.Number))
+			}
+			fmt.Fprintf(w, "[%s]", strings.Join(items, ","))
 		case "/status.json":
 			mu.Lock()
 			rm := remote
 			mu.Unlock()
-			t2 := `{"Resource":"tuner2"}`
-			if rm {
-				t2 = fmt.Sprintf(`{"Resource":"tuner2","VctNumber":"2.1","VctName":"WSB-HD","Frequency":599000000,"SignalStrengthPercent":100,"SignalQualityPercent":100,"SymbolQualityPercent":100,"NetworkRate":%d,"TargetIP":"127.0.0.1"}`, wobble(9500000, 0))
+			busy := func(tuner int, c demoChannel, freq int, ip string, rate float64, phase float64) string {
+				return fmt.Sprintf(`{"Resource":"tuner%d","VctNumber":%q,"VctName":%q,"Frequency":%d,"SignalStrengthPercent":100,"SignalQualityPercent":100,"SymbolQualityPercent":100,"NetworkRate":%d,"TargetIP":%q}`, tuner, c.Number, c.Name, freq, wobble(rate, phase), ip)
 			}
-			fmt.Fprintf(w, `[{"Resource":"tuner0"},{"Resource":"tuner1"},%s,{"Resource":"tuner3","VctNumber":"69.1","VctName":"WUPA-HD","Frequency":527000000,"SignalStrengthPercent":100,"SignalQualityPercent":100,"SymbolQualityPercent":100,"NetworkRate":%d,"TargetIP":"192.168.68.115"}]`, t2, wobble(6700000, 1.7))
+			slots := []string{`{"Resource":"tuner0"}`, `{"Resource":"tuner1"}`, `{"Resource":"tuner2"}`, `{"Resource":"tuner3"}`}
+			if rm {
+				slots[2] = busy(2, chs[0], 599000000, "127.0.0.1", 9500000, 0)
+			}
+			if len(chs) > 1 { // a local device on the second channel
+				slots[3] = busy(3, chs[1], 527000000, "192.168.68.115", 6700000, 1.7)
+			}
+			if len(chs) > 2 { // and another on the third
+				slots[0] = busy(0, chs[2], 539000000, "192.168.68.120", 8100000, 3.1)
+			}
+			fmt.Fprintf(w, "[%s]", strings.Join(slots, ","))
 		default:
 			http.NotFound(w, r)
 		}
@@ -95,12 +139,18 @@ func TestDemo(t *testing.T) {
 	guide := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/xmltv":
-			xml := `<?xml version="1.0" encoding="utf-8"?><tv>
-<channel id="a"><display-name>WSB-HD</display-name><lcn>2.1</lcn><icon src="https://img.hdhomerun.com/channels/wsb.png"/></channel>
-<channel id="b"><display-name>WUPA-HD</display-name><lcn>69.1</lcn><icon src="https://img.hdhomerun.com/channels/wupa.png"/></channel>
-<programme start="` + stamp(-40*time.Minute) + `" stop="` + stamp(80*time.Minute) + `" channel="a"><title>College Football</title></programme>
-<programme start="` + stamp(-40*time.Minute) + `" stop="` + stamp(80*time.Minute) + `" channel="b"><title>College Football</title></programme>
-</tv>`
+			xml := `<?xml version="1.0" encoding="utf-8"?><tv>` + "\n"
+			for i, c := range chs {
+				xml += fmt.Sprintf(`<channel id="c%d"><display-name>%s</display-name><lcn>%s</lcn><icon src="https://img.hdhomerun.com/channels/%s"/></channel>`+"\n", i, c.Name, c.Number, c.Logo)
+			}
+			for i, c := range chs {
+				title := c.Title
+				if title == "" {
+					title = "Evening News"
+				}
+				xml += `<programme start="` + stamp(-40*time.Minute) + `" stop="` + stamp(80*time.Minute) + fmt.Sprintf(`" channel="c%d"><title>%s</title></programme>`, i, title) + "\n"
+			}
+			xml += `</tv>`
 			io.WriteString(w, strings.ReplaceAll(xml, "https://img.hdhomerun.com", base))
 		case strings.HasPrefix(r.URL.Path, "/channels/"):
 			b, err := os.ReadFile(filepath.Join(logos, filepath.Base(r.URL.Path)))
@@ -155,10 +205,10 @@ func TestDemo(t *testing.T) {
 	go srv.Run(ctx)
 	base2 := "http://" + ln.Addr().String()
 	os.WriteFile(filepath.Join(dir, "addr"), []byte(base2), 0o644)
-	// Alex watches 2.1 through Antennarr.
+	// Alex watches the first channel through Antennarr.
 	go func() {
 		time.Sleep(time.Second)
-		resp, err := http.Get(base2 + "/auto/v2.1")
+		resp, err := http.Get(base2 + "/auto/v" + chs[0].Number)
 		if err != nil {
 			return
 		}

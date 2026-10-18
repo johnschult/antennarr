@@ -88,6 +88,8 @@ with sync_playwright() as p:
     shot(page, 'phone-live')
     page.get_by_role('button', name='Open menu').click()
     time.sleep(0.5)
+    page.evaluate(SHOW_LAN_ADDRESS)  # the menu has the address too, and only exists now
+    time.sleep(0.3)
     shot(page, 'phone-menu', clip={'x': 0, 'y': 0, 'width': 390, 'height': 560})
     ctx.close()
     browser.close()
