@@ -5,6 +5,12 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.4 (2026-10-18)
+
+### Changed
+
+- **The Tuners page is denser.** Each tuner is one row: status, name, model, address, port, how many of its tuners are in use, and a flag when firmware is out of date. It opens to its details, a strip showing what is on each of its tuners, and *Manage* and *Firmware* side by side. A single tuner starts open; with several they start folded, so they are easy to scan. The tuner table is replaced by the strip (the Live page still has the full view).
+
 ## 2026.10.3 (2026-10-18)
 
 ### Read before updating
