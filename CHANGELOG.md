@@ -9,7 +9,7 @@ Each release's notes on GitHub are its section of this file.
 
 ### Read before updating
 
-- **Media servers now always see the tuner's own name.** The name you gave a tuner on the *Tuners* page used to be sent to Plex and the others in place of its model, so renaming a tuner changed what Plex showed. Now they are always told what the tuner calls itself (for example *HDHomeRun FLEX 4K*), and the name you give it is only for Antennarr's own page. A DVR that is already set up in Plex may keep the old name until Plex reads the device again or you add the DVR again. A media server can still rename its own DVR.
+- **Media servers now always see the tuner's own name.** The name you gave a tuner on the *Tuners* page used to be sent to Plex and the others in place of its model, so renaming a tuner changed what Plex showed. Now they are always told what the tuner calls itself (for example *HDHomeRun FLEX 4K*), and the name you give it is only for Antennarr's own page. A DVR that is already set up in Plex picks up the change by itself, so there is nothing to re-add. A media server can still rename its own DVR.
 - **The Connect page is part of adding a viewer.** *Viewers → Add viewer* now walks through three steps: who they are, how their server reaches yours, and what to do in their media server. For a viewer you already have, use the new *Connection steps* button on their row. The old `/setup` link goes to *Viewers*.
 - **The top bar no longer shows the tuner.** It has only the *Live* connection pill. Each tuner now has its own header on the *Live* page (see below), so nothing is lost, and with several tuners the top bar can't run out of room.
 
