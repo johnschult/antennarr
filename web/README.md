@@ -18,6 +18,11 @@ address must be allowed to use the admin page (loopback always is).
 The UI talks only to the JSON API in `internal/api`. Its types are in
 `src/lib/types.ts` and must be kept in step with `internal/api/api.go`.
 
+## Install warnings
+
+- **Install scripts.** npm 12 asks you to review packages that run scripts when installed. `package.json`'s `allowScripts` records the answers; `fsevents` (macOS file watching) is denied, since it ships its prebuilt binary. Review new ones with `npm install-scripts ls`.
+- **`npm audit` reports 7 high findings** in `braces`, reached through the `shadcn` CLI (`shadcn` → `fast-glob` → `micromatch` → `braces`). `npm audit --omit=dev` reports none, and nothing from that chain is in the built UI: `shadcn` is a dev dependency and only its CSS is imported. There is no patched `braces` yet, and the `npm audit fix --force` suggestion would downgrade `shadcn` to 1.0.0, which breaks the build. Re-check after `npm update`.
+
 ## Third-party assets
 
 - `public/plex-wordmark.png` and `public/plex-icon.png` are resized copies of the Plex logos from
