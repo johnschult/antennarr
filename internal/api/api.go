@@ -3,6 +3,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,9 +13,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/httpx"
@@ -30,9 +33,30 @@ const (
 	coalesceFor = 100 * time.Millisecond // bursts of changes become one event
 )
 
+// Fleet is the set of tuners Antennarr is fronting, which can change while it
+// runs. The server provides it.
+type Fleet interface {
+	Devices() []Device
+	// AddDevice starts fronting a tuner and saves it to the settings. Fields left
+	// empty (the name, the port) are filled in. It returns the device as saved.
+	AddDevice(ctx context.Context, d access.Device) (access.Device, error)
+	// RemoveDevice stops fronting a tuner, ends any streams on it and removes it
+	// from the settings.
+	RemoveDevice(name string) error
+}
+
+// NewError is an error that reaches the person as this status and message.
+func NewError(code int, msg string) error { return &httpErr{code: code, msg: msg} }
+
 // API serves /antennarr/api/*.
 type API struct {
+	// Devices is a fixed set of tuners, for when Fleet is nil.
 	Devices []Device
+	// Fleet, when set, is where the tuners come from, and what adds and removes
+	// them.
+	Fleet Fleet
+	// Discover looks for tuners on the network. Nil means discovery.Discover.
+	Discover func(ctx context.Context, wait time.Duration) ([]discovery.Device, error)
 	// Firmware reads SiliconDust's changelog; nil means no firmware checking.
 	Firmware *firmware.Checker
 	// Guide reads SiliconDust's programme guide; nil means no guide.
@@ -50,6 +74,8 @@ type API struct {
 	// KeepAlive is how often an idle event stream gets a comment line, so
 	// proxies don't drop it. Zero means 20s.
 	KeepAlive time.Duration
+
+	searching atomic.Bool // a network search is under way
 }
 
 // Device is one fronted tuner: its name, where media servers reach it, and the
@@ -77,7 +103,9 @@ func (a *API) Handler() http.Handler {
 		{"viewers", map[string]http.HandlerFunc{"GET": a.listViewers, "POST": a.addViewer}},
 		{"viewers/{name}", map[string]http.HandlerFunc{"PUT": a.replaceViewer, "DELETE": a.deleteViewer}},
 		{"settings", map[string]http.HandlerFunc{"GET": a.getSettings, "PATCH": a.patchSettings}},
-		{"devices/{name}", map[string]http.HandlerFunc{"PATCH": a.patchDevice}},
+		{"devices", map[string]http.HandlerFunc{"POST": a.addDevice}},
+		{"devices/{name}", map[string]http.HandlerFunc{"PATCH": a.patchDevice, "DELETE": a.deleteDevice}},
+		{"discover", map[string]http.HandlerFunc{"POST": a.discover}},
 		{"devices/{name}/guide/{channel}/icon", map[string]http.HandlerFunc{"GET": a.channelIcon}},
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
@@ -209,8 +237,9 @@ func (a *API) deviceDoc(d Device, streams []access.Active) DeviceDoc {
 func (a *API) state() State {
 	set := a.Pol.Settings()
 	streams := a.Pol.Active()
-	devices := make([]DeviceDoc, 0, len(a.Devices))
-	for _, d := range a.Devices {
+	all := a.devices()
+	devices := make([]DeviceDoc, 0, len(all))
+	for _, d := range all {
 		devices = append(devices, a.deviceDoc(d, streams))
 	}
 	return State{
@@ -489,12 +518,7 @@ type devicePatch struct {
 // command-line flags has none of its own, so the top-level ones are changed.
 func (a *API) patchDevice(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	var dev *Device
-	for i := range a.Devices {
-		if a.Devices[i].Name == name {
-			dev = &a.Devices[i]
-		}
-	}
+	dev := a.device(name)
 	if dev == nil {
 		writeErr(w, http.StatusNotFound, fmt.Sprintf("no device named %q", name))
 		return
@@ -542,6 +566,126 @@ func (a *API) patchDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, a.deviceDoc(*dev, a.Pol.Active()))
+}
+
+// devices is the tuners now being fronted.
+func (a *API) devices() []Device {
+	if a.Fleet != nil {
+		return a.Fleet.Devices()
+	}
+	return a.Devices
+}
+
+func (a *API) device(name string) *Device {
+	for _, d := range a.devices() {
+		if d.Name == name {
+			d := d
+			return &d
+		}
+	}
+	return nil
+}
+
+// ---- adding, finding and removing tuners ----
+
+// deviceInput is a tuner to start fronting. Only the address (or DeviceID) is
+// needed; the name and port are chosen if left out.
+type deviceInput struct {
+	Name   string `json:"name"`
+	Listen string `json:"listen"`
+	Tuner  string `json:"tuner"`
+	ID     string `json:"id"`
+}
+
+func (a *API) addDevice(w http.ResponseWriter, r *http.Request) {
+	if a.Fleet == nil {
+		writeErr(w, http.StatusConflict, "tuners can't be added here")
+		return
+	}
+	var in deviceInput
+	if !decode(w, r, &in) {
+		return
+	}
+	d, err := a.Fleet.AddDevice(r.Context(), access.Device{
+		Name: strings.TrimSpace(in.Name), Listen: strings.TrimSpace(in.Listen),
+		Tuner: strings.TrimSpace(in.Tuner), ID: strings.ToUpper(strings.TrimSpace(in.ID)),
+	})
+	if err != nil {
+		a.fail(w, err)
+		return
+	}
+	dev := a.device(d.Name)
+	if dev == nil {
+		writeErr(w, http.StatusInternalServerError, "the tuner was added but can't be shown")
+		return
+	}
+	writeJSON(w, http.StatusCreated, a.deviceDoc(*dev, a.Pol.Active()))
+}
+
+func (a *API) deleteDevice(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if a.Fleet == nil {
+		writeErr(w, http.StatusConflict, "tuners can't be removed here")
+		return
+	}
+	if a.device(name) == nil {
+		writeErr(w, http.StatusNotFound, fmt.Sprintf("no device named %q", name))
+		return
+	}
+	if err := a.Fleet.RemoveDevice(name); err != nil {
+		a.fail(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Found is a tuner seen on the network.
+type Found struct {
+	ID      string `json:"id"`
+	Address string `json:"address"` // where it answered
+	Tuners  int    `json:"tuners"`  // how many tuners it has
+	Added   string `json:"added"`   // the device it is already, if it is one
+}
+
+const discoverWait = 3 * time.Second
+
+// discover looks for HDHomeRuns on the network now. It is a POST because it
+// sends broadcasts, and one search at a time is plenty.
+func (a *API) discover(w http.ResponseWriter, r *http.Request) {
+	if !a.searching.CompareAndSwap(false, true) {
+		writeErr(w, http.StatusTooManyRequests, "already looking; try again in a moment")
+		return
+	}
+	defer a.searching.Store(false)
+	find := a.Discover
+	if find == nil {
+		find = func(ctx context.Context, wait time.Duration) ([]discovery.Device, error) {
+			return discovery.Discover(ctx, wait)
+		}
+	}
+	found, err := find(r.Context(), discoverWait)
+	if err != nil && len(found) == 0 {
+		a.Log.Warn("looking for tuners failed", "err", err)
+		writeErr(w, http.StatusBadGateway, "couldn't search the network for tuners")
+		return
+	}
+	have := map[string]string{} // DeviceID -> device name
+	for _, d := range a.devices() {
+		if id := strings.ToUpper(d.Mon.Snapshot().ID); id != "" {
+			have[id] = d.Name
+		}
+	}
+	for _, d := range a.Pol.Settings().Devices {
+		if d.ID != "" {
+			have[strings.ToUpper(d.ID)] = d.Name
+		}
+	}
+	out := make([]Found, 0, len(found))
+	for _, f := range found {
+		out = append(out, Found{ID: f.ID, Address: f.BaseURL, Tuners: f.TunerCount, Added: have[strings.ToUpper(f.ID)]})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
+	writeJSON(w, http.StatusOK, map[string]any{"tuners": out})
 }
 
 // checkFirmware reads the changelog now, rather than waiting for the next

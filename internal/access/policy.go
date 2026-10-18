@@ -98,6 +98,21 @@ func (p *Policy) AddDevice(name string, mon StateSource, notes Notifier) {
 	p.mu.Unlock()
 }
 
+// RemoveDevice forgets a device and the streams recorded against it. The
+// streams themselves end when their connections are closed; this only stops the
+// dashboards listing them in the meantime.
+func (p *Policy) RemoveDevice(name string) {
+	p.mu.Lock()
+	delete(p.devices, name)
+	for id, a := range p.active {
+		if a.Device == name {
+			delete(p.active, id)
+		}
+	}
+	p.mu.Unlock()
+	p.changed()
+}
+
 // Device returns the view of the policy for one device's proxy.
 func (p *Policy) Device(name string) *DeviceView { return &DeviceView{p: p, name: name} }
 

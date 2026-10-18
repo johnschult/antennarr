@@ -26,10 +26,10 @@ func TestDevicesFromFlags(t *testing.T) {
 	}
 }
 
-func TestFlagsNeedATunerOrAnID(t *testing.T) {
-	_, err := devicesFor(access.DefaultSettings(), defaults, nil)
-	if err == nil || !strings.Contains(err.Error(), "-tuner") || !strings.Contains(err.Error(), "-config") {
-		t.Errorf("err = %v", err)
+func TestNoTunerNamedMeansStartingWithNone(t *testing.T) {
+	got, err := devicesFor(access.DefaultSettings(), defaults, nil)
+	if err != nil || len(got) != 0 {
+		t.Errorf("got %+v, %v: with nothing named, expected no devices and no error (tuners are added from the admin page)", got, err)
 	}
 	f := defaults
 	f.id = "10ABCC87" // an id alone is enough
