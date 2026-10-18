@@ -9,20 +9,22 @@ checkout says `dev` (with the commit, e.g. `dev+3553344`); `antennarr -version` 
 
 ## To release
 
-`main` is protected, so changes arrive by pull request. Once what you want is on `main`:
+`main` is protected, so changes arrive by pull request. First write the release's entry in [`CHANGELOG.md`](../CHANGELOG.md), in a pull request like any other change: a `## 2026.10.2 (2026-10-18)` heading, then what changed. Put anything that changes what an existing install does under *Read before updating*. The release's notes on GitHub are that section, and a tag with no section fails before anything is published.
+
+Once the entry is on `main`:
 
 ```sh
 git checkout main && git pull
-git tag v2026.10.0
-git push origin v2026.10.0
+git tag v2026.10.2
+git push origin v2026.10.2
 ```
 
 The **Release** workflow then:
 
-1. checks the tag looks like `vYYYY.MM.PATCH` (anything else fails, so a typo can't publish);
+1. checks the tag looks like `vYYYY.MM.PATCH` and that `CHANGELOG.md` has a section for it (otherwise it fails, so a typo or a forgotten entry can't publish);
 2. builds the image for `linux/amd64` and `linux/arm64`, with the version built in;
 3. pushes it to `ghcr.io/johnschult/antennarr` as `2026.10.0` and `latest`;
-4. creates the GitHub release, with notes generated from the merged pull requests.
+4. creates the GitHub release: the changelog section first, then the list of merged pull requests that GitHub generates.
 
 Pull requests that change the `Dockerfile` or the workflow build the image without pushing it.
 
