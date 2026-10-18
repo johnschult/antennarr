@@ -1,9 +1,10 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Viewer } from '@/lib/types'
 import { john, makeState, makeTwoDeviceState, mom } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
-import { SetupPage } from './setup'
+import { ViewerWizard } from './viewer-wizard'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -13,6 +14,14 @@ afterEach(() => {
 const block = (name: string) => screen.getByRole('region', { name })
 const host = () => screen.getByLabelText(/Address viewers will use/)
 
+type State = ReturnType<typeof makeState>
+
+/** The wizard for an existing viewer, which starts at how they connect; or, with no viewer, at adding one. */
+function mount(state: State = makeState(), viewer: Viewer | null = john, onOpenChange = vi.fn()) {
+  renderWithApp(<ViewerWizard open onOpenChange={onOpenChange} devices={state.devices} viewer={viewer ?? undefined} />, state)
+  return onOpenChange
+}
+
 async function typeHost(value: string) {
   const user = userEvent.setup()
   await user.clear(host())
@@ -20,24 +29,173 @@ async function typeHost(value: string) {
   return user
 }
 
-describe('SetupPage', () => {
+const next = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: /^Next/ }))
+
+describe('ViewerWizard: the steps', () => {
+  it('adds a viewer first, then how they connect, then their media server', async () => {
+    const { fn, calls } = stubFetch({
+      'POST /viewers': () => ({ status: 201, body: {} }),
+      'GET /state': () => ({ body: makeState() }),
+      'GET /network': () => ({ body: { addresses: [] } }),
+    })
+    vi.stubGlobal('fetch', fn)
+    const user = userEvent.setup()
+    mount(makeState(), null)
+
+    expect(screen.getByRole('heading', { name: 'Add a viewer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next: Connect' })).toBeInTheDocument() // says where it goes, not 'Add viewer'
+    expect(screen.getByText(/saved when you continue/)).toBeInTheDocument()
+    const steps = within(screen.getByRole('list', { name: 'Steps' }))
+    expect(steps.getAllByRole('listitem').map((s) => s.textContent)).toEqual(['1Who', '2Connect', '3Media server'])
+    expect(steps.getByRole('listitem', { current: 'step' })).toHaveTextContent('Who')
+
+    await user.type(screen.getByLabelText('Name'), 'Cabin')
+    await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
+
+    expect(await screen.findByRole('region', { name: 'The address' })).toBeInTheDocument()
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'Cabin', addresses: ['10.9.0.6'], limit: 1 })
+    expect(await screen.findByText('Added Cabin')).toBeInTheDocument() // the toast, as when adding without steps
+    expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Connect')
+    expect(screen.getByText("How Cabin's media server will reach this machine.")).toBeInTheDocument()
+
+    expect(screen.getByRole('button', { name: 'Next: Media server' })).toBeInTheDocument()
+    await next(user)
+    expect(screen.getByRole('region', { name: 'In their media server' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument()
+  })
+
+  it("uses the new viewer's addresses for the firewall rules", async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        'POST /viewers': () => ({ status: 201, body: {} }),
+        'GET /state': () => ({ body: makeState() }),
+        'GET /network': () => ({ body: { addresses: [] } }),
+      }).fn,
+    )
+    const user = userEvent.setup()
+    mount(makeState(), null)
+    await user.type(screen.getByLabelText('Name'), 'Cabin')
+    await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
+    await user.click(await screen.findByRole('switch', { name: /has a firewall/ }))
+    expect(screen.getByLabelText('firewall rules')).toHaveTextContent('sudo ufw allow from 10.9.0.6 to any port 5004 proto tcp')
+  })
+
+  it('stays on the first step, with the reason, when the viewer cannot be added', async () => {
+    vi.stubGlobal('fetch', stubFetch({ 'POST /viewers': () => ({ status: 409, body: { error: 'a viewer called Cabin already exists' } }) }).fn)
+    const user = userEvent.setup()
+    mount(makeState(), null)
+    await user.type(screen.getByLabelText('Name'), 'Cabin')
+    await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('already exists')
+    expect(screen.getByLabelText('Name')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'The address' })).not.toBeInTheDocument()
+  })
+
+  it('checks the form before bothering the server', async () => {
+    const { fn, calls } = stubFetch({})
+    vi.stubGlobal('fetch', fn)
+    const user = userEvent.setup()
+    mount(makeState(), null)
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Give the viewer a name.')
+    expect(calls).toEqual([])
+  })
+
+  it("does not read this machine's addresses until the connect step", async () => {
+    const { fn, calls } = stubFetch({
+      'POST /viewers': () => ({ status: 201, body: {} }),
+      'GET /state': () => ({ body: makeState() }),
+      'GET /network': () => ({ body: { addresses: [] } }),
+    })
+    vi.stubGlobal('fetch', fn)
+    const user = userEvent.setup()
+    mount(makeState(), null)
+    expect(calls.filter((c) => c.url.includes('/network'))).toEqual([])
+    await user.type(screen.getByLabelText('Name'), 'Cabin')
+    await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
+    await screen.findByRole('region', { name: 'The address' })
+    expect(calls.filter((c) => c.url.includes('/network'))).toHaveLength(1)
+  })
+
+  it('cannot go back to adding once the viewer is saved, so they are not added twice', async () => {
+    vi.stubGlobal(
+      'fetch',
+      stubFetch({
+        'POST /viewers': () => ({ status: 201, body: {} }),
+        'GET /state': () => ({ body: makeState() }),
+        'GET /network': () => ({ body: { addresses: [] } }),
+      }).fn,
+    )
+    const user = userEvent.setup()
+    const onOpenChange = mount(makeState(), null)
+    expect(screen.getByRole('button', { name: /Cancel/ })).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Name'), 'Cabin')
+    await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
+    await screen.findByRole('region', { name: 'The address' })
+    expect(screen.queryByRole('button', { name: /Back/ })).not.toBeInTheDocument()
+    await user.click(screen.getByText('Close', { selector: 'button' })) // the footer's, not the dialog's corner X
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+})
+
+describe('ViewerWizard: an existing viewer', () => {
+  it("starts at how they connect, with only the steps that are left, and doesn't change the viewer", async () => {
+    const { fn, calls } = stubFetch({ 'GET /network': () => ({ body: { addresses: [] } }) })
+    vi.stubGlobal('fetch', fn)
+    mount(makeState(), john)
+    expect(screen.getByRole('heading', { name: 'Connect John' })).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Steps' })).getAllByRole('listitem').map((s) => s.textContent)).toEqual(['1Connect', '2Media server'])
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument()
+    await screen.findByLabelText(/Address viewers will use/)
+    expect(calls.some((c) => c.method !== 'GET')).toBe(false)
+  })
+
+  it('goes back and forward, and closes when it is done', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = mount()
+    await next(user)
+    expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Media server')
+    await user.click(screen.getByRole('button', { name: /Back/ }))
+    expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Connect')
+    await next(user)
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it('keeps the address and connection you chose when you go forward and back', async () => {
+    mount()
+    const user = await typeHost('box.lan')
+    await next(user)
+    expect(screen.getByLabelText('check commands')).toHaveTextContent('box.lan:5004')
+    await user.click(screen.getByRole('button', { name: /Back/ }))
+    expect(host()).toHaveValue('box.lan')
+  })
+})
+
+describe('ViewerWizard: how they connect', () => {
   it('starts from the address in the browser, and warns that a local one will not work for others', () => {
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     expect(host()).toHaveValue(window.location.hostname)
-    expect(within(block('1. The address')).getByRole('alert')).toHaveTextContent(/only works on this machine|Enter/)
+    expect(within(block('The address')).getByRole('alert')).toHaveTextContent(/only works on this machine|Enter/)
   })
 
   it('shows the address a viewer enters, with the tuner port', async () => {
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     await typeHost('antenna.example.com')
     expect(screen.getByLabelText('tuner address')).toHaveTextContent('antenna.example.com:5004')
-    expect(within(block('1. The address')).queryByRole('alert')).not.toBeInTheDocument()
+    expect(within(block('The address')).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('lets you pick the tuner when there are several, and uses its port and name', async () => {
     const s = makeTwoDeviceState()
     s.devices[0].label = 'Living room antenna'
-    renderWithApp(<SetupPage />, s)
+    mount(s)
     const user = await typeHost('box.lan')
     expect(screen.getByLabelText('tuner address')).toHaveTextContent('box.lan:5004')
     const choice = within(screen.getByRole('radiogroup', { name: 'Tuner' }))
@@ -47,20 +205,12 @@ describe('SetupPage', () => {
   })
 
   it('has no tuner choice with one tuner', () => {
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     expect(screen.queryByRole('radiogroup', { name: 'Tuner' })).not.toBeInTheDocument()
   })
 
-  it('asks you to add a viewer first when there are none', async () => {
-    renderWithApp(<SetupPage />, makeState({ viewers: [] }))
-    expect(within(block('2. Who is it for?')).getByRole('link', { name: 'Add one' })).toHaveAttribute('href', '/viewers')
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('switch', { name: /has a firewall/ }))
-    expect(within(block('4. On this machine')).getByText('Add a viewer to get their firewall rules.')).toBeInTheDocument()
-  })
-
   it('shows nothing about firewalls until you say there is one, and hides it again when you say there is not', async () => {
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     const user = await typeHost('box.lan')
     const gate = screen.getByRole('switch', { name: 'This machine has a firewall that blocks port 5004' })
     expect(gate).toHaveAttribute('aria-checked', 'false')
@@ -75,25 +225,30 @@ describe('SetupPage', () => {
     expect(screen.queryByLabelText('firewall rules')).not.toBeInTheDocument()
   })
 
-  it("writes the chosen viewer's firewall rules, and switches firewall and viewer", async () => {
-    renderWithApp(<SetupPage />, makeState({ viewers: [john, mom] }))
+  it("writes this viewer's firewall rules, and switches firewall", async () => {
+    mount(makeState({ viewers: [john, mom] }), mom)
     const user = await typeHost('box.lan')
     await user.click(screen.getByRole('switch', { name: /has a firewall/ }))
     const fw = () => screen.getByLabelText('firewall rules')
 
-    expect(fw()).toHaveTextContent(`sudo ufw allow from ${john.addresses[0]} to any port 5004 proto tcp`)
-    await user.click(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'iptables' }))
-    expect(fw()).toHaveTextContent(`sudo iptables -I INPUT -p tcp -s ${john.addresses[0]} --dport 5004 -j ACCEPT`)
-    await user.click(within(screen.getByRole('radiogroup', { name: 'Viewer' })).getByRole('radio', { name: /Mom/ }))
-    expect(fw()).toHaveTextContent(`-s ${mom.addresses[0]} `)
+    expect(fw()).toHaveTextContent(`sudo ufw allow from ${mom.addresses[0]} to any port 5004 proto tcp`)
     expect(fw()).not.toHaveTextContent(john.addresses[0])
+    await user.click(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'iptables' }))
+    expect(fw()).toHaveTextContent(`sudo iptables -I INPUT -p tcp -s ${mom.addresses[0]} --dport 5004 -j ACCEPT`)
     expect(screen.getByLabelText('undo firewall rules')).toHaveTextContent('iptables -D INPUT')
   })
 
-  it('changes the connection steps with the way they will connect', async () => {
-    renderWithApp(<SetupPage />, makeState())
+  it('says so when a viewer has no address a firewall rule can be written for', async () => {
+    mount(makeState(), { ...john, addresses: ['example.com'] })
     const user = await typeHost('box.lan')
-    const steps = () => block('3. How will they reach it?')
+    await user.click(screen.getByRole('switch', { name: /has a firewall/ }))
+    expect(within(block('On this machine')).getByText('This viewer has no addresses to allow.')).toBeInTheDocument()
+  })
+
+  it('changes the connection steps with the way they will connect', async () => {
+    mount()
+    const user = await typeHost('box.lan')
+    const steps = () => block('How will they reach it?')
     expect(steps()).toHaveTextContent(/tailscale ip -4/)
     await user.click(within(steps()).getByRole('radio', { name: /Internet/ }))
     expect(steps()).toHaveTextContent(/no passwords/)
@@ -101,43 +256,14 @@ describe('SetupPage', () => {
     expect(steps()).toHaveTextContent(/both servers are on the same network/)
   })
 
-  it('shows Plex steps first and the others on their tabs, each with the address', async () => {
-    renderWithApp(<SetupPage />, makeState())
-    const user = await typeHost('box.lan')
-    const media = () => block('5. In their media server')
-    expect(within(media()).getByRole('tab', { name: 'Plex' })).toHaveAttribute('aria-selected', 'true')
-    expect(media()).toHaveTextContent('Enter box.lan:5004')
-
-    await user.click(within(media()).getByRole('tab', { name: 'Jellyfin' }))
-    expect(media()).toHaveTextContent('Dashboard → Live TV')
-    expect(media()).toHaveTextContent('box.lan:5004')
-    await user.click(within(media()).getByRole('tab', { name: 'Emby' }))
-    expect(media()).toHaveTextContent('Emby Premiere')
-  })
-
-  it('shows the check commands for the address', async () => {
-    renderWithApp(<SetupPage />, makeState())
-    await typeHost('box.lan')
-    expect(screen.getByLabelText('check commands')).toHaveTextContent('curl -s http://box.lan:5004/discover.json')
-  })
-
-  it('holds back the address-dependent steps until the address is usable', async () => {
-    renderWithApp(<SetupPage />, makeState())
-    await typeHost('http://bad')
-    expect(screen.queryByLabelText('tuner address')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('check commands')).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
-    expect(block('5. In their media server')).toHaveTextContent(/Fix the address/)
-  })
-
   it('does not repeat an unusable address in the connection steps', async () => {
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     await typeHost('localhost')
-    expect(block('3. How will they reach it?')).not.toHaveTextContent('localhost')
+    expect(block('How will they reach it?')).not.toHaveTextContent('localhost')
   })
 
   it('never puts a typed address into a command', async () => {
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     await typeHost('box.lan; rm -rf ~')
     const where = [...document.querySelectorAll('*')].filter((e) => e.children.length === 0 && e.textContent?.includes('rm -rf')).map((e) => e.outerHTML)
     expect(where).toEqual([])
@@ -145,7 +271,7 @@ describe('SetupPage', () => {
 
   it('copies a command block', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     const user = await typeHost('box.lan')
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true }) // after setup(), which installs its own
     await user.click(screen.getByRole('button', { name: 'Copy tuner address' }))
@@ -154,7 +280,7 @@ describe('SetupPage', () => {
   })
 
   it('says so when copying is not allowed', async () => {
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     const user = await typeHost('box.lan')
     Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockRejectedValue(new Error('no')) }, configurable: true })
     await user.click(screen.getByRole('button', { name: 'Copy tuner address' }))
@@ -162,7 +288,7 @@ describe('SetupPage', () => {
   })
 })
 
-describe('SetupPage on a machine that knows its own addresses', () => {
+describe('ViewerWizard on a machine that knows its own addresses', () => {
   const ts = { ip: '100.64.0.9', kind: 'tailscale', interface: 'tailscale0' }
   const lan = { ip: '192.168.1.5', kind: 'lan', interface: 'eth0' }
   const machine = (...addresses: unknown[]) => vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses } }) }).fn)
@@ -170,12 +296,12 @@ describe('SetupPage on a machine that knows its own addresses', () => {
 
   it("fills in the machine's Tailscale address, and says Tailscale is already running", async () => {
     machine(ts, lan)
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     await screen.findByRole('group', { name: 'Addresses of this machine' })
     expect(await field()).toHaveValue('100.64.0.9')
     expect(screen.getByLabelText('tuner address')).toHaveTextContent('100.64.0.9:5004')
-    expect(within(block('1. The address')).queryByRole('alert')).not.toBeInTheDocument()
-    const steps = block('3. How will they reach it?')
+    expect(within(block('The address')).queryByRole('alert')).not.toBeInTheDocument()
+    const steps = block('How will they reach it?')
     expect(steps).toHaveTextContent('Tailscale is running on this machine (100.64.0.9)')
     expect(steps).not.toHaveTextContent(/Install Tailscale|tailscale ip -4|tailscale ping/) // nothing to install or look up: we know it
     expect(within(steps).getByRole('radio', { name: /Tailscale/ })).toHaveTextContent('Running on this machine (100.64.0.9)')
@@ -183,7 +309,7 @@ describe('SetupPage on a machine that knows its own addresses', () => {
 
   it('offers each address, and clicking one uses it', async () => {
     machine(ts, lan)
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     const user = userEvent.setup()
     const chips = within(await screen.findByRole('group', { name: 'Addresses of this machine' }))
     expect(chips.getByRole('button', { name: /100\.64\.0\.9.*Tailscale/ })).toHaveAttribute('aria-pressed', 'true')
@@ -197,7 +323,7 @@ describe('SetupPage on a machine that knows its own addresses', () => {
 
   it('follows the connection you choose until you type an address of your own', async () => {
     machine(ts, lan)
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     const user = userEvent.setup()
     await screen.findByRole('group', { name: 'Addresses of this machine' })
     const connection = within(screen.getByRole('radiogroup', { name: 'Connection' }))
@@ -215,25 +341,25 @@ describe('SetupPage on a machine that knows its own addresses', () => {
 
   it('says so when Tailscale is not running on this machine, and falls back to the browser address', async () => {
     machine(lan)
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     expect(await screen.findByText(/Tailscale wasn't found running on this machine/)).toBeInTheDocument()
     expect(await field()).toHaveValue(window.location.hostname)
-    expect(block('3. How will they reach it?')).toHaveTextContent('Install Tailscale') // so the longer steps are still there
+    expect(block('How will they reach it?')).toHaveTextContent('Install Tailscale') // so the longer steps are still there
   })
 
   it('does not show the long Tailscale steps while it is still checking', async () => {
     let release: (v: Response) => void = () => {}
     vi.stubGlobal('fetch', () => new Promise<Response>((r) => (release = r)))
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     await screen.findByLabelText(/Address viewers will use/)
-    expect(block('3. How will they reach it?')).not.toHaveTextContent(/Install Tailscale|Tailscale is running/)
+    expect(block('How will they reach it?')).not.toHaveTextContent(/Install Tailscale|Tailscale is running/)
     release(new Response(JSON.stringify({ addresses: [ts] })))
-    expect(await within(block('3. How will they reach it?')).findByText(/Tailscale is running on this machine/)).toBeInTheDocument()
+    expect(await within(block('How will they reach it?')).findByText(/Tailscale is running on this machine/)).toBeInTheDocument()
   })
 
   it('does not claim anything when nothing could be read', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ status: 500, body: { error: 'no' } }) }).fn)
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     expect(await field()).toHaveValue(window.location.hostname)
     await new Promise((r) => setTimeout(r, 50))
     expect(screen.queryByRole('group', { name: 'Addresses of this machine' })).not.toBeInTheDocument()
@@ -242,20 +368,19 @@ describe('SetupPage on a machine that knows its own addresses', () => {
 
   it('leaves the connection hint alone when there is no Tailscale here', async () => {
     machine(lan)
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     await screen.findByRole('group', { name: 'Addresses of this machine' })
     expect(screen.getByRole('radio', { name: /Tailscale/ })).not.toHaveTextContent('Running on this machine')
   })
 })
 
-describe('SetupPage firewall detection', () => {
-  const network = (firewall: unknown) =>
-    vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses: [], firewall } }) }).fn)
+describe('ViewerWizard firewall detection', () => {
+  const network = (firewall: unknown) => vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses: [], firewall } }) }).fn)
   const gate = () => screen.getByRole('switch', { name: /has a firewall/ })
 
-  it('opens the firewall step with the right tool when one is switched on', async () => {
+  it('opens the firewall section with the right tool when one is switched on', async () => {
     network({ tool: 'firewalld', active: true })
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     expect(await screen.findByText('Antennarr found firewalld switched on here.')).toBeInTheDocument()
     expect(gate()).toHaveAttribute('aria-checked', 'true')
     expect(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'firewalld' })).toBeChecked()
@@ -264,14 +389,14 @@ describe('SetupPage firewall detection', () => {
 
   it('goes by ufw when that is what is on', async () => {
     network({ tool: 'ufw', active: true })
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     expect(await screen.findByText('Antennarr found ufw switched on here.')).toBeInTheDocument()
     expect(screen.getByLabelText('firewall rules')).toHaveTextContent('sudo ufw allow from')
   })
 
   it("does not claim iptables is blocking anything, since its rules can't be read, but offers it if you say there is a firewall", async () => {
     network({ tool: 'iptables', active: false })
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     expect(await screen.findByText(/iptables looks to be in use here, but Antennarr can't see its rules/)).toBeInTheDocument()
     expect(gate()).toHaveAttribute('aria-checked', 'false')
     expect(screen.queryByLabelText('firewall rules')).not.toBeInTheDocument()
@@ -282,7 +407,7 @@ describe('SetupPage firewall detection', () => {
 
   it('says nothing and stays closed when no firewall was found', async () => {
     network({ tool: '', active: false })
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     await new Promise((r) => setTimeout(r, 50))
     expect(gate()).toHaveAttribute('aria-checked', 'false')
     expect(screen.queryByText(/switched on here|looks to be in use/)).not.toBeInTheDocument()
@@ -290,7 +415,7 @@ describe('SetupPage firewall detection', () => {
 
   it('lets you overrule what it found', async () => {
     network({ tool: 'ufw', active: true })
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     const user = userEvent.setup()
     await screen.findByText('Antennarr found ufw switched on here.')
     await user.click(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'iptables' }))
@@ -301,26 +426,54 @@ describe('SetupPage firewall detection', () => {
 
   it('still works when the server cannot say (an older server, or a failed request)', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses: [] } }) }).fn)
-    renderWithApp(<SetupPage />, makeState())
+    mount()
     await new Promise((r) => setTimeout(r, 50))
     expect(gate()).toHaveAttribute('aria-checked', 'false')
   })
 })
 
-describe('SetupPage media server icons', () => {
+describe('ViewerWizard: their media server', () => {
+  async function toMediaServer(address = 'box.lan') {
+    mount()
+    const user = await typeHost(address)
+    await next(user)
+    return user
+  }
+  const media = () => block('In their media server')
+
+  it('shows Plex steps first and the others on their tabs, each with the address', async () => {
+    const user = await toMediaServer()
+    expect(within(media()).getByRole('tab', { name: 'Plex' })).toHaveAttribute('aria-selected', 'true')
+    expect(media()).toHaveTextContent('Enter box.lan:5004')
+
+    await user.click(within(media()).getByRole('tab', { name: 'Jellyfin' }))
+    expect(media()).toHaveTextContent('Dashboard → Live TV')
+    expect(media()).toHaveTextContent('box.lan:5004')
+    await user.click(within(media()).getByRole('tab', { name: 'Emby' }))
+    expect(media()).toHaveTextContent('Emby Premiere')
+  })
+
+  it('shows the check commands for the address', async () => {
+    await toMediaServer()
+    expect(screen.getByLabelText('check commands')).toHaveTextContent('curl -s http://box.lan:5004/discover.json')
+  })
+
+  it('holds back the address-dependent steps until the address is usable', async () => {
+    await toMediaServer('http://bad')
+    expect(screen.queryByLabelText('check commands')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(media()).toHaveTextContent(/Fix the address/)
+  })
+
   it('shows each media server with its own icon, which comes from the app and not a CDN', async () => {
-    renderWithApp(<SetupPage />, makeState())
-    await typeHost('box.lan')
-    const icons = Object.fromEntries(
-      screen.getAllByRole('tab').map((t) => [t.textContent, t.querySelector('img')?.getAttribute('src')]),
-    )
+    await toMediaServer()
+    const icons = Object.fromEntries(screen.getAllByRole('tab').map((t) => [t.textContent, t.querySelector('img')?.getAttribute('src')]))
     expect(icons).toEqual({ Plex: '/plex-icon.svg', Jellyfin: '/jellyfin-icon.svg', Emby: '/emby-icon.svg' })
     for (const src of Object.values(icons)) expect(src).not.toMatch(/^https?:/)
   })
 
   it('marks which tab is selected, and moves the mark when you pick another', async () => {
-    renderWithApp(<SetupPage />, makeState())
-    const user = await typeHost('box.lan')
+    const user = await toMediaServer()
     const selected = () => screen.getAllByRole('tab').filter((t) => t.hasAttribute('data-active')).map((t) => t.textContent)
     expect(selected()).toEqual(['Plex'])
     await user.click(screen.getByRole('tab', { name: 'Emby' }))
@@ -330,8 +483,7 @@ describe('SetupPage media server icons', () => {
   })
 
   it('keeps the tab names readable without the icons', async () => {
-    renderWithApp(<SetupPage />, makeState())
-    await typeHost('box.lan')
+    await toMediaServer()
     for (const name of ['Plex', 'Jellyfin', 'Emby']) expect(screen.getByRole('tab', { name })).toBeInTheDocument()
   })
 })

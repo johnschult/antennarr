@@ -119,10 +119,10 @@ The message says why. The common ones:
 
 ## Docker problems
 
-- **It sees every request as coming from `172.x.x.x`, can't find the tuner, or the Connect page offers no Tailscale address**: use `network_mode: host`.
+- **It sees every request as coming from `172.x.x.x`, can't find the tuner, or adding a viewer offers no Tailscale address**: use `network_mode: host`.
 - **Can't write its settings**: the `./config` folder isn't owned by the user in `user:`.
 - **A build fails with a DNS error** (`dl-cdn.alpinelinux.org`): the default Docker network on some firewalld machines can't reach the internet during a build. Use the published image instead of building, or build with `docker build --network host`.
-- **The firewall's rules aren't visible from inside the container**, so the Connect page doesn't detect it. That is expected.
+- **The firewall's rules aren't visible from inside the container**, so the Add viewer steps don't detect it. That is expected.
 
 ## Asking for help
 

@@ -47,7 +47,7 @@ export function Banners({ state }: { state: AppState }) {
       {state.settings.mode === 'no-viewers' && (
         <Banner tone="amber" icon={<AlertTriangle className="size-4" />}>
           <strong>Nobody can use your {several ? 'tuners' : 'tuner'} yet.</strong> No viewers are set up.{' '}
-          <Link to="/viewers" className="underline underline-offset-2">
+          <Link to="/viewers?add" className="underline underline-offset-2">
             Add a viewer
           </Link>{' '}
           to let a media server in.

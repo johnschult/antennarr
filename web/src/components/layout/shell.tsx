@@ -1,4 +1,4 @@
-import { Antenna, Cable, Menu, Radio, Settings, Users, X, type LucideIcon } from 'lucide-react'
+import { Antenna, Menu, Radio, Settings, Users, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
 import { Banners } from '@/components/banners'
@@ -13,13 +13,12 @@ import { deviceTitle } from '@/lib/device'
 import { cn } from '@/lib/utils'
 
 // The pages, in the order they are used: watching, who may watch, the hardware,
-// how to connect a viewer, then everything else. The paths of /setup and /tuner
-// are older than their names here and stay, so existing links keep working.
+// then everything else. The path of /tuner is older than its name here and stays,
+// so existing links keep working.
 const nav: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
   { to: '/', label: 'Live', icon: Radio, end: true },
   { to: '/viewers', label: 'Viewers', icon: Users },
   { to: '/tuner', label: 'Tuners', icon: Antenna },
-  { to: '/setup', label: 'Connect', icon: Cable },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 

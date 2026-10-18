@@ -22,7 +22,7 @@ describe('Banners', () => {
     s.settings.mode = 'no-viewers'
     show(s)
     expect(screen.getByRole('status')).toHaveTextContent('Nobody can use your tuner yet')
-    expect(screen.getByRole('link', { name: 'Add a viewer' })).toHaveAttribute('href', '/viewers')
+    expect(screen.getByRole('link', { name: 'Add a viewer' })).toHaveAttribute('href', '/viewers?add')
   })
 
   it('says the tuner is offline and what Antennarr will do about it', () => {

@@ -116,26 +116,26 @@ export function transportSteps(t: Transport, tailscaleIP?: string): string[] {
       if (tailscaleIP) {
         return [
           `Tailscale is running on this machine (${tailscaleIP}). The viewer\u2019s media server needs Tailscale too, signed in to the same tailnet, or share this machine with their tailnet (Tailscale admin console → Machines → ⋯ → Share).`,
-          'Allow the viewer\u2019s Tailscale address (100.x.y.z) on the Viewers page.',
+          'Make sure the viewer\u2019s Tailscale address (100.x.y.z) is one of their addresses in Antennarr (Viewers → Edit).',
         ]
       }
       return [
         'Install Tailscale on this machine and on the viewer\u2019s media server, signed in to the same tailnet. Or share this machine with their tailnet (Tailscale admin console → Machines → ⋯ → Share).',
         'On this machine, `tailscale ip -4` shows the address to give them.',
-        'Allow the viewer\u2019s Tailscale address (100.x.y.z) on the Viewers page.',
+        'Make sure the viewer\u2019s Tailscale address (100.x.y.z) is one of their addresses in Antennarr (Viewers → Edit).',
       ]
     case 'vpn':
       return [
         'Connect the machine running Antennarr and the viewer\u2019s media server to the same VPN.',
         'Give the viewer this machine\u2019s address on the VPN (not its LAN address).',
-        'The viewer\u2019s address on the VPN is what to allow in Antennarr on the Viewers page.',
+        'The viewer\u2019s address on the VPN must be one of their addresses in Antennarr (Viewers → Edit).',
       ]
     case 'lan':
-      return ['Nothing to set up: both servers are on the same network.', 'Give the viewer this machine\u2019s LAN address, and allow the viewer\u2019s LAN address on the Viewers page.']
+      return ['Nothing to set up: both servers are on the same network.', 'Give the viewer this machine\u2019s LAN address, and make sure the viewer\u2019s LAN address is one of their addresses in Antennarr (Viewers → Edit).']
     case 'internet':
       return [
         'Antennarr has no passwords: it only checks the address a request comes from. Anyone who can reach the port and is on the allowlist can use your tuner. A VPN or Tailscale is much safer.',
-        'If you do this anyway, forward only the Antennarr port on your router to this machine, and allow only the viewer\u2019s public address in your firewall (step 4).',
+        'If you do this anyway, forward only the Antennarr port on your router to this machine, and allow only the viewer\u2019s public address in your firewall (see the firewall section below).',
         'Use your public address or a dynamic-DNS name as the address, and check it from outside your network.',
       ]
   }

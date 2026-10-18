@@ -7,7 +7,7 @@ Before you start:
 1. The viewer's address must be listed under *Viewers* in Antennarr, with a number of tuners above zero.
 2. The viewer's server must be able to reach the address. The server itself has to reach it, not the TV or phone that is watching. Run `curl http://<address>:5004/discover.json` from the *server* to check.
 
-The **Connect** page in the web app writes these steps out with your real address filled in.
+Adding a viewer in the web app (**Viewers → Add viewer**) writes these steps out with your real address filled in. For a viewer you have already added, use **Connection steps** on their row.
 
 Plex is the one Antennarr has been tried with. The Jellyfin and Emby steps follow those apps' own menus and haven't been tried yet; if a menu has moved, please [open an issue](https://github.com/johnschult/antennarr/issues).
 

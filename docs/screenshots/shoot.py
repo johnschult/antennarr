@@ -69,11 +69,15 @@ with sync_playwright() as p:
     ctx.close()
 
     ctx = context('dark')
-    page = open_page(ctx, '/antennarr/setup', 'h1')
+    page = open_page(ctx, '/antennarr/viewers', 'table')
+    # How to connect is a step of adding a viewer; this is the same steps, opened from a viewer's row.
+    page.get_by_role('button', name='Connection steps for Alex').click()
+    dialog = page.get_by_role('dialog')
+    dialog.get_by_label('Address viewers will use to reach this machine').wait_for(timeout=15000)
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
-    shot(page, 'setup', clip={'x': 0, 'y': 0, 'width': 1280, 'height': 640})
+    dialog.screenshot(path=f'{out}/setup.jpg', type='jpeg', quality=90)
     ctx.close()
 
     ctx = context('dark', 390, 844, 2, phone=True)

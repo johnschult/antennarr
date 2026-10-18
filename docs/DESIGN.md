@@ -76,12 +76,13 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 
 **Chosen layout: "Control room"** (chosen from a throwaway HTML mockup, since removed):
 
-- **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Tuners, Connect, Settings). Tuner name, IP and a live dot on the right.
+- **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Tuners, Settings). Tuner name, IP and a live dot on the right.
 - **Hero:** a short "On air now" summary ("2 of 4 tuners live", remote/local/reserved, total Mbps), with a 24h upload sparkline beside it.
 - **One big tile per tuner:**
   - Live tiles show a large channel number, call sign and network, with a subtle scanline texture. Below that: who's watching and the bitrate. A red REC badge marks recordings.
   - Idle tiles are dashed and read "Idle" or "Held for your TVs" (owner reserve).
   - A badge on each tile says who holds it: viewer (cyan), local (violet), reserve (grey), free (green).
+- **Adding a viewer is a short dialog of three steps** (Who, Connect, Media server), not a separate Connect page. The first step saves the viewer; the next two write out how their server reaches this one and what to do in their media server, with this machine's addresses filled in. **Connection steps** on a viewer's row reopens it at the second step. `/setup` redirects to Viewers.
 - **Below the tiles:** a Viewers list with per-viewer tuner-slot pips, and a vertical Timeline of events (started recording, limit hit, IP changed, tuner offline).
 - **Background:** a radial teal glow at the top over near-black.
 - **Shared pages:** Viewers table, Setup guide wizard, Tuner details + lineup, Settings (network mode cards, advertised URL, owner reserve slider, Plex link).

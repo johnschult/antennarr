@@ -28,7 +28,7 @@ Then `mkdir config && chown 1000:1000 config` (use the same numbers as `user:`),
 (step 2), and run `docker compose up -d`.
 
 Use **host networking** (`network_mode: host`). Antennarr tells its own streams from the ones your own TVs open by comparing addresses,
-looks for the tuner with a broadcast on your network, and offers this machine's Tailscale and LAN addresses on the Connect page. All three need to see the machine's real network, which a container on its own bridge network can't.
+looks for the tuner with a broadcast on your network, and offers this machine's Tailscale and LAN addresses when you add a viewer. All three need to see the machine's real network, which a container on its own bridge network can't.
 (With host networking you can't also remap the port: set `listen` in the settings file instead.)
 
 ### A program, without Docker
@@ -97,7 +97,7 @@ FIRST RUN: nobody is an admin yet. To set up, open one of these links from the d
 
 ## 4. Add a viewer
 
-A *viewer* is a person or a server you share the tuner with. Open **Viewers → Add viewer** and fill in:
+A *viewer* is a person or a server you share the tuner with. Open **Viewers → Add viewer**. It is a short set of steps: who they are, how their server reaches yours, and what to do in their media server (steps 4, 5 and 6 here). Start by filling in:
 
 - **Name:** whoever it is.
 - **Addresses:** the address their media server will connect *from*, as your Antennarr sees it. Single addresses (`100.64.0.7`) or ranges (`10.8.0.0/24`). On Tailscale it is the viewer machine's Tailscale address. [Networking](networking.md) explains how to find it.
@@ -112,7 +112,7 @@ If you lose access to the web page, you can always get back in by one of these:
 
 ## 5. Point a media server at it
 
-Antennarr looks like an ordinary HDHomeRun at `<address>:<port>`. The **Connect** page in the web app writes out the steps for the viewer you pick, with your real addresses filled in.
+Antennarr looks like an ordinary HDHomeRun at `<address>:<port>`. The Add viewer steps write this out for you, with your real addresses filled in; for a viewer you have already added, use **Connection steps** on their row on the Viewers page.
 For the full walk-through, see [Media servers](media-servers.md).
 
 ## 6. Check it works

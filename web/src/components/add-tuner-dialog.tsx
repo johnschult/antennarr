@@ -110,7 +110,7 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
       <form onSubmit={submit} noValidate className="space-y-2">
         <Label htmlFor="tuner-address">Or add one by its address</Label>
         <div className="flex gap-2">
-          <Input id="tuner-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="192.168.1.50" spellCheck={false} autoComplete="off" className="font-mono" />
+          <Input id="tuner-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="192.168.1.50" spellCheck={false} className="font-mono" />
           <Button type="submit" disabled={busy}>
             <Plus data-icon="inline-start" /> Add
           </Button>
