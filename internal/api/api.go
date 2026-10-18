@@ -511,6 +511,11 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 			s.Plex.Enabled = *in.PlexEnabled
 		}
 		if in.NotifyEvents != nil {
+			// There is nothing to be told about while the firmware check is off. (Turning the check
+			// off later leaves the switch as it was, and it takes effect again when the check is on.)
+			if in.NotifyEvents.Firmware != nil && *in.NotifyEvents.Firmware && !s.FirmwareCheckEnabled() {
+				return &httpErr{http.StatusBadRequest, "turn on “Check for new tuner firmware” first: there is nothing to tell you about while it is off"}
+			}
 			if s.Notifications == nil {
 				s.Notifications = &access.Notifications{}
 			}

@@ -39,7 +39,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `PUT viewers/{name}` | Replace a viewer (the same body). |
 | `DELETE viewers/{name}` | Remove a viewer, `204`. Removing the last viewer leaves nobody able to use the tuner. The `mode` in the settings is then `no-viewers`. |
 | `GET settings` | The general settings. |
-| `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `plexEnabled`, `notifyEvents` (`{"firmware": false, "unknown": true}`: any of `firmware`, `tuner`, `viewer`, `unknown`). Only the fields you send change. |
+| `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `plexEnabled`, `notifyEvents` (`{"firmware": false, "unknown": true}`: any of `firmware`, `tuner`, `viewer`, `unknown`; `firmware: true` is refused with `400` while `firmwareCheck` is off). Only the fields you send change. |
 | `POST notifications/channels` | Add a channel: `{"name", "type": "ntfy"\|"pushover"\|"webhook", "url", "topic", "token", "user"}`. Replies `201` with the channel, without its secrets. `400` with the reason if it isn't valid; `409` without a settings file. |
 | `PUT notifications/channels/{id}` | Change a channel. A `token`, `user` or (for a webhook) `url` left empty keeps the saved one; `"clearToken": true` removes the token. Secrets aren't carried to a different `type`. `404` if there is no such channel. |
 | `DELETE notifications/channels/{id}` | Remove a channel, `204`. |

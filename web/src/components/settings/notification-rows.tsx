@@ -11,7 +11,7 @@ import { Row } from './section'
 import { SwitchRow } from './switch-row'
 
 const EVENTS: { id: NotifyEvent; title: string; description: string }[] = [
-  { id: 'firmware', title: 'New tuner firmware', description: "When SiliconDust has a newer release for a tuner. Once per release, not at every check. It needs “Check for new tuner firmware” below." },
+  { id: 'firmware', title: 'New tuner firmware', description: 'When SiliconDust has a newer release for a tuner. Once per release, not at every check.' },
   { id: 'tuner', title: 'A tuner goes offline, and comes back', description: 'Only after it has been unreachable for two minutes, so a reboot or a brief drop is not a message.' },
   { id: 'viewer', title: 'A viewer is turned away', description: "A viewer asked for a tuner but was at their limit, or the viewers' shared tuners or your reserved ones were taken. The same one is reported at most every half hour." },
   { id: 'unknown', title: 'An address that is not a viewer connects', description: 'Off by default: a tuner port that can be reached from the internet is scanned all day. Each address is reported once a day, and at most six an hour in all.' },
@@ -50,17 +50,21 @@ export function NotificationRows() {
 
   return (
     <>
-      {EVENTS.map((e) => (
-        <SwitchRow
-          key={e.id}
-          id={`setting-notify-${e.id}`}
-          title={e.title}
-          description={e.description}
-          checked={events[e.id]}
-          disabled={!editable}
-          onChange={(next) => update.mutateAsync({ notifyEvents: { [e.id]: next } })}
-        />
-      ))}
+      {EVENTS.map((e) => {
+        // There is nothing to be told about firmware while the check is off, so it can't be switched on until the check is.
+        const blocked = e.id === 'firmware' && !state.settings.firmwareCheck
+        return (
+          <SwitchRow
+            key={e.id}
+            id={`setting-notify-${e.id}`}
+            title={e.title}
+            description={blocked ? `${e.description} Turn on “Check for new tuner firmware” under Privacy and updates first.` : e.description}
+            checked={events[e.id] && !blocked}
+            disabled={!editable || blocked}
+            onChange={(next) => update.mutateAsync({ notifyEvents: { [e.id]: next } })}
+          />
+        )
+      })}
       {channels.map((c) => (
         <ChannelRow key={c.id} channel={c} editable={editable} onEdit={() => setDialog({ channel: c })} onRemove={() => setRemoving(c)} />
       ))}

@@ -440,3 +440,40 @@ func TestNotificationRoutesRefuseTheWrongMethodAndOutsiders(t *testing.T) {
 		}
 	}
 }
+
+func TestFirmwareMessagesNeedTheFirmwareCheck(t *testing.T) {
+	off := false
+	settings := johnAndMom
+	settings.FirmwareCheck = &off
+	e := newEnv(t, settings, true)
+	e.api.Notify = &fakeTester{}
+	patch := func(body string) (int, any) { return e.call(t, "PATCH", "/antennarr/api/settings", body) }
+
+	if code, v := patch(`{"notifyEvents":{"firmware":true}}`); code != 400 || !strings.Contains(errText(v), "Check for new tuner firmware") {
+		t.Errorf("with the check off: %d %v", code, v)
+	}
+	if saved(t, e).Notifications != nil {
+		t.Errorf("a refused change was saved: %+v", saved(t, e).Notifications)
+	}
+	// the other events, and switching firmware off, are not held up by it
+	if code, v := patch(`{"notifyEvents":{"tuner":false,"firmware":false}}`); code != 200 {
+		t.Errorf("other events: %d %v", code, v)
+	}
+	// turning the check on in the same request is fine
+	if code, v := patch(`{"firmwareCheck":true,"notifyEvents":{"firmware":true}}`); code != 200 {
+		t.Errorf("both together: %d %v", code, v)
+	}
+	if !saved(t, e).NotifyEnabled(access.NotifyFirmware) {
+		t.Error("the firmware switch was not saved")
+	}
+	// and once on, turning the check off leaves the switch as it was, to take effect again with the check
+	if code, v := patch(`{"firmwareCheck":false}`); code != 200 {
+		t.Fatalf("%d %v", code, v)
+	}
+	if !saved(t, e).NotifyEnabled(access.NotifyFirmware) {
+		t.Error("turning the check off changed the firmware switch")
+	}
+	if code, _ := patch(`{"notifyEvents":{"firmware":true}}`); code != 400 {
+		t.Errorf("re-sending it with the check off: %d", code)
+	}
+}

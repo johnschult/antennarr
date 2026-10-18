@@ -35,6 +35,36 @@ describe('Notifications: what sends a message', () => {
     expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ notifyEvents: { unknown: true } })
   })
 
+  it('cannot switch on firmware news while the firmware check is off, and says what to do', () => {
+    const s = makeState()
+    s.settings.firmwareCheck = false
+    show(s)
+    const sw = within(section()).getByRole('switch', { name: /New tuner firmware/ })
+    expect(sw).not.toBeChecked() // even though the setting is on, it can't do anything now
+    expect(sw).toHaveAttribute('aria-disabled', 'true')
+    expect(within(section()).getByText(/Turn on “Check for new tuner firmware” under Privacy and updates first/)).toBeInTheDocument()
+    // the other events are not held up by it
+    expect(within(section()).getByRole('switch', { name: /goes offline/ })).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('does not even try to send it', async () => {
+    const { fn, calls } = stubFetch({})
+    vi.stubGlobal('fetch', fn)
+    const s = makeState()
+    s.settings.firmwareCheck = false
+    show(s)
+    await userEvent.setup().click(within(section()).getByRole('switch', { name: /New tuner firmware/ }))
+    expect(calls).toEqual([])
+  })
+
+  it('is as before once the firmware check is on', () => {
+    show()
+    const sw = within(section()).getByRole('switch', { name: /New tuner firmware/ })
+    expect(sw).toBeChecked()
+    expect(sw).not.toHaveAttribute('aria-disabled', 'true')
+    expect(within(section()).queryByText(/Turn on “Check for new tuner firmware”/)).not.toBeInTheDocument()
+  })
+
   it('cannot be changed when settings cannot be saved', () => {
     show(withChannels(makeState({ editable: false }), phone))
     for (const sw of within(section()).getAllByRole('switch')) expect(sw).toHaveAttribute('aria-disabled', 'true')

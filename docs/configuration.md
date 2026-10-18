@@ -92,7 +92,7 @@ Each channel has an `id` (made for you, and never changed), a `name`, and a `typ
 
 | Event | Default | When |
 |---|---|---|
-| `firmware` | on | A tuner has newer firmware. Once per release, kept across restarts in `<settings file name without .json>.notified.json`. Needs `firmwareCheck`. |
+| `firmware` | on | A tuner has newer firmware. Once per release, kept across restarts in `<settings file name without .json>.notified.json`. It does nothing while `firmwareCheck` is off, so the page won't let you switch it on until the check is on (and the API refuses). |
 | `tuner` | on | A tuner has been unreachable for two minutes, and when it comes back. A reboot or a brief drop sends nothing. |
 | `viewer` | on | A viewer was turned away because they were at their limit or the tuners were taken. The same viewer and reason is reported at most every half hour. |
 | `unknown` | **off** | An address that isn't a viewer tried to use a tuner. A tuner port that can be reached from the internet is scanned all day, so each address is reported once a day, and at most six an hour in all. |
