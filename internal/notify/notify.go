@@ -69,6 +69,9 @@ const (
 	testMessage     = "If you can read this, notifications from Antennarr are working."
 )
 
+// testKind is the kind of the message the Test button sends. It is not one the owner can switch off.
+const testKind = "test"
+
 // Notifier sends events to the channels in the settings.
 type Notifier struct {
 	settings    func() access.Settings
@@ -210,7 +213,7 @@ func (n *Notifier) Test(ctx context.Context, ch access.NotifyChannel) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
-	return n.send(ctx, ch, Event{Kind: "test", Title: TestTitle, Message: testMessage, Time: n.now()})
+	return n.send(ctx, ch, Event{Kind: testKind, Title: TestTitle, Message: testMessage, Time: n.now()})
 }
 
 // Send queues an event for every channel, if channels are set up and this kind of

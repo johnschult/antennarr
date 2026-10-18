@@ -44,13 +44,18 @@ Optional, off by default, and switched on under *Settings → Access*. It lets c
 
 ## What leaves your network
 
-Only your tuners, plus these. Each can be switched off, and Antennarr contacts nothing else.
+Only your tuners, plus these. Each can be switched off or left unset, and Antennarr contacts nothing else.
 
 | What | Where | How often | What is sent |
 |---|---|---|---|
 | Firmware changelog | `silicondust.com` | every 12 hours | Nothing about you or your tuners. |
 | Programme guide, channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | Your tuner's guide key (its `DeviceAuth`), which is how SiliconDust knows which channels to list. |
 | Sign in with Plex | `plex.tv` | when someone signs in | The sign-in request. |
+| Notifications | the ntfy server, `api.pushover.net`, or the webhook address **you** set up | when something you switched on happens, and when you press Test | A short message: a title and a sentence naming a tuner, a viewer or an address, for example `Mom was refused a tuner`, `192.0.2.9 tried to use Living room`, or `Living room is offline`. Nothing is sent, and nothing is contacted, until you add a channel. |
+
+
+Notifications go only where you point them. If you use `ntfy.sh` (or any server you don't run), what is in the message is visible to that service, and on `ntfy.sh` to anyone who knows your topic, so pick a topic that is hard to guess or run your own server. Antennarr doesn't follow redirects when it sends one, and it will send to a private or LAN address on purpose, since a server on your own network is the usual case.
+The tokens, user keys and webhook addresses are saved in the settings file (readable only by its owner) and are never in the admin API's output, the logs or error messages. A webhook address often has a secret in it, so the page shows only its host; the way to change it is to enter a new one.
 
 The guide key stays on the server: it isn't in the admin API's output or the logs, and error messages from fetching the guide have it stripped out.
 One thing to know: `discover.json` passes the tuner's own `DeviceAuth` through to viewers, the same as the tuner would to anyone on its network. It lets someone fetch that tuner's guide data from SiliconDust, which is low risk, but it is there.

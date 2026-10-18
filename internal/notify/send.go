@@ -68,6 +68,8 @@ func tag(kind string) string {
 		return "tv"
 	case access.NotifyUnknown:
 		return "no_entry"
+	case testKind:
+		return "white_check_mark"
 	}
 	return "warning"
 }

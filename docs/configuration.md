@@ -23,7 +23,13 @@ Antennarr is configured with a **settings file** (JSON), which you can edit by h
   "labels": { "antenna": "Living room antenna" },
   "firmwareCheck": true,
   "guide": true,
-  "plex": { "enabled": false, "admins": [] }
+  "plex": { "enabled": false, "admins": [] },
+  "notifications": {
+    "channels": [
+      { "id": "c1a2b3c4d5", "name": "My phone", "type": "ntfy", "url": "https://ntfy.sh", "topic": "antennarr-x7k2q9" }
+    ],
+    "events": { "unknown": false }
+  }
 }
 ```
 
@@ -65,7 +71,33 @@ Who you share with. **With no viewers, nobody can use the tuner**: a new install
 | `labels` | Display names, by device name: `{ "antenna": "Living room antenna" }`, up to 60 characters. This is also what media servers are told the tuner is called, and it changes live. |
 | `firmwareCheck` | Look at SiliconDust's firmware changelog every 12 hours (default `true`). |
 | `guide` | Read SiliconDust's programme guide so Live tiles can show the channel logo and what's on (default `true`). |
+| `notifications` | Messages to your phone or another service. `channels` is a list (at most 8); `events` switches kinds of event on or off. See [Notifications](#notifications) below. |
 | `plex` | Sign in to the admin pages with a Plex account. `enabled`, the allowed `admins` (each with an `id` and a `name`, at most 50), and a `clientId` Antennarr creates and keeps for you. See [Security](security.md). |
+
+## Notifications
+
+Antennarr can message you about things that are worth knowing. Add a channel under **Settings → Notifications** (and press **Test** to check it works), or write it in the file. Nothing is sent, and nothing is contacted, until there is a channel.
+
+Each channel has an `id` (made for you, and never changed), a `name`, and a `type`:
+
+| `type` | Fields | Notes |
+|---|---|---|
+| `ntfy` | `url` (the server, such as `https://ntfy.sh`), `topic`, and optionally `token` | Sent as JSON to the server. On `ntfy.sh` anyone who knows the topic can read it. |
+| `pushover` | `token` (the application token) and `user` (your user key) | Sent to `api.pushover.net`. |
+| `webhook` | `url`, and optionally `token` | A JSON `POST` with `event`, `title`, `message`, `device` and `time`. A `token` is sent as `Authorization: Bearer …`. |
+
+`url` must be `http://` or `https://`, without a username or password in it (use `token`). A private or LAN address is fine.
+
+`events` switches each kind on or off. Every channel gets every message that is on.
+
+| Event | Default | When |
+|---|---|---|
+| `firmware` | on | A tuner has newer firmware. Once per release, kept across restarts in `<settings file name without .json>.notified.json`. Needs `firmwareCheck`. |
+| `tuner` | on | A tuner has been unreachable for two minutes, and when it comes back. A reboot or a brief drop sends nothing. |
+| `viewer` | on | A viewer was turned away because they were at their limit or the tuners were taken. The same viewer and reason is reported at most every half hour. |
+| `unknown` | **off** | An address that isn't a viewer tried to use a tuner. A tuner port that can be reached from the internet is scanned all day, so each address is reported once a day, and at most six an hour in all. |
+
+A message is sent once and not retried; if a channel is down you'll find `notification not sent` in the log, with the reason and without the token. The settings are read for every message, so changes need no restart.
 
 ## How the limits work
 
@@ -110,7 +142,9 @@ Add host addresses to look at those instead.
 - **The settings file** (the one you pass to `-config`): everything above.
 - **`<settings file name without .json>.sessions.json`**, beside it: who is signed in with Plex, so a restart doesn't sign you out. Only a hash of each session is stored, never the session itself or your Plex token. It is created only if Plex sign-in is used, and only when there is a settings file.
 
-Back both up with your other configuration. There is no database, and nothing else is kept. Logs go to standard error (`docker logs antennarr`).
+- **`<settings file name without .json>.notified.json`**, beside it: which firmware release each tuner was last messaged about, so a restart doesn't send it again. It is only written when notifications are used and there is a settings file.
+
+Back them up with your other configuration. There is no database, and nothing else is kept. Logs go to standard error (`docker logs antennarr`).
 
 ## What it checks on its own
 
@@ -119,5 +153,7 @@ Back both up with your other configuration. There is no database, and nothing el
 | The tuners | every 5 seconds (`-poll`) | After 3 failures in a row a tuner is shown offline, and Antennarr starts searching for it by DeviceID (at most every 30 seconds), using a broadcast and a scan of the nearby subnet. |
 | Firmware changelog | every 12 hours | Only when `firmwareCheck` is on. |
 | Programme guide | every 6 hours | Only when `guide` is on. About 3.5 MB for a FLEX 4K. |
+
+Notifications aren't on a schedule of their own: they are sent when the firmware check, the tuner check or a viewer's request notices something.
 
 A restart begins again at the address in the settings file, and finds the tuner by its DeviceID. Antennarr doesn't write a new address back into the file. Update `tuner` yourself, and reserve the address in your router, to skip the search.

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { App } from '@/App'
-import { makeDevice, makeState, makeTwoDeviceState, updateAvailable } from '@/test/fixtures'
+import { discord, makeDevice, makeState, makeTwoDeviceState, phone, pushover, updateAvailable, withChannels } from '@/test/fixtures'
 import { mockPhone } from '@/test/match-media'
 import { renderWithApp, stubFetch } from '@/test/render'
 
@@ -35,6 +35,7 @@ const states: [string, () => State][] = [
   ['an offline tuner', () => makeState({ devices: [makeDevice({ tuner: { ...makeDevice().tuner, online: false } })] })],
   ['newer firmware', () => makeState({ devices: [makeDevice({ firmware: updateAvailable })] })],
   ['settings that cannot be saved', () => makeState({ editable: false })],
+  ['notification channels', () => withChannels(makeState(), phone, pushover, discord)],
 ]
 
 describe('axe: every page, in each state', () => {
@@ -55,6 +56,42 @@ describe('axe: every page, in each state', () => {
     const s = makeState()
     s.settings.plex = { enabled: true, admins: [{ id: 1, name: 'John' }] }
     render(s, '/settings')
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
+describe('axe: notification dialogs', () => {
+  const settings = (state: State = makeState()) => {
+    render(state, '/settings')
+    return userEvent.setup()
+  }
+
+  it('Add channel: each type, and its Send test', async () => {
+    const user = settings()
+    await user.click(screen.getByRole('button', { name: /Add channel/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(await check()).toHaveNoViolations() // ntfy
+    await user.click(within(dialog).getByRole('radio', { name: /Pushover/ }))
+    expect(await check()).toHaveNoViolations()
+    await user.click(within(dialog).getByRole('radio', { name: /Webhook/ }))
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it.each([
+    ['ntfy', phone],
+    ['Pushover', pushover],
+    ['webhook', discord],
+  ])('Edit a saved %s channel', async (_, channel) => {
+    const user = settings(withChannels(makeState(), channel))
+    await user.click(screen.getByRole('button', { name: `Edit ${channel.name}` }))
+    await screen.findByRole('dialog')
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('Remove channel', async () => {
+    const user = settings(withChannels(makeState(), phone))
+    await user.click(screen.getByRole('button', { name: 'Remove Phone' }))
+    await screen.findByRole('alertdialog')
     expect(await check()).toHaveNoViolations()
   })
 })

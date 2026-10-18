@@ -494,6 +494,9 @@ func TestTestSendsOneMessageWhateverTheEventSettings(t *testing.T) {
 	if m["title"] != TestTitle {
 		t.Errorf("body = %v", m)
 	}
+	if tags, _ := m["tags"].([]any); len(tags) != 1 || tags[0] != "white_check_mark" {
+		t.Errorf("a test should not look like a warning: %v", m["tags"])
+	}
 }
 
 func TestTestWorksOnAChannelThatIsNotSavedYet(t *testing.T) {
