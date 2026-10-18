@@ -169,9 +169,12 @@ func (c *Claimer) page(w http.ResponseWriter, r *http.Request) {
 
 func (c *Claimer) confirm(w http.ResponseWriter, r *http.Request) {
 	// A form on another site can't know the token, but check where it came from
-	// anyway, as the admin API does.
+	// anyway, as the admin API does. A browser sends "Origin: null" when the page
+	// has no referrer policy to speak of; it is accepted only if the browser also
+	// says the request is same-origin.
 	if origin := r.Header.Get("Origin"); origin != "" {
-		if u, err := url.Parse(origin); err != nil || u.Host != r.Host {
+		sameSite := origin == "null" && r.Header.Get("Sec-Fetch-Site") == "same-origin"
+		if u, err := url.Parse(origin); !sameSite && (err != nil || u.Host != r.Host) {
 			http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
 			return
 		}
@@ -226,7 +229,9 @@ func setPageHeaders(w http.ResponseWriter) {
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	h.Set("Cache-Control", "no-store")
-	h.Set("Referrer-Policy", "no-referrer") // the token is in the address
+	// The token is in the address, so nothing leaves the site. Not "no-referrer":
+	// that makes the browser send "Origin: null" with the form.
+	h.Set("Referrer-Policy", "same-origin")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'")
 }

@@ -108,9 +108,9 @@ func TestOpeningTheLinkChangesNothing(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "192.168.1.20") {
 		t.Fatalf("%d %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Header().Get("Referrer-Policy"), "no-referrer") ||
+	if !strings.Contains(rec.Header().Get("Referrer-Policy"), "same-origin") ||
 		!strings.Contains(rec.Header().Get("Content-Security-Policy"), "default-src 'none'") {
-		t.Errorf("the page needs no-referrer (the token is in the address) and a strict CSP: %v", rec.Header())
+		t.Errorf("the page needs a same-origin referrer policy (the token is in the address) and a strict CSP: %v", rec.Header())
 	}
 	if len(r.admins()) != 0 || r.c.Token() != tok {
 		t.Error("opening the page changed something")
@@ -248,5 +248,30 @@ func TestURLs(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("%d: %q, want %q", i, got[i], want[i])
 		}
+	}
+}
+
+// A browser sends "Origin: null" when a form is posted from a page whose
+// referrer policy is no-referrer, which the setup page used to have. That made
+// the real button fail with "cross-origin requests are not allowed".
+func TestTheSetupPageCanBePostedFromTheBrowser(t *testing.T) {
+	r := newRig(t, access.DefaultSettings(), true)
+	page := r.get("192.168.1.20:1", r.c.Token())
+	if p := page.Header().Get("Referrer-Policy"); p == "no-referrer" || p == "" {
+		t.Errorf("the page's Referrer-Policy is %q: browsers then send Origin: null on its form", p)
+	}
+
+	// A null origin counts only when the browser says the request is same-origin.
+	rec := r.post("192.168.1.20:1", r.c.Token(), map[string]string{"Origin": "null"})
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("Origin null with no Sec-Fetch-Site: %d, want 403", rec.Code)
+	}
+	rec = r.post("192.168.1.20:1", r.c.Token(), map[string]string{"Origin": "null", "Sec-Fetch-Site": "cross-site"})
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("Origin null, cross-site: %d, want 403", rec.Code)
+	}
+	rec = r.post("192.168.1.20:1", r.c.Token(), map[string]string{"Origin": "null", "Sec-Fetch-Site": "same-origin"})
+	if rec.Code != http.StatusSeeOther {
+		t.Errorf("Origin null, same-origin: %d, want 303", rec.Code)
 	}
 }
