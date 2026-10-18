@@ -1,3 +1,4 @@
+import { Antenna } from 'lucide-react'
 import { FirmwareBadge } from '@/components/firmware'
 import { NoTuners } from '@/components/no-tuners'
 import { TunerTile } from '@/components/tuner-tile'
@@ -151,7 +152,7 @@ function ViewerRow({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
               {several && <span className="text-xs text-muted-foreground">{deviceTitle(d)}</span>}
               <div className="flex gap-1" role="img" aria-label={`${several ? `${deviceTitle(d)}: ` : ''}${inUse} of ${limit} tuners in use`}>
                 {Array.from({ length: limit }).map((_, i) => (
-                  <div key={i} className={cn('h-6 w-3 rounded-sm', i < inUse ? 'bg-cyan-400' : 'bg-muted')} />
+                  <Antenna key={i} className={cn('size-6', i < inUse ? 'text-cyan-400' : 'text-muted-foreground/40')} />
                 ))}
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { AddTunerDialog } from '@/components/add-tuner-dialog'
 import { NoTuners } from '@/components/no-tuners'
@@ -166,7 +166,7 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
           )}
 
           <div className="grid items-start gap-5 lg:grid-cols-2">
-            <Section title={showName ? `Manage ${deviceTitle(device)}` : 'Manage'}>
+            <Section icon={SlidersHorizontal} title={showName ? `Manage ${deviceTitle(device)}` : 'Manage'}>
               <EditRow
                 key={`label-${device.name}-${device.label ?? ''}`}
                 kind="text"

@@ -45,13 +45,13 @@ describe('TunerTile', () => {
     expect(screen.getByText('Reserved')).toBeInTheDocument()
 
     rerender(<TunerTile tile={tile({ owner: { kind: 'free' } })} />)
-    expect(screen.getByText('Ready')).toBeInTheDocument()
+    expect(screen.getByText('Idle')).toBeInTheDocument()
     expect(screen.queryByText('Mbps')).not.toBeInTheDocument()
   })
 
   it('copes with a tuner that has not reported a slot yet', () => {
     render(<TunerTile tile={tile({ slot: null })} />)
-    expect(screen.getByText('Ready')).toBeInTheDocument()
+    expect(screen.getByText('Idle')).toBeInTheDocument()
   })
 
   it('is dimmed when the tuner is offline', () => {
@@ -156,10 +156,16 @@ describe('TunerTile', () => {
     })
   })
 
-  it('marks a reserved tuner with a crown in its pill only; the tile keeps the antenna', () => {
+  it('marks a reserved tuner with a crown in its pill, and a TV on the tile', () => {
     render(<TunerTile tile={tile({ owner: { kind: 'reserved' } })} />)
     expect(document.querySelectorAll('svg.lucide-crown')).toHaveLength(1)
-    expect(within(screen.getByTestId('tuner-tile')).getByText('Held for your TVs').parentElement!.querySelector('svg.lucide-antenna')).not.toBeNull()
+    expect(within(screen.getByTestId('tuner-tile')).getByText('Held for your TVs').parentElement!.querySelector('svg.lucide-tv')).not.toBeNull()
+  })
+
+  it('has no icon on a free tuner, and no antennas on a tile', () => {
+    render(<TunerTile tile={tile({ owner: { kind: 'free' } })} />)
+    expect(within(screen.getByTestId('tuner-tile')).getByText('Idle').parentElement!.querySelector('svg')).toBeNull()
+    expect(document.querySelector('svg.lucide-antenna')).toBeNull()
   })
 
   describe('signal', () => {
