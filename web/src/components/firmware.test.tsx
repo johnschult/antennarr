@@ -54,7 +54,7 @@ describe('FirmwareSection', () => {
     expect(within(sec).getByText('Security update.')).toBeInTheDocument()
     expect(within(sec).getByText('All models:')).toBeInTheDocument()
     expect(within(sec).getByText('A line with no scope.')).toBeInTheDocument()
-    expect(within(sec).getByText(/never installs firmware/)).toBeInTheDocument()
+    expect(within(sec).getByText(/Install downloads the newest release from SiliconDust/)).toBeInTheDocument()
   })
 
   it('shows two releases and the rest on request', async () => {

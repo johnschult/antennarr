@@ -99,12 +99,22 @@ A device's `name` is a stable key (settings, limits, URLs); what people see on t
 
 ## Firmware
 
-Built. Antennarr tells you when SiliconDust has released firmware for a tuner. It never installs anything.
+Built. Antennarr tells you when SiliconDust has released firmware for a tuner, and installs it on request (below).
 
 - Versions are dates (`20260326`), so comparing is plain string comparison. The tuner reports its own version (`FirmwareVersion`) and, if it knows of a newer one, `UpgradeAvailable`; when present, the tuner's own word wins.
 - Otherwise Antennarr reads SiliconDust's public changelog page (HTML only, no feed) once every 12 hours with a conditional request. Nothing about you or your tuners is sent. The check can be switched off in Settings, and nothing is fetched while it is off.
 - Not every release is for every model, and notes are scoped in prose ("ATSC3 models:", "HDHR5-2DT/4DT:", "All models:"). A release counts as **update available** only when a note in it is plainly for this model; if the only match is a scope that isn't recognised it is a **possible update**; `TECH`/`DEV` narrow a scope. If the model isn't recognised at all, every note is shown. If the page's layout changes, the parser fails loudly and the status is "unknown" with the reason, never a guess.
 - New releases are announced once in the device's timeline; the Tuner page shows what changed, when the page was last read, and a Check now button.
+
+### Installing firmware
+
+Built. The Tuners page has an Install button when the check is certain there is a newer release (**update available**, not a possible one).
+
+- `internal/hdhr` is a native client of the tuner's control protocol (TCP 65001), the one Silicondust's `hdhomerun_config` speaks, so nothing is shipped or run besides Antennarr. Frames are `type | length | payload | CRC-32`; an upgrade frees the tuners, sends the image in 1 KB frames with their offsets, then an end marker, and waits up to 40 seconds for the answer. `conformance_test.go` (opt in with `HDHOMERUN_CONFIG=<path to the official tool>`; needs port 65001 free) runs the official tool and this client against a recording fake and requires identical bytes. `live_test.go` (opt in with `HDHR_TUNER=<address>`) only reads from a real tuner.
+- `internal/firmware` downloads the file from `https://download.silicondust.com/hdhomerun/<FirmwareName>_firmware_<date>.bin`, built from the tuner's own firmware family and the release the check found, never from anything a user types. That URL pattern is not documented by Silicondust. There is no published checksum or signature, so the checks are HTTPS, no redirects, status 200, `application/octet-stream`, and a size of 256 KiB to 16 MiB. A 404 is an error; no other address is guessed.
+- `internal/upgrade` runs one install at a time per tuner in the background: downloading, sending, restarting, verifying. The server re-checks everything when the button is pressed (the version is the current release, the tuner is online, the check is on) and refuses with `409` if anything is in use unless the request says `interrupt`. It never retries a flash. It is done only when the tuner's control port reports the new version; if it comes back on the old one, or doesn't come back, it says so and tells you to power-cycle it.
+- While an install runs the monitor does not call the tuner offline, send an offline message or start searching for it elsewhere (`Monitor.SetUpdating`, which expires after 30 minutes).
+- The viewer proxy still answers `404` for the tuner's own upgrade path: this is an admin-only route.
 
 ## Guide
 

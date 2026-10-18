@@ -35,7 +35,7 @@ export function makeDevice(over: Partial<DeviceState> = {}): DeviceState {
     tuner: {
       name: 'antenna', online: true, id: '10ABCC87', friendlyName: 'Steve FLEX 4K', model: 'HDFX-4K', baseURL: 'http://192.168.1.132',
       tunerCount: 4, firmware: { name: 'hdhomerun_dvr_atsc3', version: '20260326' }, slots: [localSlot(0), remoteSlot(1), idleSlot(2), idleSlot(3)],
-      lastSeen: '2026-10-17T10:04:58Z', since: '2026-10-17T08:00:00Z',
+      lastSeen: '2026-10-17T10:04:58Z', since: '2026-10-17T08:00:00Z', updating: false,
       events: [
         { time: '2026-10-17T08:00:00Z', kind: 'ok', text: 'Tuner online at http://192.168.1.132' },
         { time: '2026-10-17T09:30:00Z', kind: 'warn', text: 'Mom was refused a tuner: all 1 of your tuners are in use' },
@@ -58,7 +58,7 @@ export function makeCableDevice(over: Partial<DeviceState> = {}): DeviceState {
     listen: ':5005',
     tuner: {
       name: 'cable', online: true, id: '1111AAA2', friendlyName: 'Cable HDHR', model: 'HDHR5-4DT', baseURL: 'http://192.168.1.133',
-      tunerCount: 2, firmware: { name: 'hdhomerun5_dvbt', version: '20260326' }, slots: [idleSlot(0), idleSlot(1)], lastSeen: '2026-10-17T10:04:58Z', since: '2026-10-17T08:00:00Z',
+      tunerCount: 2, firmware: { name: 'hdhomerun5_dvbt', version: '20260326' }, slots: [idleSlot(0), idleSlot(1)], lastSeen: '2026-10-17T10:04:58Z', since: '2026-10-17T08:00:00Z', updating: false,
       events: [{ time: '2026-10-17T08:05:00Z', kind: 'ok', text: 'Tuner online at http://192.168.1.133' }],
     },
     streams: [],

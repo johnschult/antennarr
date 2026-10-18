@@ -22,6 +22,7 @@ import (
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/guide"
+	"github.com/johnschult/antennarr/internal/hdhr"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/notify"
@@ -29,6 +30,7 @@ import (
 	"github.com/johnschult/antennarr/internal/proxy"
 	"github.com/johnschult/antennarr/internal/tuner"
 	"github.com/johnschult/antennarr/internal/ui"
+	"github.com/johnschult/antennarr/internal/upgrade"
 )
 
 // Locator finds where a tuner is to start with: from its address if given,
@@ -68,6 +70,16 @@ type Config struct {
 	PlexURL, PlexAuthURL string
 	// PushoverURL overrides where Pushover messages go, for tests.
 	PushoverURL string
+	// FirmwareDownloadBase overrides where firmware images are downloaded from, and ControlPort the port
+	// a tuner's control protocol is on (65001), for tests and the demo, which must never reach SiliconDust or
+	// flash a real tuner. UpgradeConfig, if set, may change the install's timings.
+	FirmwareDownloadBase string
+	ControlPort          string
+	UpgradeConfig        func(*upgrade.Config)
+	// Find looks for a tuner that has gone missing, at another address. Nil means a UDP discover and a scan
+	// of the nearby network; tests supply one that doesn't, so a fake tuner that goes quiet never sends them
+	// looking for a real one.
+	Find tuner.Finder
 	// OfflineGrace is how long a tuner must be offline before the owner is
 	// messaged; zero means two minutes. Tests shorten it.
 	OfflineGrace time.Duration
@@ -94,6 +106,7 @@ type Server struct {
 	firmware *firmware.Checker
 	guide    *guide.Service
 	notify   *notify.Notifier
+	upgrade  *upgrade.Manager
 	plex     *plexauth.Auth
 	claim    *claim.Claimer
 	admin    http.Handler // the admin pages, shared by every listener
@@ -171,6 +184,23 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	})
 	policy.SetEvents(s.notify)
 
+	// Installing firmware: only ever started by an admin pressing the button, one tuner at a time.
+	ucfg := upgrade.Config{
+		Download: firmware.Downloader{Base: cfg.FirmwareDownloadBase},
+		OnChange: s.hub.Notify,
+		Log:      cfg.Log,
+	}
+	if cfg.ControlPort != "" {
+		port := cfg.ControlPort
+		ucfg.Dial = func(ctx context.Context, host string) (*hdhr.Conn, error) {
+			return hdhr.Dial(ctx, net.JoinHostPort(host, port))
+		}
+	}
+	if cfg.UpgradeConfig != nil {
+		cfg.UpgradeConfig(&ucfg)
+	}
+	s.upgrade = upgrade.New(ctx, ucfg)
+
 	// A stream starting or ending changes the tuners' own status too: tell the
 	// dashboards now, and have the monitors look again straight away.
 	policy.SetOnChange(func() {
@@ -198,7 +228,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -230,7 +260,7 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 	log := s.cfg.Log.With("device", d.Name)
 	mon := tuner.NewMonitor(tuner.Config{
 		Name: d.Name, BaseURL: base, ID: d.ID, StreamPort: d.StreamPort,
-		Interval: s.cfg.Poll, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() },
+		Interval: s.cfg.Poll, Find: s.cfg.Find, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() },
 		OnTransition: func(online bool) { s.notify.TunerState(d.Name, s.title(d.Name), online) },
 		Logger:       log,
 	})

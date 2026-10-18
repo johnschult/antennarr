@@ -9,6 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { PlexIcon } from '@/components/plex-button'
 import { useApp } from '@/hooks/app-context'
 import { useAuthStatus } from '@/hooks/use-auth'
+import { useUpgradeToasts } from '@/hooks/use-upgrade-toasts'
 import { useWhatsNew } from '@/hooks/use-whats-new'
 import { signOut } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -84,6 +85,7 @@ const menuLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function Shell() {
   const { state } = useApp()
   const whatsNew = useWhatsNew(state.version)
+  useUpgradeToasts()
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)

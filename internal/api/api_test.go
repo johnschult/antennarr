@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/tuner"
 )
@@ -22,6 +24,7 @@ import (
 // ---- test environment ----
 
 type env struct {
+	tun  *httptest.Server // the fake tuner's HTTP side
 	srv  *httptest.Server
 	api  *API
 	pol  *access.Policy
@@ -58,14 +61,24 @@ var johnAndMom = access.Settings{
 // talks to a fake tuner that reports one local stream and one of ours.
 func newEnv(t *testing.T, s access.Settings, withFile bool) *env {
 	t.Helper()
-	tun := fakeHDHR(t, `[
+	return newEnvWith(t, s, withFile, `[
 		{"Resource":"tuner0","VctNumber":"5.1","VctName":"WFRV","TargetIP":"192.168.1.20"},
 		{"Resource":"tuner1","VctNumber":"2.1","VctName":"WBAY","TargetIP":"192.168.1.77"},
 		{"Resource":"tuner2"},{"Resource":"tuner3"}
 	]`)
+}
+
+// newEnvWith is newEnv with the tuner's status.json of your choosing.
+func newEnvWith(t *testing.T, s access.Settings, withFile bool, tunerStatus string) *env {
+	t.Helper()
+	tun := fakeHDHR(t, tunerStatus)
 	hub := live.NewHub()
 	mon := tuner.NewMonitor(tuner.Config{
 		Name: "antenna", BaseURL: tun.URL, ID: "10ABCC87", OnChange: hub.Notify,
+		// A tuner that goes away is not looked for on the network: a test must never reach a real one.
+		Find: func(context.Context, string, string) (discovery.Device, error) {
+			return discovery.Device{}, errors.New("not found")
+		},
 		LocalIPs: func() []string { return []string{"192.168.1.20"} },
 	})
 	pol, err := access.NewPolicy(s, nil)
@@ -75,7 +88,7 @@ func newEnv(t *testing.T, s access.Settings, withFile bool) *env {
 	pol.AddDevice("antenna", mon, mon)
 	pol.SetOnChange(hub.Notify)
 
-	e := &env{pol: pol, mon: mon, hub: hub}
+	e := &env{pol: pol, mon: mon, hub: hub, tun: tun}
 	if withFile {
 		e.path = filepath.Join(t.TempDir(), "antennarr.json")
 		if err := access.SaveSettings(e.path, s); err != nil {

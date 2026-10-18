@@ -170,7 +170,7 @@ describe('SettingsPage', () => {
     it('says what it sends: nothing about you', () => {
       renderWithApp(<SettingsPage />, state())
       expect(within(section('Privacy and updates')).getByText(/Nothing about you or your tuners is sent/)).toBeInTheDocument()
-      expect(within(section('Privacy and updates')).getByText(/never installs them/)).toBeInTheDocument()
+      expect(within(section('Privacy and updates')).getByText(/installs one only when you press Install/)).toBeInTheDocument()
     })
 
     it('shows a failure on the row', async () => {
