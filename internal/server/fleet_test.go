@@ -225,10 +225,10 @@ func TestAddingIsRefusedWhenItCannotWork(t *testing.T) {
 		body map[string]string
 		code int
 	}{
-		"nothing to find":   {map[string]string{}, 400},
-		"bad name":          {map[string]string{"tuner": "antenna-box", "name": "no spaces"}, 400},
-		"nothing there":     {map[string]string{"tuner": "nowhere"}, 400}, // the locator doesn't know it
-		"unknown field":     {map[string]string{"tuner": "antenna-box", "bogus": "x"}, 400},
+		"nothing to find":    {map[string]string{}, 400},
+		"bad name":           {map[string]string{"tuner": "antenna-box", "name": "no spaces"}, 400},
+		"nothing there":      {map[string]string{"tuner": "nowhere"}, 400}, // the locator doesn't know it
+		"unknown field":      {map[string]string{"tuner": "antenna-box", "bogus": "x"}, 400},
 		"bad listen address": {map[string]string{"tuner": "antenna-box", "listen": "bad"}, 400},
 	} {
 		if code, body := call(t, "POST", url, tc.body); code != tc.code {
