@@ -63,7 +63,7 @@ describe('ViewersPage', () => {
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.6{Enter}10.9.0.7, 10.9.1.0/24')
       await user.clear(within(dialog).getByLabelText('Tuners at once'))
       await user.type(within(dialog).getByLabelText('Tuners at once'), '2')
-      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
 
       expect(await within(dialog).findByRole('region', { name: 'The address' })).toBeInTheDocument() // the next step
       expect(calls.find((c) => c.method === 'POST')?.body).toEqual({
@@ -82,7 +82,7 @@ describe('ViewersPage', () => {
 
       await user.click(screen.getByRole('button', { name: /Add viewer/ }))
       const dialog = await screen.findByRole('dialog')
-      const submit = within(dialog).getByRole('button', { name: 'Add viewer' })
+      const submit = within(dialog).getByRole('button', { name: 'Next: Connect' })
 
       await user.click(submit)
       expect(await within(dialog).findByRole('alert')).toHaveTextContent('Give the viewer a name.')
@@ -110,7 +110,7 @@ describe('ViewersPage', () => {
       const dialog = await screen.findByRole('dialog')
       await user.type(within(dialog).getByLabelText('Name'), 'Cabin')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.6')
-      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
 
       expect(await within(dialog).findByRole('alert')).toHaveTextContent('viewer "Cabin" already exists')
       expect(screen.getByRole('dialog')).toBeInTheDocument()
@@ -264,7 +264,7 @@ describe('ViewersPage', () => {
       await user.type(within(dialog).getByLabelText('Name'), 'Cabin')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.6')
       await user.type(within(dialog).getByLabelText('Tuners on cable'), '3') // antenna left blank: uses the default
-      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
 
       await waitFor(() => expect(calls.find((c) => c.method === 'POST')).toBeDefined())
       expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'Cabin', addresses: ['10.9.0.6'], limit: 1, limits: { cable: 3 } })
@@ -281,7 +281,7 @@ describe('ViewersPage', () => {
       await user.type(within(dialog).getByLabelText('Name'), 'Guest')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.7')
       await user.type(within(dialog).getByLabelText('Tuners on antenna'), '0') // paused on the antenna box only
-      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
 
       await waitFor(() => expect(calls.find((c) => c.method === 'POST')).toBeDefined())
       expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({ limits: { antenna: 0 } })
@@ -315,7 +315,7 @@ describe('ViewersPage', () => {
       await user.type(within(dialog).getByLabelText('Name'), 'X')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.8')
       await user.type(within(dialog).getByLabelText('Tuners on cable'), '-2')
-      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
       expect(await within(dialog).findByRole('alert')).toHaveTextContent('The limit for cable must be 0 or more.')
       expect(calls).toHaveLength(0)
     })
@@ -363,7 +363,7 @@ describe('ViewersPage', () => {
       await user.type(within(dialog).getByLabelText('Name'), 'Guest')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.9')
       await user.type(within(dialog).getByLabelText('Tuners on Cable box'), '3')
-      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
       await waitFor(() => expect(calls.find((c) => c.method === 'POST')).toBeDefined())
       expect(calls.find((c) => c.method === 'POST')?.body).toMatchObject({ limits: { cable: 3 } })
     })
@@ -379,7 +379,7 @@ describe('ViewersPage', () => {
       await user.type(within(dialog).getByLabelText('Name'), 'X')
       await user.type(within(dialog).getByLabelText('Addresses'), '10.9.0.8')
       await user.type(within(dialog).getByLabelText('Tuners on Cable box'), '-2')
-      await user.click(within(dialog).getByRole('button', { name: 'Add viewer' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Next: Connect' }))
       expect(await within(dialog).findByRole('alert')).toHaveTextContent('The limit for Cable box must be 0 or more.')
     })
   })

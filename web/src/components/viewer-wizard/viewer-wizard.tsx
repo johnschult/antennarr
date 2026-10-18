@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -98,7 +98,12 @@ function Wizard({ devices, viewer, onDone }: { devices: DeviceState[]; viewer?: 
       </DialogHeader>
       <Stepper steps={steps} index={index} />
 
-      {current === 'Who' && <ViewerFields f={fields} devices={devices} />}
+      {current === 'Who' && (
+        <>
+          <ViewerFields f={fields} devices={devices} />
+          <p className="text-xs text-muted-foreground">The viewer is saved when you continue, so you can close the dialog at any point after that.</p>
+        </>
+      )}
       {current === 'Connect' && <ConnectStep g={guide} />}
       {current === 'Media server' && <MediaServerStep g={guide} />}
 
@@ -120,7 +125,7 @@ function Wizard({ devices, viewer, onDone }: { devices: DeviceState[]; viewer?: 
         )}
         {current === 'Who' ? (
           <Button type="submit" disabled={add.isPending}>
-            <Plus data-icon="inline-start" /> Add viewer
+            Next: {steps[index + 1]} <ChevronRight data-icon="inline-end" />
           </Button>
         ) : last ? (
           <Button type="button" onClick={onDone}>
@@ -128,7 +133,7 @@ function Wizard({ devices, viewer, onDone }: { devices: DeviceState[]; viewer?: 
           </Button>
         ) : (
           <Button type="button" onClick={() => setIndex(index + 1)}>
-            Next <ChevronRight data-icon="inline-end" />
+            Next: {steps[index + 1]} <ChevronRight data-icon="inline-end" />
           </Button>
         )}
       </DialogFooter>

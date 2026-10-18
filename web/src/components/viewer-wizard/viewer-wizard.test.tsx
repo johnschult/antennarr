@@ -29,7 +29,7 @@ async function typeHost(value: string) {
   return user
 }
 
-const next = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: /Next/ }))
+const next = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: /^Next/ }))
 
 describe('ViewerWizard: the steps', () => {
   it('adds a viewer first, then how they connect, then their media server', async () => {
@@ -43,19 +43,23 @@ describe('ViewerWizard: the steps', () => {
     mount(makeState(), null)
 
     expect(screen.getByRole('heading', { name: 'Add a viewer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next: Connect' })).toBeInTheDocument() // says where it goes, not 'Add viewer'
+    expect(screen.getByText(/saved when you continue/)).toBeInTheDocument()
     const steps = within(screen.getByRole('list', { name: 'Steps' }))
     expect(steps.getAllByRole('listitem').map((s) => s.textContent)).toEqual(['1Who', '2Connect', '3Media server'])
     expect(steps.getByRole('listitem', { current: 'step' })).toHaveTextContent('Who')
 
     await user.type(screen.getByLabelText('Name'), 'Cabin')
     await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
-    await user.click(screen.getByRole('button', { name: 'Add viewer' }))
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
 
     expect(await screen.findByRole('region', { name: 'The address' })).toBeInTheDocument()
     expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'Cabin', addresses: ['10.9.0.6'], limit: 1 })
+    expect(await screen.findByText('Added Cabin')).toBeInTheDocument() // the toast, as when adding without steps
     expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent('Connect')
     expect(screen.getByText("How Cabin's media server will reach this machine.")).toBeInTheDocument()
 
+    expect(screen.getByRole('button', { name: 'Next: Media server' })).toBeInTheDocument()
     await next(user)
     expect(screen.getByRole('region', { name: 'In their media server' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument()
@@ -74,7 +78,7 @@ describe('ViewerWizard: the steps', () => {
     mount(makeState(), null)
     await user.type(screen.getByLabelText('Name'), 'Cabin')
     await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
-    await user.click(screen.getByRole('button', { name: 'Add viewer' }))
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
     await user.click(await screen.findByRole('switch', { name: /has a firewall/ }))
     expect(screen.getByLabelText('firewall rules')).toHaveTextContent('sudo ufw allow from 10.9.0.6 to any port 5004 proto tcp')
   })
@@ -85,7 +89,7 @@ describe('ViewerWizard: the steps', () => {
     mount(makeState(), null)
     await user.type(screen.getByLabelText('Name'), 'Cabin')
     await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
-    await user.click(screen.getByRole('button', { name: 'Add viewer' }))
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('already exists')
     expect(screen.getByLabelText('Name')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'The address' })).not.toBeInTheDocument()
@@ -96,7 +100,7 @@ describe('ViewerWizard: the steps', () => {
     vi.stubGlobal('fetch', fn)
     const user = userEvent.setup()
     mount(makeState(), null)
-    await user.click(screen.getByRole('button', { name: 'Add viewer' }))
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Give the viewer a name.')
     expect(calls).toEqual([])
   })
@@ -113,7 +117,7 @@ describe('ViewerWizard: the steps', () => {
     expect(calls.filter((c) => c.url.includes('/network'))).toEqual([])
     await user.type(screen.getByLabelText('Name'), 'Cabin')
     await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
-    await user.click(screen.getByRole('button', { name: 'Add viewer' }))
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
     await screen.findByRole('region', { name: 'The address' })
     expect(calls.filter((c) => c.url.includes('/network'))).toHaveLength(1)
   })
@@ -132,7 +136,7 @@ describe('ViewerWizard: the steps', () => {
     expect(screen.getByRole('button', { name: /Cancel/ })).toBeInTheDocument()
     await user.type(screen.getByLabelText('Name'), 'Cabin')
     await user.type(screen.getByLabelText('Addresses'), '10.9.0.6')
-    await user.click(screen.getByRole('button', { name: 'Add viewer' }))
+    await user.click(screen.getByRole('button', { name: 'Next: Connect' }))
     await screen.findByRole('region', { name: 'The address' })
     expect(screen.queryByRole('button', { name: /Back/ })).not.toBeInTheDocument()
     await user.click(screen.getByText('Close', { selector: 'button' })) // the footer's, not the dialog's corner X
