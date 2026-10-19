@@ -13,7 +13,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/live-dark.jpg">
-    <img src="docs/screenshots/live-light.jpg" alt="The Antennarr Live page: four tuners, with one being watched by a viewer and one by a local device, each showing its channel, logo, what's on, bitrate and signal, and a list of viewers" width="900">
+    <img src="docs/screenshots/live-light.jpg" alt="The Antennarr Live page: four tuners, with one being watched by a viewer and one by a local device, each with its channel, logo, what's on and how far into it, bitrate and signal, and a list of viewers" width="900">
   </picture>
 </p>
 
@@ -29,6 +29,7 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
 - **Several tuners.** Each looks like its own HDHomeRun on its own port.
 - **A web UI.** Live tiles for each tuner (channel, logo, what's on with its picture and progress, who's watching, bitrate, signal), an Activity page of who watched what for the last 30 days, viewers, settings,
   a copy-paste setup guide, light and dark themes.
+- **A Device panel and Restart.** The Tuners page shows what each tuner says about itself (model, firmware, DRM version, addresses, channel maps) and can restart it, after asking.
 - **Firmware news.** Tells you when SiliconDust releases firmware for your model, and installs it when you press Install on the Tuners page: the latest release for that tuner only, never an older one, and never on its own.
 - **Notifications.** Optional messages to ntfy, Pushover or a webhook when there is new firmware, a tuner is offline for a couple of minutes (and when it's back), or a viewer is turned away. Each kind can be switched off, and each channel has a Test button.
 - **Any network.** Plain LAN, Tailscale, WireGuard, ZeroTier… Antennarr just listens on a port. Getting the two servers to reach each other is up to you.
@@ -43,6 +44,10 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
   <tr>
     <td width="50%"><img src="docs/screenshots/viewers.jpg" alt="The Viewers page: who can use the tuner, from which addresses, and how many tuners each gets"><br><sub><b>Viewers:</b> who can use the tuner, from where, and how many tuners each gets.</sub></td>
     <td width="50%"><img src="docs/screenshots/setup.jpg" alt="The connect step of adding a viewer, offering this machine's Tailscale and LAN addresses and the steps for the chosen connection"><br><sub><b>Connect guide:</b> a step of adding a viewer. It spots this machine's Tailscale address and writes out the steps with your real addresses.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/activity.jpg" alt="The Activity page: time watched, the most watched channel, who watched most, a bar for each day and the sessions by day"><br><sub><b>Activity:</b> who watched what, and for how long, for the last 30 days. It can be switched off in Settings.</sub></td>
+    <td width="50%"><img src="docs/screenshots/tuners.jpg" alt="The Tuners page: a tuner's strip of what is on each of its tuners, with Manage, Device and Firmware sections"><br><sub><b>Tuners:</b> what is on each tuner, what the tuner says about itself, a Restart button, and firmware.</sub></td>
   </tr>
 </table>
 

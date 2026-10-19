@@ -131,6 +131,20 @@ func wobble(rate float64, phase float64) int {
 	return int(rate * (1 + 0.09*math.Sin(t/2.3+phase) + 0.05*math.Sin(t*1.7+phase*3)))
 }
 
+// demoSystemPage is the made-up tuner's System Menu page, which the Device panel reads the DRM version, MAC
+// address and subnet mask from.
+const demoSystemPage = `<!DOCTYPE HTML><html><head><title>HDHomeRun System Menu</title></head><body>
+<div class="B C"><div class="T">System Status</div><table>
+<tr><td>Hardware Model</td><td>HDFX-4K</td></tr>
+<tr><td>Firmware Version</td><td>20260326</td></tr>
+<tr><td>ATSC3-DRM</td><td>SD20230420</td></tr>
+<tr class="L"><td colspan="2"></td></tr>
+<tr><td>Device ID</td><td>10ABCC87</td></tr>
+<tr><td>MAC Address</td><td>00:18:DD:00:00:01</td></tr>
+<tr><td>IP Address</td><td>192.168.68.143</td></tr>
+<tr><td>Subnet Mask</td><td>255.255.252.0</td></tr>
+</table></div></body></html>`
+
 // quality is the signal quality the demo reports: steady at 100 (what the screenshots show), or, with
 // DEMO_SIGNAL set, drifting and dipping now and then so the trend line on a tile has something to draw.
 func quality(phase float64) int {
@@ -142,10 +156,10 @@ func quality(phase float64) int {
 	return int(math.Max(5, math.Min(100, q)))
 }
 
-// strength is the signal strength the demo reports: steady at 100, or, with DEMO_SIGNAL set, sweeping
+// strength is the signal strength the demo reports: steady at 100, or, with DEMO_SIGNAL=sweep, sweeping
 // slowly from strong to nothing and back so every signal icon shows up.
 func strength(phase float64) int {
-	if os.Getenv("DEMO_SIGNAL") == "" {
+	if os.Getenv("DEMO_SIGNAL") != "sweep" {
 		return 100
 	}
 	t := float64(time.Now().UnixNano()) / 1e9
@@ -249,7 +263,7 @@ func TestDemo(t *testing.T) {
 		}
 		switch r.URL.Path {
 		case "/system.html":
-			http.ServeFile(w, r, "../tunerinfo/testdata/system.html")
+			io.WriteString(w, demoSystemPage)
 		case "/discover.json":
 			fmt.Fprintf(w, `{"DeviceAuth":"DEMO-AUTH","FriendlyName":"HDHomeRun FLEX 4K","ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":%q,"DeviceID":"10ABCC87","TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"}`, ver)
 		case "/lineup.json":

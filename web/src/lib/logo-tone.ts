@@ -1,10 +1,15 @@
 /** What a channel's logo is mostly made of, which decides what to put it on. */
 export type LogoTone = 'light' | 'dark' | 'mixed'
 
+/** How much of what is drawn has to be light (or dark) for the logo to count as light (or dark). */
+const SHARE = 0.4
+
 /**
  * Looks at a logo's pixels (RGBA, as a canvas gives them) and says whether what is drawn is mostly light
  * (white lettering, which vanishes on a light background), mostly dark (which vanishes on a dark one), or
- * neither. Transparent pixels are the background, not the logo, and are not counted.
+ * neither. "Mostly" is a share of 40% or more of what is drawn: the NBC peacock with its white lettering is
+ * about 47% near-white, and still needs an outline in the light theme. Transparent pixels are the
+ * background, not the logo, and are not counted.
  */
 export function logoTone(data: ArrayLike<number>): LogoTone {
   let seen = 0
@@ -18,7 +23,7 @@ export function logoTone(data: ArrayLike<number>): LogoTone {
     else if (l < 0.2) dark++
   }
   if (seen === 0) return 'mixed'
-  return light / seen > 0.6 ? 'light' : dark / seen > 0.6 ? 'dark' : 'mixed'
+  return light / seen > SHARE ? 'light' : dark / seen > SHARE ? 'dark' : 'mixed'
 }
 
 const known = new Map<string, LogoTone>()

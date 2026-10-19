@@ -18,6 +18,11 @@ describe('logoTone', () => {
     expect(logoTone(px(...many(3, [255, 255, 255, 255]), ...many(3, [0, 0, 0, 255]), ...many(4, [200, 40, 40, 255])))).toBe('mixed')
   })
 
+  it('calls a logo with a good share of white lettering light, as the NBC logo (about 47% near-white) is', () => {
+    expect(logoTone(px(...many(47, [255, 255, 255, 255]), ...many(53, [200, 60, 40, 255])))).toBe('light')
+    expect(logoTone(px(...many(39, [255, 255, 255, 255]), ...many(61, [200, 60, 40, 255])))).toBe('mixed')
+  })
+
   it('does not count transparent pixels, which are the background and not the logo', () => {
     // a lot of transparent black around a little white lettering is still a white logo
     expect(logoTone(px(...many(50, [0, 0, 0, 0]), ...many(5, [255, 255, 255, 255])))).toBe('light')

@@ -1,4 +1,4 @@
-import { Antenna } from 'lucide-react'
+import { Antenna, Clock, Users } from 'lucide-react'
 import { FirmwareBadge } from '@/components/firmware'
 import { NoTuners } from '@/components/no-tuners'
 import { TunerTile } from '@/components/tuner-tile'
@@ -44,7 +44,7 @@ export function LivePage() {
     <div className="space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <div className="text-xs tracking-[0.2em] text-cyan-700 dark:text-cyan-700 dark:text-cyan-300/80 uppercase">On air now</div>
+          <div className="text-xs tracking-[0.2em] text-cyan-700 dark:text-cyan-300/80 uppercase">On the air now</div>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
             {devices.length === 0 ? 'No tuners yet' : `${sum(devices, (d) => d.summary.inUse)} of ${sum(devices, (d) => d.summary.total)} tuners live`}
           </h1>
@@ -59,7 +59,10 @@ export function LivePage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section>
-          <h2 className="mb-3 text-sm font-semibold">Viewers</h2>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <Users aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+            Viewers
+          </h2>
           {viewers.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
               No viewers yet. Anyone who can reach {several ? 'these ports' : 'this port'} may use {several ? 'the tuners' : 'the tuner'}.
@@ -74,7 +77,10 @@ export function LivePage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-sm font-semibold">Timeline</h2>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+            <Clock aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+            Timeline
+          </h2>
           {events.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nothing has happened yet.</p>
           ) : (

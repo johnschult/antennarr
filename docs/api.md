@@ -66,7 +66,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 ```json
 {
   "time": "2026-10-17T20:00:00Z",
-  "devices": [ { "name": "antenna", "label": "…", "listen": ":5004", "tuner": { "online": true, "id": "10C03B06", "baseURL": "http://192.168.1.50", "tunerCount": 4, "slots": [ … ], "events": [ … ] }, "streams": [ … ], "summary": { … }, "firmware": { … }, "guide": { … } } ],
+  "devices": [ { "name": "antenna", "label": "…", "listen": ":5004", "tuner": { "online": true, "id": "10C03B06", "baseURL": "http://192.168.1.50", "tunerCount": 4, "slots": [ … ], "events": [ … ], "updating": false, "restarting": false }, "streams": [ … ], "summary": { … }, "firmware": { … }, "upgrade": { … }, "restart": { … }, "guide": { … } } ],
   "viewers": [ … ],
   "settings": { "mode": "enforced", "sharedCap": 0, "ownerReserve": 1, "admin": [], "firmwareCheck": true, "guide": true, "history": true, "plex": { "enabled": false, "admins": [] }, "notifications": { "channels": [ … ], "events": { "firmware": true, "tuner": true, "viewer": true, "unknown": false } } },
   "editable": true,

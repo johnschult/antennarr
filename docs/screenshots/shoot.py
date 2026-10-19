@@ -80,6 +80,23 @@ with sync_playwright() as p:
     dialog.screenshot(path=f'{out}/setup.jpg', type='jpeg', quality=90)
     ctx.close()
 
+    # Who watched what: the demo seeds two weeks of made-up sessions, and Alex's stream is recorded for real.
+    ctx = context('dark', height=980)
+    page = open_page(ctx, '/antennarr/activity', '[data-testid="session"]')
+    time.sleep(1)
+    page.evaluate(SHOW_LAN_ADDRESS)
+    shot(page, 'activity')
+    ctx.close()
+
+    # The Tuners page, opened to the Device panel (read from the demo's fake tuner).
+    ctx = context('dark', height=1010)
+    page = open_page(ctx, '/antennarr/tuner', 'dt:has-text("Hardware model")')
+    time.sleep(1)
+    page.evaluate(SHOW_LAN_ADDRESS)
+    time.sleep(0.3)
+    shot(page, 'tuners')
+    ctx.close()
+
     ctx = context('dark', 390, 844, 2, phone=True)
     page = open_page(ctx, '/antennarr/', '[data-testid="tuner-tile"]')
     time.sleep(2)
