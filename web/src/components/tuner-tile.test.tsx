@@ -61,6 +61,41 @@ describe('TunerTile', () => {
     expect(screen.getByTestId('tuner-tile')).not.toHaveClass('opacity-50')
   })
 
+  describe('signal quality trend', () => {
+    const live = (quality: number | undefined, channel = '5.1') =>
+      tile({ slot: { ...remoteSlot(0), channel, signalStrength: 80, signalQuality: quality }, owner: { kind: 'remote' } })
+    const line = () => within(screen.getByTestId('tile-signal-trend')).getByRole('img', { name: /Signal quality/ })
+
+    it('starts empty, then draws a line as samples arrive, in the second chart color', () => {
+      const { rerender } = render(<TunerTile tile={live(90)} tick={1} />)
+      expect(line()).toHaveAccessibleName('Signal quality: no data yet')
+      rerender(<TunerTile tile={live(70)} tick={2} />)
+      expect(line()).toHaveAccessibleName('Signal quality')
+      expect(line().querySelectorAll('path')).toHaveLength(2)
+      expect(line()).toHaveClass('text-chart-2')
+    })
+
+    it('starts a new line when the channel changes', () => {
+      const { rerender } = render(<TunerTile tile={live(90)} tick={1} />)
+      rerender(<TunerTile tile={live(90)} tick={2} />)
+      expect(line()).toHaveAccessibleName('Signal quality')
+      rerender(<TunerTile tile={live(90, '7.1')} tick={3} />)
+      expect(line()).toHaveAccessibleName('Signal quality: no data yet')
+    })
+
+    it('is left out when the tuner reports no quality', () => {
+      render(<TunerTile tile={live(undefined)} tick={1} />)
+      expect(screen.queryByTestId('tile-signal-trend')).not.toBeInTheDocument()
+      expect(screen.getByTestId('tile-signal')).toBeInTheDocument()
+    })
+
+    it('leaves the bitrate line in the first chart color', () => {
+      const { rerender } = render(<TunerTile tile={live(90)} tick={1} />)
+      rerender(<TunerTile tile={live(90)} tick={2} />)
+      expect(within(screen.getByTestId('tile-bitrate')).getByRole('img')).toHaveClass('text-chart-1')
+    })
+  })
+
   describe('bitrate line', () => {
     const live = (bps: number, channel = '5.1') => tile({ slot: { ...remoteSlot(0), channel, bitsPerSecond: bps }, owner: { kind: 'remote' } })
     const line = () => within(screen.getByTestId('tile-bitrate')).getByRole('img', { name: /Bitrate/ })

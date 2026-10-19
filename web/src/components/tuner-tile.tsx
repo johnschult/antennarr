@@ -17,10 +17,36 @@ const badgeClass: Record<Tile['owner']['kind'], string> = {
   free: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
 }
 
+/** A chart with its name in the corner, so it is clear what the line is. The chart already has its own accessible name. */
+function Captioned({ caption, children }: { caption: string; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <span aria-hidden className="pointer-events-none absolute bottom-0.5 left-1 text-[10px] leading-none font-medium uppercase tracking-wider text-muted-foreground">
+        {caption}
+      </span>
+      {children}
+    </div>
+  )
+}
+
 /** The last couple of minutes of this stream's bitrate. Mounted only while a stream is live, so each new stream starts with a blank line. */
 function StreamSparkline({ bps, tick }: { bps?: number; tick: unknown }) {
   const history = useHistory(bps === undefined ? undefined : bps / 1_000_000, tick)
-  return <Sparkline data={history} height={28} label="Bitrate" />
+  return (
+    <Captioned caption="Bitrate">
+      <Sparkline data={history} height={28} label="Bitrate" />
+    </Captioned>
+  )
+}
+
+/** The last couple of minutes of the signal quality the tuner reports for this stream. */
+function SignalSparkline({ quality, tick }: { quality: number; tick: unknown }) {
+  const history = useHistory(quality, tick)
+  return (
+    <Captioned caption="Signal quality">
+      <Sparkline data={history} height={22} max={100} label="Signal quality" tone="text-chart-2" />
+    </Captioned>
+  )
 }
 
 /** Where a stream is going, for the footer; the pill already says who it is. */
@@ -50,7 +76,7 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
       data-testid="tuner-tile"
       data-owner={owner.kind}
       className={cn(
-        'relative flex h-[18rem] flex-col overflow-hidden rounded-2xl border p-5',
+        'relative flex h-[20.5rem] flex-col overflow-hidden rounded-2xl border p-5',
         live ? 'border-border bg-card/70' : 'border-dashed border-border bg-muted/30',
         dimmed && 'opacity-50',
       )}
@@ -89,6 +115,11 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc }: TilePr
           </div>
           {slot.signalStrength !== undefined && (
             <div className="mt-2" data-testid="tile-signal">
+              {slot.signalQuality !== undefined && (
+                <div className="mb-1.5" data-testid="tile-signal-trend">
+                  <SignalSparkline key={`${slot.channel}|${slot.targetIP}|${owner.kind}`} quality={slot.signalQuality} tick={tick} />
+                </div>
+              )}
               <SignalMeter strength={slot.signalStrength} quality={slot.signalQuality} />
             </div>
           )}
