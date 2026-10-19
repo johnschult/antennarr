@@ -70,6 +70,17 @@ func wobble(rate float64, phase float64) int {
 	return int(rate * (1 + 0.09*math.Sin(t/2.3+phase) + 0.05*math.Sin(t*1.7+phase*3)))
 }
 
+// quality is the signal quality the demo reports: steady at 100 (what the screenshots show), or, with
+// DEMO_SIGNAL set, drifting and dipping now and then so the trend line on a tile has something to draw.
+func quality(phase float64) int {
+	if os.Getenv("DEMO_SIGNAL") == "" {
+		return 100
+	}
+	t := float64(time.Now().UnixNano()) / 1e9
+	q := 90 + 7*math.Sin(t/4+phase) + 3*math.Sin(t*1.3+phase*2) - 28*math.Max(0, math.Sin(t/17+phase)-0.8)*5
+	return int(math.Max(5, math.Min(100, q)))
+}
+
 func TestDemo(t *testing.T) {
 	dir := os.Getenv("DEMO_DIR")
 	if dir == "" {
@@ -181,7 +192,7 @@ func TestDemo(t *testing.T) {
 			rm := remote
 			mu.Unlock()
 			busy := func(tuner int, c demoChannel, freq int, ip string, rate float64, phase float64) string {
-				return fmt.Sprintf(`{"Resource":"tuner%d","VctNumber":%q,"VctName":%q,"Frequency":%d,"SignalStrengthPercent":100,"SignalQualityPercent":100,"SymbolQualityPercent":100,"NetworkRate":%d,"TargetIP":%q}`, tuner, c.Number, c.Name, freq, wobble(rate, phase), ip)
+				return fmt.Sprintf(`{"Resource":"tuner%d","VctNumber":%q,"VctName":%q,"Frequency":%d,"SignalStrengthPercent":100,"SignalQualityPercent":%d,"SymbolQualityPercent":100,"NetworkRate":%d,"TargetIP":%q}`, tuner, c.Number, c.Name, freq, quality(phase), wobble(rate, phase), ip)
 			}
 			slots := []string{`{"Resource":"tuner0"}`, `{"Resource":"tuner1"}`, `{"Resource":"tuner2"}`, `{"Resource":"tuner3"}`}
 			if rm {
