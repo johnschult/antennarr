@@ -61,6 +61,18 @@ The tokens, user keys and webhook addresses are saved in the settings file (read
 The guide key stays on the server: it isn't in the admin API's output or the logs, and error messages from fetching the guide have it stripped out.
 One thing to know: `discover.json` passes the tuner's own `DeviceAuth` through to viewers, the same as the tuner would to anyone on its network. It lets someone fetch that tuner's guide data from SiliconDust, which is low risk, but it is there.
 
+## What is checked automatically
+
+Every change, and the main branch each week, is checked in the open on GitHub:
+
+- **Tests** with the Go race detector, the web page's tests and its type check, and **golangci-lint** (settings in `.golangci.yml`).
+- **Known vulnerabilities**: `govulncheck` for the Go code (it only reports a vulnerability the code can reach) and `npm audit` for the web page's packages, which fail a change; Dependabot proposes updates and raises an alert for a vulnerable dependency.
+- **CodeQL**, GitHub's code scanning (its default setup, switched on in the repository's settings), for the Go and TypeScript code and the workflows themselves.
+- **Trivy** on the container image, reported to the *Security* tab (it does not fail a change, since a problem in the base image is not what the change did).
+- The **OpenSSF Scorecard**, which checks the repository's own practices and publishes the score; the actions the workflows use are pinned to an exact commit.
+
+What these find is on the repository's *Security* tab.
+
 ## Reporting a problem
 
 If you find a security problem, please report it privately with **Report a vulnerability** on the repository's *Security* tab, not in a public issue.

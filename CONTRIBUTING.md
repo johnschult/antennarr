@@ -25,6 +25,8 @@ You need Go (see `go.mod` for the version) and Node 22.12 or newer.
 
 ```sh
 go test -race ./...                       # the server
+golangci-lint run ./...                   # the linters CI runs (settings in .golangci.yml); https://golangci-lint.run/welcome/install/
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...   # known vulnerabilities the code can reach
 cd web && npm ci && npm test              # the web UI (Vitest)
 cd web && npx tsc -b                      # type-check the UI
 go run ./cmd/antennarr -config /tmp/antennarr-dev.json   # the Go server (the API), on :5004; start this first

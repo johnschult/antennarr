@@ -1,0 +1,46 @@
+name: Image scan
+
+# Builds the container image (without publishing it) and scans it with Trivy for known vulnerabilities in what
+# is inside it: the base image and the Go binary. It reports to the Security tab and does not fail the build,
+# since a vulnerability in somebody else's base image should not stop an unrelated change; look at the Security
+# tab, and update the base image (Dependabot proposes that).
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - go.mod
+      - web/package.json
+      - web/package-lock.json
+      - .github/workflows/image-scan.yml
+  push:
+    branches: [main]
+  schedule:
+    - cron: "33 5 * * 2"
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Trivy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # upload the results
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - name: Build the image
+        run: docker build --tag antennarr:scan .
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: antennarr:scan
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+      - uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          sarif_file: trivy.sarif
+          category: trivy

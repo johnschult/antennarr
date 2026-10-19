@@ -487,11 +487,11 @@ func (s Settings) Warnings() []string {
 	return c.warnings()
 }
 
-func (c parsed) warnings() []string {
+func (p parsed) warnings() []string {
 	var out []string
-	for _, v := range c.viewers {
+	for _, v := range p.viewers {
 		for _, vp := range v.prefixes {
-			for _, ap := range c.admin {
+			for _, ap := range p.admin {
 				if vp.Overlaps(ap) {
 					out = append(out, fmt.Sprintf("viewer %q (%s) is inside the admin range %s, so they can open the admin page and change settings; narrow the admin range", v.Name, vp, ap))
 				}

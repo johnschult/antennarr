@@ -200,16 +200,3 @@ func TestNothingIsSentOrContactedWithoutAChannel(t *testing.T) {
 		t.Errorf("%d messages with no channel", n)
 	}
 }
-
-// online says whether the first device is seen online.
-func (r *rig) online(t *testing.T) bool {
-	t.Helper()
-	_, body := r.get(t, "antenna", "/antennarr/api/state")
-	var st struct {
-		Devices []struct{ Tuner struct{ Online bool } }
-	}
-	if err := json.Unmarshal([]byte(body), &st); err != nil || len(st.Devices) == 0 {
-		t.Fatalf("state: %v\n%s", err, body)
-	}
-	return st.Devices[0].Tuner.Online
-}

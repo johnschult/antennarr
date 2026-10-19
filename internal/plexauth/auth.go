@@ -318,7 +318,6 @@ func (a *Auth) poll(w http.ResponseWriter, r *http.Request, add bool) {
 	}
 
 	user, err := c.User(r.Context(), token)
-	token = "" // the token has done its one job; nothing keeps it
 	if err != nil {
 		httpx.WriteErr(w, http.StatusBadGateway, "couldn't ask plex.tv who signed in: "+err.Error())
 		return

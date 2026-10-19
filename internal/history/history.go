@@ -104,7 +104,7 @@ func New(store *Store, now time.Time) *Recorder {
 		sessions, dropped := store.Load(now.Add(-Keep))
 		r.done = sessions
 		if dropped > 0 {
-			store.Rewrite(r.done)
+			_ = store.Rewrite(r.done) // best effort: what is kept loads again next time, and the old lines are dropped again
 		}
 	}
 	return r
@@ -334,7 +334,7 @@ func (st *Store) Rewrite(sessions []Session) error {
 			f.Close()
 			return err
 		}
-		w.Write(append(b, '\n'))
+		_, _ = w.Write(append(b, '\n')) // a failed write shows at Flush: the writer keeps its first error
 	}
 	if err := w.Flush(); err != nil {
 		f.Close()

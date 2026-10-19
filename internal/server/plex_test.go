@@ -84,13 +84,12 @@ func (p *plexTV) approve(pin int64, token string, id int64, name string) {
 
 // site is Antennarr's handler, called directly so requests can come from any address.
 type site struct {
-	t        *testing.T
-	srv      *Server
-	tv       *plexTV
-	cookie   *http.Cookie
-	path     string // the settings file, if any
-	remote   string
-	lastBody string
+	t      *testing.T
+	srv    *Server
+	tv     *plexTV
+	cookie *http.Cookie
+	path   string // the settings file, if any
+	remote string
 }
 
 func newSite(t *testing.T, s access.Settings, withFile bool) *site {
@@ -161,7 +160,7 @@ func (st *site) signIn(token string, id int64, name string) string {
 	// polls are throttled to one a second; wait it out
 	for i := 0; i < 5; i++ {
 		time.Sleep(1100 * time.Millisecond)
-		code, body = st.here("POST", "/antennarr/auth/plex/poll", fmt.Sprintf(`{"pinId":%d}`, m.PinID))
+		_, body = st.here("POST", "/antennarr/auth/plex/poll", fmt.Sprintf(`{"pinId":%d}`, m.PinID))
 		if !strings.Contains(body, "pending") {
 			return body
 		}
