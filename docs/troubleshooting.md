@@ -127,6 +127,13 @@ The message says why. The common ones:
 - **Restart says it kept answering**: the tuner didn't appear to restart. Try again, or restart it from its own page or by unplugging it.
 - Neither runs while something is using the tuner unless you confirm that you want to interrupt it.
 
+## Testing a channel's signal says it can't
+
+- The test needs a tuner nothing is using, and never interrupts a stream. With all of the tuner's tuners in use the button is greyed out; try again when one is free.
+- It can't run while the tuner is scanning, restarting or being updated, or while another test is running.
+- *No signal* means the tuner tuned to the channel but couldn't lock on to it within a few seconds: the antenna doesn't get it, or it is too weak. It is a real answer, not an error.
+- If the tuner won't tune to a channel at all, the message says what it replied.
+
 ## The Activity page is empty or missing
 
 - It is switched on by default under *Settings → Privacy and updates → Keep activity history*, and the *Activity* item is hidden while it is off.

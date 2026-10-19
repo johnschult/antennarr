@@ -91,6 +91,25 @@ func demoLineup(chs []demoChannel) []linetest.Channel {
 	return out
 }
 
+// demoSignals is what the made-up tuner reports when a channel of the lineup is tested: strong, middling, weak, and
+// one that never locks, in turn, so the results show every color.
+func demoSignals(lineup []linetest.Channel) map[string]hdhrtest.Signal {
+	out := map[string]hdhrtest.Signal{}
+	for i, c := range lineup {
+		switch i % 4 {
+		case 0:
+			out[c.Number] = hdhrtest.Signal{Lock: "atsc3", Strength: 92, Quality: 98, Symbol: 100}
+		case 1:
+			out[c.Number] = hdhrtest.Signal{Lock: "atsc3", Strength: 71, Quality: 80, Symbol: 100}
+		case 2:
+			out[c.Number] = hdhrtest.Signal{Lock: "atsc3", Strength: 48, Quality: 35, Symbol: 90}
+		default:
+			out[c.Number] = hdhrtest.Signal{Strength: 14}
+		}
+	}
+	return out
+}
+
 // seedHistory fills the Activity page with a couple of weeks of made-up watching, written the way the
 // recorder writes it, so the page has something to show before anyone has really watched.
 func seedHistory(t *testing.T, path string, chs []demoChannel) {
@@ -239,7 +258,7 @@ func TestDemo(t *testing.T) {
 		}))
 		defer update.files.Close()
 		var err2 error
-		update.ctrl, err2 = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20250815", VersionAfter: "20260326", RebootFor: 9 * time.Second, RestartFor: 8 * time.Second, ChunkDelay: time.Millisecond})
+		update.ctrl, err2 = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20250815", VersionAfter: "20260326", RebootFor: 9 * time.Second, RestartFor: 8 * time.Second, ChunkDelay: time.Millisecond, Signals: demoSignals(demoLineup(chs)), LockAfter: 1500 * time.Millisecond})
 		if err2 != nil {
 			t.Fatal(err2)
 		}
@@ -404,7 +423,7 @@ func TestDemo(t *testing.T) {
 	// The Device panel reads the tuner's control port and its System Menu page: a fake of each.
 	if !update.on {
 		var err error
-		update.ctrl, err = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20260326", RestartFor: 8 * time.Second})
+		update.ctrl, err = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20260326", RestartFor: 8 * time.Second, Signals: demoSignals(demoLineup(chs)), LockAfter: 1500 * time.Millisecond})
 		if err != nil {
 			t.Fatal(err)
 		}

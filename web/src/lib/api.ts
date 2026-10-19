@@ -1,4 +1,4 @@
-import type { AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
+import type { AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -79,6 +79,9 @@ export const clearHistory = () => request<void>('DELETE', '/history')
 export const getChannels = (device: string) => request<ChannelsDoc>('GET', `/devices/${encodeURIComponent(device)}/channels`)
 export const setChannelState = (device: string, number: string, state: ChannelState) =>
   request<TunerChannel>('PUT', `/devices/${encodeURIComponent(device)}/channels/${encodeURIComponent(number)}`, { state })
+/** Tune a free tuner to a channel for a few seconds and read its signal. Takes about ten seconds. */
+export const testChannelSignal = (device: string, number: string) =>
+  request<SignalTestResult>('POST', `/devices/${encodeURIComponent(device)}/channels/${encodeURIComponent(number)}/test`)
 export const startChannelScan = (device: string, source: string, interrupt: boolean) =>
   request<{ scanning: boolean; source: string }>('POST', `/devices/${encodeURIComponent(device)}/channel-scan`, { source, interrupt })
 export const stopChannelScan = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/channel-scan`)

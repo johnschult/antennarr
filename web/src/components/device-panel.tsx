@@ -6,12 +6,11 @@ import { Row, Section } from '@/components/settings/section'
 import { Button } from '@/components/ui/button'
 import { useEdits } from '@/hooks/mutations'
 import { getDeviceInfo } from '@/lib/api'
-import { deviceTitle } from '@/lib/device'
 import { firmwareDate, timeAgo } from '@/lib/format'
 import type { DeviceState } from '@/lib/types'
 
 /** What the tuner says about itself. Read when the panel opens and when asked again, not on a timer. */
-export function DevicePanel({ device, showName }: { device: DeviceState; showName: boolean }) {
+export function DevicePanel({ device }: { device: DeviceState }) {
   const qc = useQueryClient()
   const key = ['device-info', device.name] as const
   const online = device.tuner.online
@@ -56,7 +55,7 @@ export function DevicePanel({ device, showName }: { device: DeviceState; showNam
     : []
 
   return (
-    <Section icon={Server} title={showName ? `Device — ${deviceTitle(device)}` : 'Device'}>
+    <Section bare icon={Server} title="Device" description="What the tuner reports about itself, and restarting it.">
       <div className="px-4 py-3.5">
         {!online ? (
           <p className="text-sm text-muted-foreground">The tuner is offline, so there is nothing to read.</p>

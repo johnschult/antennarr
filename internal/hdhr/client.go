@@ -116,6 +116,11 @@ func (c *Conn) getSet(ctx context.Context, name string, value *string) (string, 
 	if value != nil {
 		payload = AppendTLV(payload, TagGetSetValue, cstr(*value))
 	}
+	return c.exchange(ctx, payload)
+}
+
+// exchange sends a get or set request and reads what the tuner answers with. The lock must be held.
+func (c *Conn) exchange(ctx context.Context, payload []byte) (string, error) {
 	if len(payload) > MaxPayload {
 		return "", errors.New("hdhr: request too long")
 	}

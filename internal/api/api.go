@@ -21,6 +21,7 @@ import (
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/guide"
+	"github.com/johnschult/antennarr/internal/hdhr"
 	"github.com/johnschult/antennarr/internal/history"
 	"github.com/johnschult/antennarr/internal/httpx"
 	"github.com/johnschult/antennarr/internal/lineup"
@@ -90,6 +91,11 @@ type API struct {
 	Restart *restart.Manager
 	// Lineup reads and changes a tuner's channels; nil means it can't.
 	Lineup *lineup.Client
+	// Control opens a control connection to a tuner's host, for testing a channel's signal; nil means it can't.
+	Control func(ctx context.Context, host string) (*hdhr.Conn, error)
+	// SignalTest sets the timings of a signal test; the zero value is what it should be. Tests make them short.
+	SignalTest hdhr.TestOptions
+	testing    sync.Map // device name -> a signal test is running on it
 	// History is who watched what, for the Activity page; nil means there is none.
 	History *history.Recorder
 	// Device reads what a tuner says about itself, for the Device panel; nil means it can't.
@@ -138,6 +144,7 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/channels", map[string]http.HandlerFunc{"GET": a.getChannels}},
 		{"devices/{name}/channel-scan", map[string]http.HandlerFunc{"POST": a.startScan, "DELETE": a.stopScan}},
 		{"devices/{name}/channels/{number}", map[string]http.HandlerFunc{"PUT": a.setChannel}},
+		{"devices/{name}/channels/{number}/test", map[string]http.HandlerFunc{"POST": a.testSignal}},
 		{"history", map[string]http.HandlerFunc{"GET": a.getHistory, "DELETE": a.clearHistory}},
 		{"devices/{name}/restart", map[string]http.HandlerFunc{"POST": a.restartTuner, "DELETE": a.dismissRestart}},
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},

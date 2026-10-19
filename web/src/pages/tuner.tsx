@@ -198,7 +198,7 @@ function Settings({ device, onRemove }: { device: DeviceState; onRemove: () => v
   const { device: edit } = useEdits()
   const port = device.listen.slice(device.listen.lastIndexOf(':') + 1)
   return (
-    <Section icon={SlidersHorizontal} title="Settings">
+    <Section bare icon={SlidersHorizontal} title="Settings" description="How Antennarr treats this tuner.">
       <EditRow
         key={`label-${device.name}-${device.label ?? ''}`}
         kind="text"
@@ -282,7 +282,7 @@ export function TunerPage() {
       {current === 'channels' && <ChannelsPanel device={device} />}
       {current === 'device' && (
         <div className="space-y-3">
-          <DevicePanel device={device} showName={false} />
+          <DevicePanel device={device} />
           <a href={device.tuner.baseURL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
             Open the tuner's own page <ExternalLink aria-hidden className="size-3" />
           </a>
