@@ -629,6 +629,13 @@ type fakeEvents struct {
 	mu      sync.Mutex
 	refused []string
 	unknown []string
+	started []string
+}
+
+func (f *fakeEvents) Started(device, title, viewer, channel string) {
+	f.mu.Lock()
+	f.started = append(f.started, device+"|"+title+"|"+viewer+"|"+channel)
+	f.mu.Unlock()
 }
 
 func (f *fakeEvents) Refused(device, title, viewer, reason string) {
@@ -673,6 +680,45 @@ func TestARefusalReachesTheEventsOnceAMinuteWithTheTunersName(t *testing.T) {
 	p.Stream(mom)
 	if refused, _ := ev.get(); len(refused) != 2 {
 		t.Errorf("a minute later: %v", refused)
+	}
+}
+
+func TestAStreamGivenToAViewerReachesTheEventsWithTheChannel(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	s := twoViewers
+	s.Labels = map[string]string{testDevice: "Living room"}
+	p, _ := newPolicy(t, s, mon)
+	ev := &fakeEvents{}
+	p.SetEvents(ev)
+	r := req("10.8.0.5:1")
+	r.URL.Path = "/auto/v5.1"
+	if _, err := p.Stream(r); err != nil {
+		t.Fatal(err)
+	}
+	ev.mu.Lock()
+	got := append([]string(nil), ev.started...)
+	ev.mu.Unlock()
+	if len(got) != 1 || got[0] != "antenna|Living room|Mom|5.1" {
+		t.Errorf("started = %v", got)
+	}
+}
+
+func TestARefusedOrUnknownRequestIsNotAStart(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	p, _ := newPolicy(t, twoViewers, mon)
+	ev := &fakeEvents{}
+	p.SetEvents(ev)
+	mom := req("10.8.0.5:1")
+	p.Stream(mom)                  // given
+	p.Stream(mom)                  // refused: at its limit
+	p.Stream(req("203.0.113.9:1")) // not a viewer
+	ev.mu.Lock()
+	n := len(ev.started)
+	ev.mu.Unlock()
+	if n != 1 {
+		t.Errorf("%d starts, want 1", n)
 	}
 }
 

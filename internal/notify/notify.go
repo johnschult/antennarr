@@ -24,7 +24,7 @@ import (
 
 // Event is something to tell the owner.
 type Event struct {
-	// Kind is one of access.NotifyFirmware, NotifyTuner, NotifyViewer, NotifyUnknown.
+	// Kind is one of access.NotifyFirmware, NotifyTuner, NotifyViewer, NotifyUnknown, NotifyWatching.
 	Kind string
 	// Device is the tuner's name, when the event is about one.
 	Device  string
@@ -61,6 +61,7 @@ const (
 	queueSize       = 32
 	defaultGrace    = 2 * time.Minute
 	refusedEvery    = 30 * time.Minute // the same viewer refused for the same reason on the same tuner
+	startedEvery    = 30 * time.Minute // the same viewer starting to watch on the same tuner
 	unknownEvery    = 24 * time.Hour   // the same unknown address
 	unknownPerHour  = 6                // unknown addresses in all, however many there are
 	cooldownKeepMax = 1000             // entries in the cooldown table before old ones are dropped
@@ -382,6 +383,22 @@ func (n *Notifier) Refused(device, title, viewer, reason string) {
 	n.Send(Event{
 		Kind: access.NotifyViewer, Device: device, Title: viewer + " was refused a tuner",
 		Message: fmt.Sprintf("%s asked for a tuner on %s and %s.", viewer, title, why),
+	})
+}
+
+// Started is a viewer given a tuner. It is off unless the owner switched it on, and a viewer is only reported once
+// in a while per tuner, since flipping channels, or a media server that connects again, makes a stream each time.
+func (n *Notifier) Started(device, title, viewer, channel string) {
+	if !n.settings().NotifyEnabled(access.NotifyWatching) || !n.allow("started|"+device+"|"+viewer, startedEvery) {
+		return
+	}
+	what := "started watching"
+	if channel != "" {
+		what += " channel " + channel
+	}
+	n.Send(Event{
+		Kind: access.NotifyWatching, Device: device, Title: viewer + " started watching",
+		Message: fmt.Sprintf("%s %s on %s.", viewer, what, title),
 	})
 }
 

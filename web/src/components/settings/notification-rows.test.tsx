@@ -24,6 +24,16 @@ describe('Notifications: what sends a message', () => {
     expect(on(/goes offline/)).toBeChecked()
     expect(on(/turned away/)).toBeChecked()
     expect(on(/is not a viewer connects/)).not.toBeChecked()
+    expect(on(/starts watching/)).not.toBeChecked()
+  })
+
+  it('switches on a viewer starting to watch', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...ok })
+    vi.stubGlobal('fetch', fn)
+    show()
+    await userEvent.setup().click(within(section()).getByRole('switch', { name: /starts watching/ }))
+    await waitFor(() => expect(calls.some((c) => c.method === 'PATCH')).toBe(true))
+    expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ notifyEvents: { watching: true } })
   })
 
   it('switches one event and leaves the others alone', async () => {
