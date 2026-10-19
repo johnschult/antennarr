@@ -133,7 +133,7 @@ describe('the overview', () => {
     const s = makeState()
     s.devices[0].tuner = { ...s.devices[0].tuner, online: false }
     overview(s)
-    expect(screen.getByRole('link', { name: 'See why in the logs' })).toHaveAttribute('href', '/logs?q=antenna')
+    expect(screen.getByRole('link', { name: 'See why in the logs' })).toHaveAttribute('href', '/settings/logs?q=antenna')
   })
 
   it('has no pointer to the logs while it is online', () => {

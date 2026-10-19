@@ -5,7 +5,7 @@ import { lineText } from '@/lib/logs'
 import type { LogEntry, LogsDoc } from '@/lib/types'
 import { makeState } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
-import { LogsPage } from './logs'
+import { LogsPanel } from './logs'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -25,12 +25,12 @@ function show(d: LogsDoc | { status: number; error: string } = doc(), state = ma
   const routes = new Proxy(extra, { get: (t, k) => (typeof k === 'string' && k.startsWith('GET /logs') ? read : t[k as string]) })
   const { fn, calls } = stubFetch(routes)
   vi.stubGlobal('fetch', fn)
-  renderWithApp(<LogsPage />, state)
+  renderWithApp(<LogsPanel />, state)
   return calls
 }
 const rows = () => screen.getAllByTestId('log-line')
 
-describe('the Logs page', () => {
+describe('the Logs tab', () => {
   it('lists the lines oldest first, with the time, a named level with a picture, the message and its attributes', async () => {
     show()
     await screen.findAllByTestId('log-line')
@@ -138,7 +138,7 @@ describe('opened from a link', () => {
     const routes = new Proxy({} as Record<string, () => { body: LogsDoc }>, { get: (_, k) => (typeof k === 'string' && k.startsWith('GET /logs') ? read : undefined) })
     const { fn, calls } = stubFetch(routes)
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<LogsPage />, makeState(), { route: '/logs?q=antenna' })
+    renderWithApp(<LogsPanel />, makeState(), { route: '/settings/logs?q=antenna' })
     expect(screen.getByRole('textbox', { name: 'Search the log' })).toHaveValue('antenna')
     await screen.findAllByTestId('log-line')
     expect(calls.some((c) => c.url.includes('q=antenna'))).toBe(true)

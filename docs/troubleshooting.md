@@ -78,7 +78,7 @@ A `503` is Antennarr deliberately saying "no tuner for you right now", the same 
 | Reason | What happened | What to change |
 |---|---|---|
 | `viewer-limit` | This viewer is already using all their tuners. | Raise their limit under *Viewers*, or stop a stream. |
-| `shared-cap` | All viewers together are using the shared cap. | Raise *Max tuners for viewers* in *Settings → Limits*. |
+| `shared-cap` | All viewers together are using the shared cap. | Raise *Max tuners for viewers* in *Settings → Access → Limits*. |
 | `owner-reserve` | The tuners left are being held for your own devices. | Lower *Tuners reserved for you*. Remember the reserve is **in addition to** what your own TVs are using right now. |
 | `tuner-offline` | The tuner is offline. | See above. |
 
@@ -114,7 +114,7 @@ The message says why. The common ones:
 
 ## No channel logos or "what's on"
 
-- It is on by default: check *Settings → Privacy and updates → Show what's on*.
+- It is on by default: check *Settings → Privacy → Show what's on*.
 - It needs the machine to reach `api.hdhomerun.com` and `img.hdhomerun.com`, and the tuner has to have reported its guide key. The log shows `guide fetch failed` with the reason.
 - It only appears for channels being watched right now.
 - The picture behind a tile comes from the same guide, through Antennarr, so it needs the same two addresses. A tile without a picture is normal when the guide has none for that program.
@@ -136,7 +136,7 @@ The message says why. The common ones:
 
 ## The Activity page is empty or missing
 
-- It is switched on by default under *Settings → Privacy and updates → Keep activity history*, and the *Activity* item is hidden while it is off.
+- It is switched on by default under *Settings → Privacy → Keep activity history*, and the *Activity* item is hidden while it is off.
 - It records what is in use as it happens, so it starts empty, and a session shorter than 15 seconds is not kept.
 - Without a settings file it is kept in memory and starts over with Antennarr. Otherwise it is in `<settings file>.history.jsonl` beside it.
 

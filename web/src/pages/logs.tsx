@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Loader2, ScrollText, Trash2, X } from 'lucide-react'
+import { Download, Loader2, Trash2, X } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -53,7 +53,7 @@ function Line({ e }: { e: LogEntry }) {
 }
 
 /** Antennarr's own log: what it has been doing, with the problems easy to find. */
-export function LogsPage() {
+export function LogsPanel() {
   const { state } = useApp()
   const qc = useQueryClient()
   const { settings: update } = useEdits()
@@ -123,12 +123,7 @@ export function LogsPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <ScrollText aria-hidden className="size-5 text-muted-foreground" /> Logs
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">What Antennarr has been doing. The newest lines are kept in memory, not in a file, and start over when it restarts.</p>
-        </div>
+        <p className="max-w-xl text-sm text-muted-foreground">What Antennarr has been doing. The newest lines are kept in memory, not in a file, and start over when it restarts.</p>
         <div className="flex items-center gap-2 text-sm">
           <label htmlFor="log-level" className="text-muted-foreground">
             Log

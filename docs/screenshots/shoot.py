@@ -105,12 +105,10 @@ with sync_playwright() as p:
     shot(page, 'channels')
     ctx.close()
 
-    # Settings, scrolled to the privacy section, where the activity history switch is.
+    # Settings, on its Privacy tab, where the activity history switch is.
     ctx = context('dark', height=1100)
-    page = open_page(ctx, '/antennarr/settings', 'text=Keep activity history')
+    page = open_page(ctx, '/antennarr/settings/privacy', 'text=Keep activity history')
     time.sleep(0.5)
-    page.get_by_text('Privacy and updates').scroll_into_view_if_needed()
-    time.sleep(0.3)
     page.evaluate(SHOW_LAN_ADDRESS)
     shot(page, 'settings')
     ctx.close()

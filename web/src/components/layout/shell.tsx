@@ -196,7 +196,7 @@ export function Shell() {
               What's new
             </button>
           )}
-          <Link to="/logs" className="rounded-md px-2 py-1 underline-offset-2 hover:bg-muted hover:text-foreground">
+          <Link to="/settings/logs" className="rounded-md px-2 py-1 underline-offset-2 hover:bg-muted hover:text-foreground">
             Logs
           </Link>
           <a href={state.docsUrl} target="_blank" rel="noopener noreferrer" className="rounded-md px-2 py-1 underline-offset-2 hover:bg-muted hover:text-foreground">
