@@ -1,6 +1,6 @@
 # Antennarr documentation
 
-Antennarr shares an HDHomeRun tuner with Plex, Jellyfin or Emby servers on other networks, and keeps track of who is using it.
+Antennarr shares an HDHomeRun tuner with Plex, Jellyfin or Emby servers on other networks, and keeps track of who is using it. Its web page also does what you would normally open the tuner's own web page for (channels, scanning, device details, restarting, firmware), with a good deal more on top.
 If you haven't read the [project README](../README.md), start there for what it is and the quick start.
 
 | Page | Read it when |

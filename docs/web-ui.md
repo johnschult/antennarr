@@ -2,6 +2,7 @@
 
 Open it at `http://<antennarr address>:5004/antennarr/` (see [Getting started](getting-started.md#3-open-the-web-page)).
 It has light and dark themes, and follows your computer's unless you choose one with the buttons at the top right.
+Besides sharing the tuner, it is a web UI for the tuner itself: it does what you would normally open the HDHomeRun's own web page for (channels, scanning, device details, restarting, firmware), more clearly and with more on top (what is on, who is watching, signal tests, filtering, history, logs). The tuner's own page is still one link away on a tuner's *Device* tab for anything it doesn't cover.
 These pictures are of a demo with a made-up tuner, guide and viewers.
 
 ## Live
@@ -29,7 +30,7 @@ Who may use the tuner, from which addresses, and how many tuners each gets at on
 
 ## Tuners
 
-<img src="screenshots/tuners.jpg" alt="A tuner's page, on its Overview: its facts, what is on each of its tuners and a line about its firmware, with Overview, Channels, Device, Firmware and Settings tabs" width="900">
+<img src="screenshots/tuners.jpg" alt="A tuner's page, on its Overview: how it is now, what is on each of its tuners, a line about its firmware and its details, with Overview, Channels, Device, Firmware and Settings tabs" width="900">
 
 The **Tuners** page is a list, one row for each tuner with its status, where it is, how many of its tuners are in use and a flag when it has a firmware update. With only one tuner it opens that tuner's page directly (its *Tuners* link back goes to the list, where you add another).
 
@@ -42,6 +43,11 @@ A tuner's page has five sections as tabs, each with its own address (`/tuner/<na
 - **Settings:** the name shown on this page (media servers are always told the device's own name), the port media servers use, and removing the tuner from Antennarr (the tuner itself is untouched).
 
 <img src="screenshots/channels.jpg" alt="A tuner's Channels tab: a channel scan, and each channel found with its average signal quality and buttons to enable it, make it a favorite or disable it" width="900">
+
+<p>
+  <img src="screenshots/channel-info.jpg" alt="The card the i beside a channel opens: its number and name, whether it is in the lineup, and from the program guide its network, its language with a flag and its categories with an icon each" width="440">
+  <img src="screenshots/channel-filters.jpg" alt="The Filters panel on the Channels tab, with Shopping chosen: HD only, categories with an icon and a count each, and languages with a flag, and the chosen filter shown as a chip above the list" width="440">
+</p>
 
 ## Activity
 
@@ -58,6 +64,8 @@ Four tabs, each with its own address: **Access** (how much of each tuner viewers
 ### Logs
 
 Antennarr's own log. Open it from the *Logs* tab of *Settings*, the **Logs** link in the footer, or, when a tuner is offline, from *See why in the logs* on its Overview (which opens the log already searched for that tuner): what it has been doing, with the newest line at the bottom. Each line has its time, a level (Debug, Info, Warning or Error, each with its own icon and color), the message and its details. Show everything, info and above, warnings and errors, or errors only; search the messages and their details (the search box has a clear button); **Live** keeps it up to date every few seconds and following the newest line until you scroll up to read; **Download** saves what is shown as a text file; **Clear** forgets what is kept. The **Log** menu at the top right is how much is logged: *Info* is the default, *Debug* adds the detail that is useful when something is wrong, and it is a setting, so it changes at once and is kept. The lines are kept in memory (the last 2,000), not in a file, so they start over when Antennarr restarts; they are also still written to standard error as before (`docker logs antennarr`). Anything that looks like a secret (a token, a key, the guide key) is hidden before a line is kept.
+
+<img src="screenshots/logs.jpg" alt="The Logs tab of the settings: lines with a time, a level with an icon and color, the message and its details, with a menu to show some of them, a search box, Live, Download and Clear" width="900">
 
 ## On a phone
 

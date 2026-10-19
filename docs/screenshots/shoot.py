@@ -7,6 +7,7 @@ Needs Playwright for Python and a Chromium it can find
 (`pip install playwright && playwright install chromium`).
 """
 import json
+import re
 import sys
 import time
 
@@ -103,6 +104,38 @@ with sync_playwright() as p:
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     shot(page, 'channels')
+    ctx.close()
+
+    # What is known about a channel: the card the i opens, on a channel the guide has things to say about.
+    ctx = context('dark', height=760)
+    page = open_page(ctx, '/antennarr/tuner/antenna/channels', '[data-testid="channel"]')
+    time.sleep(1)
+    page.get_by_role('button', name=re.compile('^About .* Classic TV')).click()
+    page.wait_for_selector('[data-testid="channel-about"]', timeout=15000)
+    time.sleep(0.6)
+    page.evaluate(SHOW_LAN_ADDRESS)
+    shot(page, 'channel-info')
+    ctx.close()
+
+    # Filtering the channels: the panel open, with a category chosen.
+    ctx = context('dark', height=760)
+    page = open_page(ctx, '/antennarr/tuner/antenna/channels', '[data-testid="channel"]')
+    time.sleep(1)
+    page.get_by_role('button', name='Filters').click()
+    page.wait_for_selector('[data-testid="filters"]', timeout=15000)
+    page.get_by_role('region', name='Categories').get_by_role('button', name=re.compile('^Shopping')).click()
+    page.evaluate("document.querySelector('[data-testid=filters]').parentElement.scrollTop = 0")  # clicking scrolled the panel
+    time.sleep(0.6)
+    page.evaluate(SHOW_LAN_ADDRESS)
+    shot(page, 'channel-filters')
+    ctx.close()
+
+    # Settings, on its Logs tab.
+    ctx = context('dark', height=720)
+    page = open_page(ctx, '/antennarr/settings/logs', '[data-testid="log-line"]')
+    time.sleep(1)
+    page.evaluate(SHOW_LAN_ADDRESS)
+    shot(page, 'logs')
     ctx.close()
 
     # Settings, on its Privacy tab, where the activity history switch is.
