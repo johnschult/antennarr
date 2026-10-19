@@ -111,7 +111,7 @@ function DeviceSection({ device, tick }: { device: DeviceState; tick: unknown })
   return (
     <section aria-label={`Tuners on ${deviceTitle(device)}`} className="space-y-3">
       {/* The top bar doesn't say anything about the tuners, so each one has its header here: its name, the model beside a name you chose, how many are live, and where it is. */}
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
           <span
             title={tuner.updating ? 'Updating firmware' : tuner.restarting ? 'Restarting' : tuner.online ? 'Online' : 'Offline'}
