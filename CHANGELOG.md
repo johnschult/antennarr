@@ -5,6 +5,18 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.9 (2026-10-19)
+
+### Added
+
+- **A log viewer.** *Settings → Logs* shows what Antennarr has been doing, newest last: each line has its time, a level with its own icon and color, the message and its details. **Show** picks which of the kept lines are listed (everything, info and above, warnings and errors, or errors only), the search box looks in the messages and their details, **Live** keeps it up to date and following the newest line until you scroll up to read, **Download** saves what is shown as a text file, and **Clear** forgets what is kept. The last 2,000 lines are kept in memory, not in a file, so they start over when Antennarr restarts; they are still written to standard error as before (`docker logs antennarr`). Anything that looks like a secret (a token, a key, the guide key) is hidden before a line is kept, and only admins can open the page. It is in the footer too, and an offline tuner's *Overview* says *See why in the logs* and opens the log already searched for that tuner.
+- **A log level setting.** **Record** on the *Logs* tab sets how much Antennarr writes down from now on: *Info* is the default, *Debug* adds more detail for when something is wrong, and *Warnings and up* or *Errors* is quieter. It is the `logLevel` setting, it takes effect at once, and it follows the settings file when that is reloaded. See [Configuration](https://github.com/johnschult/antennarr/blob/main/docs/configuration.md).
+
+### Changed
+
+- **Settings is in tabs**, like a tuner's page: **Access** (how much of each tuner viewers may use, who may open the page, Sign in with Plex), **Notifications**, **Privacy** (the firmware check, the program guide and the activity history) and **Logs**. Each tab has its own address, and on a phone the tabs share the width with the icon above the name. Nothing about how a setting works changed.
+- **Icons.** Settings uses the sliders everywhere (the cog is gone), a tuner's *Overview* tab is a dashboard so the dial is only for limits and testing a signal, and its *Device* tab is a router.
+
 ## 2026.10.8 (2026-10-19)
 
 ### Added
