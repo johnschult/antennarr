@@ -5,6 +5,21 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.7 (2026-10-19)
+
+### Added
+
+- **Channel logos never vanish.** Most logos have no background of their own, so white lettering was lost on the light theme and dark artwork on the dark one. Antennarr looks at each logo once in your browser and gives it a thin outline only where it needs one: dark around light artwork in the light theme, light around dark artwork in the dark theme. Logos with a mix of colors are left alone, and there is no box around any of them.
+- **Signal strength is drawn as bars** in each tile's footer: four from 80%, then three, two, one, and none under 20%. It is still colored only when reception is fair or poor.
+- **Icons on the *Viewers* and *Timeline* headings** on the *Live* page.
+- **A tour of the web page** in the docs, with a picture of each page, and new pictures of *Activity*, *Tuners* and *Settings*. The README is shorter: it has a table of the docs, and the details it repeated are in the pages that already had them. See [A tour of the web page](https://github.com/johnschult/antennarr/blob/main/docs/web-ui.md).
+
+### Changed
+
+- The *Live* page's heading says **On the air now**.
+- Restarting a tuner from the *Device* panel has now been tried on a real FLEX 4K: it went away and came back in about seven seconds, with no offline message in between. Installing firmware still has not run end to end on a real tuner, since it needs a release newer than the one the tuner is on.
+- The docs match what is built: the design notes describe the current layout, the API's state document shows the restart and upgrade fields, and *Troubleshooting* covers what Install and Restart say when something goes wrong and an empty *Activity* page.
+
 ## 2026.10.6 (2026-10-19)
 
 ### Read before updating
