@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Loader2, ScrollText, Trash2, X } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,8 +58,10 @@ export function LogsPage() {
   const qc = useQueryClient()
   const { settings: update } = useEdits()
   const [level, setLevel] = useState<LogLevel | ''>('')
-  const [text, setText] = useState('')
-  const [term, setTerm] = useState('')
+  // A link can open the log already searched, such as for one tuner (?q=antenna).
+  const [params] = useSearchParams()
+  const [text, setText] = useState(() => (params.get('q') ?? '').slice(0, 200))
+  const [term, setTerm] = useState(text)
   const [live, setLive] = useState(true)
 
   // What is typed is searched for a moment after it stops, so each key is not a request.

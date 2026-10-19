@@ -163,7 +163,12 @@ function Overview({ device }: { device: DeviceState }) {
         ) : tuner.online ? (
           <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Online</Badge>
         ) : (
-          <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>
+          <>
+            <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>
+            <Link to={`/logs?q=${encodeURIComponent(device.name)}`} className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
+              See why in the logs
+            </Link>
+          </>
         )}
         <span className="text-muted-foreground">
           Last seen <span className="font-medium text-foreground">{timeAgo(tuner.lastSeen)}</span>

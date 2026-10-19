@@ -1,4 +1,4 @@
-import { Bell, Gauge, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
+import { Bell, Gauge, KeyRound, ScrollText, ShieldCheck, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { ClearHistoryDialog } from '@/components/clear-history-dialog'
@@ -126,6 +126,14 @@ export function SettingsPage() {
           </Button>
         </Row>
         <ClearHistoryDialog open={clearing} onClose={() => setClearing(false)} />
+      </Section>
+
+      <Section title="Troubleshooting" icon={ScrollText}>
+        <Row title="Logs" description="What Antennarr has been doing, newest last, with the problems easy to find. It is also where you choose how much is logged, for when something is wrong.">
+          <Button variant="outline" size="sm" render={<Link to="/logs" />}>
+            <ScrollText data-icon="inline-start" /> Open logs
+          </Button>
+        </Row>
       </Section>
     </div>
   )

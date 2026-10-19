@@ -231,6 +231,13 @@ describe('SettingsPage', () => {
   })
 })
 
+describe('troubleshooting', () => {
+  it('has a way to the logs', () => {
+    renderWithApp(<SettingsPage />, state())
+    expect(within(section('Troubleshooting')).getByRole('link', { name: /Open logs/ })).toHaveAttribute('href', '/logs')
+  })
+})
+
 describe('guide setting', () => {
   it('is on by default and can be switched off, saying what it sends', async () => {
     const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
