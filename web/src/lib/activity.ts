@@ -182,3 +182,23 @@ export function dailyBytes(sessions: HistorySession[], days: number, now: Date):
   }
   return out.map((d) => ({ ...d, bytes: Math.round(d.bytes) }))
 }
+
+/**
+ * How good the reception has been on each channel of one tuner, from the sessions kept: the average signal
+ * quality while it was watched, weighted by how long, by channel number. Only a channel that was watched,
+ * with the tuner reporting a quality, has an entry.
+ */
+export function receptionByChannel(sessions: HistorySession[], device: string): Map<string, number> {
+  const sums = new Map<string, { ms: number; sum: number }>()
+  for (const s of sessions) {
+    if (s.device !== device || !s.quality) continue
+    const ms = Math.max(0, new Date(s.end).getTime() - new Date(s.start).getTime())
+    const e = sums.get(s.channel) ?? { ms: 0, sum: 0 }
+    e.ms += ms
+    e.sum += s.quality * ms
+    sums.set(s.channel, e)
+  }
+  const out = new Map<string, number>()
+  for (const [channel, { ms, sum }] of sums) if (ms > 0) out.set(channel, Math.round(sum / ms))
+  return out
+}

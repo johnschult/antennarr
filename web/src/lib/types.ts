@@ -375,3 +375,33 @@ export interface HistoryDoc {
   now: string
   sessions: HistorySession[]
 }
+
+export type ChannelState = 'enabled' | 'favorite' | 'disabled'
+
+/** A channel a tuner has found. */
+export interface TunerChannel {
+  number: string
+  name: string
+  hd?: boolean
+  video?: string
+  audio?: string
+  drm?: boolean
+  state: ChannelState
+  /** False: the tuner has it but can't play it, so it can't be changed. */
+  subscribed: boolean
+}
+
+/** What the tuner says about scanning for channels. */
+export interface ChannelScan {
+  inProgress: boolean
+  possible: boolean
+  source?: string
+  sources: string[]
+  progress?: number
+  found?: number
+}
+
+export interface ChannelsDoc {
+  channels: TunerChannel[]
+  scan: ChannelScan
+}

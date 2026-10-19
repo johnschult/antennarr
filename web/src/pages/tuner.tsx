@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, ExternalLink, SlidersHorizontal, Trash2 } from '
 import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { ChannelLogo } from '@/components/channel-logo'
+import { ChannelsPanel } from '@/components/channels-panel'
 import { DevicePanel } from '@/components/device-panel'
 import { FirmwareSection } from '@/components/firmware'
 import { RemoveTunerDialog } from '@/components/remove-tuner-dialog'
@@ -278,6 +279,7 @@ export function TunerPage() {
       <TunerTabs device={device} current={current} />
 
       {current === 'overview' && <Overview device={device} />}
+      {current === 'channels' && <ChannelsPanel device={device} />}
       {current === 'device' && (
         <div className="space-y-3">
           <DevicePanel device={device} showName={false} />

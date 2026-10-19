@@ -30,6 +30,7 @@ import (
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
 	"github.com/johnschult/antennarr/internal/history"
+	"github.com/johnschult/antennarr/internal/lineup/linetest"
 	"github.com/johnschult/antennarr/internal/upgrade"
 )
 
@@ -68,6 +69,26 @@ func demoChannels(logos string) []demoChannel {
 		}
 	}
 	return chs
+}
+
+// demoLineup is the channels the made-up tuner has found: the demo's own, then some others, a few disabled and
+// a few favorites, so the Channels tab has something to manage. The names are made up.
+func demoLineup(chs []demoChannel) []linetest.Channel {
+	var out []linetest.Channel
+	for _, c := range chs {
+		out = append(out, linetest.Channel{Number: c.Number, Name: c.Name, HD: true})
+	}
+	for i, n := range []string{"Classic TV", "Movies Plus", "Weather 24", "Kids Zone", "Shop Direct", "Retro Reruns", "Sports Two", "News Channel", "Music Videos", "Home Cooking", "Mystery Hour", "Old Westerns"} {
+		c := linetest.Channel{Number: fmt.Sprintf("%d.%d", 3+i*3, 1+i%3), Name: n, HD: i%3 == 0}
+		switch {
+		case i%5 == 1:
+			c.State = "disabled"
+		case i == 2 || i == 8:
+			c.State = "favorite"
+		}
+		out = append(out, c)
+	}
+	return out
 }
 
 // seedHistory fills the Activity page with a couple of weeks of made-up watching, written the way the
@@ -178,6 +199,8 @@ func TestDemo(t *testing.T) {
 		logos = "../../docs/screenshots/demo"
 	}
 	chs := demoChannels(logos)
+	lt := linetest.New(demoLineup(chs), 12*time.Second) // the lineup the Channels tab manages, and a scan that takes a while
+	defer lt.Close()
 	var mu sync.Mutex
 	remote := false // Alex is watching the first channel through Antennarr
 
@@ -268,7 +291,13 @@ func TestDemo(t *testing.T) {
 			io.WriteString(w, demoSystemPage)
 		case "/discover.json":
 			fmt.Fprintf(w, `{"DeviceAuth":"DEMO-AUTH","FriendlyName":"HDHomeRun FLEX 4K","ModelNumber":"HDFX-4K","FirmwareName":"hdhomerun_dvr_atsc3","FirmwareVersion":%q,"DeviceID":"10ABCC87","TunerCount":4,"BaseURL":"http://x","LineupURL":"http://x/lineup.json"}`, ver)
+		case "/lineup_status.json", "/lineup.post":
+			lt.Handler().ServeHTTP(w, r)
 		case "/lineup.json":
+			if r.URL.Query().Get("show") == "found" { // the channels the Tuners page manages: more than are being watched
+				lt.Handler().ServeHTTP(w, r)
+				return
+			}
 			var items []string
 			for _, c := range chs {
 				items = append(items, fmt.Sprintf(`{"GuideNumber":%q,"GuideName":%q,"URL":"http://127.0.0.1:%s/auto/v%s"}`, c.Number, c.Name, sport, c.Number))

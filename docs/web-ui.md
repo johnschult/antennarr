@@ -29,16 +29,19 @@ Who may use the tuner, from which addresses, and how many tuners each gets at on
 
 ## Tuners
 
-<img src="screenshots/tuners.jpg" alt="A tuner's page, on its Overview: its facts, what is on each of its tuners and a line about its firmware, with Overview, Device, Firmware and Settings tabs" width="900">
+<img src="screenshots/tuners.jpg" alt="A tuner's page, on its Overview: its facts, what is on each of its tuners and a line about its firmware, with Overview, Channels, Device, Firmware and Settings tabs" width="900">
 
 The **Tuners** page is a list, one row for each tuner with its status, where it is, how many of its tuners are in use and a flag when it has a firmware update. With only one tuner it opens that tuner's page directly (its *Tuners* link back goes to the list, where you add another).
 
-A tuner's page has four sections as tabs, each with its own address (`/tuner/<name>/device` and so on):
+A tuner's page has five sections as tabs, each with its own address (`/tuner/<name>/device` and so on):
 
 - **Overview:** what Antennarr knows at a glance (its name, device, model, DeviceID, address and port, how many tuners it has and when it was last seen), what is on each of its tuners, and a line about its firmware. Anything with more behind it is a link to the tab that has it: the device's details go to *Device*, the name and port to *Settings*, and the firmware line to *Firmware*.
+- **Channels:** every channel the tuner has found, with a button for each to **enable** it, make it a **favorite** or **disable** it (a disabled channel is left out of the lineup viewers and media servers get, so it disappears from their guide when they next refresh). Filter by state, search by number or name, and where a channel has been watched, its average signal quality over the last 30 days is shown, colored when it is fair or poor. **Scan for channels** starts the tuner's own channel scan (Antenna or Cable), after asking, since a scan takes all of the tuner's tuners until it is done; progress is shown, with a Stop button.
 - **Device:** what the tuner says about itself: hardware model, firmware, ATSC 3.0 DRM version, device ID, MAC address, IP address, subnet mask, channel maps and modulations. It is read when you open it and on **Refresh**, and it is read-only. **Restart** turns the tuner off and on again, after asking, and says if anything is in use. There is a link to the tuner's own page for what Antennarr does not show.
 - **Firmware:** the version, when SiliconDust's changelog was last read, and what changed. When a newer release applies to your tuner there is an **Install** button; see [Configuration](configuration.md) for what it does and [Security](security.md) for what it contacts.
 - **Settings:** the name shown on this page (media servers are always told the device's own name), the port media servers use, and removing the tuner from Antennarr (the tuner itself is untouched).
+
+<img src="screenshots/channels.jpg" alt="A tuner's Channels tab: a channel scan, and each channel found with its average signal quality and buttons to enable it, make it a favorite or disable it" width="900">
 
 ## Activity
 
