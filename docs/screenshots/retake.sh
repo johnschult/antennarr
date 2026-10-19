@@ -14,6 +14,10 @@
 # screenshots are committed, not the networks' marks. Leave CHANNELS out to take the
 # first four main channels.
 #
+# Or, if you already have a folder of logos with a channels.json (as fetch-logos.py writes), use it:
+#
+#   LOGOS=/path/to/logos docs/screenshots/retake.sh
+#
 # Needs Go, Python 3 with Playwright and a Chromium for it
 # (pip install playwright && playwright install chromium). Run it from anywhere.
 set -eu
@@ -23,13 +27,16 @@ work=$(mktemp -d)
 trap 'kill "${pid:-}" 2>/dev/null || true; rm -rf "$work"' EXIT
 
 logos="$here/demo"
-if [ -n "${TUNER:-}" ]; then
+if [ -n "${LOGOS:-}" ]; then
+  logos="$LOGOS"
+elif [ -n "${TUNER:-}" ]; then
   logos="$work/logos"
   python3 "$here/fetch-logos.py" "$TUNER" "$logos" "${CHANNELS:-}"
 fi
 
 (cd "$root" && go test -c -tags demo -o "$work/demo.test" ./internal/server)
-DEMO_DIR="$work" DEMO_LOGOS="$logos" "$work/demo.test" -test.run '^TestDemo$' -test.timeout 1h >"$work/log" 2>&1 &
+# DEMO_SIGNAL makes the signal quality drift and dip a little, so its trend line has something to draw.
+DEMO_SIGNAL=1 DEMO_DIR="$work" DEMO_LOGOS="$logos" "$work/demo.test" -test.run '^TestDemo$' -test.timeout 1h >"$work/log" 2>&1 &
 pid=$!
 i=0
 while [ ! -s "$work/addr" ]; do

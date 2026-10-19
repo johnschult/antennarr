@@ -74,18 +74,19 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 - Charts: shadcn charts (Recharts), not Highcharts, because of Highcharts' licensing.
 - The SPA is embedded in the Go binary with `embed`, giving one container and one port.
 
-**Chosen layout: "Control room"** (chosen from a throwaway HTML mockup, since removed):
+**The layout: "Control room"** (chosen from a throwaway HTML mockup, since removed):
 
-- **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Tuners, Settings). On the right, the signed-in account and a Live / Reconnecting pill for the page's connection. It says nothing about the tuners: there can be any number, so each has a header on Live (its name, the model beside a name you chose, how many are live, its address and a firmware flag) and a row on Tuners, and an offline one is a banner.
-- **Hero:** a short "On air now" summary ("2 of 4 tuners live", remote/local/reserved, total Mbps), with a 24h upload sparkline beside it.
-- **One big tile per tuner:**
-  - Live tiles show a large channel number, call sign and network, with a subtle scanline texture. Below that: who's watching and the bitrate. A red REC badge marks recordings.
+- **Top bar:** a slim, sticky, translucent top bar with pill navigation (Live, Viewers, Tuners, Activity, Settings; Activity is left out while the activity history is switched off). On the right, the signed-in account and a Live / Reconnecting pill for the page's connection, with a dot that pulses while connected. It says nothing about the tuners: there can be any number, so each has a header on Live (its name, the model beside a name you chose, how many are live, its address and a firmware flag) and a row on Tuners, and an offline one is a banner.
+- **Summary:** "On the air now": how many tuners are live, then remote, local and held-for-you counts and the total Mbps.
+- **One tile per tuner:**
+  - A live tile has the program's picture faded behind its top, with the tuner's number, who holds it (a pill with an icon), the large channel number, its name and logo. Below: the program's title, category, episode and description, and a progress bar with how long is left. Then two small charts, the bitrate (with its rate) and the signal quality (with its percentage), and a footer with where the stream is going and the signal strength drawn as bars.
   - Idle tiles are dashed and read "Idle" or "Held for your TVs" (owner reserve).
-  - A badge on each tile says who holds it: viewer (cyan), local (violet), reserve (gray), free (green).
+  - The pill says who holds the tile: a viewer (cyan, with a globe), a local device (violet, with a house), the reserve (amber, with a crown), or free (green).
+  - Logos are outlined only where the artwork needs it to stay visible (a dark outline around white artwork in the light theme, a light one around dark artwork in the dark theme), decided from the logo's own pixels. There is no box around them.
 - **Adding a viewer is a short dialog of three steps** (Who, Connect, Media server), not a separate Connect page. The first step saves the viewer; the next two write out how their server reaches this one and what to do in their media server, with this machine's addresses filled in. **Connection steps** on a viewer's row reopens it at the second step. `/setup` redirects to Viewers.
 - **Below the tiles:** a Viewers list with per-viewer tuner-slot pips, and a vertical Timeline of events (started recording, limit hit, IP changed, tuner offline).
-- **Background:** a radial teal glow at the top over near-black.
-- **Shared pages:** Viewers table, Setup guide wizard, Tuner details + lineup, Settings (network mode cards, advertised URL, owner reserve slider, Plex link).
+- **Theme:** the ExploreMiam theme from tweakcn (indigo and emerald), light and dark, with the theme's own page background. The fonts are our own and are bundled with the app (Open Sans, Mozilla Headline for the wordmark, JetBrains Mono), so the page loads nothing from other sites.
+- **Other pages:** Viewers (table), Tuners (one row each, opening to a strip of what is on its tuners and Manage, Device and Firmware sections), Activity (below), Settings (network mode cards, advertised URL, owner reserve slider, Plex link, notifications, and privacy and updates).
 
 ## Status data
 
@@ -193,9 +194,12 @@ Built and tested (Go, with the race detector; UI, with Vitest):
 
 - the rewriting proxy, DeviceID discovery (UDP broadcast and an HTTP scan), the monitor and its events;
 - the allowlist, per-viewer and per-device limits, the shared cap and the owner reserve, advertised `TunerCount`;
-- several devices, display names, firmware checking;
+- several devices, display names, firmware checking and installing, a Device panel, restarting a tuner;
 - the settings file (atomic saves, reload on SIGHUP), the JSON API and the live event stream;
-- the web UI: Live, Viewers, Tuner, Settings (grouped sections and rows), a light / dark / system theme, and a placeholder Setup page.
+- the web UI: Live (with the program guide's pictures and details), Viewers, Tuners, Activity, Settings (grouped sections and rows), light and dark themes, the add-viewer wizard;
+- notifications, the What's new popup, and the activity history (below).
+
+Not built yet: rescanning channels from the UI, filtering and exporting the activity history, Plex-verified viewer enrollment, built-in Tailscale, and editing a tuner's address from the UI.
 
 - sign in with Plex (below).
 

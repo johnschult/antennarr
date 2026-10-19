@@ -176,6 +176,24 @@ describe('LivePage', () => {
 
 })
 
+describe('LivePage summary', () => {
+  it('says what is on the air now, and how many tuners are live', () => {
+    renderWithApp(<LivePage />, makeState())
+    expect(screen.getByText('On the air now')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/\d+ of \d+ tuners live/)
+  })
+})
+
+describe('LivePage headings', () => {
+  it('has an icon on the Viewers and Timeline headings, which the page names without', () => {
+    renderWithApp(<LivePage />, makeState())
+    for (const name of ['Viewers', 'Timeline']) {
+      const h = screen.getByRole('heading', { name })
+      expect(h.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    }
+  })
+})
+
 describe('LivePage guide', () => {
   it('passes each watched channel its logo and program', () => {
     const s = makeState()
