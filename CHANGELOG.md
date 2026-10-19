@@ -5,6 +5,26 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.10 (2026-10-19)
+
+### Read before updating
+
+- **Antennarr is now Yagi**, after the Yagi–Uda antenna (see the new [FAQ](https://github.com/johnschult/yagi/blob/main/docs/faq.md)). Nothing needs doing right away:
+  - Old `/antennarr/` addresses and bookmarks redirect to `/yagi/`.
+  - Started with no `-config`, Yagi still uses an existing `antennarr.json` when there is no `yagi.json`, and says so in the log. Rename the file when convenient.
+  - The container image is `ghcr.io/johnschult/yagi`. For a few releases the same tags are also pushed to `ghcr.io/johnschult/antennarr`, so existing compose files keep updating.
+  - **You will be signed out of the admin pages once** if you use Plex sign-in, and Plex's list of authorized devices will show the new name. The program is now `yagi` rather than `antennarr`, and the Go module is `github.com/johnschult/yagi`.
+  - The `viaAntennarr` field in the tuner state of the [API](https://github.com/johnschult/yagi/blob/main/docs/api.md) is now `viaProxy`.
+
+### Changed
+
+- **A new logo:** an antenna on a dark tile, in place of the TV with rabbit ears. The antenna icon is no longer used elsewhere in the page: tuners are shown with a receiver icon.
+- The README screenshots are retaken.
+
+### Added
+
+- A [FAQ](https://github.com/johnschult/yagi/blob/main/docs/faq.md), starting with why it is called Yagi.
+
 ## 2026.10.9 (2026-10-19)
 
 ### Added
