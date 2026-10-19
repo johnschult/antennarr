@@ -4,7 +4,7 @@ Releases are numbered by calendar: **`YYYY.MM.PATCH`**. `2026.10.0` is the first
 October 2026, and `2026.10.1` a fix to it. `PATCH` counts up within a month and starts again at 0 in the next.
 The git tag is the same number with a `v` in front: `v2026.10.0`.
 
-The running app shows its version in the top bar, under its name, linked to the release's page on GitHub. A build from a
+The running app shows its version in the footer, first among the links, linked to the release's page on GitHub. A build from a
 checkout says `dev` (with the commit, e.g. `dev+3553344`); `yagi -version` prints it too.
 
 ## To release

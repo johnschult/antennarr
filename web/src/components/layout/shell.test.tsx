@@ -177,23 +177,28 @@ describe('Shell footer', () => {
     expect(gh.querySelector('svg')).toHaveAttribute('aria-hidden', 'true') // the link's name comes from the label, not the drawing
   })
 
-  it('shows the version in the top bar, under the name and linked to its release page, and not in the footer', () => {
+  it('shows the version in the footer, first, linked to its release page, and not in the top bar where the wordmark would cover it', () => {
     mount()
     const version = screen.getByTestId('version')
     expect(version).toHaveTextContent('2026.10.0')
     expect(version).toHaveAttribute('href', 'https://github.com/johnschult/yagi/releases/tag/v2026.10.0')
-    expect(version.className).toContain('text-muted-foreground/70') // quieter than the other muted text: lighter in the light theme, darker in the dark one
-    expect(version.className).toContain('right-0') // at the right edge of the name
-    expect(within(screen.getByRole('banner')).getByTestId('version')).toBe(version)
-    expect(within(screen.getByRole('contentinfo')).queryByTestId('version')).not.toBeInTheDocument()
-    expect(screen.getByRole('contentinfo')).not.toHaveTextContent('2026.10.0')
+    expect(within(screen.getByRole('contentinfo')).getByTestId('version')).toBe(version)
+    expect(within(screen.getByRole('banner')).queryByTestId('version')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('contentinfo')).getAllByRole('link')[0]).toBe(version)
+  })
+
+  it('says the tagline in the footer, with anywhere in bold', () => {
+    mount()
+    const footer = within(screen.getByRole('contentinfo'))
+    expect(footer.getByText('anywhere').tagName).toBe('STRONG')
+    expect(screen.getByRole('contentinfo')).toHaveTextContent('Point your antenna anywhere.')
   })
 
   it('centers the footer links', () => {
     mount()
     const footer = screen.getByRole('contentinfo')
     expect(footer.className).toContain('justify-center')
-    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['Logs', 'Help', 'Yagi on GitHub'])
+    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['2026.10.0', 'Logs', 'Help', 'Yagi on GitHub'])
   })
 
   it('keeps the footer at the bottom of a short page: the page is a full-height column and the content takes the spare room', () => {

@@ -1,8 +1,13 @@
-<p align="center">
-  <img src="docs/brand/yagi-logo-512.png" alt="Yagi" width="160">
-</p>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/yagi-wordmark-dark.png">
+    <img src="docs/brand/yagi-wordmark-light.png" alt="Yagi" width="300">
+  </picture>
+</h1>
 
-<h1 align="center">Yagi</h1>
+<p align="center">
+  Point your antenna <strong>anywhere</strong>.
+</p>
 
 <p align="center">
   Share an HDHomeRun tuner with Plex, Jellyfin or Emby servers on other networks, and keep track of who is using it.
@@ -70,7 +75,7 @@ go build -o yagi ./cmd/yagi
 
 Then open the **setup link** it writes to its log (or `http://localhost:5004/yagi/` on the machine itself) to become the admin, and add a viewer from the web page. A viewer adds the tuner to their media server as `<this machine>:5004`. [Getting started](docs/getting-started.md) walks through every step, with the settings file, Docker and updating.
 
-Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with that number as well as `latest`; the app shows its version in the top bar, under its name, linked to the release notes.
+Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with that number as well as `latest`; the app shows its version in the footer, linked to the release notes.
 
 ## Documentation
 
