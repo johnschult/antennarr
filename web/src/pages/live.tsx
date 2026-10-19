@@ -1,5 +1,7 @@
 import { Antenna, Clock, Users } from 'lucide-react'
+import { Link } from 'react-router'
 import { FirmwareBadge } from '@/components/firmware'
+import { tunerPath } from '@/lib/tuner-tabs'
 import { NoTuners } from '@/components/no-tuners'
 import { TunerTile } from '@/components/tuner-tile'
 import { Badge } from '@/components/ui/badge'
@@ -115,7 +117,9 @@ function DeviceSection({ device, tick }: { device: DeviceState; tick: unknown })
             title={tuner.updating ? 'Updating firmware' : tuner.restarting ? 'Restarting' : tuner.online ? 'Online' : 'Offline'}
             className={cn('size-2 rounded-full', tuner.updating || tuner.restarting ? 'animate-pulse bg-amber-400' : tuner.online ? 'bg-emerald-400' : 'bg-red-400')}
           />
-          {deviceTitle(device)}
+          <Link to={tunerPath(device.name)} title="This tuner's page" className="underline-offset-4 hover:underline">
+            {deviceTitle(device)}
+          </Link>
         </h2>
         {tuner.updating && <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Updating firmware…</Badge>}
         {tuner.restarting && <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Restarting…</Badge>}
@@ -124,7 +128,7 @@ function DeviceSection({ device, tick }: { device: DeviceState; tick: unknown })
           {summary.inUse} of {summary.total} live
         </span>
         <span className="font-mono text-xs text-muted-foreground">{tuner.baseURL.replace(/^https?:\/\//, '')}</span>
-        <FirmwareBadge status={device.firmware} />
+        <FirmwareBadge status={device.firmware} to={tunerPath(device.name, 'firmware')} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {buildTiles(device).map((t) => (

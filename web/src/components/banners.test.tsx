@@ -71,3 +71,29 @@ describe('Banners', () => {
     expect(screen.getByRole('status')).toHaveTextContent('A tuner is offline: Cable box.')
   })
 })
+
+describe('the offline banner', () => {
+  it('links each offline tuner’s name to its page', () => {
+    const state = makeTwoDeviceState()
+    state.devices[0].tuner.online = false
+    state.devices[1].tuner.online = false
+    render(
+      <MemoryRouter>
+        <Banners state={state} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('link', { name: 'Steve FLEX 4K' })).toHaveAttribute('href', '/tuner/antenna')
+    expect(screen.getByRole('link', { name: 'Cable HDHR' })).toHaveAttribute('href', '/tuner/cable')
+  })
+
+  it('links the one tuner’s offline notice to its page', () => {
+    const state = makeState()
+    state.devices[0].tuner.online = false
+    render(
+      <MemoryRouter>
+        <Banners state={state} />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('link', { name: 'The tuner is offline.' })).toHaveAttribute('href', '/tuner/antenna')
+  })
+})

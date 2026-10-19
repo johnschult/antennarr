@@ -144,8 +144,14 @@ describe('LivePage', () => {
       const s = makeTwoDeviceState()
       s.devices[0].firmware = updateAvailable
       renderWithApp(<LivePage />, s)
-      expect(within(screen.getByRole('region', { name: 'Tuners on Steve FLEX 4K' })).getByRole('link', { name: /Firmware update/ })).toHaveAttribute('href', '/tuner')
-      expect(within(screen.getByRole('region', { name: 'Tuners on Cable HDHR' })).queryByRole('link')).not.toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'Tuners on Steve FLEX 4K' })).getByRole('link', { name: /Firmware update/ })).toHaveAttribute('href', '/tuner/antenna/firmware')
+      expect(within(screen.getByRole('region', { name: 'Tuners on Cable HDHR' })).queryByRole('link', { name: /Firmware/ })).not.toBeInTheDocument()
+    })
+
+    it('links each tuner’s name to its own page', () => {
+      renderWithApp(<LivePage />, makeTwoDeviceState())
+      expect(within(screen.getByRole('region', { name: 'Tuners on Steve FLEX 4K' })).getByRole('link', { name: 'Steve FLEX 4K' })).toHaveAttribute('href', '/tuner/antenna')
+      expect(within(screen.getByRole('region', { name: 'Tuners on Cable HDHR' })).getByRole('link', { name: 'Cable HDHR' })).toHaveAttribute('href', '/tuner/cable')
     })
   })
 

@@ -188,8 +188,8 @@ describe('FirmwareSection', () => {
     s.devices[1].label = 'Cable box'
     renderWithApp(
       <>
-        <FirmwareSection device={s.devices[0]} />
-        <FirmwareSection device={s.devices[1]} />
+        <FirmwareSection device={s.devices[0]} showName />
+        <FirmwareSection device={s.devices[1]} showName />
       </>,
       s,
     )

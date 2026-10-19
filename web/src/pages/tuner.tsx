@@ -1,7 +1,9 @@
-import { ChevronDown, ChevronRight, Plus, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ExternalLink, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { AddTunerDialog } from '@/components/add-tuner-dialog'
-import { NoTuners } from '@/components/no-tuners'
+import { Link, Navigate, useParams } from 'react-router'
+import { ChannelLogo } from '@/components/channel-logo'
+import { DevicePanel } from '@/components/device-panel'
+import { FirmwareSection } from '@/components/firmware'
 import { RemoveTunerDialog } from '@/components/remove-tuner-dialog'
 import { EditRow } from '@/components/settings/edit-row'
 import { Row, Section } from '@/components/settings/section'
@@ -9,47 +11,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
-import { moveToPort } from '@/lib/navigate'
-import { ChannelLogo } from '@/components/channel-logo'
-import { DevicePanel } from '@/components/device-panel'
-import { FirmwareBadge, FirmwareSection } from '@/components/firmware'
+import { StatusDot, tunerSubtitle } from '@/pages/tuners'
 import { channelIconUrl } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
-import { formatMbps, timeAgo } from '@/lib/format'
+import { firmwareDate, formatMbps, timeAgo } from '@/lib/format'
+import { moveToPort } from '@/lib/navigate'
+import { isTunerTab, TUNER_TABS, tunerPath, type TunerTab } from '@/lib/tuner-tabs'
 import type { DeviceState, Slot } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 const asset = (name: string) => `${import.meta.env.BASE_URL}${name}`
-
-export function TunerPage() {
-  const { state } = useApp()
-  const several = state.devices.length > 1
-  const [adding, setAdding] = useState(false)
-  const [removing, setRemoving] = useState<DeviceState | null>(null)
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Tuners</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Antennarr follows a tuner if its address changes.</p>
-        </div>
-        {state.devices.length > 0 && (
-          <div className="flex flex-col items-end gap-1">
-            <Button size="sm" disabled={!state.editable} onClick={() => setAdding(true)}>
-              <Plus data-icon="inline-start" /> Add tuner
-            </Button>
-            {!state.editable && <p className="max-w-xs text-right text-xs text-muted-foreground">Antennarr has no settings file to save tuners in.</p>}
-          </div>
-        )}
-      </div>
-      {state.devices.length === 0 && <NoTuners />}
-      {state.devices.map((d) => (
-        <DeviceDetails key={d.name} device={d} showName={several} onRemove={() => setRemoving(d)} />
-      ))}
-      <AddTunerDialog open={adding} onOpenChange={setAdding} />
-      <RemoveTunerDialog device={removing} onClose={() => setRemoving(null)} />
-    </div>
-  )
-}
 
 /** The channel on a tuner, with its logo when the guide has one, or "idle". */
 function ChannelCell({ s, device }: { s: Slot; device: DeviceState }) {
@@ -91,133 +62,233 @@ function SlotCell({ s, device }: { s: Slot; device: DeviceState }) {
   )
 }
 
-function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; showName: boolean; onRemove: () => void }) {
+
+/** The tabs, as links, so each has an address that can be opened, shared and gone back to. */
+function TunerTabs({ device, current }: { device: DeviceState; current: TunerTab }) {
+  return (
+    <nav aria-label="Sections of this tuner" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+      <ul className="flex w-max gap-1 border-b border-border">
+        {TUNER_TABS.map((t) => {
+          const active = t.id === current
+          return (
+            <li key={t.id}>
+              <Link
+                to={tunerPath(device.name, t.id)}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  '-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  active ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <t.icon aria-hidden className="size-4" />
+                {t.label}
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </nav>
+  )
+}
+
+/** A fact on the Overview. Where the tuner's page has its details, the value goes there. */
+function Fact({ label, value, to }: { label: string; value: string; to?: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 font-mono text-[13px] font-medium">
+        {to ? (
+          <Link to={to} className="underline-offset-2 hover:underline" title="Details">
+            {value}
+          </Link>
+        ) : (
+          value
+        )}
+      </dd>
+    </div>
+  )
+}
+
+/** How firmware stands, as one line with a way to its tab. */
+function FirmwareLine({ device }: { device: DeviceState }) {
+  const s = device.firmware
+  const to = tunerPath(device.name, 'firmware')
+  const current = s.current || device.tuner.firmware.version
+  const text =
+    s.state === 'update-available'
+      ? `Update available: ${firmwareDate(s.latest)}`
+      : s.state === 'possible-update'
+        ? 'A newer release may apply'
+        : s.state === 'up-to-date'
+          ? 'Up to date'
+          : s.state === 'disabled'
+            ? 'The check is off'
+            : 'Not known'
+  const amber = s.state === 'update-available' || s.state === 'possible-update'
+  return (
+    <div data-testid="firmware-line" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card/70 px-4 py-3 text-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-xs text-muted-foreground">Firmware</span>
+        <span className="font-mono text-[13px] font-medium">{current ? `${firmwareDate(current)}` : 'unknown'}</span>
+        <Badge className={amber ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300' : s.state === 'up-to-date' ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300' : undefined} variant={amber || s.state === 'up-to-date' ? undefined : 'secondary'}>
+          {text}
+        </Badge>
+      </div>
+      <Link to={to} className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+        {amber ? 'See what\'s new' : 'Firmware'} <ArrowRight aria-hidden className="size-3.5" />
+      </Link>
+    </div>
+  )
+}
+
+function Overview({ device }: { device: DeviceState }) {
   const { tuner } = device
+  const port = device.listen.slice(device.listen.lastIndexOf(':') + 1)
+  const toDevice = tunerPath(device.name, 'device')
+  const toSettings = tunerPath(device.name, 'settings')
+  return (
+    <div className="space-y-5">
+      <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
+        {device.label && <Fact label="Name" value={device.label} to={toSettings} />}
+        <Fact label="Device" value={tuner.friendlyName ?? 'Unknown'} to={toDevice} />
+        <Fact label="Model" value={tuner.model ?? 'Unknown'} to={toDevice} />
+        <Fact label="DeviceID" value={tuner.id || 'Not yet seen'} to={toDevice} />
+        <Fact label="Address" value={tuner.baseURL.replace(/^https?:\/\//, '')} to={toDevice} />
+        <Fact label="Port" value={port} to={toSettings} />
+        <Fact label="Tuners" value={String(tuner.tunerCount)} />
+        <Fact label="Last seen" value={timeAgo(tuner.lastSeen)} />
+        <div>
+          <dt className="text-xs text-muted-foreground">Status</dt>
+          <dd className="mt-0.5">
+            {tuner.updating ? (
+              <Link to={tunerPath(device.name, 'firmware')}>
+                <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Updating firmware…</Badge>
+              </Link>
+            ) : tuner.restarting ? (
+              <Link to={toDevice}>
+                <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Restarting…</Badge>
+              </Link>
+            ) : tuner.online ? (
+              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Online</Badge>
+            ) : (
+              <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>
+            )}
+          </dd>
+        </div>
+      </dl>
+
+      {tuner.slots.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No tuner data yet.</p>
+      ) : (
+        <ul aria-label="Tuners" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {tuner.slots.map((s) => (
+            <SlotCell key={s.resource} s={s} device={device} />
+          ))}
+        </ul>
+      )}
+
+      <FirmwareLine device={device} />
+    </div>
+  )
+}
+
+function Settings({ device, onRemove }: { device: DeviceState; onRemove: () => void }) {
   const { state } = useApp()
   const { device: edit } = useEdits()
-  // One tuner has the page to itself; several start folded so they can be scanned.
-  const [open, setOpen] = useState(!showName)
   const port = device.listen.slice(device.listen.lastIndexOf(':') + 1)
-  const busy = tuner.slots.filter((s) => s.inUse).length
-  const bodyId = `tuner-${device.name}`
-  const facts: [string, string][] = [
-    ['Device', tuner.friendlyName ?? 'Unknown'],
-    ['Model', tuner.model ?? 'Unknown'],
-    ['DeviceID', tuner.id || 'Not yet seen'],
-    ['Address', tuner.baseURL.replace(/^https?:\/\//, '')],
-    ['Tuners', String(tuner.tunerCount)],
-    ['Last seen', timeAgo(tuner.lastSeen)],
-  ]
+  return (
+    <Section icon={SlidersHorizontal} title="Settings">
+      <EditRow
+        key={`label-${device.name}-${device.label ?? ''}`}
+        kind="text"
+        maxLength={60}
+        id={`setting-${device.name}-label`}
+        title="Name"
+        description="What it is called on this page. Plex and other media servers always see the device, e.g. HDHomeRun FLEX 4K."
+        initial={device.label ?? ''}
+        placeholder={device.tuner.friendlyName ?? device.name}
+        disabled={!state.editable}
+        onSave={(text) => edit.mutateAsync({ name: device.name, patch: { label: text.trim() } })}
+      />
+      <EditRow
+        key={`port-${device.name}-${device.listen}`}
+        kind="number"
+        min={1}
+        max={65535}
+        id={`setting-${device.name}-port`}
+        title="Port"
+        description="Where media servers reach it. Changing it cuts running streams, and this page moves there."
+        initial={port}
+        validate={validPort}
+        disabled={!state.editable}
+        onSave={async (text) => {
+          const host = device.listen.slice(0, device.listen.lastIndexOf(':'))
+          await edit.mutateAsync({ name: device.name, patch: { listen: `${host}:${Number(text)}` } })
+          moveToPort(Number(text))
+        }}
+      />
+      <Row title="Remove this tuner" description="Stops sharing it and cuts its streams. The tuner itself is untouched.">
+        <Button variant="destructive" size="sm" disabled={!state.editable} aria-label={`Remove ${deviceTitle(device)}`} onClick={onRemove}>
+          <Trash2 data-icon="inline-start" /> Remove
+        </Button>
+      </Row>
+    </Section>
+  )
+}
+
+/** One tuner: what is on it, what it says about itself, its firmware and its settings, on tabs. */
+export function TunerPage() {
+  const { name = '', tab } = useParams()
+  const { state } = useApp()
+  const [removing, setRemoving] = useState<DeviceState | null>(null)
+  const device = state.devices.find((d) => d.name === name)
+  const back = (
+    <Link to="/tuner?list" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+      <ArrowLeft aria-hidden className="size-4" /> Tuners
+    </Link>
+  )
+  if (!device) {
+    return (
+      <div className="space-y-4">
+        {back}
+        <h1 className="text-xl font-semibold tracking-tight">No tuner called {name}</h1>
+        <p className="text-sm text-muted-foreground">It may have been removed. The tuners there are now are on the Tuners page.</p>
+      </div>
+    )
+  }
+  if (tab !== undefined && !isTunerTab(tab)) return <Navigate to={tunerPath(device.name)} replace />
+  const current: TunerTab = tab !== undefined && isTunerTab(tab) ? tab : 'overview'
+  const busy = device.tuner.slots.filter((s) => s.inUse).length
 
   return (
-    <section aria-label={showName ? deviceTitle(device) : undefined} className="rounded-xl border border-border bg-card/70">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={bodyId}
-          onClick={() => setOpen(!open)}
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          {open ? <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
-          <span
-            aria-hidden
-            title={tuner.updating ? 'Updating firmware' : tuner.restarting ? 'Restarting' : tuner.online ? 'Online' : 'Offline'}
-            className={`size-2.5 shrink-0 rounded-full ${tuner.updating || tuner.restarting ? 'animate-pulse bg-amber-500' : tuner.online ? 'bg-emerald-500' : 'bg-red-500'}`}
-          />
-          <img src={asset('hdhomerun-icon.svg')} alt="" aria-hidden="true" className="size-8 shrink-0 rounded-md" draggable={false} />
-          <span className="min-w-0">
-            <span className="block truncate font-semibold tracking-tight">{deviceTitle(device)}</span>
-            <span className="block truncate font-mono text-xs text-muted-foreground">
-              {[tuner.friendlyName !== deviceTitle(device) ? tuner.friendlyName : undefined, tuner.baseURL.replace(/^https?:\/\//, ''), `port ${port}`].filter(Boolean).join(' · ')}
-            </span>
-          </span>
-        </button>
+    <div className="space-y-4">
+      {back}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <StatusDot device={device} />
+        <img src={asset('hdhomerun-icon.svg')} alt="" aria-hidden="true" className="size-9 shrink-0 rounded-md" draggable={false} />
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-xl font-semibold tracking-tight">{deviceTitle(device)}</h1>
+          <p className="truncate font-mono text-xs text-muted-foreground">{tunerSubtitle(device)}</p>
+        </div>
         <span className="text-sm tabular-nums text-muted-foreground">
-          {busy} of {tuner.tunerCount} in use
+          {busy} of {device.tuner.tunerCount} in use
         </span>
-        <FirmwareBadge status={device.firmware} />
       </div>
 
-      {open && (
-        <div id={bodyId} className="space-y-5 border-t border-border p-4">
-          <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-            {facts.map(([k, v]) => (
-              <div key={k}>
-                <dt className="text-xs text-muted-foreground">{k}</dt>
-                <dd className="mt-0.5 font-mono text-[13px] font-medium">{v}</dd>
-              </div>
-            ))}
-            <div>
-              <dt className="text-xs text-muted-foreground">Status</dt>
-              <dd className="mt-0.5">
-                {tuner.updating ? (
-                  <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Updating firmware…</Badge>
-                ) : tuner.restarting ? (
-                  <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Restarting…</Badge>
-                ) : tuner.online ? (
-                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Online</Badge>
-                ) : (
-                  <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>
-                )}
-              </dd>
-            </div>
-          </dl>
+      <TunerTabs device={device} current={current} />
 
-          {tuner.slots.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tuner data yet.</p>
-          ) : (
-            <ul aria-label={showName ? `Tuners on ${deviceTitle(device)}` : 'Tuners'} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {tuner.slots.map((s) => (
-                <SlotCell key={s.resource} s={s} device={device} />
-              ))}
-            </ul>
-          )}
-
-          <div className="grid items-start gap-5 lg:grid-cols-2">
-            <Section icon={SlidersHorizontal} title={showName ? `Manage ${deviceTitle(device)}` : 'Manage'}>
-              <EditRow
-                key={`label-${device.name}-${device.label ?? ''}`}
-                kind="text"
-                maxLength={60}
-                id={`setting-${device.name}-label`}
-                title="Name"
-                description="What it is called on this page. Plex and other media servers always see the device, e.g. HDHomeRun FLEX 4K."
-                initial={device.label ?? ''}
-                placeholder={tuner.friendlyName ?? device.name}
-                disabled={!state.editable}
-                onSave={(text) => edit.mutateAsync({ name: device.name, patch: { label: text.trim() } })}
-              />
-              <EditRow
-                key={`port-${device.name}-${device.listen}`}
-                kind="number"
-                min={1}
-                max={65535}
-                id={`setting-${device.name}-port`}
-                title="Port"
-                description="Where media servers reach it. Changing it cuts running streams, and this page moves there."
-                initial={port}
-                validate={validPort}
-                disabled={!state.editable}
-                onSave={async (text) => {
-                  const host = device.listen.slice(0, device.listen.lastIndexOf(':'))
-                  await edit.mutateAsync({ name: device.name, patch: { listen: `${host}:${Number(text)}` } })
-                  moveToPort(Number(text))
-                }}
-              />
-              <Row title="Remove this tuner" description="Stops sharing it and cuts its streams. The tuner itself is untouched.">
-                <Button variant="destructive" size="sm" disabled={!state.editable} aria-label={`Remove ${deviceTitle(device)}`} onClick={onRemove}>
-                  <Trash2 data-icon="inline-start" /> Remove
-                </Button>
-              </Row>
-            </Section>
-
-            <DevicePanel device={device} showName={showName} />
-
-            <FirmwareSection device={device} />
-          </div>
+      {current === 'overview' && <Overview device={device} />}
+      {current === 'device' && (
+        <div className="space-y-3">
+          <DevicePanel device={device} showName={false} />
+          <a href={device.tuner.baseURL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+            Open the tuner's own page <ExternalLink aria-hidden className="size-3" />
+          </a>
         </div>
       )}
-    </section>
+      {current === 'firmware' && <FirmwareSection device={device} />}
+      {current === 'settings' && <Settings device={device} onRemove={() => setRemoving(device)} />}
+      <RemoveTunerDialog device={removing} onClose={() => setRemoving(null)} />
+    </div>
   )
 }

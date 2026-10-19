@@ -51,10 +51,10 @@ If you open Antennarr by a name like `mini.local`, your phone or laptop may conn
 Antennarr checks the tuner every 5 seconds. After 3 failures in a row it shows it offline, and then searches for it by its DeviceID (a broadcast, and a scan of the nearby subnet) every 30 seconds.
 
 - **Is the tuner on?** Power, the Ethernet cable (an extender or switch can fail), and the router. Can you reach `http://<tuner address>/discover.json` from the Antennarr machine?
-- **Is it listed at all?** The *Tuners* page shows the tuners being shared. Press *Add tuner* to search the network again or add one by its address. In Docker, searching needs host networking.
+- **Is it listed at all?** The *Tuners* page lists the tuners being shared (with only one, it opens that tuner's page: use its *Tuners* link back). Press *Add tuner* to search the network again or add one by its address. In Docker, searching needs host networking.
 - **Did its address change?** If you gave the tuner's `id` in the settings (or Antennarr has reached it before), it finds the new address by itself, usually within a minute, and the Live page's timeline records "Tuner moved … (found by DeviceID …)". If you didn't, run `antennarr discover` and put the address and `id` in the settings.
 - **A restart starts at the address in the settings file** and then searches, so it can take half a minute to come back. Put the tuner's current address in `tuner`, and reserve it in your router, to avoid the wait.
-- **Restarting or updating is not an outage.** While Antennarr restarts a tuner or installs firmware on it, the page says *Restarting…* or *Updating firmware…*, and no offline message is sent. If it stays that way for more than a few minutes, check the tuner's power and cable: the result on the *Tuners* page says what Antennarr saw.
+- **Restarting or updating is not an outage.** While Antennarr restarts a tuner or installs firmware on it, the page says *Restarting…* or *Updating firmware…*, and no offline message is sent. If it stays that way for more than a few minutes, check the tuner's power and cable: the result on the tuner's *Firmware* or *Device* tab says what Antennarr saw.
 - **A broadcast can't cross networks.** If the tuner is on a different subnet or VLAN from Antennarr, the search can't find it. Give its address in `tuner`.
 - **In Docker**, the search needs host networking.
 
@@ -121,7 +121,7 @@ The message says why. The common ones:
 
 ## Installing firmware or restarting says it didn't work
 
-- **"Didn't take" or "still running …"**: the tuner accepted the file and came back on the old version. Antennarr never tries a second time by itself. Check what the tuner's own page says, and try again from the *Tuners* page when nothing is using it.
+- **"Didn't take" or "still running …"**: the tuner accepted the file and came back on the old version. Antennarr never tries a second time by itself. Check what the tuner's own page says, and try again from the tuner's *Firmware* tab when nothing is using it.
 - **"SiliconDust has no firmware file …"**: Antennarr builds the download address from the tuner's firmware family and the release the check found, and SiliconDust doesn't document those addresses. The firmware check keeps working; open an issue with the model and version.
 - **"The tuner has not come back"**: give it a few minutes, then check power and the Ethernet cable and unplug it for ten seconds. Nothing more is sent to it.
 - **Restart says it kept answering**: the tuner didn't appear to restart. Try again, or restart it from its own page or by unplugging it.

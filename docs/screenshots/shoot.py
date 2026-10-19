@@ -88,9 +88,9 @@ with sync_playwright() as p:
     shot(page, 'activity')
     ctx.close()
 
-    # The Tuners page, opened to the Device panel (read from the demo's fake tuner).
-    ctx = context('dark', height=1010)
-    page = open_page(ctx, '/antennarr/tuner', 'dt:has-text("Hardware model")')
+    # A tuner's page, on its Overview (a single tuner opens its page from /tuner).
+    ctx = context('dark', height=600)
+    page = open_page(ctx, '/antennarr/tuner', '[data-testid="firmware-line"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)

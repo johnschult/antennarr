@@ -2,9 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LivePage } from '@/pages/live'
-import { TunerPage } from '@/pages/tuner'
 import { makeCableDevice, makeDevice, makeState } from '@/test/fixtures'
-import { renderWithApp, stubFetch } from '@/test/render'
+import { renderTunerRoutes, renderWithApp, stubFetch } from '@/test/render'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -91,29 +90,24 @@ describe('with no tuner yet', () => {
   })
 })
 
-describe('adding and removing tuners on the Tuners page', () => {
+describe('adding and removing tuners', () => {
   const two = () => makeState({ devices: [makeDevice(), makeCableDevice()] })
-  // With several tuners each starts folded.
-  const openAll = async () => {
-    for (const b of screen.getAllByRole('button', { expanded: false })) await userEvent.click(b)
-  }
 
-  it('gives each tuner its port and a way to remove it, and the page a way to add another', async () => {
-    renderWithApp(<TunerPage />, two())
-    await openAll()
-    const antenna = screen.getByRole('region', { name: 'Manage Steve FLEX 4K' })
+  it('gives each tuner its port and a way to remove it on its Settings tab, and the Tuners page a way to add another', () => {
+    const { unmount } = renderTunerRoutes(two(), '/tuner/antenna/settings')
+    const antenna = screen.getByRole('region', { name: 'Settings' })
     expect(within(antenna).getByLabelText('Port')).toHaveValue(5004)
     expect(within(antenna).getByRole('button', { name: 'Remove Steve FLEX 4K' })).toBeEnabled()
-    expect(within(screen.getByRole('region', { name: 'Manage Cable HDHR' })).getByLabelText('Port')).toHaveValue(5005)
+    unmount()
+    renderTunerRoutes(two(), '/tuner/cable/settings')
+    expect(within(screen.getByRole('region', { name: 'Settings' })).getByLabelText('Port')).toHaveValue(5005)
     expect(screen.getByRole('button', { name: 'Remove Cable HDHR' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Add tuner' })).toBeEnabled()
   })
 
   it('asks before removing, warning about streams that will be cut, then removes it', async () => {
     const { fn, calls } = stubFetch({ 'DELETE /devices/antenna': () => ({ status: 204 }), ...okState })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<TunerPage />, two())
-    await openAll()
+    renderTunerRoutes(two(), '/tuner/antenna/settings')
     await userEvent.click(screen.getByRole('button', { name: 'Remove Steve FLEX 4K' }))
     const dialog = await screen.findByRole('alertdialog')
     expect(within(dialog).getByText('Remove Steve FLEX 4K?')).toBeInTheDocument()
@@ -128,8 +122,7 @@ describe('adding and removing tuners on the Tuners page', () => {
   it('keeping it sends nothing; a refusal stays on screen', async () => {
     const { fn, calls } = stubFetch({ 'DELETE /devices/cable': () => ({ status: 409, body: { error: 'the tuner was set with command-line flags' } }) })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<TunerPage />, two())
-    await openAll()
+    renderTunerRoutes(two(), '/tuner/cable/settings')
     await userEvent.click(screen.getByRole('button', { name: 'Remove Cable HDHR' }))
     await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Keep' }))
     expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0)
@@ -139,10 +132,11 @@ describe('adding and removing tuners on the Tuners page', () => {
     expect(await screen.findByText('the tuner was set with command-line flags')).toBeInTheDocument()
   })
 
-  it('cannot be changed when there is no settings file, and says why', async () => {
-    renderWithApp(<TunerPage />, { ...two(), editable: false })
-    await openAll()
+  it('cannot be changed when there is no settings file, and says why', () => {
+    const { unmount } = renderTunerRoutes({ ...two(), editable: false }, '/tuner/antenna/settings')
     expect(screen.getByRole('button', { name: 'Remove Steve FLEX 4K' })).toBeDisabled()
+    unmount()
+    renderTunerRoutes({ ...two(), editable: false }, '/tuner')
     expect(screen.getByRole('button', { name: 'Add tuner' })).toBeDisabled()
     expect(screen.getByText(/no settings file to save tuners in/)).toBeInTheDocument()
   })

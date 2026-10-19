@@ -86,7 +86,7 @@ Polish target: as good as Tracearr. We use the same kind of stack but write our 
 - **Adding a viewer is a short dialog of three steps** (Who, Connect, Media server), not a separate Connect page. The first step saves the viewer; the next two write out how their server reaches this one and what to do in their media server, with this machine's addresses filled in. **Connection steps** on a viewer's row reopens it at the second step. `/setup` redirects to Viewers.
 - **Below the tiles:** a Viewers list with per-viewer tuner-slot pips, and a vertical Timeline of events (started recording, limit hit, IP changed, tuner offline).
 - **Theme:** the ExploreMiam theme from tweakcn (indigo and emerald), light and dark, with the theme's own page background. The fonts are our own and are bundled with the app (Open Sans, Mozilla Headline for the wordmark, JetBrains Mono), so the page loads nothing from other sites.
-- **Other pages:** Viewers (table), Tuners (one row each, opening to a strip of what is on its tuners and Manage, Device and Firmware sections), Activity (below), Settings (network mode cards, advertised URL, owner reserve slider, Plex link, notifications, and privacy and updates).
+- **Other pages:** Viewers (table, each name opening that viewer's page), Tuners (a list of rows, each opening that tuner's page: Overview, Device, Firmware and Settings as tabs with their own addresses, `/tuner/<name>/<tab>`; a single tuner opens its page directly, and the page's own *Tuners* link asks for the list with `?list` so another can be added), Activity (below), Settings (network mode cards, advertised URL, owner reserve slider, Plex link, notifications, and privacy and updates).
 
 ## Status data
 
@@ -109,7 +109,7 @@ Built. Antennarr tells you when SiliconDust has released firmware for a tuner, a
 
 ### Installing firmware
 
-Built. The Tuners page has an Install button when the check is certain there is a newer release (**update available**, not a possible one).
+Built. A tuner's Firmware tab has an Install button when the check is certain there is a newer release (**update available**, not a possible one).
 
 - `internal/hdhr` is a native client of the tuner's control protocol (TCP 65001), the one Silicondust's `hdhomerun_config` speaks, so nothing is shipped or run besides Antennarr. Frames are `type | length | payload | CRC-32`; an upgrade frees the tuners, sends the image in 1 KB frames with their offsets, then an end marker, and waits up to 40 seconds for the answer. `conformance_test.go` (opt in with `HDHOMERUN_CONFIG=<path to the official tool>`; needs port 65001 free) runs the official tool and this client against a recording fake and requires identical bytes. `live_test.go` (opt in with `HDHR_TUNER=<address>`) only reads from a real tuner.
 - `internal/firmware` downloads the file from `https://download.silicondust.com/hdhomerun/<FirmwareName>_firmware_<date>.bin`, built from the tuner's own firmware family and the release the check found, never from anything a user types. That URL pattern is not documented by Silicondust. There is no published checksum or signature, so the checks are HTTPS, no redirects, status 200, `application/octet-stream`, and a size of 256 KiB to 16 MiB. A 404 is an error; no other address is guessed.
@@ -119,7 +119,7 @@ Built. The Tuners page has an Install button when the check is certain there is 
 
 ## Device panel
 
-Built. The Tuners page shows what each tuner says about itself: hardware model, firmware, ATSC 3.0 DRM version, device ID, MAC, IP, subnet, channel maps and modulations.
+Built. A tuner's Device tab shows what it says about itself: hardware model, firmware, ATSC 3.0 DRM version, device ID, MAC, IP, subnet, channel maps and modulations.
 
 - `internal/tunerinfo` reads a fixed list of values (`/sys/model`, `/sys/hwmodel`, `/sys/version`, `/sys/features`) over the control port, and the tuner's System Menu page (`/system.html`) for what the control protocol doesn't have (DRM, MAC, subnet). It never sends a value to set, and no name comes from a request. The page is a plain HTML table with no JSON behind it, so a layout change leaves those fields out and the panel says why: it never guesses.
 - It reads when the panel opens and when someone presses Refresh, not on a timer, and remembers each answer for 30 seconds.
