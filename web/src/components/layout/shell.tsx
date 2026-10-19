@@ -1,4 +1,4 @@
-import { Antenna, History, Menu, Radio, Settings, Users, X, type LucideIcon } from 'lucide-react'
+import { Antenna, History, Menu, Radio, SlidersHorizontal, Users, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { Banners } from '@/components/banners'
@@ -23,7 +23,7 @@ const nav: { to: string; label: string; icon: LucideIcon; end?: boolean; needs?:
   { to: '/viewers', label: 'Viewers', icon: Users },
   { to: '/tuner', label: 'Tuners', icon: Antenna },
   { to: '/activity', label: 'Activity', icon: History, needs: 'history' },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/settings', label: 'Settings', icon: SlidersHorizontal },
 ]
 
 /** A page's name with its icon: always in the phone menu, which has room, and only on the current page in the top bar. */
