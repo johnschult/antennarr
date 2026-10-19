@@ -1,9 +1,17 @@
 # Changelog
 
-<!-- Each section is also used as the text of a GitHub release, where a relative link would not work. Link to docs with full https://github.com/johnschult/antennarr/blob/main/... addresses. -->
+<!-- Each section is also used as the text of a GitHub release, where a relative link would not work. Link to docs with full https://github.com/johnschult/yagi/blob/main/... addresses. -->
 
-What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
+What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/yagi/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
+
+## 2026.10.11 (2026-10-19)
+
+### Changed
+
+- **The version is back in the footer**, first among the links and still linked to its release notes. The wordmark is bigger now and covered it under the logo in the top bar.
+- **A tagline in the footer:** *Point your antenna **anywhere**.* The page's description, which a link preview shows, says the same; the tab title is still *Yagi*.
+- The name, model and address on a tuner's header line on the *Live* page are centered on one line. They were lined up by their text baselines, which put the smaller ones a little low.
 
 ## 2026.10.10 (2026-10-19)
 
