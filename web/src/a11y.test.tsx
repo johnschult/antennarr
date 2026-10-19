@@ -116,6 +116,18 @@ describe("axe: what's new", () => {
   })
 })
 
+describe('axe: Live tiles with the guide', () => {
+  it('a tile with its poster, program details and progress', async () => {
+    const s = makeState()
+    s.devices[0].guide = {
+      '5.1': { name: 'WFRV', icon: true, now: { title: 'Evening News', subTitle: 'Local', episode: 'S01E02', category: 'News', description: 'The day in review.', start: '2026-10-17T17:00:00Z', stop: '2026-10-17T18:00:00Z', poster: 'ABC123' } },
+    }
+    render(s, '/')
+    await screen.findByTestId('tile-progress')
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
 describe('axe: the Device panel', () => {
   const info = { hardwareModel: 'HDFX-4K', model: 'hdhomerun_dvr_atsc3', version: '20260326', drm: 'SD20230420', mac: '00:18:DD:00:00:01', ip: '192.168.1.50', subnet: '255.255.255.0', channelMaps: ['us-bcast'], modulations: ['atsc3'], readAt: new Date().toISOString(), problems: ['the tuner has no System Menu page to read'] }
 

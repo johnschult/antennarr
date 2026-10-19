@@ -149,3 +149,22 @@ func TestStateCarriesTheVersionAndItsGitHubPage(t *testing.T) {
 		t.Errorf("docsUrl = %q", docs)
 	}
 }
+
+func TestPictureRouteIsClosedWithoutAGuide(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	path := "/antennarr/api/devices/antenna/guide/11.1/poster/C22744932ENOGRU"
+	if code, _ := e.call(t, "GET", path, ""); code != 404 {
+		t.Errorf("no service: %d", code)
+	}
+	e.api.Guide = guide.NewService(guide.Config{})
+	if code, _ := e.call(t, "GET", path, ""); code != 404 {
+		t.Errorf("service that knows nothing: %d", code)
+	}
+	e.call(t, "PATCH", "/antennarr/api/settings", `{"guide":false}`)
+	if code, _ := e.call(t, "GET", path, ""); code != 404 {
+		t.Errorf("while off: %d", code)
+	}
+	if code, _ := e.call(t, "POST", path, ""); code != 405 {
+		t.Errorf("POST: %d, want 405", code)
+	}
+}

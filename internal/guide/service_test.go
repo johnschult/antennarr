@@ -54,7 +54,7 @@ func newFakeSD(t *testing.T) *fakeSD {
 			}
 			w.Header().Set("ETag", f.etag)
 			w.Write(f.guide)
-		case strings.HasPrefix(r.URL.Path, "/channels/"):
+		case strings.HasPrefix(r.URL.Path, "/channels/"), strings.HasPrefix(r.URL.Path, "/titles/"):
 			f.iconHits.Add(1)
 			w.Header().Set("Content-Type", f.iconType)
 			w.Write(f.iconBody)
@@ -293,5 +293,88 @@ func TestRunFetchesAtStartAndStopsWithTheContext(t *testing.T) {
 	case <-done:
 	case <-time.After(3 * time.Second):
 		t.Fatal("Run didn't stop")
+	}
+}
+
+const rosiePoster = "C22744932ENOGRU"
+
+func TestServesAProgramsPictureAndCachesIt(t *testing.T) {
+	r := newRig(t)
+	r.Refresh(context.Background())
+	e, _ := r.Lookup("antenna", "11.1", at)
+	if e.Now == nil || e.Now.Poster != rosiePoster {
+		t.Fatalf("now = %+v", e.Now)
+	}
+	body, typ, err := r.Poster(context.Background(), "antenna", "11.1", rosiePoster)
+	if err != nil || typ != "image/png" || !bytes.HasPrefix(body, []byte("\x89PNG")) {
+		t.Fatalf("poster = %q %q %v", body, typ, err)
+	}
+	if _, _, err := r.Poster(context.Background(), "antenna", "11.1", rosiePoster); err != nil || r.sd.iconHits.Load() != 1 {
+		t.Fatalf("second fetch: err=%v hits=%d (want cached)", err, r.sd.iconHits.Load())
+	}
+}
+
+func TestAPictureIsOnlyFoundByTheGuidesOwnToken(t *testing.T) {
+	r := newRig(t)
+	r.Refresh(context.Background())
+	for name, args := range map[string][3]string{
+		"no token":          {"antenna", "11.1", ""},
+		"a made-up token":   {"antenna", "11.1", "NOPE"},
+		"an address":        {"antenna", "11.1", "https://evil.example/x.jpg"},
+		"a path":            {"antenna", "11.1", "../../etc/passwd"},
+		"another channel":   {"antenna", "8.1", rosiePoster},
+		"an unknown device": {"nobody", "11.1", rosiePoster},
+	} {
+		if _, _, err := r.Poster(context.Background(), args[0], args[1], args[2]); err != ErrNoPoster {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if r.sd.iconHits.Load() != 0 {
+		t.Errorf("a refused request still fetched %d pictures", r.sd.iconHits.Load())
+	}
+}
+
+func TestAPictureOnAnotherHostIsNeverFetched(t *testing.T) {
+	r := newRig(t)
+	r.sd.guide = []byte(strings.ReplaceAll(string(r.sd.guide), r.sd.URL+"/titles/", "https://evil.example/titles/"))
+	r.Refresh(context.Background())
+	if _, _, err := r.Poster(context.Background(), "antenna", "11.1", rosiePoster); err != ErrNoPoster {
+		t.Fatalf("a foreign host: %v", err)
+	}
+}
+
+func TestOnlyPlainPicturesAreServedAndNotHugeOnes(t *testing.T) {
+	for name, typ := range map[string]string{"svg": "image/svg+xml", "html": "text/html"} {
+		r := newRig(t)
+		r.sd.iconType = typ
+		r.Refresh(context.Background())
+		if _, _, err := r.Poster(context.Background(), "antenna", "11.1", rosiePoster); err == nil {
+			t.Errorf("%s was served", name)
+		}
+	}
+	r := newRig(t)
+	r.sd.iconBody = bytes.Repeat([]byte("x"), maxPoster+1)
+	r.Refresh(context.Background())
+	if _, _, err := r.Poster(context.Background(), "antenna", "11.1", rosiePoster); err == nil {
+		t.Error("a picture over the limit was served")
+	}
+}
+
+func TestPicturesKeptAreBounded(t *testing.T) {
+	r := newRig(t)
+	r.Refresh(context.Background())
+	r.mu.Lock()
+	for i := 0; i < maxPosters; i++ {
+		r.posters[strings.Repeat("x", i+1)] = icon{}
+	}
+	r.mu.Unlock()
+	if _, _, err := r.Poster(context.Background(), "antenna", "11.1", rosiePoster); err != nil {
+		t.Fatal(err)
+	}
+	r.mu.Lock()
+	n := len(r.posters)
+	r.mu.Unlock()
+	if n > maxPosters {
+		t.Errorf("%d pictures kept, limit %d", n, maxPosters)
 	}
 }

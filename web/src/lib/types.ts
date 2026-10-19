@@ -245,7 +245,19 @@ export interface GuideEntry {
   /** Whether a logo can be fetched (see channelIconUrl). */
   icon: boolean
   /** What is on right now. */
-  now?: { title: string; subTitle?: string; start: string; stop: string }
+  now?: {
+    title: string
+    subTitle?: string
+    description?: string
+    /** Series, News, Movie... */
+    category?: string
+    /** As shown on screen: S01E32. */
+    episode?: string
+    start: string
+    stop: string
+    /** Names the program's picture, for programPosterUrl. Absent when the guide has none. */
+    poster?: string
+  }
 }
 
 export interface AppState {

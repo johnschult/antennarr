@@ -23,6 +23,10 @@ const IconHost = "img.hdhomerun.com"
 const (
 	maxGuide = 32 << 20  // the real guide is about 3.5 MB
 	maxIcon  = 512 << 10 // logos are a few KB
+	// maxPoster is the most a program's picture may be (they are 10 to 60 KB), and maxPosters how many are
+	// kept: enough for what is on now and next on a lot of channels, and never more than a few MB.
+	maxPoster  = 1 << 20
+	maxPosters = 120
 )
 
 // Config for a Service.
@@ -55,6 +59,7 @@ type Service struct {
 	devices map[string]func() string // device -> its current DeviceAuth
 	feeds   map[string]*feed         // by DeviceAuth
 	icons   map[string]icon          // by icon URL
+	posters map[string]icon          // by picture URL
 }
 
 type feed struct {
@@ -92,7 +97,7 @@ func NewService(cfg Config) *Service {
 	}
 	s := &Service{
 		cfg: cfg, client: cfg.Client, log: cfg.Logger, kick: make(chan struct{}, 1),
-		devices: map[string]func() string{}, feeds: map[string]*feed{}, icons: map[string]icon{},
+		devices: map[string]func() string{}, feeds: map[string]*feed{}, icons: map[string]icon{}, posters: map[string]icon{},
 	}
 	if s.client == nil {
 		s.client = &http.Client{Timeout: 60 * time.Second}
@@ -350,6 +355,67 @@ func (s *Service) Icon(ctx context.Context, device, channel string) (body []byte
 		s.icons = map[string]icon{}
 	}
 	s.icons[ch.Icon] = icon{b, typ}
+	s.mu.Unlock()
+	return b, typ, nil
+}
+
+// ErrNoPoster means the guide has no such picture on that channel.
+var ErrNoPoster = errors.New("no picture for that program")
+
+// Poster returns a program's picture, fetched from SiliconDust once and kept. token is the Program.Poster a
+// tile was shown: it only picks which of the channel's programs is meant. The address it is fetched from
+// comes from the guide, never from the request, and only on SiliconDust's image host.
+func (s *Service) Poster(ctx context.Context, device, channel, token string) (body []byte, contentType string, err error) {
+	if token == "" {
+		return nil, "", ErrNoPoster
+	}
+	ch := s.channel(device, channel)
+	if ch == nil {
+		return nil, "", ErrNoPoster
+	}
+	var addr string
+	for _, p := range ch.Programs {
+		if p.Poster == token {
+			addr = p.icon
+			break
+		}
+	}
+	if addr == "" || !validIcon(addr, s.cfg.IconBase) {
+		return nil, "", ErrNoPoster
+	}
+	s.mu.Lock()
+	if ic, ok := s.posters[addr]; ok {
+		s.mu.Unlock()
+		return ic.body, ic.typ, nil
+	}
+	s.mu.Unlock()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, addr, nil)
+	if err != nil {
+		return nil, "", ErrNoPoster
+	}
+	req.Header.Set("User-Agent", "Antennarr (guide)")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, "", fmt.Errorf("couldn't fetch the picture: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("the picture request answered %s", resp.Status)
+	}
+	typ := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(typ, "image/") || strings.Contains(typ, "svg") { // svg can carry script
+		return nil, "", errors.New("that isn't an image")
+	}
+	b, err := io.ReadAll(io.LimitReader(resp.Body, maxPoster+1))
+	if err != nil || len(b) > maxPoster {
+		return nil, "", errors.New("the picture is too large")
+	}
+	s.mu.Lock()
+	if len(s.posters) >= maxPosters {
+		s.posters = map[string]icon{}
+	}
+	s.posters[addr] = icon{b, typ}
 	s.mu.Unlock()
 	return b, typ, nil
 }

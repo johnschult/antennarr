@@ -27,7 +27,7 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
 - **Limits.** An allowlist of viewer addresses, tuners per viewer, a cap on all viewers together, and tuners always kept free for you.
   Over the limit, a viewer gets the same HTTP 503 a busy tuner gives, so their software already knows what to do.
 - **Several tuners.** Each looks like its own HDHomeRun on its own port.
-- **A web UI.** Live tiles for each tuner (channel, logo, what's on, who's watching, bitrate, signal), viewers, settings,
+- **A web UI.** Live tiles for each tuner (channel, logo, what's on with its picture and progress, who's watching, bitrate, signal), viewers, settings,
   a copy-paste setup guide, light and dark themes.
 - **Firmware news.** Tells you when SiliconDust releases firmware for your model, and installs it when you press Install on the Tuners page: the latest release for that tuner only, never an older one, and never on its own.
 - **Notifications.** Optional messages to ntfy, Pushover or a webhook when there is new firmware, a tuner is offline for a couple of minutes (and when it's back), or a viewer is turned away. Each kind can be switched off, and each channel has a Test button.
@@ -140,11 +140,11 @@ Only your tuners, plus these, each of which can be switched off or left unset in
 |---|---|---|---|
 | Firmware changelog | `silicondust.com` | every 12 hours | nothing about you or your tuners |
 | Firmware file | `download.silicondust.com` | only when you press Install | nothing about you or your tuners |
-| Program guide and channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | your tuner's guide key (its `DeviceAuth`), which SiliconDust uses to know which channels to list |
+| Program guide, channel logos and program pictures | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | your tuner's guide key (its `DeviceAuth`), which SiliconDust uses to know which channels to list |
 | Sign in with Plex | `plex.tv` | only when someone signs in | the sign-in request |
 | Notifications | the ntfy server, `api.pushover.net` or the webhook address you set up | when something you switched on happens, and on Test | a short message naming a tuner, viewer or address. Nothing is contacted until you add a channel |
 
-Logos are fetched by Antennarr, not by your browser, and the web page itself loads nothing from outside.
+Logos and program pictures are fetched by Antennarr, not by your browser, and the web page itself loads nothing from outside.
 
 ## Settings file
 

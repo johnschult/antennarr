@@ -39,7 +39,7 @@ Optional, off by default, and switched on under *Settings → Access*. It lets c
 
 - The admin API refuses cross-site writes: they must be JSON, and an `Origin` header, if there is one, must be this host. A page you happen to visit can't change Antennarr's settings from your browser.
 - Request bodies are limited to 64 KB and unknown fields are rejected.
-- The web page is served with a strict Content-Security-Policy: it loads nothing from other sites, so channel logos come through Antennarr, not straight from SiliconDust.
+- The web page is served with a strict Content-Security-Policy: it loads nothing from other sites, so channel logos and program pictures come through Antennarr, not straight from SiliconDust.
 - Settings are validated before they are saved.
 
 ## What leaves your network
@@ -50,7 +50,7 @@ Only your tuners, plus these. Each can be switched off or left unset, and Antenn
 |---|---|---|---|
 | Firmware changelog | `silicondust.com` | every 12 hours | Nothing about you or your tuners. |
 | Firmware file | `download.silicondust.com` | only when an admin presses Install | Nothing about you or your tuners. |
-| Program guide, channel logos | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | Your tuner's guide key (its `DeviceAuth`), which is how SiliconDust knows which channels to list. |
+| Program guide, channel logos and program pictures | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | Your tuner's guide key (its `DeviceAuth`), which is how SiliconDust knows which channels to list. |
 | Sign in with Plex | `plex.tv` | when someone signs in | The sign-in request. |
 | Notifications | the ntfy server, `api.pushover.net`, or the webhook address **you** set up | when something you switched on happens, and when you press Test | A short message: a title and a sentence naming a tuner, a viewer or an address, for example `Mom was refused a tuner`, `192.0.2.9 tried to use Living room`, or `Living room is offline`. Nothing is sent, and nothing is contacted, until you add a channel. |
 

@@ -108,6 +108,12 @@ describe('TunerTile', () => {
       expect(line().querySelectorAll('path')).toHaveLength(2)
     })
 
+    it('shows the rate on the line itself, once, and not in the footer', () => {
+      render(<TunerTile tile={live(12_000_000)} tick={1} />)
+      expect(within(screen.getByTestId('tile-bitrate')).getByText('12 Mbps')).toBeInTheDocument()
+      expect(screen.getAllByText('12 Mbps')).toHaveLength(1)
+    })
+
     it('does not add a sample until the state has updated', () => {
       const { rerender } = render(<TunerTile tile={live(8_000_000)} tick={1} />)
       rerender(<TunerTile tile={live(9_000_000)} tick={1} />)
@@ -191,6 +197,90 @@ describe('TunerTile', () => {
     })
   })
 
+  describe('program details', () => {
+    const watching = tile({ slot: remoteSlot(1), owner: { kind: 'remote' } })
+    const start = '2026-10-17T17:30:00Z'
+    const stop = '2026-10-17T18:30:00Z'
+    const full = {
+      name: 'WFRV',
+      icon: true,
+      now: { title: "Rosie's Rules", subTitle: 'The Catrina Mystery', episode: 'S01E32', category: 'Series', description: 'For the Day of the Dead celebration.', start, stop, poster: 'C22744932ENOGRU' },
+    }
+    const poster = '/antennarr/api/devices/antenna/guide/5.1/poster/C22744932ENOGRU'
+    const at = (iso: string) => new Date(iso)
+
+    it('shows the category, the episode with its title, and the description', () => {
+      render(<TunerTile tile={watching} guide={full} now={at('2026-10-17T17:45:00Z')} />)
+      expect(screen.getByText('Series')).toBeInTheDocument()
+      expect(screen.getByText('S01E32 · The Catrina Mystery')).toBeInTheDocument()
+      expect(screen.getByText('For the Day of the Dead celebration.')).toBeInTheDocument()
+    })
+
+    it('leaves out what the guide does not say', () => {
+      const bare = { ...full, now: { title: 'Evening News', start, stop } }
+      render(<TunerTile tile={watching} guide={bare} now={at('2026-10-17T17:45:00Z')} />)
+      expect(screen.getByTestId('tile-now')).toHaveTextContent('Evening News')
+      expect(screen.queryByText('Series')).not.toBeInTheDocument()
+      expect(screen.queryByText(/·/)).not.toBeInTheDocument()
+    })
+
+    it('shows how far into the program it is, and how long is left', () => {
+      render(<TunerTile tile={watching} guide={full} now={at('2026-10-17T17:45:00Z')} />)
+      const bar = screen.getByRole('progressbar', { name: 'How far into the program' })
+      expect(bar).toHaveAttribute('aria-valuenow', '25')
+      expect(screen.getByTestId('tile-progress')).toHaveTextContent('45 min left')
+    })
+
+    it('keeps the bar within the program when the clock is outside it', () => {
+      const { rerender } = render(<TunerTile tile={watching} guide={full} now={at('2026-10-17T16:00:00Z')} />)
+      expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+      rerender(<TunerTile tile={watching} guide={full} now={at('2026-10-17T19:00:00Z')} />)
+      expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
+      expect(screen.getByTestId('tile-progress')).toHaveTextContent('ending')
+    })
+
+    it('has no bar when the time it is measured against is unknown', () => {
+      render(<TunerTile tile={watching} guide={full} now={new Date('not a time')} />)
+      expect(screen.queryByTestId('tile-progress')).not.toBeInTheDocument()
+    })
+
+    it('has no bar for times that make no sense', () => {
+      render(<TunerTile tile={watching} guide={{ ...full, now: { ...full.now, start: stop, stop: start } }} now={at('2026-10-17T17:45:00Z')} />)
+      expect(screen.queryByTestId('tile-progress')).not.toBeInTheDocument()
+    })
+
+    it("draws the program's picture behind the top of the tile, hidden from screen readers", () => {
+      render(<TunerTile tile={watching} guide={full} posterSrc={poster} />)
+      const img = document.querySelector(`img[src="${poster}"]`)
+      expect(img).not.toBeNull()
+      expect(img).toHaveAttribute('aria-hidden', 'true')
+      expect(img).toHaveAttribute('alt', '')
+    })
+
+    it('shows the tile without the picture when there is none, or it will not load', () => {
+      const { rerender } = render(<TunerTile tile={watching} guide={full} />)
+      expect(document.querySelector('img[src*="/poster/"]')).toBeNull()
+      expect(screen.getByTestId('tile-now')).toBeInTheDocument()
+
+      rerender(<TunerTile tile={watching} guide={full} posterSrc={poster} />)
+      fireEvent.error(document.querySelector(`img[src="${poster}"]`)!)
+      expect(document.querySelector('img[src*="/poster/"]')).toBeNull()
+      expect(screen.getByTestId('tile-now')).toHaveTextContent("Rosie's Rules")
+    })
+
+    it('tries again for another program after one picture failed', () => {
+      const { rerender } = render(<TunerTile tile={watching} guide={full} posterSrc={poster} />)
+      fireEvent.error(document.querySelector(`img[src="${poster}"]`)!)
+      rerender(<TunerTile tile={watching} guide={full} posterSrc={poster.replace('C22744932ENOGRU', 'NEXT')} />)
+      expect(document.querySelector('img[src$="/poster/NEXT"]')).not.toBeNull()
+    })
+
+    it('shows no picture on idle tuners', () => {
+      render(<TunerTile tile={tile({ owner: { kind: 'free' } })} guide={full} posterSrc={poster} />)
+      expect(document.querySelector('img[src*="/poster/"]')).toBeNull()
+    })
+  })
+
   it('marks a reserved tuner with a crown in its pill, and a TV on the tile', () => {
     render(<TunerTile tile={tile({ owner: { kind: 'reserved' } })} />)
     expect(document.querySelectorAll('svg.lucide-crown')).toHaveLength(1)
@@ -207,36 +297,36 @@ describe('TunerTile', () => {
     const withSignal = (strength?: number, quality?: number) =>
       tile({ slot: { ...remoteSlot(0), signalStrength: strength, signalQuality: quality }, owner: { kind: 'remote' } })
 
-    it('shows strength and quality as percentages', () => {
+    it('shows strength in the footer and quality on its trend line, as percentages', () => {
       render(<TunerTile tile={withSignal(92, 88)} />)
-      const meter = within(screen.getByTestId('tile-signal'))
-      expect(meter.getByTestId('signal-signal')).toHaveTextContent('Signal92%')
-      expect(meter.getByTestId('signal-quality')).toHaveTextContent('Quality88%')
-      expect(meter.getByRole('group')).toHaveAccessibleName('Signal strength 92%, quality 88%')
+      expect(screen.getByTestId('tile-signal')).toHaveTextContent('Signal strength 92%')
+      expect(within(screen.getByTestId('tile-signal-trend')).getByText('88%')).toBeInTheDocument()
     })
 
-    it('colors each by how good it is', () => {
+    it('says nothing special about good reception, and colors trouble', () => {
       render(<TunerTile tile={withSignal(95, 60)} />)
-      expect(screen.getByTestId('signal-signal')).toHaveAttribute('data-tone', 'good')
-      expect(screen.getByTestId('signal-quality')).toHaveAttribute('data-tone', 'fair')
+      expect(screen.getByTestId('tile-signal')).toHaveAttribute('data-tone', 'good')
+      expect(screen.getByTestId('tile-signal')).not.toHaveClass('text-amber-700', 'text-red-700')
+      expect(within(screen.getByTestId('tile-signal-trend')).getByText('60%')).toHaveClass('text-amber-700')
     })
 
     it('says poor reception is poor', () => {
       render(<TunerTile tile={withSignal(20, 10)} />)
-      expect(screen.getByTestId('signal-signal')).toHaveAttribute('data-tone', 'poor')
-      expect(screen.getByTestId('signal-quality')).toHaveAttribute('data-tone', 'poor')
+      expect(screen.getByTestId('tile-signal')).toHaveAttribute('data-tone', 'poor')
+      expect(screen.getByTestId('tile-signal')).toHaveClass('text-red-700')
+      expect(within(screen.getByTestId('tile-signal-trend')).getByText('10%')).toHaveClass('text-red-700')
     })
 
     it('shows only strength when the tuner gives no quality', () => {
       render(<TunerTile tile={withSignal(70, undefined)} />)
-      expect(screen.getByTestId('signal-signal')).toHaveTextContent('70%')
-      expect(screen.queryByTestId('signal-quality')).not.toBeInTheDocument()
+      expect(screen.getByTestId('tile-signal')).toHaveTextContent('Signal strength 70%')
+      expect(screen.queryByTestId('tile-signal-trend')).not.toBeInTheDocument()
     })
 
     it('keeps odd readings within 0 to 100', () => {
       render(<TunerTile tile={withSignal(140, -5)} />)
-      expect(screen.getByTestId('signal-signal')).toHaveTextContent('100%')
-      expect(screen.getByTestId('signal-quality')).toHaveTextContent('0%')
+      expect(screen.getByTestId('tile-signal')).toHaveTextContent('Signal strength 100%')
+      expect(within(screen.getByTestId('tile-signal-trend')).getByText('0%')).toBeInTheDocument()
     })
 
     it('is left out when the tuner reports no signal, and on idle tuners', () => {
