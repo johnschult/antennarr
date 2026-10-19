@@ -381,7 +381,7 @@ describe('ViewerWizard firewall detection', () => {
   it('opens the firewall section with the right tool when one is switched on', async () => {
     network({ tool: 'firewalld', active: true })
     mount()
-    expect(await screen.findByText('Antennarr found firewalld switched on here.')).toBeInTheDocument()
+    expect(await screen.findByText('Yagi found firewalld switched on here.')).toBeInTheDocument()
     expect(gate()).toHaveAttribute('aria-checked', 'true')
     expect(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'firewalld' })).toBeChecked()
     expect(screen.getByLabelText('firewall rules')).toHaveTextContent('firewall-cmd')
@@ -390,14 +390,14 @@ describe('ViewerWizard firewall detection', () => {
   it('goes by ufw when that is what is on', async () => {
     network({ tool: 'ufw', active: true })
     mount()
-    expect(await screen.findByText('Antennarr found ufw switched on here.')).toBeInTheDocument()
+    expect(await screen.findByText('Yagi found ufw switched on here.')).toBeInTheDocument()
     expect(screen.getByLabelText('firewall rules')).toHaveTextContent('sudo ufw allow from')
   })
 
   it("does not claim iptables is blocking anything, since its rules can't be read, but offers it if you say there is a firewall", async () => {
     network({ tool: 'iptables', active: false })
     mount()
-    expect(await screen.findByText(/iptables looks to be in use here, but Antennarr can't see its rules/)).toBeInTheDocument()
+    expect(await screen.findByText(/iptables looks to be in use here, but Yagi can't see its rules/)).toBeInTheDocument()
     expect(gate()).toHaveAttribute('aria-checked', 'false')
     expect(screen.queryByLabelText('firewall rules')).not.toBeInTheDocument()
     await userEvent.setup().click(gate())
@@ -417,7 +417,7 @@ describe('ViewerWizard firewall detection', () => {
     network({ tool: 'ufw', active: true })
     mount()
     const user = userEvent.setup()
-    await screen.findByText('Antennarr found ufw switched on here.')
+    await screen.findByText('Yagi found ufw switched on here.')
     await user.click(within(screen.getByRole('radiogroup', { name: 'Firewall' })).getByRole('radio', { name: 'iptables' }))
     expect(screen.getByLabelText('firewall rules')).toHaveTextContent('sudo iptables')
     await user.click(gate())

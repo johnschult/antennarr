@@ -86,7 +86,7 @@ func (d Downloader) Fetch(ctx context.Context, family, release string) (Image, e
 	if err != nil {
 		return Image{}, err
 	}
-	req.Header.Set("User-Agent", "Antennarr (firmware install)")
+	req.Header.Set("User-Agent", "Yagi (firmware install)")
 	resp, err := d.client().Do(req)
 	if err != nil {
 		// Go's error would repeat the address; say what failed without it.
@@ -135,7 +135,7 @@ func shortErr(err error) string {
 	return err.Error()
 }
 
-// Installable says whether Antennarr will install a release on a tuner, and which. Only the newest
+// Installable says whether Yagi will install a release on a tuner, and which. Only the newest
 // release the changelog says certainly applies, on a tuner whose own firmware family is known, and only
 // forwards: there is no downgrade, and nothing that isn't SiliconDust's own file for that tuner.
 func Installable(s Status, family string) (release string, ok bool, why string) {

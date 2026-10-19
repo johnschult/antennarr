@@ -1,5 +1,5 @@
 // Package logbuf keeps the most recent log lines in memory so the web page can show them. It wraps the logger
-// Antennarr already has: everything still goes where it went before (standard error), and a copy of each line,
+// Yagi already has: everything still goes where it went before (standard error), and a copy of each line,
 // with its attributes, goes into a ring that forgets the oldest when it is full. Nothing is written to disk, and
 // anything that looks like a secret is hidden before it is kept.
 package logbuf
@@ -27,7 +27,7 @@ type Attr struct {
 
 // Entry is one log line.
 type Entry struct {
-	Seq     uint64    `json:"seq"` // counts up from 1 for as long as Antennarr runs
+	Seq     uint64    `json:"seq"` // counts up from 1 for as long as Yagi runs
 	Time    time.Time `json:"time"`
 	Level   string    `json:"level"` // debug, info, warn or error
 	Message string    `json:"message"`

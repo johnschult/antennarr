@@ -1,22 +1,22 @@
-# Copy this next to an antennarr.json (see the README) and run: docker compose up -d
+# Copy this next to a yagi.json (see the README) and run: docker compose up -d
 #
-# Host networking is recommended. Antennarr tells its own streams from your local
+# Host networking is recommended. Yagi tells its own streams from your local
 # ones by address, and offers your Tailscale and LAN addresses on the Setup page,
 # and both need to see the machine's real network.
 #
 # A new install is closed: nobody can use the tuner and only this machine can open the
-# web page. On first start the log (docker logs antennarr) has a one-time setup link;
+# web page. On first start the log (docker logs yagi) has a one-time setup link;
 # open it from your own computer to become the admin, then add a viewer.
 services:
-  antennarr:
-    image: ghcr.io/johnschult/antennarr:latest   # or pin a release, e.g. :2026.10.0
+  yagi:
+    image: ghcr.io/johnschult/yagi:latest   # or pin a release, e.g. :2026.10.0
     # To build it yourself instead of pulling it:
-    #   build: https://github.com/johnschult/antennarr.git#main
-    container_name: antennarr
+    #   build: https://github.com/johnschult/yagi.git#main
+    container_name: yagi
     network_mode: host
     restart: unless-stopped
     # Run as a user that owns ./config, so the settings and sign-ins can be saved.
     user: "1000:1000"
-    command: ["-config", "/config/antennarr.json"]
+    command: ["-config", "/config/yagi.json"]
     volumes:
       - ./config:/config

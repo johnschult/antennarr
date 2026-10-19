@@ -16,7 +16,7 @@ const outline: Record<LogoTone, string> = {
 const sizes = { md: 'h-8 max-w-20', sm: 'h-6 max-w-12' }
 
 /**
- * A channel's logo, outlined if it needs it, or nothing at all if it won't load. Served by Antennarr, so no
+ * A channel's logo, outlined if it needs it, or nothing at all if it won't load. Served by Yagi, so no
  * one is asked to contact SiliconDust.
  */
 export function ChannelLogo({ src, name, size = 'md', className }: { src: string; name: string; size?: keyof typeof sizes; className?: string }) {

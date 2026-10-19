@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/yagi/internal/discovery"
 )
 
 // Slot is one physical tuner on the device.
@@ -24,7 +24,7 @@ type Slot struct {
 	Channel        string `json:"channel,omitempty"`
 	ChannelName    string `json:"channelName,omitempty"`
 	TargetIP       string `json:"targetIP,omitempty"`
-	ViaAntennarr   bool   `json:"viaAntennarr"` // streaming to this host, i.e. through us
+	ViaProxy       bool   `json:"viaProxy"` // streaming to this host, i.e. through us
 	SignalStrength int    `json:"signalStrength,omitempty"`
 	SignalQuality  int    `json:"signalQuality,omitempty"`
 	BitsPerSecond  int64  `json:"bitsPerSecond,omitempty"`
@@ -47,7 +47,7 @@ type Event struct {
 
 // State is a snapshot of the tuner.
 type State struct {
-	Name         string    `json:"name,omitempty"` // the device's name in Antennarr
+	Name         string    `json:"name,omitempty"` // the device's name in Yagi
 	Online       bool      `json:"online"`
 	ID           string    `json:"id"`
 	FriendlyName string    `json:"friendlyName,omitempty"`
@@ -59,21 +59,21 @@ type State struct {
 	LastSeen     time.Time `json:"lastSeen"`
 	Since        time.Time `json:"since"` // when Online last changed
 	Events       []Event   `json:"events"`
-	// Updating is true while Antennarr is installing firmware: the tuner is expected to go away and
+	// Updating is true while Yagi is installing firmware: the tuner is expected to go away and
 	// come back, so that is not an outage.
 	Updating bool `json:"updating"`
-	// Restarting is true while Antennarr is restarting the tuner for someone: it is expected to go away
+	// Restarting is true while Yagi is restarting the tuner for someone: it is expected to go away
 	// and come back, which is not an outage either.
 	Restarting bool `json:"restarting"`
 }
 
 // InUse counts slots in use, and how many of those are ours.
-func (s State) InUse() (total, viaAntennarr int) {
+func (s State) InUse() (total, viaProxy int) {
 	for _, sl := range s.Slots {
 		if sl.InUse {
 			total++
-			if sl.ViaAntennarr {
-				viaAntennarr++
+			if sl.ViaProxy {
+				viaProxy++
 			}
 		}
 	}
@@ -137,7 +137,7 @@ const maxEvents = 50
 // must not leave the tuner marked as updating, and so unreported as offline, for good.
 const maxUpdating = 30 * time.Minute
 
-// SetUpdating says Antennarr is about to install firmware on the tuner (or has finished). While it is set
+// SetUpdating says Yagi is about to install firmware on the tuner (or has finished). While it is set
 // the tuner going away is expected: no "offline" event, no notification, no search for it at another
 // address, and State.Updating tells the page to say "updating" and not "offline". Clearing it polls the
 // tuner at once. It clears itself after maxUpdating.
@@ -392,7 +392,7 @@ func slotsFrom(raw []statusEntry, local map[string]bool) []Slot {
 		if e.VctNumber != "" || e.TargetIP != "" {
 			s.InUse = true
 			s.Channel, s.ChannelName = e.VctNumber, e.VctName
-			s.ViaAntennarr = local[e.TargetIP]
+			s.ViaProxy = local[e.TargetIP]
 			s.SignalStrength, s.SignalQuality, s.BitsPerSecond = e.SignalStrengthPercent, e.SignalQualityPercent, e.NetworkRate
 		}
 		out = append(out, s)
@@ -507,7 +507,7 @@ func (m *Monitor) defaultFind(ctx context.Context, id, lastKnown string) (discov
 }
 
 // localIPs lists this host's IPv4 addresses; a stream whose TargetIP is one of
-// them is flowing through Antennarr.
+// them is flowing through Yagi.
 func localIPs() []string {
 	var out []string
 	addrs, _ := net.InterfaceAddrs()

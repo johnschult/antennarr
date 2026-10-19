@@ -10,7 +10,7 @@ import (
 
 // Firewall says which firewall, if any, looks to be in use on this machine.
 //
-// Antennarr runs as an ordinary user, so it can't read the rules (that takes
+// Yagi runs as an ordinary user, so it can't read the rules (that takes
 // root) and it can't test whether a port is blocked either: a connection from
 // this machine to itself never passes through the firewall. What it can do is
 // notice which firewall is switched on, from the small world-readable files

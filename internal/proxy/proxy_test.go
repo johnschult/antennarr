@@ -109,10 +109,10 @@ func TestLineupPointsAtProxyKeepingPathAndQuery(t *testing.T) {
 }
 
 func TestAdvertiseOverridesHost(t *testing.T) {
-	p := newProxy(t, newFakeTuner(t), "http://antennarr.example.ts.net:5004/")
+	p := newProxy(t, newFakeTuner(t), "http://yagi.example.ts.net:5004/")
 	var d map[string]any
 	getJSON(t, p.URL+"/discover.json", &d)
-	if d["BaseURL"] != "http://antennarr.example.ts.net:5004" {
+	if d["BaseURL"] != "http://yagi.example.ts.net:5004" {
 		t.Errorf("BaseURL = %v", d["BaseURL"])
 	}
 }

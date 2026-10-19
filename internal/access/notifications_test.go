@@ -11,7 +11,7 @@ import (
 func ptr(b bool) *bool { return &b }
 
 func ntfy(id string) NotifyChannel {
-	return NotifyChannel{ID: id, Name: "Phone " + id, Type: ChannelNtfy, URL: "https://ntfy.sh", Topic: "antennarr-" + id}
+	return NotifyChannel{ID: id, Name: "Phone " + id, Type: ChannelNtfy, URL: "https://ntfy.sh", Topic: "yagi-" + id}
 }
 
 func TestNotificationChannelsValidate(t *testing.T) {
@@ -140,7 +140,7 @@ func TestNotificationsCloneIsDeep(t *testing.T) {
 }
 
 func TestNotificationsSurviveTheFileAndStayPrivate(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	in := Settings{OwnerReserve: 1, Notifications: &Notifications{
 		Channels: []NotifyChannel{{ID: "po", Name: "Pushover", Type: ChannelPushover, Token: "app-token", User: "user-key"}, ntfy("a")},
 		Events:   NotifyEvents{Unknown: ptr(true)},
@@ -174,7 +174,7 @@ func TestNotificationsSurviveTheFileAndStayPrivate(t *testing.T) {
 }
 
 func TestNotificationsRejectUnknownKeys(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	for name, body := range map[string]string{
 		"a typo in a channel": `{"viewers":[],"admin":[],"notifications":{"channels":[{"id":"a","name":"A","type":"ntfy","url":"https://ntfy.sh","topic":"t","tokn":"x"}]}}`,
 		"a typo in events":    `{"viewers":[],"admin":[],"notifications":{"events":{"firmwre":true}}}`,
@@ -191,7 +191,7 @@ func TestNotificationsRejectUnknownKeys(t *testing.T) {
 
 func TestNotifyAddrAllowed(t *testing.T) {
 	for addr, want := range map[string]bool{
-		"127.0.0.1":       true, // this machine: ntfy next to Antennarr
+		"127.0.0.1":       true, // this machine: ntfy next to Yagi
 		"::1":             true,
 		"192.168.1.20":    true, // a LAN server
 		"10.0.0.5":        true,

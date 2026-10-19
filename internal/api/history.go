@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/history"
+	"github.com/johnschult/yagi/internal/history"
 )
 
 // historyDoc is the Activity page: the sessions in the last Days days, oldest first, and when it was read.

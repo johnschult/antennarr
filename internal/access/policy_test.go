@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/proxy"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/proxy"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 type fakeMon struct {
@@ -42,7 +42,7 @@ func (f *fakeNotes) count() int { f.mu.Lock(); defer f.mu.Unlock(); return len(f
 
 var (
 	local = tuner.Slot{InUse: true, TargetIP: "192.168.1.77"} // an owner's TV
-	ours  = tuner.Slot{InUse: true, ViaAntennarr: true}       // a stream through us
+	ours  = tuner.Slot{InUse: true, ViaProxy: true}           // a stream through us
 	idle  = tuner.Slot{}
 	_     = idle
 )
@@ -405,7 +405,7 @@ func TestActiveListsStreamsOldestFirst(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	p.ActiveHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/antennarr/streams", nil))
+	p.ActiveHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/yagi/streams", nil))
 	var got []Active
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got) != 2 {
 		t.Errorf("handler body %s (%v)", rec.Body, err)
@@ -432,7 +432,7 @@ func TestAdminOnly(t *testing.T) {
 		"garbage":            403,
 	} {
 		rec := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/antennarr/status", nil)
+		r := httptest.NewRequest(http.MethodGet, "/yagi/status", nil)
 		r.RemoteAddr = remote
 		h.ServeHTTP(rec, r)
 		if rec.Code != want {
@@ -477,7 +477,7 @@ func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
 
 	t.Run("no viewers: only this machine is an admin", func(t *testing.T) {
 		p, _ := newPolicy(t, DefaultSettings(), &fakeMon{})
-		h := p.AdminHome("/antennarr/", next)
+		h := p.AdminHome("/yagi/", next)
 		for remote, want := range map[string]int{"127.0.0.1:1": http.StatusFound, "192.168.1.9:1": http.StatusOK} {
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req(remote))
@@ -491,7 +491,7 @@ func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
 		s := twoViewers
 		s.Admin = []string{"192.168.68.0/22"}
 		p, _ := newPolicy(t, s, &fakeMon{})
-		h := p.AdminHome("/antennarr/", next)
+		h := p.AdminHome("/yagi/", next)
 		for remote, want := range map[string]int{
 			"127.0.0.1:1":     http.StatusFound, // loopback
 			"192.168.68.9:1":  http.StatusFound, // configured admin range
@@ -513,7 +513,7 @@ func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
 func TestAdminHomeSendsEveryBrowserToTheAdminPage(t *testing.T) {
 	p, _ := newPolicy(t, twoViewers, &fakeMon{})
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "tuner front page") })
-	h := p.AdminHome("/antennarr/", next)
+	h := p.AdminHome("/yagi/", next)
 
 	for _, remote := range []string{"203.0.113.9:1", "100.67.117.32:1"} { // not admins: a stranger and a viewer
 		rec := httptest.NewRecorder()
@@ -521,7 +521,7 @@ func TestAdminHomeSendsEveryBrowserToTheAdminPage(t *testing.T) {
 		r.RemoteAddr = remote
 		r.Header.Set("Accept", "text/html,application/xhtml+xml")
 		h.ServeHTTP(rec, r)
-		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/antennarr/" {
+		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/yagi/" {
 			t.Errorf("a browser from %s: %d %q, want a redirect to the admin page", remote, rec.Code, rec.Header().Get("Location"))
 		}
 	}

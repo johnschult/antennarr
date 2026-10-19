@@ -132,7 +132,7 @@ func TestCloneIsDeep(t *testing.T) {
 }
 
 func TestDevicesSurviveSaveAndLoad(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	in := Settings{
 		OwnerReserve: 1,
 		Devices: []Device{

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/history"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/history"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 // historyFile is where who watched what is kept: beside the settings file, and empty (so kept in memory
@@ -38,7 +38,7 @@ func (s *Server) observations(now time.Time) []history.Observation {
 	return out
 }
 
-// observe is what is in use on one tuner. A stream through Antennarr is paired with the viewer it belongs
+// observe is what is in use on one tuner. A stream through Yagi is paired with the viewer it belongs
 // to by channel, as the Live page does; one that can't be paired is "remote". Anything else in use is the
 // owner's own device, straight from the tuner. An offline tuner has nothing in use.
 func observe(device string, t tuner.State, streams []access.Active, title func(channel string) string) []history.Observation {
@@ -58,7 +58,7 @@ func observe(device string, t tuner.State, streams []access.Active, title func(c
 		}
 		o := history.Observation{Device: device, Tuner: slot.Resource, Channel: slot.Channel, ChannelName: slot.ChannelName, Title: title(slot.Channel),
 			BitsPerSecond: slot.BitsPerSecond, Quality: slot.SignalQuality}
-		if slot.ViaAntennarr {
+		if slot.ViaProxy {
 			o.Kind = history.KindRemote
 			for j, st := range unmatched {
 				if st.Channel != "" && st.Channel == slot.Channel {

@@ -32,7 +32,7 @@ func fwServer(t *testing.T, path string, status int, contentType string, body []
 			http.NotFound(w, r)
 			return
 		}
-		if ua := r.Header.Get("User-Agent"); !strings.HasPrefix(ua, "Antennarr") {
+		if ua := r.Header.Get("User-Agent"); !strings.HasPrefix(ua, "Yagi") {
 			t.Errorf("user agent = %q", ua)
 		}
 		switch contentType {

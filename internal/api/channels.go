@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/guide"
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/lineup"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/guide"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/lineup"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 // channelsDoc is a tuner's channels and its scan, as the tuner says them.
@@ -46,7 +46,7 @@ func (a *API) tuner(w http.ResponseWriter, r *http.Request) (*Device, string, bo
 		return nil, "", false
 	}
 	if t.BaseURL == "" {
-		writeErr(w, http.StatusConflict, "Antennarr doesn't know where the tuner is")
+		writeErr(w, http.StatusConflict, "Yagi doesn't know where the tuner is")
 		return nil, "", false
 	}
 	return d, t.BaseURL, true
@@ -272,7 +272,7 @@ func (a *API) testSignal(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := url.Parse(base)
 	if err != nil || u.Hostname() == "" {
-		writeErr(w, http.StatusConflict, "Antennarr doesn't know where the tuner is")
+		writeErr(w, http.StatusConflict, "Yagi doesn't know where the tuner is")
 		return
 	}
 	if _, running := a.testing.LoadOrStore(d.Name, true); running {

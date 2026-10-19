@@ -63,14 +63,14 @@ export function TunersPage() {
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Tuners</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Antennarr follows a tuner if its address changes.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Found by DeviceID, so Yagi follows a tuner if its address changes.</p>
         </div>
         {state.devices.length > 0 && (
           <div className="flex flex-col items-end gap-1">
             <Button size="sm" disabled={!state.editable} onClick={() => setAdding(true)}>
               <Plus data-icon="inline-start" /> Add tuner
             </Button>
-            {!state.editable && <p className="max-w-xs text-right text-xs text-muted-foreground">Antennarr has no settings file to save tuners in.</p>}
+            {!state.editable && <p className="max-w-xs text-right text-xs text-muted-foreground">Yagi has no settings file to save tuners in.</p>}
           </div>
         )}
       </div>

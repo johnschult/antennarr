@@ -2,7 +2,7 @@
 //
 // A new install has no viewers and no admin, so nobody can use the tuner and
 // only this machine can open the admin page. To let the owner in from another
-// computer without opening anything up, Antennarr makes a one-time token when
+// computer without opening anything up, Yagi makes a one-time token when
 // it starts and writes a link containing it to its log. Whoever can read the
 // log (so, the owner) opens the link, confirms, and the address they came from
 // is saved under "admin".
@@ -25,11 +25,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // Path is where the claim page lives.
-const Path = "/antennarr/claim"
+const Path = "/yagi/claim"
 
 const (
 	maxFailures = 5                // wrong tries allowed from one address...
@@ -155,10 +155,10 @@ func (c *Claimer) page(w http.ResponseWriter, r *http.Request) {
 	}
 	setPageHeaders(w)
 	fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Set up Antennarr</title>
+<title>Set up Yagi</title>
 <style>body{font:16px system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem;line-height:1.5}button{font:inherit;padding:.6rem 1rem}code{background:#8882;padding:.1rem .3rem;border-radius:.25rem}</style>
-<h1>Set up Antennarr</h1>
-<p>Make this device an admin? Its address, <code>%s</code>, will be saved, and anything that connects from it will be able to change Antennarr's settings and viewers.</p>
+<h1>Set up Yagi</h1>
+<p>Make this device an admin? Its address, <code>%s</code>, will be saved, and anything that connects from it will be able to change Yagi's settings and viewers.</p>
 <form method="post" action="%s">
 <input type="hidden" name="token" value="%s">
 <button type="submit">Make this device an admin</button>
@@ -217,12 +217,12 @@ func (c *Claimer) confirm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		c.log.Error("claim: couldn't save the admin address", "err", err)
-		http.Error(w, "couldn't save the settings; see the Antennarr log", http.StatusInternalServerError)
+		http.Error(w, "couldn't save the settings; see the Yagi log", http.StatusInternalServerError)
 		return
 	}
 	c.token = ""
 	c.log.Info("claimed: this address is now an admin", "address", ip)
-	http.Redirect(w, r, "/antennarr/", http.StatusSeeOther)
+	http.Redirect(w, r, "/yagi/", http.StatusSeeOther)
 }
 
 func setPageHeaders(w http.ResponseWriter) {

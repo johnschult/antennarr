@@ -1,10 +1,10 @@
-// Package version says which Antennarr this is.
+// Package version says which Yagi this is.
 //
 // Releases are numbered by calendar, YYYY.MM.PATCH (2026.10.0 is the first
 // release of October 2026, 2026.10.1 a fix to it), and tagged vYYYY.MM.PATCH.
 // The number is put in at build time:
 //
-//	go build -ldflags "-X github.com/johnschult/antennarr/internal/version.Version=2026.10.0"
+//	go build -ldflags "-X github.com/johnschult/yagi/internal/version.Version=2026.10.0"
 package version
 
 import (
@@ -13,7 +13,7 @@ import (
 )
 
 // Repo is where the project lives.
-const Repo = "https://github.com/johnschult/antennarr"
+const Repo = "https://github.com/johnschult/yagi"
 
 // Version is set by the build. It stays "dev" for a build from a checkout.
 var Version = "dev"

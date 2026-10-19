@@ -21,17 +21,17 @@ COPY go.mod ./
 COPY cmd ./cmd
 COPY internal ./internal
 COPY --from=web /src/internal/ui/dist ./internal/ui/dist
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w -X github.com/johnschult/antennarr/internal/version.Version=${VERSION}" -o /out/antennarr ./cmd/antennarr
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w -X github.com/johnschult/yagi/internal/version.Version=${VERSION}" -o /out/yagi ./cmd/yagi
 
 # 3. A small image to run it.
 FROM alpine:3
-LABEL org.opencontainers.image.source="https://github.com/johnschult/antennarr" \
+LABEL org.opencontainers.image.source="https://github.com/johnschult/yagi" \
       org.opencontainers.image.description="Share an HDHomeRun tuner with Plex, Jellyfin or Emby servers on other networks" \
       org.opencontainers.image.licenses="MIT"
 RUN apk add --no-cache ca-certificates tzdata
-COPY --from=build /out/antennarr /usr/local/bin/antennarr
-# Run from /config, so the default settings file (antennarr.json) lands in the volume
+COPY --from=build /out/yagi /usr/local/bin/yagi
+# Run from /config, so the default settings file (yagi.json) lands in the volume
 # you mount there.
 WORKDIR /config
 EXPOSE 5004
-ENTRYPOINT ["/usr/local/bin/antennarr"]
+ENTRYPOINT ["/usr/local/bin/yagi"]

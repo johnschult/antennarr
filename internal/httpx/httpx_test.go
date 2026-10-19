@@ -47,7 +47,7 @@ func TestDecodeIsStrict(t *testing.T) {
 func TestGuardWrites(t *testing.T) {
 	h := GuardWrites(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") }))
 	do := func(method, ct, origin, body string) int {
-		req := httptest.NewRequest(method, "http://antennarr.local/x", strings.NewReader(body))
+		req := httptest.NewRequest(method, "http://yagi.local/x", strings.NewReader(body))
 		if ct != "" {
 			req.Header.Set("Content-Type", ct)
 		}
@@ -67,7 +67,7 @@ func TestGuardWrites(t *testing.T) {
 		{"read ignores origin", "GET", "", "https://evil.example", "", 200},
 		{"json write", "POST", "application/json", "", `{}`, 200},
 		{"json with charset", "POST", "application/json; charset=utf-8", "", `{}`, 200},
-		{"same origin", "POST", "application/json", "http://antennarr.local", `{}`, 200},
+		{"same origin", "POST", "application/json", "http://yagi.local", `{}`, 200},
 		{"text/plain write", "POST", "text/plain", "", `{}`, 415},
 		{"form write", "POST", "application/x-www-form-urlencoded", "", `a=b`, 415},
 		{"no type, with body", "POST", "", "", `{}`, 415},

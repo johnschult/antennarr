@@ -21,7 +21,7 @@ import (
 const (
 	DefaultBase     = "https://plex.tv"
 	DefaultAuthBase = "https://app.plex.tv/auth"
-	Product         = "Antennarr"
+	Product         = "Yagi"
 )
 
 var (
@@ -48,7 +48,7 @@ type User struct {
 type Client struct {
 	Base     string // default DefaultBase
 	AuthBase string // default DefaultAuthBase
-	// ClientID identifies this Antennarr to plex.tv and ties a PIN to it. It
+	// ClientID identifies this Yagi to plex.tv and ties a PIN to it. It
 	// is not a secret that protects anything (the sign-in link has to carry it
 	// to plex.tv's own page), but there is no reason to show it anywhere else.
 	ClientID string
@@ -194,7 +194,7 @@ func cleanName(s string) string {
 }
 
 // AuthURL is where to send the person to sign in: Plex's own page, which
-// brings them back nowhere; Antennarr finds out by asking plex.tv about the PIN.
+// brings them back nowhere; Yagi finds out by asking plex.tv about the PIN.
 func (c *Client) AuthURL(p PIN) string {
 	base := c.AuthBase
 	if base == "" {

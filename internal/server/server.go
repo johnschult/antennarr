@@ -16,26 +16,26 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/api"
-	"github.com/johnschult/antennarr/internal/claim"
-	"github.com/johnschult/antennarr/internal/discovery"
-	"github.com/johnschult/antennarr/internal/firmware"
-	"github.com/johnschult/antennarr/internal/guide"
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/history"
-	"github.com/johnschult/antennarr/internal/lineup"
-	"github.com/johnschult/antennarr/internal/live"
-	"github.com/johnschult/antennarr/internal/logbuf"
-	"github.com/johnschult/antennarr/internal/netinfo"
-	"github.com/johnschult/antennarr/internal/notify"
-	"github.com/johnschult/antennarr/internal/plexauth"
-	"github.com/johnschult/antennarr/internal/proxy"
-	"github.com/johnschult/antennarr/internal/restart"
-	"github.com/johnschult/antennarr/internal/tuner"
-	"github.com/johnschult/antennarr/internal/tunerinfo"
-	"github.com/johnschult/antennarr/internal/ui"
-	"github.com/johnschult/antennarr/internal/upgrade"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/api"
+	"github.com/johnschult/yagi/internal/claim"
+	"github.com/johnschult/yagi/internal/discovery"
+	"github.com/johnschult/yagi/internal/firmware"
+	"github.com/johnschult/yagi/internal/guide"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/history"
+	"github.com/johnschult/yagi/internal/lineup"
+	"github.com/johnschult/yagi/internal/live"
+	"github.com/johnschult/yagi/internal/logbuf"
+	"github.com/johnschult/yagi/internal/netinfo"
+	"github.com/johnschult/yagi/internal/notify"
+	"github.com/johnschult/yagi/internal/plexauth"
+	"github.com/johnschult/yagi/internal/proxy"
+	"github.com/johnschult/yagi/internal/restart"
+	"github.com/johnschult/yagi/internal/tuner"
+	"github.com/johnschult/yagi/internal/tunerinfo"
+	"github.com/johnschult/yagi/internal/ui"
+	"github.com/johnschult/yagi/internal/upgrade"
 )
 
 // Locator finds where a tuner is to start with: from its address if given,
@@ -262,14 +262,14 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	policy.SetSessionCheck(s.plex.IsSignedInAdmin)
 
 	admin := http.NewServeMux()
-	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
+	admin.Handle("/yagi/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
 		Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
 	// everything it shows comes from the admin-only API above.
-	admin.Handle("/antennarr/", ui.Handler("/antennarr/"))
+	admin.Handle("/yagi/", ui.Handler("/yagi/"))
 	s.admin = admin
 
 	for _, d := range cfg.Devices {
@@ -305,10 +305,11 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 
 	name := d.Name
 	mux := http.NewServeMux()
-	mux.Handle("/antennarr/", s.admin) // the admin pages are reachable on every device's port
+	mux.Handle("/yagi/", s.admin) // the admin pages are reachable on every device's port
 	// Signing in has to be reachable by someone who isn't signed in yet; each
 	// endpoint checks for itself what it will allow.
-	mux.Handle("/antennarr/auth/", s.plex.Handler())
+	mux.Handle("/yagi/auth/", s.plex.Handler())
+	mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
 	mux.Handle(claim.Path, s.claim.Handler())
 	tunerAPI := proxy.New(proxy.Config{
 		Upstream: mon, Policy: s.policy.Device(name),
@@ -318,7 +319,7 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 	// Someone who types the bare address into a browser wants the admin
 	// page, not the tuner's own front page. Everyone else (viewers, media
 	// servers) is handled as before.
-	mux.Handle("GET /{$}", s.policy.AdminHome("/antennarr/", tunerAPI))
+	mux.Handle("GET /{$}", s.policy.AdminHome("/yagi/", tunerAPI))
 
 	log.Debug("device built", "listen", d.Listen, "tuner", base)
 	return &device{cfg: d, mon: mon, handler: mux}, nil
@@ -523,7 +524,7 @@ func (s *Server) Reload(next access.Settings) error {
 		return err
 	}
 	if len(next.Devices) > 0 && !equal(restartKeys(next.Devices), restartKeys(s.runningConfigs())) {
-		s.log.Warn("the devices in the settings file changed; restart Antennarr to apply that (everything else was reloaded)")
+		s.log.Warn("the devices in the settings file changed; restart Yagi to apply that (everything else was reloaded)")
 	}
 	s.log.Info("settings reloaded", "viewers", len(next.Viewers))
 	return nil
@@ -613,7 +614,7 @@ func notifiedFile(configPath string) string {
 }
 
 // sessionsFile is where Plex sign-ins are kept so they survive a restart: beside
-// the settings file, which is where Antennarr is already allowed to write. With
+// the settings file, which is where Yagi is already allowed to write. With
 // no settings file (started with flags only) there is nowhere to keep them.
 func sessionsFile(configPath string) string {
 	if configPath == "" {

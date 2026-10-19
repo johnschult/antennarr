@@ -15,13 +15,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 const (
 	// DefaultPushoverURL is where Pushover takes messages.
 	DefaultPushoverURL = "https://api.pushover.net/1/messages.json"
-	userAgent          = "Antennarr (notification)"
+	userAgent          = "Yagi (notification)"
 	sendTimeout        = 10 * time.Second
 	maxReply           = 200 // how much of a reply to quote in an error
 )

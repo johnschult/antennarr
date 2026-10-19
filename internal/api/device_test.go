@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
-	"github.com/johnschult/antennarr/internal/tunerinfo"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr/hdhrtest"
+	"github.com/johnschult/yagi/internal/tunerinfo"
 )
 
-const infoPath = "/antennarr/api/devices/antenna/info"
+const infoPath = "/yagi/api/devices/antenna/info"
 
 func infoEnv(t *testing.T) (*env, *hdhrtest.Server) {
 	t.Helper()
@@ -59,7 +59,7 @@ func TestDeviceInfoNeverWrites(t *testing.T) {
 
 func TestDeviceInfoRefusals(t *testing.T) {
 	e, ctrl := infoEnv(t)
-	if code, _ := e.call(t, "GET", "/antennarr/api/devices/nope/info", ""); code != 404 {
+	if code, _ := e.call(t, "GET", "/yagi/api/devices/nope/info", ""); code != 404 {
 		t.Errorf("unknown tuner: %d", code)
 	}
 	e.api.Device = nil

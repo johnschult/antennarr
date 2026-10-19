@@ -24,8 +24,8 @@ const info = { hardwareModel: 'HDFX-4K', readAt: new Date().toISOString() }
 const okRoutes = { 'GET /devices/antenna/info': () => ({ body: info }), 'GET /state': () => ({ body: makeState() }) }
 
 const busy = [
-  { resource: 'tuner0', inUse: true, viaAntennarr: true, channel: '5.1' },
-  { resource: 'tuner1', inUse: true, viaAntennarr: false, channel: '2.1' },
+  { resource: 'tuner0', inUse: true, viaProxy: true, channel: '5.1' },
+  { resource: 'tuner1', inUse: true, viaProxy: false, channel: '2.1' },
 ]
 
 function withDevice(over: Partial<DeviceState> & { inUse?: number } = {}): State {

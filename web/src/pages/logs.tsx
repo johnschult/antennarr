@@ -52,7 +52,7 @@ function Line({ e }: { e: LogEntry }) {
   )
 }
 
-/** Antennarr's own log: what it has been doing, with the problems easy to find. */
+/** Yagi's own log: what it has been doing, with the problems easy to find. */
 export function LogsPanel() {
   const { state } = useApp()
   const qc = useQueryClient()
@@ -112,7 +112,7 @@ export function LogsPanel() {
     const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }))
     const a = document.createElement('a')
     a.href = url
-    a.download = `antennarr-log-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`
+    a.download = `yagi-log-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -124,10 +124,10 @@ export function LogsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <p className="max-w-xl text-sm text-muted-foreground">
-          What Antennarr has been doing. The newest lines are kept in memory, not in a file, and start over when it restarts. <strong className="font-medium text-foreground">Show</strong> picks which of the kept lines are listed;{' '}
+          What Yagi has been doing. The newest lines are kept in memory, not in a file, and start over when it restarts. <strong className="font-medium text-foreground">Show</strong> picks which of the kept lines are listed;{' '}
           <strong className="font-medium text-foreground">Record</strong> sets how much it writes down from now on.
         </p>
-        <div className="flex items-center gap-2 text-sm" title="How much Antennarr writes down from now on. Lines already kept don't change.">
+        <div className="flex items-center gap-2 text-sm" title="How much Yagi writes down from now on. Lines already kept don't change.">
           <label htmlFor="log-level" className="text-muted-foreground">
             Record
           </label>

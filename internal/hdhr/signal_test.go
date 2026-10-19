@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr/hdhrtest"
 )
 
 var fast = hdhr.TestOptions{Wait: 600 * time.Millisecond, Settle: 20 * time.Millisecond, Poll: 20 * time.Millisecond, Key: func() uint32 { return 424242 }}

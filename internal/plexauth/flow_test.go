@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 const secretToken = "SECRET-TOKEN-1"
@@ -25,7 +25,7 @@ func TestItDoesNothingUntilTurnedOn(t *testing.T) {
 	if st := r.status(); st["plexEnabled"] != false || st["signedIn"] != nil {
 		t.Errorf("status = %v", st)
 	}
-	for _, path := range []string{"/antennarr/auth/plex/start", "/antennarr/auth/plex/poll", "/antennarr/auth/plex/add/start", "/antennarr/auth/plex/add/poll"} {
+	for _, path := range []string{"/yagi/auth/plex/start", "/yagi/auth/plex/poll", "/yagi/auth/plex/add/start", "/yagi/auth/plex/add/poll"} {
 		if code, m, _ := r.post(path, `{"pinId":1}`); code != 404 || !strings.Contains(m["error"].(string), "turned off") {
 			t.Errorf("%s: %d %v", path, code, m)
 		}
@@ -33,7 +33,7 @@ func TestItDoesNothingUntilTurnedOn(t *testing.T) {
 	r.set(func(s *access.Settings) {
 		s.Plex = &access.PlexSettings{Enabled: false, Admins: []access.PlexAccount{{ID: 7, Name: "john"}}}
 	})
-	if code, _, _ := r.post("/antennarr/auth/plex/start", `{}`); code != 404 {
+	if code, _, _ := r.post("/yagi/auth/plex/start", `{}`); code != 404 {
 		t.Errorf("configured but off: %d", code)
 	}
 	if n := len(r.tv.calls); n != 0 {
@@ -44,7 +44,7 @@ func TestItDoesNothingUntilTurnedOn(t *testing.T) {
 func TestSigningInWithAnAllowedAccount(t *testing.T) {
 	r := newRig(t)
 
-	code, m, _ := r.post("/antennarr/auth/plex/start", `{}`)
+	code, m, _ := r.post("/yagi/auth/plex/start", `{}`)
 	if code != 200 {
 		t.Fatalf("start: %d %v", code, m)
 	}
@@ -79,7 +79,7 @@ func TestSigningInWithAnAllowedAccount(t *testing.T) {
 			c = x
 		}
 	}
-	if c == nil || !c.HttpOnly || c.SameSite != http.SameSiteStrictMode || c.Path != "/antennarr/" || c.Secure || c.MaxAge != 7*24*3600 || len(c.Value) < 40 {
+	if c == nil || !c.HttpOnly || c.SameSite != http.SameSiteStrictMode || c.Path != "/yagi/" || c.Secure || c.MaxAge != 7*24*3600 || len(c.Value) < 40 {
 		t.Fatalf("cookie = %+v", c)
 	}
 	if !r.isAdmin() {
@@ -276,7 +276,7 @@ func TestSessionsTimeOut(t *testing.T) {
 func TestLoggingOut(t *testing.T) {
 	r := newRig(t)
 	r.signedIn()
-	code, _, resp := r.post("/antennarr/auth/logout", "")
+	code, _, resp := r.post("/yagi/auth/logout", "")
 	if code != 200 {
 		t.Fatalf("%d", code)
 	}
@@ -287,7 +287,7 @@ func TestLoggingOut(t *testing.T) {
 	if !cleared || r.isAdmin() || r.auth.sess.len() != 0 {
 		t.Errorf("cleared=%v admin=%v sessions=%d", cleared, r.isAdmin(), r.auth.sess.len())
 	}
-	if code, _, _ := r.post("/antennarr/auth/logout", ""); code != 200 { // harmless when already signed out
+	if code, _, _ := r.post("/yagi/auth/logout", ""); code != 200 { // harmless when already signed out
 		t.Errorf("second logout: %d", code)
 	}
 }
@@ -311,7 +311,7 @@ func TestSecureCookieBehindAnHTTPSProxy(t *testing.T) {
 	r.tv.signIn(pin, secretToken, fakeUser{ID: 7, Username: "john"})
 	r.clock.add(2 * time.Second)
 	body := `{"pinId":` + itoa(pin) + `}`
-	_, _, resp := r.post("/antennarr/auth/plex/poll", body, "X-Forwarded-Proto", "https")
+	_, _, resp := r.post("/yagi/auth/plex/poll", body, "X-Forwarded-Proto", "https")
 	var c *http.Cookie
 	for _, x := range resp.Cookies() {
 		if x.Name == CookieName {
@@ -329,7 +329,7 @@ func TestAnAdminCanAddAnAccount(t *testing.T) {
 	r := newRig(t)
 	r.set(func(s *access.Settings) { s.Plex.Admins = nil })
 
-	if code, m, _ := r.post("/antennarr/auth/plex/add/start", `{}`); code != 403 {
+	if code, m, _ := r.post("/yagi/auth/plex/add/start", `{}`); code != 403 {
 		t.Errorf("a non-admin could start adding an account: %d %v", code, m)
 	}
 
@@ -449,7 +449,7 @@ func TestPlexTVBeingDownIsReportedNotHidden(t *testing.T) {
 	if code, m, _ := r.poll("", pin); code != 502 || !strings.Contains(m["error"].(string), "plex.tv") {
 		t.Errorf("poll: %d %v", code, m)
 	}
-	if code, m, _ := r.post("/antennarr/auth/plex/start", `{}`); code != 502 {
+	if code, m, _ := r.post("/yagi/auth/plex/start", `{}`); code != 502 {
 		t.Errorf("start: %d %v", code, m)
 	}
 
@@ -479,18 +479,18 @@ func TestAFailureToIdentifyTheUserKeepsTheSignInOpen(t *testing.T) {
 func TestStartingSignInsIsRateLimited(t *testing.T) {
 	r := newRig(t)
 	for i := 0; i < 6; i++ {
-		if code, _, _ := r.post("/antennarr/auth/plex/start", `{}`); code != 200 {
+		if code, _, _ := r.post("/yagi/auth/plex/start", `{}`); code != 200 {
 			t.Fatalf("start %d: %d", i+1, code)
 		}
 	}
-	if code, m, _ := r.post("/antennarr/auth/plex/start", `{}`); code != 429 {
+	if code, m, _ := r.post("/yagi/auth/plex/start", `{}`); code != 429 {
 		t.Errorf("7th start in a minute: %d %v", code, m)
 	}
 	if n := r.tv.count("POST /api/v2/pins"); n != 6 {
 		t.Errorf("a refused start still asked plex.tv: %d calls", n)
 	}
 	r.clock.add(61 * time.Second)
-	if code, _, _ := r.post("/antennarr/auth/plex/start", `{}`); code != 200 {
+	if code, _, _ := r.post("/yagi/auth/plex/start", `{}`); code != 200 {
 		t.Errorf("after a minute: %d", code)
 	}
 }
@@ -552,7 +552,7 @@ func TestTheClientIDIsMadeOnceSavedAndKeptPrivate(t *testing.T) {
 	}
 	r.begin("")
 	id := r.get().Plex.ClientID
-	if !regexp.MustCompile(`^antennarr-[A-Za-z0-9_-]{24}$`).MatchString(id) {
+	if !regexp.MustCompile(`^yagi-[A-Za-z0-9_-]{24}$`).MatchString(id) {
 		t.Errorf("client id = %q", id)
 	}
 	if seen := r.tv.ids(); len(seen) != 1 || !seen[id] {
@@ -571,7 +571,7 @@ func TestTheClientIDIsMadeOnceSavedAndKeptPrivate(t *testing.T) {
 
 	// The sign-in link has to carry it, because plex.tv's own page needs it.
 	// Nothing else is allowed to.
-	_, m, _ := r.post("/antennarr/auth/plex/start", `{}`)
+	_, m, _ := r.post("/yagi/auth/plex/start", `{}`)
 	link := m["authUrl"].(string)
 	if !strings.Contains(link, id) {
 		t.Error("the sign-in link should carry the client ID to plex.tv's page")
@@ -580,7 +580,7 @@ func TestTheClientIDIsMadeOnceSavedAndKeptPrivate(t *testing.T) {
 	pin := int64(m["pinId"].(float64))
 	r.tv.signIn(pin, secretToken, fakeUser{ID: 7, Username: "john"})
 	_, poll, _ := r.pollDone("", pin)
-	_, st, _ := r.getJSON("/antennarr/auth/status")
+	_, st, _ := r.getJSON("/yagi/auth/status")
 	if all := toString(m) + toString(poll) + toString(st); strings.Contains(all, id) {
 		t.Errorf("the client ID appeared somewhere other than the sign-in link: %s", all)
 	}
@@ -627,7 +627,7 @@ func TestWritesAreGuardedAgainstOtherSites(t *testing.T) {
 				hdr[i] = r.srv.URL
 			}
 		}
-		req, _ := http.NewRequest("POST", r.srv.URL+"/antennarr/auth/plex/start", strings.NewReader(c.body))
+		req, _ := http.NewRequest("POST", r.srv.URL+"/yagi/auth/plex/start", strings.NewReader(c.body))
 		req.Header.Set("Content-Type", "application/json")
 		for i := 0; i+1 < len(hdr); i += 2 {
 			req.Header.Set(hdr[i], hdr[i+1])
@@ -636,7 +636,7 @@ func TestWritesAreGuardedAgainstOtherSites(t *testing.T) {
 			t.Errorf("%s: %d, want %d", name, code, c.want)
 		}
 	}
-	if code, _, _ := r.post("/antennarr/auth/logout", "", "Origin", "https://evil.example"); code != 403 {
+	if code, _, _ := r.post("/yagi/auth/logout", "", "Origin", "https://evil.example"); code != 403 {
 		t.Errorf("cross-origin logout: %d", code)
 	}
 }
@@ -644,14 +644,14 @@ func TestWritesAreGuardedAgainstOtherSites(t *testing.T) {
 func TestBadRequestsAndUnknownPaths(t *testing.T) {
 	r := newRig(t)
 	for name, body := range map[string]string{"not json": `nope`, "unknown field": `{"pinId":1,"x":2}`, "wrong type": `{"pinId":"one"}`} {
-		if code, _, _ := r.post("/antennarr/auth/plex/poll", body); code != 400 {
+		if code, _, _ := r.post("/yagi/auth/plex/poll", body); code != 400 {
 			t.Errorf("%s: %d", name, code)
 		}
 	}
-	if code, m, _ := r.getJSON("/antennarr/auth/nope"); code != 404 || m["error"] == nil {
+	if code, m, _ := r.getJSON("/yagi/auth/nope"); code != 404 || m["error"] == nil {
 		t.Errorf("unknown path: %d %v", code, m)
 	}
-	if code, _, _ := r.getJSON("/antennarr/auth/plex/start"); code == 200 {
+	if code, _, _ := r.getJSON("/yagi/auth/plex/start"); code == 200 {
 		t.Error("start answered a GET")
 	}
 }
@@ -680,7 +680,7 @@ func TestSimultaneousPollsMakeOneSession(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			req, _ := http.NewRequest("POST", r.srv.URL+"/antennarr/auth/plex/poll", strings.NewReader(body))
+			req, _ := http.NewRequest("POST", r.srv.URL+"/yagi/auth/plex/poll", strings.NewReader(body))
 			req.Header.Set("Content-Type", "application/json")
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
@@ -766,7 +766,7 @@ func toString(v any) string { b, _ := json.Marshal(v); return string(b) }
 
 // requestWithCookie is a request carrying a session cookie with the given value.
 func requestWithCookie(value string) *http.Request {
-	req := httptest.NewRequest("GET", "/antennarr/", nil)
+	req := httptest.NewRequest("GET", "/yagi/", nil)
 	req.AddCookie(&http.Cookie{Name: CookieName, Value: value})
 	return req
 }

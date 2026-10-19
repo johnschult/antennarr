@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr"
 )
 
 // A look at a real tuner, for checking the client against hardware. It only ever reads (Get): there is

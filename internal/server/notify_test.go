@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // ntfyBox is a fake ntfy server that keeps the titles it is sent.
@@ -57,11 +57,11 @@ func notifying(t *testing.T, box *ntfyBox, viewers ...access.Viewer) (access.Set
 	s := access.Settings{
 		OwnerReserve: 1, Viewers: viewers,
 		Notifications: &access.Notifications{
-			Channels: []access.NotifyChannel{{ID: "phone", Name: "Phone", Type: access.ChannelNtfy, URL: box.URL, Topic: "antennarr"}},
+			Channels: []access.NotifyChannel{{ID: "phone", Name: "Phone", Type: access.ChannelNtfy, URL: box.URL, Topic: "yagi"}},
 			Events:   access.NotifyEvents{Unknown: &on},
 		},
 	}
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	if err := access.SaveSettings(path, s); err != nil {
 		t.Fatal(err)
 	}

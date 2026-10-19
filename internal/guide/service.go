@@ -236,7 +236,7 @@ func (s *Service) fetch(ctx context.Context, auth, etag, modified string) (chans
 	if err != nil {
 		return nil, "", "", false, errors.New("could not build the guide request")
 	}
-	req.Header.Set("User-Agent", "Antennarr (guide)")
+	req.Header.Set("User-Agent", "Yagi (guide)")
 	if etag != "" {
 		req.Header.Set("If-None-Match", etag)
 	}
@@ -344,7 +344,7 @@ func (s *Service) Icon(ctx context.Context, device, channel string) (body []byte
 	if err != nil {
 		return nil, "", ErrNoIcon
 	}
-	req.Header.Set("User-Agent", "Antennarr (guide)")
+	req.Header.Set("User-Agent", "Yagi (guide)")
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("couldn't fetch the logo: %w", err)
@@ -405,7 +405,7 @@ func (s *Service) Poster(ctx context.Context, device, channel, token string) (bo
 	if err != nil {
 		return nil, "", ErrNoPoster
 	}
-	req.Header.Set("User-Agent", "Antennarr (guide)")
+	req.Header.Set("User-Agent", "Yagi (guide)")
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("couldn't fetch the picture: %w", err)

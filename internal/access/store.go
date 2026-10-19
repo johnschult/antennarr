@@ -5,9 +5,9 @@ import (
 	"sync"
 )
 
-// ErrNoFile is returned by edits when Antennarr was started without -config,
+// ErrNoFile is returned by edits when Yagi was started without -config,
 // since there would be nowhere to keep the change.
-var ErrNoFile = errors.New("start Antennarr with -config to edit settings")
+var ErrNoFile = errors.New("start Yagi with -config to edit settings")
 
 // Store applies settings edits: validate, write the file, then apply to the
 // running policy. If any step fails nothing changes, so the file and the

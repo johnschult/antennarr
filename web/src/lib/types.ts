@@ -6,7 +6,7 @@ export interface Slot {
   channel?: string
   channelName?: string
   targetIP?: string
-  viaAntennarr: boolean
+  viaProxy: boolean
   signalStrength?: number
   signalQuality?: number
   bitsPerSecond?: number
@@ -67,9 +67,9 @@ export interface TunerState {
   lastSeen: string
   since: string
   events: TunerEvent[]
-  /** Antennarr is installing firmware: the tuner is expected to go away and come back, so it is not offline. */
+  /** Yagi is installing firmware: the tuner is expected to go away and come back, so it is not offline. */
   updating: boolean
-  /** Antennarr is restarting the tuner for someone: it will go away and come back, so it is not offline. */
+  /** Yagi is restarting the tuner for someone: it will go away and come back, so it is not offline. */
   restarting: boolean
 }
 
@@ -222,7 +222,7 @@ export interface Summary {
   free: number
 }
 
-/** One HDHomeRun that Antennarr fronts. */
+/** One HDHomeRun that Yagi fronts. */
 export interface DeviceState {
   /** The stable key: used in settings, limits and URLs. */
   name: string
@@ -321,14 +321,14 @@ export interface DevicePatch {
   listen?: string
 }
 
-/** One way to reach the machine running Antennarr, read from its network interfaces. */
+/** One way to reach the machine running Yagi, read from its network interfaces. */
 export interface NetworkAddress {
   ip: string
   kind: 'tailscale' | 'lan'
   interface: string
 }
 
-/** Which firewall looks to be in use on the machine running Antennarr. Its rules can't be read, so this is only which tool is switched on. */
+/** Which firewall looks to be in use on the machine running Yagi. Its rules can't be read, so this is only which tool is switched on. */
 export interface FirewallInfo {
   tool: '' | 'ufw' | 'firewalld' | 'iptables'
   active: boolean
@@ -435,9 +435,9 @@ export interface SignalTestResult {
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
-/** One line of Antennarr's log. */
+/** One line of Yagi's log. */
 export interface LogEntry {
-  /** Counts up from 1 for as long as Antennarr runs. */
+  /** Counts up from 1 for as long as Yagi runs. */
   seq: number
   time: string
   level: LogLevel

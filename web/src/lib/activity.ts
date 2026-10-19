@@ -116,8 +116,8 @@ export function formatBytes(n: number): string {
 /** A session's data, if it was measured. */
 export const bytesOf = (s: HistorySession) => Math.max(0, s.bytes ?? 0)
 
-/** Whether a stream went out through Antennarr (a viewer's), rather than straight from the tuner to the owner's own device. */
-export const throughAntennarr = (s: HistorySession) => s.kind !== 'local'
+/** Whether a stream went out through Yagi (a viewer's), rather than straight from the tuner to the owner's own device. */
+export const throughYagi = (s: HistorySession) => s.kind !== 'local'
 
 export interface Total {
   label: string
@@ -127,7 +127,7 @@ export interface Total {
   sessions: number
   /** The average signal quality over the time it was reported, 0 to 100, when it was. */
   quality?: number
-  /** Whether it went through Antennarr: the data counts against the sharer's upload. */
+  /** Whether it went through Yagi: the data counts against the sharer's upload. */
   through: boolean
 }
 
@@ -136,7 +136,7 @@ function totalsBy(sessions: HistorySession[], key: (s: HistorySession) => string
   for (const s of sessions) {
     const label = key(s)
     const ms = Math.max(0, new Date(s.end).getTime() - new Date(s.start).getTime())
-    const r = rows.get(label) ?? { label, ms: 0, bytes: 0, sessions: 0, through: throughAntennarr(s), qMs: 0, qSum: 0 }
+    const r = rows.get(label) ?? { label, ms: 0, bytes: 0, sessions: 0, through: throughYagi(s), qMs: 0, qSum: 0 }
     r.ms += ms
     r.bytes += bytesOf(s)
     r.sessions++
@@ -157,8 +157,8 @@ export const totalsByWatcher = (sessions: HistorySession[]) => totalsBy(sessions
 /** Which channels were watched, with how long, how much data and how good the reception was: most time first. */
 export const totalsByChannel = (sessions: HistorySession[]) => totalsBy(sessions, channelLabel).sort((a, b) => b.ms - a.ms)
 
-/** The data that went out through Antennarr (viewers and unmatched streams), which is what the sharer's upload paid for. */
-export const dataThroughAntennarr = (sessions: HistorySession[]) => sessions.filter(throughAntennarr).reduce((n, s) => n + bytesOf(s), 0)
+/** The data that went out through Yagi (viewers and unmatched streams), which is what the sharer's upload paid for. */
+export const dataThroughYagi = (sessions: HistorySession[]) => sessions.filter(throughYagi).reduce((n, s) => n + bytesOf(s), 0)
 
 export interface DayBytes {
   day: Date

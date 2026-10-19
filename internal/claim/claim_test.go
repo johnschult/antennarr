@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 type rig struct {
@@ -31,7 +31,7 @@ func newRig(t *testing.T, s access.Settings, withFile bool) *rig {
 	}
 	r := &rig{pol: pol, now: time.Date(2026, 10, 18, 5, 0, 0, 0, time.UTC)}
 	if withFile {
-		r.path = filepath.Join(t.TempDir(), "antennarr.json")
+		r.path = filepath.Join(t.TempDir(), "yagi.json")
 		if err := access.SaveSettings(r.path, s); err != nil {
 			t.Fatal(err)
 		}
@@ -72,7 +72,7 @@ func TestClaimSavesTheAddressAsAdminAndBurnsTheToken(t *testing.T) {
 	}
 
 	rec := r.post("192.168.1.20:5555", tok, nil)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/antennarr/" {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/yagi/" {
 		t.Fatalf("%d %q", rec.Code, rec.Header().Get("Location"))
 	}
 	if got := r.admins(); len(got) != 1 || got[0] != "192.168.1.20" {
@@ -240,9 +240,9 @@ func TestTokensAreDifferentEachTime(t *testing.T) {
 func TestURLs(t *testing.T) {
 	got := URLs("abc_-", "5004", []string{"100.64.0.5", "192.168.1.5", "fd7a:115c:a1e0::5"})
 	want := []string{
-		"http://100.64.0.5:5004/antennarr/claim?token=abc_-",
-		"http://192.168.1.5:5004/antennarr/claim?token=abc_-",
-		"http://[fd7a:115c:a1e0::5]:5004/antennarr/claim?token=abc_-",
+		"http://100.64.0.5:5004/yagi/claim?token=abc_-",
+		"http://192.168.1.5:5004/yagi/claim?token=abc_-",
+		"http://[fd7a:115c:a1e0::5]:5004/yagi/claim?token=abc_-",
 	}
 	for i := range want {
 		if got[i] != want[i] {

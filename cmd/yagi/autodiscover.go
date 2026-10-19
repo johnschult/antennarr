@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
 )
 
 const (
@@ -23,7 +23,7 @@ const (
 // in tests).
 type discoverFunc func(ctx context.Context, wait time.Duration) ([]discovery.Device, error)
 
-// wantsAutoDiscovery reports whether Antennarr should look for tuners itself:
+// wantsAutoDiscovery reports whether Yagi should look for tuners itself:
 // no devices are declared in the settings, and no flag names a tuner.
 // -listen alone is fine (it says which port to use); the other device flags
 // describe a tuner that hasn't been named, which is a mistake worth reporting.
@@ -41,7 +41,7 @@ func wantsAutoDiscovery(s access.Settings, set map[string]bool) bool {
 
 // findTuners looks for HDHomeRun tuners until at least one answers, and returns
 // a device for each. It keeps looking, saying so in the log, until ctx ends: a
-// tuner that isn't plugged in yet shouldn't stop Antennarr from starting
+// tuner that isn't plugged in yet shouldn't stop Yagi from starting
 // correctly once it is.
 //
 // A single tuner is the device "tuner" on listen; several are "tuner-<id>", each

@@ -122,7 +122,7 @@ func TestStatusPagesStillPassThrough(t *testing.T) {
 	}
 }
 
-// discover.json and lineup.json are rewritten by Antennarr, so they take the
+// discover.json and lineup.json are rewritten by Yagi, so they take the
 // same read-only rule.
 func TestRewrittenPagesAreReadOnly(t *testing.T) {
 	rt := newRecordingTuner(t)

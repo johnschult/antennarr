@@ -124,7 +124,7 @@ describe('the overview', () => {
     expect(rows[0]).toHaveTextContent('2.1 WBAY')
     expect(rows[0]).toHaveTextContent('192.168.1.77')
     expect(rows[0]).toHaveTextContent('90% / 100%')
-    expect(rows[1]).toHaveTextContent('Antennarr')
+    expect(rows[1]).toHaveTextContent('Yagi')
     expect(rows[1]).toHaveTextContent('14 Mbps')
     expect(rows[2]).toHaveTextContent('idle')
   })
@@ -196,7 +196,7 @@ describe('the overview', () => {
 })
 
 describe('the other tabs', () => {
-  it('has the Device panel, and a way to the tuner’s own page for what Antennarr does not show', async () => {
+  it('has the Device panel, and a way to the tuner’s own page for what Yagi does not show', async () => {
     vi.stubGlobal('fetch', stubFetch({ ...info, ...okState }).fn)
     renderTunerRoutes(makeState(), '/tuner/antenna/device')
     expect(await screen.findByRole('region', { name: 'Device' })).toBeInTheDocument()

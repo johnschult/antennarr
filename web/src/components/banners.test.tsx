@@ -25,7 +25,7 @@ describe('Banners', () => {
     expect(screen.getByRole('link', { name: 'Add a viewer' })).toHaveAttribute('href', '/viewers?add')
   })
 
-  it('says the tuner is offline and what Antennarr will do about it', () => {
+  it('says the tuner is offline and what Yagi will do about it', () => {
     const s = makeState()
     s.devices[0].tuner.online = false
     show(s)

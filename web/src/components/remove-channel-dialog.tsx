@@ -39,7 +39,7 @@ export function RemoveChannelDialog({ channel, onClose }: Props) {
         <AlertDialogHeader>
           <AlertDialogTitle>Remove {channel?.name}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Antennarr stops sending messages there, and forgets its saved token and keys. Adding it again means entering them again.
+            Yagi stops sending messages there, and forgets its saved token and keys. Adding it again means entering them again.
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error && (

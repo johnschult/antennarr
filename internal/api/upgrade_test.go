@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/firmware"
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
-	"github.com/johnschult/antennarr/internal/upgrade"
+	"github.com/johnschult/yagi/internal/firmware"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr/hdhrtest"
+	"github.com/johnschult/yagi/internal/upgrade"
 )
 
-const upgradePath = "/antennarr/api/devices/antenna/firmware/upgrade"
+const upgradePath = "/yagi/api/devices/antenna/firmware/upgrade"
 
 // idleTuner is a status.json with nothing in use.
 const idleTuner = `[{"Resource":"tuner0"},{"Resource":"tuner1"},{"Resource":"tuner2"},{"Resource":"tuner3"}]`
@@ -189,7 +189,7 @@ func TestInstallingIsNotAvailableWithoutTheFirmwareCheck(t *testing.T) {
 
 	// The check switched off in the settings: nothing is installed on its word.
 	e2, _, dl := upgradeEnv(t, idleTuner, hdhrtest.Options{})
-	if code, v := e2.call(t, "PATCH", "/antennarr/api/settings", `{"firmwareCheck":false}`); code != 200 {
+	if code, v := e2.call(t, "PATCH", "/yagi/api/settings", `{"firmwareCheck":false}`); code != 200 {
 		t.Fatalf("%d %v", code, v)
 	}
 	code, v := e2.call(t, "POST", upgradePath, `{"version":"20260326"}`)
@@ -264,10 +264,10 @@ func TestTheRouteRefusesWhatIsNotAskedFor(t *testing.T) {
 	if code, _ := e.call(t, "GET", upgradePath, ""); code != 405 {
 		t.Errorf("GET: %d", code)
 	}
-	if code, v := e.call(t, "POST", "/antennarr/api/devices/nope/firmware/upgrade", `{"version":"20260326"}`); code != 404 {
+	if code, v := e.call(t, "POST", "/yagi/api/devices/nope/firmware/upgrade", `{"version":"20260326"}`); code != 404 {
 		t.Errorf("an unknown tuner: %d %v", code, v)
 	}
-	if code, v := e.call(t, "DELETE", "/antennarr/api/devices/nope/firmware/upgrade", ""); code != 404 {
+	if code, v := e.call(t, "DELETE", "/yagi/api/devices/nope/firmware/upgrade", ""); code != 404 {
 		t.Errorf("dismissing on an unknown tuner: %d %v", code, v)
 	}
 	if code, _ := e.call(t, "POST", upgradePath, `{"version":"20260326","surprise":1}`); code != 400 {

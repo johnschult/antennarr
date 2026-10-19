@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/api"
-	"github.com/johnschult/antennarr/internal/claim"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/api"
+	"github.com/johnschult/yagi/internal/claim"
 )
 
 // bareName is the key in Config.Listeners for the listener that serves the
@@ -54,7 +54,7 @@ func (s *Server) runningConfigs() []access.Device {
 // canEditDevices says why tuners can't be added or removed, if they can't.
 func (s *Server) canEditDevices() error {
 	if s.runCtx == nil || s.runCtx.Err() != nil {
-		return api.NewError(http.StatusServiceUnavailable, "Antennarr is not running")
+		return api.NewError(http.StatusServiceUnavailable, "Yagi is not running")
 	}
 	if !s.store.Editable() {
 		return api.NewError(http.StatusConflict, "there is no settings file to save tuners in")
@@ -374,11 +374,12 @@ func samePort(a, b string) bool {
 // startBare serves the admin pages alone on ln. The caller holds fleetMu.
 func (s *Server) startBare(ln net.Listener) {
 	mux := http.NewServeMux()
-	mux.Handle("/antennarr/", s.admin)
-	mux.Handle("/antennarr/auth/", s.plex.Handler())
+	mux.Handle("/yagi/", s.admin)
+	mux.Handle("/yagi/auth/", s.plex.Handler())
+	mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
 	mux.Handle(claim.Path, s.claim.Handler())
 	mux.Handle("/", http.NotFoundHandler())
-	mux.Handle("GET /{$}", s.policy.AdminHome("/antennarr/", http.NotFoundHandler()))
+	mux.Handle("GET /{$}", s.policy.AdminHome("/yagi/", http.NotFoundHandler()))
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 	s.bare = &bareListener{srv: srv, ln: ln}
 	s.log.Info("no tuners yet: serving the admin pages so one can be added", "addr", ln.Addr().String())
@@ -410,7 +411,7 @@ func (s *Server) openBare() {
 	}
 	ln, err := net.Listen("tcp", s.cfg.AdminListen)
 	if err != nil {
-		s.log.Error("no tuners left and the admin pages can't be served; restart Antennarr", "addr", s.cfg.AdminListen, "err", err)
+		s.log.Error("no tuners left and the admin pages can't be served; restart Yagi", "addr", s.cfg.AdminListen, "err", err)
 		return
 	}
 	s.startBare(ln)

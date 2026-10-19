@@ -71,8 +71,8 @@ func TestPolicyAuthorizeRefusesEverything(t *testing.T) {
 		}
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		if resp.StatusCode != 403 || resp.Header.Get("X-Antennarr-Reason") != "not-allowed" {
-			t.Errorf("%s: %d reason=%q", path, resp.StatusCode, resp.Header.Get("X-Antennarr-Reason"))
+		if resp.StatusCode != 403 || resp.Header.Get("X-Yagi-Reason") != "not-allowed" {
+			t.Errorf("%s: %d reason=%q", path, resp.StatusCode, resp.Header.Get("X-Yagi-Reason"))
 		}
 		if string(body) != "go away\n" {
 			t.Errorf("%s: body %q", path, body)
@@ -93,8 +93,8 @@ func TestPolicyStreamRefusalNeverTouchesTuner(t *testing.T) {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 503 || resp.Header.Get("X-Antennarr-Reason") != "viewer-limit" {
-		t.Errorf("%d reason=%q", resp.StatusCode, resp.Header.Get("X-Antennarr-Reason"))
+	if resp.StatusCode != 503 || resp.Header.Get("X-Yagi-Reason") != "viewer-limit" {
+		t.Errorf("%d reason=%q", resp.StatusCode, resp.Header.Get("X-Yagi-Reason"))
 	}
 	select {
 	case <-f.streamGone:
@@ -111,8 +111,8 @@ func TestPolicyPlainErrorBecomes403(t *testing.T) {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 403 || resp.Header.Get("X-Antennarr-Reason") != "denied" {
-		t.Errorf("%d reason=%q", resp.StatusCode, resp.Header.Get("X-Antennarr-Reason"))
+	if resp.StatusCode != 403 || resp.Header.Get("X-Yagi-Reason") != "denied" {
+		t.Errorf("%d reason=%q", resp.StatusCode, resp.Header.Get("X-Yagi-Reason"))
 	}
 }
 

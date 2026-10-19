@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
 )
 
 // fakeFleet records what the API asks of the fleet.
@@ -64,7 +64,7 @@ func TestAddingATunerPassesWhatWasGiven(t *testing.T) {
 	e := newEnv(t, access.DefaultSettings(), true)
 	f := withFleet(t, e)
 	// The fake adds nothing to its list, so show the existing device back.
-	code, v := e.call(t, "POST", "/antennarr/api/devices", `{"tuner":" 192.168.1.50 ","id":"10abcc87","name":"","listen":""}`)
+	code, v := e.call(t, "POST", "/yagi/api/devices", `{"tuner":" 192.168.1.50 ","id":"10abcc87","name":"","listen":""}`)
 	if code != http.StatusInternalServerError { // the fake doesn't list the new tuner, so it can't be shown
 		t.Fatalf("code = %d %v", code, v)
 	}
@@ -77,14 +77,14 @@ func TestAddingATunerReportsRefusals(t *testing.T) {
 	e := newEnv(t, access.DefaultSettings(), true)
 	f := withFleet(t, e)
 	f.addErr = NewError(http.StatusConflict, "that tuner is already added")
-	code, v := e.call(t, "POST", "/antennarr/api/devices", `{"tuner":"x"}`)
+	code, v := e.call(t, "POST", "/yagi/api/devices", `{"tuner":"x"}`)
 	if code != http.StatusConflict || errText(v) != "that tuner is already added" {
 		t.Errorf("= %d %v, want the fleet's own refusal", code, v)
 	}
-	if code, _ := e.call(t, "POST", "/antennarr/api/devices", `{"tuner":"x","bogus":1}`); code != http.StatusBadRequest {
+	if code, _ := e.call(t, "POST", "/yagi/api/devices", `{"tuner":"x","bogus":1}`); code != http.StatusBadRequest {
 		t.Errorf("unknown field = %d, want 400", code)
 	}
-	if code, _ := e.call(t, "PUT", "/antennarr/api/devices", `{}`); code != http.StatusMethodNotAllowed {
+	if code, _ := e.call(t, "PUT", "/yagi/api/devices", `{}`); code != http.StatusMethodNotAllowed {
 		t.Errorf("PUT = %d, want 405", code)
 	}
 }
@@ -92,23 +92,23 @@ func TestAddingATunerReportsRefusals(t *testing.T) {
 func TestRemovingATuner(t *testing.T) {
 	e := newEnv(t, access.DefaultSettings(), true)
 	f := withFleet(t, e)
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/devices/antenna", ""); code != http.StatusNoContent {
+	if code, _ := e.call(t, "DELETE", "/yagi/api/devices/antenna", ""); code != http.StatusNoContent {
 		t.Fatalf("= %d, want 204", code)
 	}
 	if len(f.removed) != 1 || f.removed[0] != "antenna" {
 		t.Errorf("removed %v", f.removed)
 	}
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/devices/nothing", ""); code != http.StatusNotFound {
+	if code, _ := e.call(t, "DELETE", "/yagi/api/devices/nothing", ""); code != http.StatusNotFound {
 		t.Errorf("unknown tuner = %d, want 404", code)
 	}
 }
 
 func TestAddingAndRemovingNeedAFleet(t *testing.T) {
 	e := newEnv(t, access.DefaultSettings(), true) // a fixed set of tuners
-	if code, _ := e.call(t, "POST", "/antennarr/api/devices", `{"tuner":"x"}`); code != http.StatusConflict {
+	if code, _ := e.call(t, "POST", "/yagi/api/devices", `{"tuner":"x"}`); code != http.StatusConflict {
 		t.Errorf("add = %d, want 409", code)
 	}
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/devices/antenna", ""); code != http.StatusConflict {
+	if code, _ := e.call(t, "DELETE", "/yagi/api/devices/antenna", ""); code != http.StatusConflict {
 		t.Errorf("remove = %d, want 409", code)
 	}
 }
@@ -121,7 +121,7 @@ func TestDiscoverListsTunersAndMarksTheOnesAlreadyAdded(t *testing.T) {
 			{ID: "10AAAA01", BaseURL: "http://192.168.1.51", TunerCount: 2},
 		}, nil
 	}
-	code, v := e.call(t, "POST", "/antennarr/api/discover", "")
+	code, v := e.call(t, "POST", "/yagi/api/discover", "")
 	if code != http.StatusOK {
 		t.Fatalf("= %d %v", code, v)
 	}
@@ -134,7 +134,7 @@ func TestDiscoverListsTunersAndMarksTheOnesAlreadyAdded(t *testing.T) {
 		t.Errorf("first = %v", first)
 	}
 	if second["id"] != "10ABCC87" || second["added"] != "antenna" || second["address"] != "http://192.168.1.50" {
-		t.Errorf("second = %v, want the tuner Antennarr already fronts marked with its name", second)
+		t.Errorf("second = %v, want the tuner Yagi already fronts marked with its name", second)
 	}
 }
 
@@ -143,7 +143,7 @@ func TestDiscoverFailureAndOneSearchAtATime(t *testing.T) {
 	e.api.Discover = func(context.Context, time.Duration) ([]discovery.Device, error) {
 		return nil, errors.New("no route")
 	}
-	if code, _ := e.call(t, "POST", "/antennarr/api/discover", ""); code != http.StatusBadGateway {
+	if code, _ := e.call(t, "POST", "/yagi/api/discover", ""); code != http.StatusBadGateway {
 		t.Errorf("failed search = %d, want 502", code)
 	}
 
@@ -155,9 +155,9 @@ func TestDiscoverFailureAndOneSearchAtATime(t *testing.T) {
 		return nil, nil
 	}
 	done := make(chan int)
-	go func() { c, _ := e.call(t, "POST", "/antennarr/api/discover", ""); done <- c }()
+	go func() { c, _ := e.call(t, "POST", "/yagi/api/discover", ""); done <- c }()
 	<-started
-	if code, _ := e.call(t, "POST", "/antennarr/api/discover", ""); code != http.StatusTooManyRequests {
+	if code, _ := e.call(t, "POST", "/yagi/api/discover", ""); code != http.StatusTooManyRequests {
 		t.Errorf("second search while one runs = %d, want 429", code)
 	}
 	close(release)
@@ -169,7 +169,7 @@ func TestDiscoverFailureAndOneSearchAtATime(t *testing.T) {
 func TestChangingATunersPortGoesToTheFleet(t *testing.T) {
 	e := newEnv(t, access.DefaultSettings(), true)
 	f := withFleet(t, e)
-	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"listen":":5010","ownerReserve":1}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"listen":":5010","ownerReserve":1}`)
 	if code != http.StatusOK {
 		t.Fatalf("= %d %v", code, v)
 	}
@@ -178,7 +178,7 @@ func TestChangingATunersPortGoesToTheFleet(t *testing.T) {
 	}
 
 	f.moveErr = NewError(http.StatusConflict, "can't listen on :80: in use")
-	code, v = e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"listen":":80","ownerReserve":0}`)
+	code, v = e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"listen":":80","ownerReserve":0}`)
 	if code != http.StatusConflict || errText(v) != "can't listen on :80: in use" {
 		t.Errorf("= %d %v, want the fleet's refusal", code, v)
 	}
@@ -189,7 +189,7 @@ func TestChangingATunersPortGoesToTheFleet(t *testing.T) {
 
 func TestChangingThePortNeedsAFleet(t *testing.T) {
 	e := newEnv(t, access.DefaultSettings(), true)
-	if code, _ := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"listen":":5010"}`); code != http.StatusConflict {
+	if code, _ := e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"listen":":5010"}`); code != http.StatusConflict {
 		t.Errorf("without a fleet = %d, want 409", code)
 	}
 }

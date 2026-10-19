@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // plexTV is a small stand-in for plex.tv: PINs that a test can approve.
@@ -82,7 +82,7 @@ func (p *plexTV) approve(pin int64, token string, id int64, name string) {
 	p.mu.Unlock()
 }
 
-// site is Antennarr's handler, called directly so requests can come from any address.
+// site is Yagi's handler, called directly so requests can come from any address.
 type site struct {
 	t      *testing.T
 	srv    *Server
@@ -99,7 +99,7 @@ func newSite(t *testing.T, s access.Settings, withFile bool) *site {
 	off := false
 	s.FirmwareCheck = &off
 	if withFile {
-		st.path = filepath.Join(t.TempDir(), "antennarr.json")
+		st.path = filepath.Join(t.TempDir(), "yagi.json")
 		if err := access.SaveSettings(st.path, s); err != nil {
 			t.Fatal(err)
 		}
@@ -129,7 +129,7 @@ func (st *site) do(method, path, body string, from string) (int, string, *http.R
 	st.srv.devices[0].handler.ServeHTTP(rec, req)
 	resp := rec.Result()
 	for _, c := range resp.Cookies() {
-		if c.Name == "antennarr_session" && from == st.remote {
+		if c.Name == "yagi_session" && from == st.remote {
 			if c.MaxAge < 0 {
 				st.cookie = nil
 			} else {
@@ -150,7 +150,7 @@ func (st *site) here(method, path, body string) (int, string) {
 // signIn runs a whole login as the given Plex account and returns the final status.
 func (st *site) signIn(token string, id int64, name string) string {
 	st.t.Helper()
-	code, body := st.here("POST", "/antennarr/auth/plex/start", `{}`)
+	code, body := st.here("POST", "/yagi/auth/plex/start", `{}`)
 	if code != 200 {
 		st.t.Fatalf("start: %d %s", code, body)
 	}
@@ -160,7 +160,7 @@ func (st *site) signIn(token string, id int64, name string) string {
 	// polls are throttled to one a second; wait it out
 	for i := 0; i < 5; i++ {
 		time.Sleep(1100 * time.Millisecond)
-		_, body = st.here("POST", "/antennarr/auth/plex/poll", fmt.Sprintf(`{"pinId":%d}`, m.PinID))
+		_, body = st.here("POST", "/yagi/auth/plex/poll", fmt.Sprintf(`{"pinId":%d}`, m.PinID))
 		if !strings.Contains(body, "pending") {
 			return body
 		}
@@ -178,15 +178,15 @@ func TestSigningInWithPlexOpensTheAdminPagesFromAnyAddress(t *testing.T) {
 	st := newSite(t, enforced, true)
 
 	// A stranger's address: refused, but told that Plex sign-in is the way in.
-	if code, _ := st.here("GET", "/antennarr/api/state", ""); code != 403 {
+	if code, _ := st.here("GET", "/yagi/api/state", ""); code != 403 {
 		t.Fatalf("before signing in: %d", code)
 	}
-	if _, body := st.here("GET", "/antennarr/auth/status", ""); !strings.Contains(body, `"plexEnabled":true`) || !strings.Contains(body, `"admin":false`) {
+	if _, body := st.here("GET", "/yagi/auth/status", ""); !strings.Contains(body, `"plexEnabled":true`) || !strings.Contains(body, `"admin":false`) {
 		t.Errorf("status = %s", body)
 	}
 	// The page itself must load for a stranger, or there is nowhere to sign in
 	// (503: the UI isn't built in this checkout).
-	if code, _ := st.here("GET", "/antennarr/", ""); code != 200 && code != 503 {
+	if code, _ := st.here("GET", "/yagi/", ""); code != 200 && code != 503 {
 		t.Errorf("the page must load before signing in: %d", code)
 	}
 
@@ -202,15 +202,15 @@ func TestSigningInWithPlexOpensTheAdminPagesFromAnyAddress(t *testing.T) {
 	if body := st.signIn("tok-1", 7, "john"); !strings.Contains(body, `"status":"ok"`) {
 		t.Fatalf("sign-in: %s", body)
 	}
-	for _, path := range []string{"/antennarr/api/state", "/antennarr/streams", "/antennarr/"} {
+	for _, path := range []string{"/yagi/api/state", "/yagi/streams", "/yagi/"} {
 		if code, _ := st.here("GET", path, ""); code != 200 && code != 503 { // 503: the UI isn't built in this checkout
 			t.Errorf("%s after signing in: %d", path, code)
 		}
 	}
-	if code, _, resp := st.do("GET", "/", "", st.remote); code != 302 || resp.Header.Get("Location") != "/antennarr/" {
+	if code, _, resp := st.do("GET", "/", "", st.remote); code != 302 || resp.Header.Get("Location") != "/yagi/" {
 		t.Errorf("the bare address should go to the admin page: %d %q", code, resp.Header.Get("Location"))
 	}
-	if _, body := st.here("GET", "/antennarr/auth/status", ""); !strings.Contains(body, `"admin":true`) || !strings.Contains(body, `"name":"john"`) {
+	if _, body := st.here("GET", "/yagi/auth/status", ""); !strings.Contains(body, `"admin":true`) || !strings.Contains(body, `"name":"john"`) {
 		t.Errorf("status after = %s", body)
 	}
 
@@ -218,8 +218,8 @@ func TestSigningInWithPlexOpensTheAdminPagesFromAnyAddress(t *testing.T) {
 	if code, _ := st.here("GET", "/discover.json", ""); code != 403 {
 		t.Errorf("a signed-in admin can use the tuner as a viewer: %d", code)
 	}
-	// And the cookie is only sent to /antennarr/, so the tuner endpoints never see it.
-	if st.cookie.Path != "/antennarr/" {
+	// And the cookie is only sent to /yagi/, so the tuner endpoints never see it.
+	if st.cookie.Path != "/yagi/" {
 		t.Errorf("cookie path = %q", st.cookie.Path)
 	}
 }
@@ -229,7 +229,7 @@ func TestAnAccountThatIsNotAllowedGetsNowhere(t *testing.T) {
 	if body := st.signIn("tok-x", 99, "stranger"); !strings.Contains(body, `"status":"denied"`) {
 		t.Fatalf("%s", body)
 	}
-	if code, _ := st.here("GET", "/antennarr/api/state", ""); code != 403 {
+	if code, _ := st.here("GET", "/yagi/api/state", ""); code != 403 {
 		t.Errorf("a denied account reached the admin pages: %d", code)
 	}
 }
@@ -240,16 +240,16 @@ func TestRemovingTheAccountLocksItOutOnTheNextRequest(t *testing.T) {
 		Plex:    &access.PlexSettings{Enabled: true, Admins: []access.PlexAccount{{ID: 7, Name: "john"}, {ID: 9, Name: "steve"}}},
 	}, true)
 	st.signIn("tok-1", 7, "john")
-	if code, _ := st.here("GET", "/antennarr/api/state", ""); code != 200 {
+	if code, _ := st.here("GET", "/yagi/api/state", ""); code != 200 {
 		t.Fatal("setup")
 	}
 
 	// An admin signed in with Plex can remove accounts, including their own...
-	if code, body := st.here("DELETE", "/antennarr/api/plex/admins/7", ""); code != 204 {
+	if code, body := st.here("DELETE", "/yagi/api/plex/admins/7", ""); code != 204 {
 		t.Fatalf("removing: %d %s", code, body)
 	}
 	// ...and the very next request is refused.
-	if code, _ := st.here("GET", "/antennarr/api/state", ""); code != 403 {
+	if code, _ := st.here("GET", "/yagi/api/state", ""); code != 403 {
 		t.Errorf("still in after being removed: %d", code)
 	}
 }
@@ -257,13 +257,13 @@ func TestRemovingTheAccountLocksItOutOnTheNextRequest(t *testing.T) {
 func TestSwitchingPlexSignInOffLocksItOut(t *testing.T) {
 	st := newSite(t, enforced, true)
 	st.signIn("tok-1", 7, "john")
-	if code, body := st.here("PATCH", "/antennarr/api/settings", `{"plexEnabled":false}`); code != 200 {
+	if code, body := st.here("PATCH", "/yagi/api/settings", `{"plexEnabled":false}`); code != 200 {
 		t.Fatalf("%d %s", code, body)
 	}
-	if code, _ := st.here("GET", "/antennarr/api/state", ""); code != 403 {
+	if code, _ := st.here("GET", "/yagi/api/state", ""); code != 403 {
 		t.Errorf("signed in with Plex while it is off: %d", code)
 	}
-	if code, _ := st.here("POST", "/antennarr/auth/plex/start", `{}`); code != 404 {
+	if code, _ := st.here("POST", "/yagi/auth/plex/start", `{}`); code != 404 {
 		t.Errorf("starting a sign-in while off: %d", code)
 	}
 }
@@ -272,7 +272,7 @@ func TestAnAddressAdminCanAddThePlexAccountThatThenSignsIn(t *testing.T) {
 	st := newSite(t, access.Settings{Viewers: enforced.Viewers, Plex: &access.PlexSettings{Enabled: true}}, true)
 	loopback := "127.0.0.1:5000" // an admin by address
 
-	code, body, _ := st.do("POST", "/antennarr/auth/plex/add/start", `{}`, loopback)
+	code, body, _ := st.do("POST", "/yagi/auth/plex/add/start", `{}`, loopback)
 	if code != 200 {
 		t.Fatalf("add/start: %d %s", code, body)
 	}
@@ -280,7 +280,7 @@ func TestAnAddressAdminCanAddThePlexAccountThatThenSignsIn(t *testing.T) {
 	json.Unmarshal([]byte(strings.Replace(body, "pinId", "PinID", 1)), &m)
 	st.tv.approve(m.PinID, "tok-steve", 42, "steve")
 	time.Sleep(1100 * time.Millisecond)
-	code, body, _ = st.do("POST", "/antennarr/auth/plex/add/poll", fmt.Sprintf(`{"pinId":%d}`, m.PinID), loopback)
+	code, body, _ = st.do("POST", "/yagi/auth/plex/add/poll", fmt.Sprintf(`{"pinId":%d}`, m.PinID), loopback)
 	if code != 200 || !strings.Contains(body, `"status":"ok"`) {
 		t.Fatalf("add/poll: %d %s", code, body)
 	}
@@ -297,24 +297,24 @@ func TestAnAddressAdminCanAddThePlexAccountThatThenSignsIn(t *testing.T) {
 	if body := st.signIn("tok-steve-2", 42, "steve"); !strings.Contains(body, `"status":"ok"`) {
 		t.Errorf("steve could not sign in: %s", body)
 	}
-	if code, _ := st.here("GET", "/antennarr/api/state", ""); code != 200 {
+	if code, _ := st.here("GET", "/yagi/api/state", ""); code != 200 {
 		t.Errorf("steve after signing in: %d", code)
 	}
 }
 
 func TestAStrangerCannotAddAnAccount(t *testing.T) {
 	st := newSite(t, access.Settings{Viewers: enforced.Viewers, Plex: &access.PlexSettings{Enabled: true}}, true)
-	if code, _ := st.here("POST", "/antennarr/auth/plex/add/start", `{}`); code != 403 {
+	if code, _ := st.here("POST", "/yagi/auth/plex/add/start", `{}`); code != 403 {
 		t.Errorf("a stranger started adding an account: %d", code)
 	}
 }
 
 func TestPlexSignInDoesNothingWhenTheSettingIsOff(t *testing.T) {
 	st := newSite(t, access.Settings{Viewers: enforced.Viewers}, true) // never configured
-	if _, body := st.here("GET", "/antennarr/auth/status", ""); !strings.Contains(body, `"plexEnabled":false`) {
+	if _, body := st.here("GET", "/yagi/auth/status", ""); !strings.Contains(body, `"plexEnabled":false`) {
 		t.Errorf("status = %s", body)
 	}
-	if code, _ := st.here("GET", "/antennarr/api/state", ""); code != 403 {
+	if code, _ := st.here("GET", "/yagi/api/state", ""); code != 403 {
 		t.Errorf("open without a reason: %d", code)
 	}
 }
@@ -322,7 +322,7 @@ func TestPlexSignInDoesNothingWhenTheSettingIsOff(t *testing.T) {
 func TestConfigFileSurvivesPlexEdits(t *testing.T) {
 	st := newSite(t, enforced, true)
 	st.signIn("tok-1", 7, "john")
-	st.here("PATCH", "/antennarr/api/settings", `{"sharedCap":2}`)
+	st.here("PATCH", "/yagi/api/settings", `{"sharedCap":2}`)
 	raw, _ := os.ReadFile(st.path)
 	if !strings.Contains(string(raw), `"clientId"`) || !strings.Contains(string(raw), `"admins"`) || !strings.Contains(string(raw), `"sharedCap": 2`) {
 		t.Errorf("file lost something:\n%s", raw)
@@ -343,10 +343,10 @@ func (st *site) browse(path string) (int, *http.Response) {
 
 func TestSessionsFileSitsBesideTheSettingsFile(t *testing.T) {
 	for in, want := range map[string]string{
-		"":                           "",
-		"/etc/antennarr.json":        "/etc/antennarr.sessions.json",
-		"/data/antennarr-multi.json": "/data/antennarr-multi.sessions.json",
-		"/data/settings":             "/data/settings.sessions.json",
+		"":                      "",
+		"/etc/yagi.json":        "/etc/yagi.sessions.json",
+		"/data/yagi-multi.json": "/data/yagi-multi.sessions.json",
+		"/data/settings":        "/data/settings.sessions.json",
 	} {
 		if got := sessionsFile(in); got != want {
 			t.Errorf("sessionsFile(%q) = %q, want %q", in, got, want)

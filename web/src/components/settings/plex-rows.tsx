@@ -25,7 +25,7 @@ export function PlexRows() {
         id="setting-plex"
         title="Sign in with Plex"
         icon={<PlexIcon className="size-8" />}
-        description="Lets the Plex accounts you choose open this page from anywhere Antennarr can be reached, without listing their addresses. Nothing contacts plex.tv until someone signs in."
+        description="Lets the Plex accounts you choose open this page from anywhere Yagi can be reached, without listing their addresses. Nothing contacts plex.tv until someone signs in."
         checked={plex.enabled}
         disabled={!editable}
         onChange={(next) => update.mutateAsync({ plexEnabled: next })}

@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// fakePlexTV stands in for plex.tv. It checks the headers Antennarr must send
+// fakePlexTV stands in for plex.tv. It checks the headers Yagi must send
 // and lets a test play the part of the person signing in.
 type fakePlexTV struct {
 	*httptest.Server
@@ -49,7 +49,7 @@ func (f *fakePlexTV) serve(w http.ResponseWriter, r *http.Request) {
 	defer f.mu.Unlock()
 	f.calls[r.Method+" "+r.URL.Path]++
 	f.seenIDs[r.Header.Get("X-Plex-Client-Identifier")] = true
-	if r.Header.Get("Accept") != "application/json" || r.Header.Get("X-Plex-Product") != "Antennarr" || r.Header.Get("X-Plex-Client-Identifier") == "" {
+	if r.Header.Get("Accept") != "application/json" || r.Header.Get("X-Plex-Product") != "Yagi" || r.Header.Get("X-Plex-Client-Identifier") == "" {
 		http.Error(w, "missing headers", http.StatusBadRequest)
 		return
 	}

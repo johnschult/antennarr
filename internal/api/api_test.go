@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/discovery"
-	"github.com/johnschult/antennarr/internal/live"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
+	"github.com/johnschult/yagi/internal/live"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 // ---- test environment ----
@@ -90,7 +90,7 @@ func newEnvWith(t *testing.T, s access.Settings, withFile bool, tunerStatus stri
 
 	e := &env{pol: pol, mon: mon, hub: hub, tun: tun}
 	if withFile {
-		e.path = filepath.Join(t.TempDir(), "antennarr.json")
+		e.path = filepath.Join(t.TempDir(), "yagi.json")
 		if err := access.SaveSettings(e.path, s); err != nil {
 			t.Fatal(err)
 		}
@@ -149,7 +149,7 @@ func errText(v any) string {
 
 func viewerNames(t *testing.T, e *env) []string {
 	t.Helper()
-	_, v := e.call(t, "GET", "/antennarr/api/viewers", "")
+	_, v := e.call(t, "GET", "/yagi/api/viewers", "")
 	var names []string
 	for _, x := range v.([]any) {
 		names = append(names, obj(t, x)["name"].(string))
@@ -168,7 +168,7 @@ func TestState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	code, v := e.call(t, "GET", "/antennarr/api/state", "")
+	code, v := e.call(t, "GET", "/yagi/api/state", "")
 	if code != 200 {
 		t.Fatalf("status %d", code)
 	}
@@ -219,7 +219,7 @@ func TestStateBeforeAnyPollHasEmptyListsNotNulls(t *testing.T) {
 	srv := httptest.NewServer(a.Handler())
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + "/antennarr/api/state")
+	resp, err := http.Get(srv.URL + "/yagi/api/state")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestStateBeforeAnyPollHasEmptyListsNotNulls(t *testing.T) {
 func TestViewerCRUD(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 
-	code, v := e.call(t, "POST", "/antennarr/api/viewers", `{"name":"Cabin","addresses":["10.9.0.6"],"limit":1}`)
+	code, v := e.call(t, "POST", "/yagi/api/viewers", `{"name":"Cabin","addresses":["10.9.0.6"],"limit":1}`)
 	if code != 201 || obj(t, v)["name"] != "Cabin" {
 		t.Fatalf("add: %d %v", code, v)
 	}
@@ -248,7 +248,7 @@ func TestViewerCRUD(t *testing.T) {
 		t.Errorf("after add: %v", got)
 	}
 
-	code, v = e.call(t, "PUT", "/antennarr/api/viewers/cabin", `{"name":"Cabin Pi","addresses":["10.9.0.6","10.9.0.7"],"limit":2}`)
+	code, v = e.call(t, "PUT", "/yagi/api/viewers/cabin", `{"name":"Cabin Pi","addresses":["10.9.0.6","10.9.0.7"],"limit":2}`)
 	if code != 200 || obj(t, v)["name"] != "Cabin Pi" || obj(t, v)["limit"] != float64(2) {
 		t.Fatalf("replace (case-insensitive lookup, renamed): %d %v", code, v)
 	}
@@ -256,7 +256,7 @@ func TestViewerCRUD(t *testing.T) {
 		t.Errorf("after rename: %v", got)
 	}
 
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/viewers/Cabin%20Pi", ""); code != 204 {
+	if code, _ := e.call(t, "DELETE", "/yagi/api/viewers/Cabin%20Pi", ""); code != 204 {
 		t.Errorf("delete: %d", code)
 	}
 	if got := viewerNames(t, e); strings.Join(got, ",") != "John,Mom" {
@@ -277,18 +277,18 @@ func TestViewerErrors(t *testing.T) {
 		want                     int
 		contains                 string
 	}{
-		{"duplicate name", "POST", "/antennarr/api/viewers", `{"name":"john","addresses":["10.9.0.9"],"limit":1}`, 409, "already exists"},
-		{"bad address", "POST", "/antennarr/api/viewers", `{"name":"X","addresses":["not-an-ip"],"limit":1}`, 400, "bad address"},
-		{"no addresses", "POST", "/antennarr/api/viewers", `{"name":"X","addresses":[],"limit":1}`, 400, "no addresses"},
-		{"missing addresses", "POST", "/antennarr/api/viewers", `{"name":"X","limit":1}`, 400, "no addresses"},
-		{"negative limit", "POST", "/antennarr/api/viewers", `{"name":"X","addresses":["10.9.0.9"],"limit":-1}`, 400, "negative"},
-		{"address taken", "POST", "/antennarr/api/viewers", `{"name":"X","addresses":["100.67.117.32"],"limit":1}`, 400, "both"},
-		{"unknown field", "POST", "/antennarr/api/viewers", `{"name":"X","addresses":["10.9.0.9"],"limit":1,"admin":true}`, 400, "unknown field"},
-		{"not json", "POST", "/antennarr/api/viewers", `nope`, 400, "invalid JSON"},
-		{"trailing data", "POST", "/antennarr/api/viewers", `{"name":"X","addresses":["10.9.0.9"],"limit":1} {}`, 400, "unexpected data"},
-		{"replace unknown", "PUT", "/antennarr/api/viewers/ghost", `{"name":"ghost","addresses":["10.9.0.9"],"limit":1}`, 404, "no viewer"},
-		{"rename onto existing", "PUT", "/antennarr/api/viewers/Mom", `{"name":"John","addresses":["10.8.0.0/24"],"limit":1}`, 400, "twice"},
-		{"delete unknown", "DELETE", "/antennarr/api/viewers/ghost", ``, 404, "no viewer"},
+		{"duplicate name", "POST", "/yagi/api/viewers", `{"name":"john","addresses":["10.9.0.9"],"limit":1}`, 409, "already exists"},
+		{"bad address", "POST", "/yagi/api/viewers", `{"name":"X","addresses":["not-an-ip"],"limit":1}`, 400, "bad address"},
+		{"no addresses", "POST", "/yagi/api/viewers", `{"name":"X","addresses":[],"limit":1}`, 400, "no addresses"},
+		{"missing addresses", "POST", "/yagi/api/viewers", `{"name":"X","limit":1}`, 400, "no addresses"},
+		{"negative limit", "POST", "/yagi/api/viewers", `{"name":"X","addresses":["10.9.0.9"],"limit":-1}`, 400, "negative"},
+		{"address taken", "POST", "/yagi/api/viewers", `{"name":"X","addresses":["100.67.117.32"],"limit":1}`, 400, "both"},
+		{"unknown field", "POST", "/yagi/api/viewers", `{"name":"X","addresses":["10.9.0.9"],"limit":1,"admin":true}`, 400, "unknown field"},
+		{"not json", "POST", "/yagi/api/viewers", `nope`, 400, "invalid JSON"},
+		{"trailing data", "POST", "/yagi/api/viewers", `{"name":"X","addresses":["10.9.0.9"],"limit":1} {}`, 400, "unexpected data"},
+		{"replace unknown", "PUT", "/yagi/api/viewers/ghost", `{"name":"ghost","addresses":["10.9.0.9"],"limit":1}`, 404, "no viewer"},
+		{"rename onto existing", "PUT", "/yagi/api/viewers/Mom", `{"name":"John","addresses":["10.8.0.0/24"],"limit":1}`, 400, "twice"},
+		{"delete unknown", "DELETE", "/yagi/api/viewers/ghost", ``, 404, "no viewer"},
 	}
 	for _, c := range cases {
 		code, v := e.call(t, c.method, c.path, c.body)
@@ -305,7 +305,7 @@ func TestViewerErrors(t *testing.T) {
 // so it closes rather than opens.
 func TestDeletingTheLastViewerClosesTheTuner(t *testing.T) {
 	e := newEnv(t, access.Settings{Viewers: []access.Viewer{{Name: "John", Addresses: []string{"100.67.117.32"}, Limit: 1}}}, true)
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/viewers/John", ""); code != 204 {
+	if code, _ := e.call(t, "DELETE", "/yagi/api/viewers/John", ""); code != 204 {
 		t.Fatalf("delete: %d", code)
 	}
 	if e.pol.Mode() != "no-viewers" || len(viewerNames(t, e)) != 0 {
@@ -315,8 +315,8 @@ func TestDeletingTheLastViewerClosesTheTuner(t *testing.T) {
 
 func TestViewerNameIsURLDecoded(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
-	e.call(t, "POST", "/antennarr/api/viewers", `{"name":"Mom & Dad","addresses":["10.9.0.2"],"limit":1}`)
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/viewers/"+url.PathEscape("Mom & Dad"), ""); code != 204 {
+	e.call(t, "POST", "/yagi/api/viewers", `{"name":"Mom & Dad","addresses":["10.9.0.2"],"limit":1}`)
+	if code, _ := e.call(t, "DELETE", "/yagi/api/viewers/"+url.PathEscape("Mom & Dad"), ""); code != 204 {
 		t.Errorf("delete by escaped name: %d", code)
 	}
 }
@@ -327,7 +327,7 @@ func TestSettingsPatchChangesOnlyWhatIsSent(t *testing.T) {
 	e := newEnv(t, access.Settings{OwnerReserve: 1, SharedCap: 3, Admin: []string{"100.64.0.0/10"},
 		Viewers: johnAndMom.Viewers}, true)
 
-	code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"sharedCap":2}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":2}`)
 	set := obj(t, v)
 	if code != 200 || set["sharedCap"] != float64(2) || set["ownerReserve"] != float64(1) {
 		t.Fatalf("%d %v", code, v)
@@ -337,13 +337,13 @@ func TestSettingsPatchChangesOnlyWhatIsSent(t *testing.T) {
 	}
 
 	// Sending zero is a change, not "absent".
-	code, v = e.call(t, "PATCH", "/antennarr/api/settings", `{"sharedCap":0,"ownerReserve":2,"admin":[]}`)
+	code, v = e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":0,"ownerReserve":2,"admin":[]}`)
 	set = obj(t, v)
 	if code != 200 || set["sharedCap"] != float64(0) || set["ownerReserve"] != float64(2) || len(set["admin"].([]any)) != 0 {
 		t.Errorf("%d %v", code, v)
 	}
 
-	code, v = e.call(t, "GET", "/antennarr/api/settings", "")
+	code, v = e.call(t, "GET", "/yagi/api/settings", "")
 	if code != 200 || obj(t, v)["ownerReserve"] != float64(2) {
 		t.Errorf("GET after PATCH: %d %v", code, v)
 	}
@@ -358,7 +358,7 @@ func TestSettingsPatchErrors(t *testing.T) {
 		"unknown field":    `{"viewers":[]}`, // viewers have their own endpoints
 		"wrong type":       `{"sharedCap":"two"}`,
 	} {
-		if code, v := e.call(t, "PATCH", "/antennarr/api/settings", body); code != 400 {
+		if code, v := e.call(t, "PATCH", "/yagi/api/settings", body); code != 400 {
 			t.Errorf("%s: %d %v", name, code, v)
 		}
 	}
@@ -369,21 +369,21 @@ func TestSettingsPatchErrors(t *testing.T) {
 
 func TestReadOnlyWithoutConfigFile(t *testing.T) {
 	e := newEnv(t, johnAndMom, false)
-	_, v := e.call(t, "GET", "/antennarr/api/state", "")
+	_, v := e.call(t, "GET", "/yagi/api/state", "")
 	if obj(t, v)["editable"] != false {
 		t.Error("state should say editable=false")
 	}
 	for _, c := range [][3]string{
-		{"POST", "/antennarr/api/viewers", `{"name":"X","addresses":["10.9.0.9"],"limit":1}`},
-		{"PATCH", "/antennarr/api/settings", `{"sharedCap":1}`},
-		{"DELETE", "/antennarr/api/viewers/John", ``},
+		{"POST", "/yagi/api/viewers", `{"name":"X","addresses":["10.9.0.9"],"limit":1}`},
+		{"PATCH", "/yagi/api/settings", `{"sharedCap":1}`},
+		{"DELETE", "/yagi/api/viewers/John", ``},
 	} {
 		code, v := e.call(t, c[0], c[1], c[2])
 		if code != 409 || !strings.Contains(errText(v), "-config") {
 			t.Errorf("%s %s: %d %v", c[0], c[1], code, v)
 		}
 	}
-	if code, _ := e.call(t, "GET", "/antennarr/api/viewers", ""); code != 200 {
+	if code, _ := e.call(t, "GET", "/yagi/api/viewers", ""); code != 200 {
 		t.Errorf("reading must still work: %d", code)
 	}
 }
@@ -391,7 +391,7 @@ func TestReadOnlyWithoutConfigFile(t *testing.T) {
 func TestSaveFailureIsA500AndChangesNothing(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	e.api.Store = access.NewStore(filepath.Join(e.path+"-dir", "gone", "a.json"), e.pol) // unwritable
-	code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"sharedCap":3}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":3}`)
 	if code != 500 || !strings.Contains(errText(v), "could not save") {
 		t.Errorf("%d %v", code, v)
 	}
@@ -412,7 +412,7 @@ func TestWritesMustBeJSON(t *testing.T) {
 		"application/json":                  200,
 		"application/json; charset=utf-8":   200,
 	} {
-		req, _ := http.NewRequest("PATCH", e.srv.URL+"/antennarr/api/settings", strings.NewReader(body))
+		req, _ := http.NewRequest("PATCH", e.srv.URL+"/yagi/api/settings", strings.NewReader(body))
 		if ct != "" {
 			req.Header.Set("Content-Type", ct)
 		}
@@ -434,13 +434,13 @@ func TestCrossOriginWritesAreRefused(t *testing.T) {
 		"null":                 403, // sandboxed iframes
 		e.srv.URL:              200, // the UI served by this very host
 	} {
-		code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"sharedCap":1}`, "Origin", origin)
+		code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":1}`, "Origin", origin)
 		if code != want {
 			t.Errorf("Origin %q: %d %v, want %d", origin, code, v, want)
 		}
 	}
 	// And a cross-origin DELETE, which has no body to type-check.
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/viewers/Mom", "", "Origin", "https://evil.example"); code != 403 {
+	if code, _ := e.call(t, "DELETE", "/yagi/api/viewers/Mom", "", "Origin", "https://evil.example"); code != 403 {
 		t.Errorf("cross-origin DELETE: %d", code)
 	}
 	if len(viewerNames(t, e)) != 2 {
@@ -451,7 +451,7 @@ func TestCrossOriginWritesAreRefused(t *testing.T) {
 func TestOversizedBodyIsRefused(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	big := `{"name":"X","addresses":["` + strings.Repeat("1", maxBody) + `"],"limit":1}`
-	code, v := e.call(t, "POST", "/antennarr/api/viewers", big)
+	code, v := e.call(t, "POST", "/yagi/api/viewers", big)
 	if code != 413 {
 		t.Errorf("%d %v", code, v)
 	}
@@ -461,7 +461,7 @@ func TestOnlyAdminsReachTheAPI(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	h := e.pol.AdminOnly(e.api.Handler())
 	for _, remote := range []string{"203.0.113.9:1", "100.67.117.32:1", "10.8.0.5:1"} { // a stranger and both viewers
-		for _, c := range [][2]string{{"GET", "/antennarr/api/state"}, {"GET", "/antennarr/api/viewers"}, {"GET", "/antennarr/api/events"}, {"DELETE", "/antennarr/api/viewers/John"}} {
+		for _, c := range [][2]string{{"GET", "/yagi/api/state"}, {"GET", "/yagi/api/viewers"}, {"GET", "/yagi/api/events"}, {"DELETE", "/yagi/api/viewers/John"}} {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(c[0], c[1], nil)
 			req.RemoteAddr = remote
@@ -478,16 +478,16 @@ func TestOnlyAdminsReachTheAPI(t *testing.T) {
 
 func TestUnknownRoutesAndMethods(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
-	code, v := e.call(t, "GET", "/antennarr/api/nope", "")
+	code, v := e.call(t, "GET", "/yagi/api/nope", "")
 	if code != 404 || errText(v) == "" {
 		t.Errorf("unknown route: %d %v (want a JSON 404)", code, v)
 	}
-	code, v = e.call(t, "PUT", "/antennarr/api/state", `{}`)
+	code, v = e.call(t, "PUT", "/yagi/api/state", `{}`)
 	if code != 405 || errText(v) == "" {
 		t.Errorf("PUT state: %d %v (want a JSON 405)", code, v)
 	}
 
-	req, _ := http.NewRequest("POST", e.srv.URL+"/antennarr/api/viewers/John", strings.NewReader(`{}`))
+	req, _ := http.NewRequest("POST", e.srv.URL+"/yagi/api/viewers/John", strings.NewReader(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -510,7 +510,7 @@ type sseMsg struct {
 func openEvents(t *testing.T, e *env) (<-chan sseMsg, context.CancelFunc) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
-	req, _ := http.NewRequestWithContext(ctx, "GET", e.srv.URL+"/antennarr/api/events", nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", e.srv.URL+"/yagi/api/events", nil)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		cancel()
@@ -601,7 +601,7 @@ func TestEventsSendStateNowAndAfterChanges(t *testing.T) {
 	}
 
 	// Edits made through the API reach other open dashboards too.
-	e.call(t, "POST", "/antennarr/api/viewers", `{"name":"Cabin","addresses":["10.9.0.6"],"limit":1}`)
+	e.call(t, "POST", "/yagi/api/viewers", `{"name":"Cabin","addresses":["10.9.0.6"],"limit":1}`)
 	m, ok = nextMsg(t, ch, 2*time.Second)
 	if !ok || !strings.Contains(m.data, `"Cabin"`) {
 		t.Fatalf("after adding a viewer: %+v ok=%v", m, ok)
@@ -664,7 +664,7 @@ func TestEventsStopWhenClientLeaves(t *testing.T) {
 
 func TestStateFileIsRealJSONOnDisk(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"sharedCap":2}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":2}`)
 	b, err := os.ReadFile(e.path)
 	if err != nil {
 		t.Fatal(err)

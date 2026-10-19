@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/firmware"
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/firmware"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr/hdhrtest"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 // ---- fakes ----
@@ -325,7 +325,7 @@ func TestStoppingBeforeTheImageIsSentChangesNothing(t *testing.T) {
 	m := New(ctx, Config{
 		Download: &fakeDownload{img: image(2000)},
 		Dial: func(ctx context.Context, _ string) (*hdhr.Conn, error) {
-			cancel() // Antennarr is stopping, just as it connects
+			cancel() // Yagi is stopping, just as it connects
 			return hdhr.Dial(context.Background(), srv.Addr())
 		},
 		Log:         slog.New(slog.NewTextHandler(io.Discard, nil)),

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/johnschult/antennarr/internal/firmware"
-	"github.com/johnschult/antennarr/internal/upgrade"
+	"github.com/johnschult/yagi/internal/firmware"
+	"github.com/johnschult/yagi/internal/upgrade"
 )
 
 // upgradeInput is a request to install firmware. Version must be the release the page was showing: if a
@@ -36,7 +36,7 @@ func (a *API) installFirmware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !a.Pol.Settings().FirmwareCheckEnabled() {
-		writeErr(w, http.StatusConflict, "turn on “Check for new tuner firmware” first: Antennarr only installs what that check says is newer")
+		writeErr(w, http.StatusConflict, "turn on “Check for new tuner firmware” first: Yagi only installs what that check says is newer")
 		return
 	}
 	if a.Upgrade.Active(d.Name) {
@@ -65,7 +65,7 @@ func (a *API) installFirmware(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := url.Parse(t.BaseURL)
 	if err != nil || u.Hostname() == "" {
-		writeErr(w, http.StatusConflict, "Antennarr doesn't know where the tuner is")
+		writeErr(w, http.StatusConflict, "Yagi doesn't know where the tuner is")
 		return
 	}
 

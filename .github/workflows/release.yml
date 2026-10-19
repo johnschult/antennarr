@@ -23,7 +23,9 @@ jobs:
       contents: write # create the GitHub release
       packages: write # push to ghcr.io
     env:
-      IMAGE: ghcr.io/johnschult/antennarr
+      IMAGE: ghcr.io/johnschult/yagi
+      # The image's name before the rename, still pushed with the same tags for a few releases so existing compose files keep updating.
+      IMAGE_LEGACY: ghcr.io/johnschult/antennarr
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,7 +50,7 @@ jobs:
               exit 1
             fi
             echo "release=true" >> "$GITHUB_OUTPUT"
-            echo "tags=$IMAGE:$version,$IMAGE:latest" >> "$GITHUB_OUTPUT"
+            echo "tags=$IMAGE:$version,$IMAGE:latest,$IMAGE_LEGACY:$version,$IMAGE_LEGACY:latest" >> "$GITHUB_OUTPUT"
           else
             version=dev
             echo "release=false" >> "$GITHUB_OUTPUT"

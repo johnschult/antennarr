@@ -32,7 +32,7 @@ const known = new Map<string, LogoTone>()
 export const knownTone = (src: string): LogoTone | undefined => known.get(src)
 
 /**
- * The tone of a loaded logo. The logo is served by Antennarr, so the canvas can read it; if it can't be
+ * The tone of a loaded logo. The logo is served by Yagi, so the canvas can read it; if it can't be
  * read (no canvas, or the browser refuses), it is "mixed", which is the neutral choice.
  */
 export function toneOfImage(src: string, img: HTMLImageElement): LogoTone {

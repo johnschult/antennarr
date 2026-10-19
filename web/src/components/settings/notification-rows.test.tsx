@@ -94,7 +94,7 @@ describe('Notifications: where it goes', () => {
   it('lists each channel with where it goes, and never anything secret', () => {
     show(withChannels(makeState(), phone, pushover, discord))
     const sec = within(section())
-    expect(sec.getByText('ntfy · ntfy.sh/antennarr')).toBeInTheDocument()
+    expect(sec.getByText('ntfy · ntfy.sh/yagi')).toBeInTheDocument()
     expect(sec.getAllByText('Pushover')).toHaveLength(2) // its name, and what it is
     expect(sec.getByText('Webhook · discord.com')).toBeInTheDocument()
     expect(sec.getByText('Add another')).toBeInTheDocument()
@@ -274,7 +274,7 @@ describe('Notifications: changing a channel', () => {
     expect(d.getByRole('heading', { name: 'Edit Phone' })).toBeInTheDocument()
     expect(d.getByLabelText('Name')).toHaveValue('Phone')
     expect(d.getByLabelText('Server')).toHaveValue('https://ntfy.sh')
-    expect(d.getByLabelText('Topic')).toHaveValue('antennarr')
+    expect(d.getByLabelText('Topic')).toHaveValue('yagi')
     const token = d.getByLabelText(/Access token/)
     expect(token).toHaveValue('')
     expect(token).toHaveAttribute('placeholder', 'Saved. Leave empty to keep it.')

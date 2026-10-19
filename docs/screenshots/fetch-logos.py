@@ -4,13 +4,13 @@
 usage: fetch-logos.py <tuner address> <output dir> [channel numbers, e.g. 2.1,5.1,11.1,46.1]
 
 It reads the tuner's guide key from its discover.json, reads SiliconDust's guide
-for it (the same request Antennarr makes), and saves the logos of the channels asked
+for it (the same request Yagi makes), and saves the logos of the channels asked
 for into <output dir>, with a channels.json the demo (internal/server/demo_test.go)
 reads. The logos are the networks' marks, so retake.sh keeps them in a temporary
 folder; only the finished screenshots are committed.
 
 With no channel numbers it takes the first four main channels (x.1) that have a logo.
-The guide key is never printed: it is passed on only to SiliconDust, as Antennarr does.
+The guide key is never printed: it is passed on only to SiliconDust, as Yagi does.
 Standard library only.
 """
 import json

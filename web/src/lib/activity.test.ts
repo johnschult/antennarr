@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { HistorySession } from './types'
-import { channelLabel, dailyBytes, dailyMinutes, dataThroughAntennarr, dayLabel, formatBytes, groupByDay, minutesOf, receptionByChannel, sessionSpan, spanText, summarize, totalsByChannel, totalsByWatcher, watcherOf } from './activity'
+import { channelLabel, dailyBytes, dailyMinutes, dataThroughYagi, dayLabel, formatBytes, groupByDay, minutesOf, receptionByChannel, sessionSpan, spanText, summarize, totalsByChannel, totalsByWatcher, watcherOf } from './activity'
 
 // Built from local dates, so the days mean the same wherever the tests run.
 const local = (y: number, mo: number, d: number, h = 0, mi = 0, s = 0) => new Date(y, mo - 1, d, h, mi, s)
@@ -140,9 +140,9 @@ describe('data', () => {
     expect(days[0].bytes).toBe(0)
   })
 
-  it('counts only what went out through Antennarr as the sharer’s upload', () => {
+  it('counts only what went out through Yagi as the sharer’s upload', () => {
     const sessions = [withBytes({ bytes: 2 * GB }), withBytes({ kind: 'remote', viewer: undefined, bytes: GB }), withBytes({ kind: 'local', viewer: undefined, bytes: 5 * GB })]
-    expect(dataThroughAntennarr(sessions)).toBe(3 * GB)
+    expect(dataThroughYagi(sessions)).toBe(3 * GB)
   })
 })
 

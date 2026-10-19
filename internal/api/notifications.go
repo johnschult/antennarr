@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // Tester sends a test message to a channel (the notify.Notifier).

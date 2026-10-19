@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
 )
 
 // ---- fakes ----
@@ -239,7 +239,7 @@ func (r *rig) waitOnline(t *testing.T, devices int) {
 	}
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		resp, err := http.Get("http://" + first + "/antennarr/api/state")
+		resp, err := http.Get("http://" + first + "/yagi/api/state")
 		if err == nil {
 			var st struct {
 				Devices []struct{ Tuner struct{ Online bool } }
@@ -332,8 +332,8 @@ func TestDevicesAreRatedSeparately(t *testing.T) {
 	}
 	refused := open("antenna")
 	refused.Body.Close()
-	if refused.StatusCode != 503 || refused.Header.Get("X-Antennarr-Reason") != "viewer-limit" {
-		t.Errorf("second antenna stream: %d %q", refused.StatusCode, refused.Header.Get("X-Antennarr-Reason"))
+	if refused.StatusCode != 503 || refused.Header.Get("X-Yagi-Reason") != "viewer-limit" {
+		t.Errorf("second antenna stream: %d %q", refused.StatusCode, refused.Header.Get("X-Yagi-Reason"))
 	}
 	for i := 1; i <= 2; i++ {
 		x := open("cable")
@@ -364,16 +364,16 @@ func TestAdminPagesAreOnEveryPort(t *testing.T) {
 	r := start(t, access.DefaultSettings(), twoDevs(a, c), a, c)
 
 	for dev := range r.addr {
-		code, body := r.get(t, dev, "/antennarr/api/state")
+		code, body := r.get(t, dev, "/yagi/api/state")
 		var st struct{ Devices []struct{ Name string } }
 		json.Unmarshal([]byte(body), &st)
 		if code != 200 || len(st.Devices) != 2 || st.Devices[0].Name != "antenna" || st.Devices[1].Name != "cable" {
 			t.Errorf("%s: %d %s", dev, code, body)
 		}
-		if code, _ := r.get(t, dev, "/antennarr/streams"); code != 200 {
-			t.Errorf("%s: /antennarr/streams %d", dev, code)
+		if code, _ := r.get(t, dev, "/yagi/streams"); code != 200 {
+			t.Errorf("%s: /yagi/streams %d", dev, code)
 		}
-		if code, _ := r.get(t, dev, "/antennarr/"); code != 200 && code != 503 { // 503: the UI isn't built in this checkout
+		if code, _ := r.get(t, dev, "/yagi/"); code != 200 && code != 503 { // 503: the UI isn't built in this checkout
 			t.Errorf("%s: UI %d", dev, code)
 		}
 	}
@@ -390,7 +390,7 @@ func TestBareAddressGoesToTheAdminPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 302 || resp.Header.Get("Location") != "/antennarr/" {
+	if resp.StatusCode != 302 || resp.Header.Get("Location") != "/yagi/" {
 		t.Errorf("%d -> %q", resp.StatusCode, resp.Header.Get("Location"))
 	}
 }
@@ -404,7 +404,7 @@ func TestStrangersAreRefusedOnEveryDevice(t *testing.T) {
 		if code, _ := r.get(t, dev, "/discover.json"); code != 403 {
 			t.Errorf("%s: discover.json from a non-viewer: %d", dev, code)
 		}
-		if code, _ := r.get(t, dev, "/antennarr/api/state"); code != 200 {
+		if code, _ := r.get(t, dev, "/yagi/api/state"); code != 200 {
 			t.Errorf("%s: the admin should still get in: %d", dev, code)
 		}
 	}
@@ -506,7 +506,7 @@ func TestReloadAppliesLimitsAtOnce(t *testing.T) {
 	if count() != 3 {
 		t.Errorf("after reload TunerCount = %v, want 3", count())
 	}
-	if strings.Contains(r.logs.String(), "restart Antennarr") {
+	if strings.Contains(r.logs.String(), "restart Yagi") {
 		t.Error("a limits-only reload asked for a restart")
 	}
 }
@@ -548,7 +548,7 @@ func TestReloadWarnsWhenDevicesChange(t *testing.T) {
 	if err := r.srv.Reload(changed); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(r.logs.String(), "restart Antennarr") {
+	if strings.Contains(r.logs.String(), "restart Yagi") {
 		t.Fatal("changing a device's cap asked for a restart")
 	}
 
@@ -557,7 +557,7 @@ func TestReloadWarnsWhenDevicesChange(t *testing.T) {
 	if err := r.srv.Reload(changed); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(r.logs.String(), "restart Antennarr") {
+	if !strings.Contains(r.logs.String(), "restart Yagi") {
 		t.Errorf("no restart notice after the device moved ports:\n%s", r.logs)
 	}
 }
@@ -649,7 +649,7 @@ func TestRenamingATunerNeverChangesWhatMediaServersSee(t *testing.T) {
 		return d["FriendlyName"].(string)
 	}
 	label := func() string {
-		_, body := r.get(t, "antenna", "/antennarr/api/state")
+		_, body := r.get(t, "antenna", "/yagi/api/state")
 		var st struct{ Devices []struct{ Label string } }
 		json.Unmarshal([]byte(body), &st)
 		return st.Devices[0].Label

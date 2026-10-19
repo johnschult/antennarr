@@ -16,7 +16,7 @@ linters:
         - (io.Closer).Close
         - (io/fs.File).Close
         - (*os.File).Close
-        - (*github.com/johnschult/antennarr/internal/hdhr.Conn).Close
+        - (*github.com/johnschult/yagi/internal/hdhr.Conn).Close
         # The deadline of a connection that is about to be used: if it can't be set, the use fails and says so.
         - (net.Conn).SetReadDeadline
         - (net.Conn).SetWriteDeadline

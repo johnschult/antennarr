@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { releaseDate, type Release } from '@/lib/changelog'
 
-const RELEASES_URL = 'https://github.com/johnschult/antennarr/releases'
+const RELEASES_URL = 'https://github.com/johnschult/yagi/releases'
 
 interface Props {
   open: boolean
@@ -24,8 +24,8 @@ export function WhatsNewDialog({ open, onClose, version, releases, updated }: Pr
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>What's new in Antennarr {version}</DialogTitle>
-          <DialogDescription>{updated ? (several ? 'Antennarr was updated. Here is what changed since you last looked.' : 'Antennarr was updated. Here is what changed.') : 'The release notes for this version.'}</DialogDescription>
+          <DialogTitle>What's new in Yagi {version}</DialogTitle>
+          <DialogDescription>{updated ? (several ? 'Yagi was updated. Here is what changed since you last looked.' : 'Yagi was updated. Here is what changed.') : 'The release notes for this version.'}</DialogDescription>
         </DialogHeader>
 
         <div role="region" aria-label="Release notes" tabIndex={0} className="min-h-0 space-y-6 overflow-y-auto pr-1 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50">

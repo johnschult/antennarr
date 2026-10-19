@@ -1,4 +1,4 @@
-import { Antenna, Cable, Info, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Cable, Info, Pencil, Plus, RadioReceiver, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { DeleteViewerDialog } from '@/components/delete-viewer-dialog'
@@ -28,7 +28,7 @@ function Usage({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
             {several && <span className="w-16 truncate text-xs text-muted-foreground">{deviceTitle(d)}</span>}
             <div className="flex gap-1" aria-hidden="true">
               {Array.from({ length: limit }).map((_, i) => (
-                <Antenna key={i} className={cn('size-4', i < inUse ? 'text-cyan-400' : 'text-muted-foreground/40')} />
+                <RadioReceiver key={i} className={cn('size-4', i < inUse ? 'text-cyan-400' : 'text-muted-foreground/40')} />
               ))}
             </div>
             <span className="text-xs text-muted-foreground tabular-nums">
@@ -192,7 +192,7 @@ export function ViewersPage() {
       <div className="flex items-start gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-900 dark:text-sky-200">
         <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
         <p>
-          <strong>Over a viewer's limit?</strong> Antennarr answers with a 503, the same as a busy tuner does, so media servers handle it cleanly.
+          <strong>Over a viewer's limit?</strong> Yagi answers with a 503, the same as a busy tuner does, so media servers handle it cleanly.
         </p>
       </div>
 

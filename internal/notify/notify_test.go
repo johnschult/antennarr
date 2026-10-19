@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // ---- fakes ----
@@ -132,7 +132,7 @@ type rig struct {
 }
 
 func ntfyChannel(srv *server) access.NotifyChannel {
-	return access.NotifyChannel{ID: "phone", Name: "Phone", Type: access.ChannelNtfy, URL: srv.URL, Topic: "antennarr"}
+	return access.NotifyChannel{ID: "phone", Name: "Phone", Type: access.ChannelNtfy, URL: srv.URL, Topic: "yagi"}
 }
 
 // newRig starts a Notifier with one ntfy channel pointing at a fake server.
@@ -174,13 +174,13 @@ func TestNtfyGetsATopicTitleMessageAndToken(t *testing.T) {
 	r.n.FirmwareFound("antenna", "Living room", "20260326", "Version 20260326 is out.")
 	h := r.srv.next(t)
 	m := decode(t, h)
-	if m["topic"] != "antennarr" || m["title"] != "New firmware for Living room" || m["message"] != "Version 20260326 is out." {
+	if m["topic"] != "yagi" || m["title"] != "New firmware for Living room" || m["message"] != "Version 20260326 is out." {
 		t.Errorf("body = %v", m)
 	}
 	if h.header.Get("Authorization") != "Bearer tk_secret" || h.header.Get("Content-Type") != "application/json" {
 		t.Errorf("headers = %v", h.header)
 	}
-	if !strings.HasPrefix(h.header.Get("User-Agent"), "Antennarr") {
+	if !strings.HasPrefix(h.header.Get("User-Agent"), "Yagi") {
 		t.Errorf("user agent = %q", h.header.Get("User-Agent"))
 	}
 }
@@ -660,7 +660,7 @@ func TestAReleaseIsToldOnceAndANewOneIsToldAgain(t *testing.T) {
 }
 
 func TestARestartDoesNotTellAgain(t *testing.T) {
-	state := filepath.Join(t.TempDir(), "antennarr.notified.json")
+	state := filepath.Join(t.TempDir(), "yagi.notified.json")
 	srv := newServer(t)
 	set := access.Settings{Notifications: &access.Notifications{Channels: []access.NotifyChannel{ntfyChannel(srv)}}}
 	build := func() *Notifier {

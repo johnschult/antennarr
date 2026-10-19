@@ -9,10 +9,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
-const channels = "/antennarr/api/notifications/channels"
+const channels = "/yagi/api/notifications/channels"
 
 // fakeTester stands in for the notifier: it records what it was asked to send a test to.
 type fakeTester struct {
@@ -50,13 +50,13 @@ func notifyEnv(t *testing.T) (*env, *fakeTester) {
 
 func notificationsOf(t *testing.T, e *env) map[string]any {
 	t.Helper()
-	_, v := e.call(t, "GET", "/antennarr/api/state", "")
+	_, v := e.call(t, "GET", "/yagi/api/state", "")
 	return obj(t, obj(t, v)["settings"])["notifications"].(map[string]any)
 }
 
 func addNtfy(t *testing.T, e *env, name, token string) string {
 	t.Helper()
-	body := `{"name":"` + name + `","type":"ntfy","url":"https://ntfy.sh","topic":"antennarr","token":"` + token + `"}`
+	body := `{"name":"` + name + `","type":"ntfy","url":"https://ntfy.sh","topic":"yagi","token":"` + token + `"}`
 	code, v := e.call(t, "POST", channels, body)
 	if code != 201 {
 		t.Fatalf("add: %d %v", code, v)
@@ -93,14 +93,14 @@ func TestChannelsAreShownWithoutTheirSecrets(t *testing.T) {
 	e.call(t, "POST", channels, `{"name":"Pushover","type":"pushover","token":"SECRET_APP","user":"SECRET_USER"}`)
 	e.call(t, "POST", channels, `{"name":"Discord","type":"webhook","url":"https://discord.com/api/webhooks/123/SECRET_PATH?x=SECRET_QUERY","token":"SECRET_BEARER"}`)
 
-	_, raw := e.call(t, "GET", "/antennarr/api/state", "")
+	_, raw := e.call(t, "GET", "/yagi/api/state", "")
 	b, _ := json.Marshal(raw)
 	for _, s := range []string{"SECRET_TOKEN", "SECRET_APP", "SECRET_USER", "SECRET_PATH", "SECRET_QUERY", "SECRET_BEARER"} {
 		if strings.Contains(string(b), s) {
 			t.Errorf("the state document repeats %q", s)
 		}
 	}
-	_, settings := e.call(t, "GET", "/antennarr/api/settings", "")
+	_, settings := e.call(t, "GET", "/yagi/api/settings", "")
 	b, _ = json.Marshal(settings)
 	for _, s := range []string{"SECRET_TOKEN", "SECRET_APP", "SECRET_USER", "SECRET_PATH", "SECRET_BEARER"} {
 		if strings.Contains(string(b), s) {
@@ -113,7 +113,7 @@ func TestChannelsAreShownWithoutTheirSecrets(t *testing.T) {
 		t.Fatalf("channels = %v", chs)
 	}
 	ntfy, po, hook := obj(t, chs[0]), obj(t, chs[1]), obj(t, chs[2])
-	if ntfy["url"] != "https://ntfy.sh" || ntfy["topic"] != "antennarr" || ntfy["hasToken"] != true || ntfy["hasUser"] != false {
+	if ntfy["url"] != "https://ntfy.sh" || ntfy["topic"] != "yagi" || ntfy["hasToken"] != true || ntfy["hasUser"] != false {
 		t.Errorf("ntfy = %v", ntfy)
 	}
 	if po["hasToken"] != true || po["hasUser"] != true || po["url"] != nil {
@@ -128,7 +128,7 @@ func TestChannelsAreShownWithoutTheirSecrets(t *testing.T) {
 
 func TestAddingAChannelSavesItWithItsSecretsAndAnswersWithoutThem(t *testing.T) {
 	e, _ := notifyEnv(t)
-	code, v := e.call(t, "POST", channels, `{"name":"  Phone ","type":"ntfy","url":"https://ntfy.sh","topic":"antennarr","token":"tk_SECRET"}`)
+	code, v := e.call(t, "POST", channels, `{"name":"  Phone ","type":"ntfy","url":"https://ntfy.sh","topic":"yagi","token":"tk_SECRET"}`)
 	if code != 201 {
 		t.Fatalf("%d %v", code, v)
 	}
@@ -293,7 +293,7 @@ func TestRemovingAChannel(t *testing.T) {
 
 func TestEventsAreSwitchedThroughTheSettings(t *testing.T) {
 	e, _ := notifyEnv(t)
-	code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"notifyEvents":{"firmware":false,"unknown":true}}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"notifyEvents":{"firmware":false,"unknown":true}}`)
 	if code != 200 {
 		t.Fatalf("%d %v", code, v)
 	}
@@ -302,12 +302,12 @@ func TestEventsAreSwitchedThroughTheSettings(t *testing.T) {
 		t.Errorf("events = %v", ev)
 	}
 	// only what is sent changes
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"notifyEvents":{"tuner":false}}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"notifyEvents":{"tuner":false}}`)
 	ev = obj(t, notificationsOf(t, e)["events"])
 	if ev["firmware"] != false || ev["tuner"] != false || ev["unknown"] != true {
 		t.Errorf("after a second change: %v", ev)
 	}
-	if code, _ := e.call(t, "PATCH", "/antennarr/api/settings", `{"notifyEvents":{"firmwre":false}}`); code != 400 {
+	if code, _ := e.call(t, "PATCH", "/yagi/api/settings", `{"notifyEvents":{"firmwre":false}}`); code != 400 {
 		t.Errorf("a typo was accepted: %d", code)
 	}
 	// and they survive in the file
@@ -321,7 +321,7 @@ func TestWatchingIsOffUntilSwitchedOn(t *testing.T) {
 	if ev := obj(t, notificationsOf(t, e)["events"]); ev["watching"] != false {
 		t.Errorf("by default: %v", ev)
 	}
-	if code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"notifyEvents":{"watching":true}}`); code != 200 {
+	if code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"notifyEvents":{"watching":true}}`); code != 200 {
 		t.Fatalf("%d %v", code, v)
 	}
 	if ev := obj(t, notificationsOf(t, e)["events"]); ev["watching"] != true || ev["viewer"] != true {
@@ -335,7 +335,7 @@ func TestWatchingIsOffUntilSwitchedOn(t *testing.T) {
 func TestSwitchingEventsDoesNotDisturbTheChannels(t *testing.T) {
 	e, _ := notifyEnv(t)
 	addNtfy(t, e, "Phone", "tk_KEEP")
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"notifyEvents":{"viewer":false}}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"notifyEvents":{"viewer":false}}`)
 	if got := saved(t, e).NotifyChannels(); len(got) != 1 || got[0].Token != "tk_KEEP" {
 		t.Errorf("saved = %+v", got)
 	}
@@ -343,7 +343,7 @@ func TestSwitchingEventsDoesNotDisturbTheChannels(t *testing.T) {
 
 // ---- the test button ----
 
-const testURL = "/antennarr/api/notifications/test"
+const testURL = "/yagi/api/notifications/test"
 
 func TestTestingASavedChannelUsesItsSavedSecrets(t *testing.T) {
 	e, ft := notifyEnv(t)
@@ -352,7 +352,7 @@ func TestTestingASavedChannelUsesItsSavedSecrets(t *testing.T) {
 	if code != 200 || obj(t, v)["ok"] != true {
 		t.Fatalf("%d %v", code, v)
 	}
-	if got := ft.last(t); got.ID != id || got.Token != "tk_SAVED" || got.Topic != "antennarr" {
+	if got := ft.last(t); got.ID != id || got.Token != "tk_SAVED" || got.Topic != "yagi" {
 		t.Errorf("tested %+v", got)
 	}
 }
@@ -381,7 +381,7 @@ func TestTestingChangesToASavedChannelKeepsItsSecretAndSavesNothing(t *testing.T
 	if got := ft.last(t); got.ID != id || got.Topic != "edited" || got.URL != "https://ntfy.example.com" || got.Token != "tk_SAVED" {
 		t.Errorf("tested %+v", got)
 	}
-	if got := saved(t, e).NotifyChannels()[0]; got.Topic != "antennarr" {
+	if got := saved(t, e).NotifyChannels()[0]; got.Topic != "yagi" {
 		t.Errorf("the test saved the edit: %+v", got)
 	}
 }
@@ -463,7 +463,7 @@ func TestFirmwareMessagesNeedTheFirmwareCheck(t *testing.T) {
 	settings.FirmwareCheck = &off
 	e := newEnv(t, settings, true)
 	e.api.Notify = &fakeTester{}
-	patch := func(body string) (int, any) { return e.call(t, "PATCH", "/antennarr/api/settings", body) }
+	patch := func(body string) (int, any) { return e.call(t, "PATCH", "/yagi/api/settings", body) }
 
 	if code, v := patch(`{"notifyEvents":{"firmware":true}}`); code != 400 || !strings.Contains(errText(v), "Check for new tuner firmware") {
 		t.Errorf("with the check off: %d %v", code, v)

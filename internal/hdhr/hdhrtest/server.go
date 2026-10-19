@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr"
 )
 
 // Frame is one request the server received.

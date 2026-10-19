@@ -21,10 +21,10 @@ afterEach(() => {
 const path = '/devices/antenna/firmware/upgrade'
 type State = ReturnType<typeof makeState>
 
-const idle = [{ resource: 'tuner0', inUse: false, viaAntennarr: false }]
+const idle = [{ resource: 'tuner0', inUse: false, viaProxy: false }]
 const busy = [
-  { resource: 'tuner0', inUse: true, viaAntennarr: true, channel: '5.1' },
-  { resource: 'tuner1', inUse: true, viaAntennarr: false, channel: '2.1' },
+  { resource: 'tuner0', inUse: true, viaProxy: true, channel: '5.1' },
+  { resource: 'tuner1', inUse: true, viaProxy: false, channel: '2.1' },
 ]
 
 /** A tuner with newer firmware on offer, and (optionally) tuners in use or an install in some phase. */

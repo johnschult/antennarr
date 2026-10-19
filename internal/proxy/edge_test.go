@@ -180,7 +180,7 @@ func TestUnknownUpstreamIs502(t *testing.T) {
 	}
 }
 
-// The tuner must see its own address as Host, not Antennarr's, or firmware
+// The tuner must see its own address as Host, not Yagi's, or firmware
 // that checks Host would reject the request.
 func TestTunerSeesItsOwnHostHeader(t *testing.T) {
 	p := newProxyFor(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

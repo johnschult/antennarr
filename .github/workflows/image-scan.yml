@@ -32,10 +32,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Build the image
-        run: docker build --tag antennarr:scan .
+        run: docker build --tag yagi:scan .
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: antennarr:scan
+          image-ref: yagi:scan
           format: sarif
           output: trivy.sarif
           severity: CRITICAL,HIGH

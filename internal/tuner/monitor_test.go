@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/yagi/internal/discovery"
 )
 
 // fakeHDHR is a tuner whose DeviceID and status.json can be changed mid-test.
@@ -80,10 +80,10 @@ func TestPollGoesOnlineAndReadsSlots(t *testing.T) {
 		t.Fatalf("%d slots, want 4 (system entry must be ignored): %+v", len(s.Slots), s.Slots)
 	}
 	t0, t1, t2, t3 := s.Slots[0], s.Slots[1], s.Slots[2], s.Slots[3]
-	if !t0.InUse || !t0.ViaAntennarr || t0.Channel != "5.1" || t0.ChannelName != "WFRV" || t0.SignalStrength != 88 || t0.BitsPerSecond != 14200000 {
+	if !t0.InUse || !t0.ViaProxy || t0.Channel != "5.1" || t0.ChannelName != "WFRV" || t0.SignalStrength != 88 || t0.BitsPerSecond != 14200000 {
 		t.Errorf("tuner0 = %+v", t0)
 	}
-	if !t1.InUse || t1.ViaAntennarr {
+	if !t1.InUse || t1.ViaProxy {
 		t.Errorf("tuner1 should be in use by someone else: %+v", t1)
 	}
 	if t2.InUse {

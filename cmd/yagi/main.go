@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/discovery"
-	"github.com/johnschult/antennarr/internal/logbuf"
-	"github.com/johnschult/antennarr/internal/server"
-	"github.com/johnschult/antennarr/internal/version"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
+	"github.com/johnschult/yagi/internal/logbuf"
+	"github.com/johnschult/yagi/internal/server"
+	"github.com/johnschult/yagi/internal/version"
 )
 
 // deviceFlags are the command-line way to describe a single device.
@@ -44,14 +44,14 @@ func main() {
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	configPath := flag.String("config", defaultConfigPath, "settings file (devices, viewers, limits); created with defaults if it doesn't exist, reloaded on SIGHUP")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: antennarr [flags]\n       antennarr discover [-wait 3s] [host ...]\n\n"+
-			"With no -tuner, Antennarr looks for HDHomeRun tuners on the network and remembers them in the settings file.\n"+
+		fmt.Fprintf(os.Stderr, "usage: yagi [flags]\n       yagi discover [-wait 3s] [host ...]\n\n"+
+			"With no -tuner, Yagi looks for HDHomeRun tuners on the network and remembers them in the settings file.\n"+
 			"Name a tuner with -tuner or -tuner-id, or declare devices under \"devices\" in the settings file.\n\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 	if *showVersion {
-		fmt.Println("antennarr", version.Get())
+		fmt.Println("yagi", version.Get())
 		return
 	}
 
@@ -67,7 +67,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	settings, savePath, err := loadOrCreateSettings(*configPath, set["config"], log)
+	settings, savePath, err := loadOrCreateSettings(withLegacyConfig(*configPath, set["config"], log), set["config"], log)
 	if err != nil {
 		fail(err)
 	}
@@ -124,8 +124,8 @@ func main() {
 }
 
 // defaultConfigPath is where the settings live when -config isn't given: next
-// to wherever Antennarr is run from. (The Docker image runs from /config.)
-const defaultConfigPath = "antennarr.json"
+// to wherever Yagi is run from. (The Docker image runs from /config.)
+const defaultConfigPath = "yagi.json"
 
 // startupSearch is how long a start with no tuner named looks for one before
 // giving up and starting without.
@@ -137,7 +137,7 @@ const startupSearch = 10 * time.Second
 // kept at.
 //
 // If the file can't be created, a -config the user asked for by name is an
-// error. The default path is not: Antennarr then runs as it always did without
+// error. The default path is not: Yagi then runs as it always did without
 // a file, with edits turned off (savePath is empty), and says so.
 func loadOrCreateSettings(path string, explicit bool, log *slog.Logger) (s access.Settings, savePath string, err error) {
 	s, exists, err := access.LoadSettings(path)
@@ -159,7 +159,7 @@ func loadOrCreateSettings(path string, explicit bool, log *slog.Logger) (s acces
 }
 
 func fail(err error) {
-	fmt.Fprintln(os.Stderr, "antennarr:", err)
+	fmt.Fprintln(os.Stderr, "yagi:", err)
 	os.Exit(2)
 }
 
@@ -223,7 +223,7 @@ func runDiscover(args []string) int {
 
 	devs, err := discovery.Discover(context.Background(), *wait, fs.Args()...)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "antennarr discover:", err)
+		fmt.Fprintln(os.Stderr, "yagi discover:", err)
 		return 1
 	}
 	if len(devs) == 0 {

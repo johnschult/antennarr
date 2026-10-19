@@ -4,7 +4,7 @@
 export type ThemePreference = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
-export const THEME_KEY = 'antennarr-theme'
+export const THEME_KEY = 'yagi-theme'
 export const PREFERENCES: ThemePreference[] = ['light', 'dark', 'system']
 
 export const isPreference = (v: unknown): v is ThemePreference => v === 'light' || v === 'dark' || v === 'system'

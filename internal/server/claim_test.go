@@ -13,8 +13,8 @@ import (
 
 	"log/slog"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/claim"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/claim"
 )
 
 // startFirstRun runs a server from the given settings, saved to a settings file
@@ -32,7 +32,7 @@ func startFirstRun(t *testing.T, s access.Settings, withFile bool) (*Server, *lo
 	ln := ephemeral(t)
 	cfg.Listeners = map[string]net.Listener{"antenna": ln}
 	if withFile {
-		cfg.ConfigPath = filepath.Join(t.TempDir(), "antennarr.json")
+		cfg.ConfigPath = filepath.Join(t.TempDir(), "yagi.json")
 		if err := access.SaveSettings(cfg.ConfigPath, s); err != nil {
 			t.Fatal(err)
 		}
