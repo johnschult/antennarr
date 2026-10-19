@@ -97,6 +97,16 @@ with sync_playwright() as p:
     shot(page, 'tuners')
     ctx.close()
 
+    # Settings, scrolled to the privacy section, where the activity history switch is.
+    ctx = context('dark', height=1100)
+    page = open_page(ctx, '/antennarr/settings', 'text=Keep activity history')
+    time.sleep(0.5)
+    page.get_by_text('Privacy and updates').scroll_into_view_if_needed()
+    time.sleep(0.3)
+    page.evaluate(SHOW_LAN_ADDRESS)
+    shot(page, 'settings')
+    ctx.close()
+
     ctx = context('dark', 390, 844, 2, phone=True)
     page = open_page(ctx, '/antennarr/', '[data-testid="tuner-tile"]')
     time.sleep(2)

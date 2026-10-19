@@ -17,6 +17,8 @@
   </picture>
 </p>
 
+<p align="center"><sub>More pictures are in <a href="docs/web-ui.md">a tour of the web page</a>.</sub></p>
+
 An HDHomeRun's `lineup.json` hands out the tuner's own LAN address, so a media server on another network can't use it
 without firewall tricks on both ends. Antennarr sits in front of the tuner and rewrites that address, so remote
 media servers only ever talk to Antennarr. It also decides who may use the tuner, and how much of it.
@@ -37,26 +39,6 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
 > [!WARNING]
 > **Status: early.** It runs a real FLEX 4K and is tested with the Go race detector and a UI test suite, but it is young software.
 > Expect rough edges, and please read [Security](#security) before exposing it to anything beyond a network you trust.
-
-## Screenshots
-
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/viewers.jpg" alt="The Viewers page: who can use the tuner, from which addresses, and how many tuners each gets"><br><sub><b>Viewers:</b> who can use the tuner, from where, and how many tuners each gets.</sub></td>
-    <td width="50%"><img src="docs/screenshots/setup.jpg" alt="The connect step of adding a viewer, offering this machine's Tailscale and LAN addresses and the steps for the chosen connection"><br><sub><b>Connect guide:</b> a step of adding a viewer. It spots this machine's Tailscale address and writes out the steps with your real addresses.</sub></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/activity.jpg" alt="The Activity page: time watched, the most watched channel, who watched most, a bar for each day and the sessions by day"><br><sub><b>Activity:</b> who watched what, and for how long, for the last 30 days. It can be switched off in Settings.</sub></td>
-    <td width="50%"><img src="docs/screenshots/tuners.jpg" alt="The Tuners page: a tuner's strip of what is on each of its tuners, with Manage, Device and Firmware sections"><br><sub><b>Tuners:</b> what is on each tuner, what the tuner says about itself, a Restart button, and firmware.</sub></td>
-  </tr>
-</table>
-
-<p>
-  <img src="docs/screenshots/phone-live.jpg" alt="The Live page on a phone" width="220">
-  &nbsp;
-  <img src="docs/screenshots/phone-menu.jpg" alt="The navigation menu on a phone" width="220">
-  <br><sub><b>On a phone:</b> the same pages, with a menu and cards instead of wide tables.</sub>
-</p>
 
 ## Quick start
 
@@ -108,6 +90,7 @@ The app shows its version in the footer, linked to the release notes; `antennarr
 
 The full documentation is in [docs/](docs/README.md):
 [getting started](docs/getting-started.md),
+[a tour of the web page](docs/web-ui.md),
 [networking](docs/networking.md) (Tailscale, a VPN, the same network, firewalls),
 [media servers](docs/media-servers.md) (Plex, Jellyfin, Emby),
 [configuration](docs/configuration.md),

@@ -6,6 +6,7 @@ If you haven't read the [project README](../README.md), start there for what it 
 | Page | Read it when |
 |---|---|
 | [Getting started](getting-started.md) | You are installing Antennarr, or opening it for the first time |
+| [A tour of the web page](web-ui.md) | You want to see what each page shows, with pictures |
 | [Networking](networking.md) | You are deciding how a viewer's server will reach yours: Tailscale, a VPN, the same network, or (not recommended) the internet |
 | [Media servers](media-servers.md) | You are adding the tuner in Plex, Jellyfin or Emby |
 | [Configuration](configuration.md) | You want every setting, flag and file explained, and how the limits work |

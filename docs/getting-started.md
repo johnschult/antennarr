@@ -99,6 +99,8 @@ FIRST RUN: nobody is an admin yet. To set up, open one of these links from the d
 
 A *viewer* is a person or a server you share the tuner with. Open **Viewers → Add viewer**. It is a short set of steps: who they are, how their server reaches yours, and what to do in their media server (steps 4, 5 and 6 here). Start by filling in:
 
+<img src="screenshots/viewers.jpg" alt="The Viewers page: who can use the tuner, from which addresses, and how many tuners each gets" width="800">
+
 - **Name:** whoever it is.
 - **Addresses:** the address their media server will connect *from*, as your Antennarr sees it. Single addresses (`100.64.0.7`) or ranges (`10.8.0.0/24`). On Tailscale it is the viewer machine's Tailscale address. [Networking](networking.md) explains how to find it.
 - **Tuners:** how many tuners they may use at once.
@@ -111,6 +113,9 @@ If you lose access to the web page, you can always get back in by one of these:
 - **Turn on Sign in with Plex** (*Settings → Access*) while you still have access, then add your Plex account. After that you can open the page from any address that can reach the port. See [Security](security.md).
 
 ## 5. Point a media server at it
+
+<img src="screenshots/setup.jpg" alt="The connect step of adding a viewer, offering this machine's Tailscale and LAN addresses and the steps for the chosen connection" width="600">
+
 
 Antennarr looks like an ordinary HDHomeRun at `<address>:<port>`. The Add viewer steps write this out for you, with your real addresses filled in; for a viewer you have already added, use **Connection steps** on their row on the Viewers page.
 For the full walk-through, see [Media servers](media-servers.md).
