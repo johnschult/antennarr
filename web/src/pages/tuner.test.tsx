@@ -85,18 +85,24 @@ describe('the overview', () => {
   it('shows what we know about the tuner, and links what has details on another tab', () => {
     overview()
     const facts = screen.getByText('DeviceID').closest('dl')!
-    for (const text of ['Steve FLEX 4K', 'HDFX-4K', '10ABCC87', '192.168.1.132', '4']) {
+    for (const text of ['Steve FLEX 4K', 'HDFX-4K', '10ABCC87', '192.168.1.132']) {
       expect(within(facts).getByText(text)).toBeInTheDocument()
     }
-    expect(within(facts).getByText('Online')).toBeInTheDocument()
+    // how it is now comes first, above the tuners and the details
+    const statusEl = screen.getByTestId('status')
+    const status = within(statusEl)
+    expect(status.getByText('Online')).toBeInTheDocument()
+    expect(status.getByText('4')).toBeInTheDocument()
+    expect(status.getByText(/Last seen/)).toBeInTheDocument()
+    expect(statusEl.compareDocumentPosition(facts as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // the device's details are on the Device tab, and its name and port are settings
     for (const text of ['Steve FLEX 4K', 'HDFX-4K', '10ABCC87', '192.168.1.132']) {
       expect(within(facts).getByRole('link', { name: text })).toHaveAttribute('href', '/tuner/antenna/device')
     }
     expect(within(facts).getByRole('link', { name: '5004' })).toHaveAttribute('href', '/tuner/antenna/settings')
     // how many tuners it has and when it was last seen have nowhere else to go
-    expect(within(facts).queryByRole('link', { name: '4' })).not.toBeInTheDocument()
-    expect(within(facts).queryByRole('link', { name: /ago|just now/ })).not.toBeInTheDocument()
+    expect(status.queryByRole('link', { name: '4' })).not.toBeInTheDocument()
+    expect(status.queryByRole('link', { name: /ago|just now/ })).not.toBeInTheDocument()
   })
 
   it('has a Name only when you gave one, and links it to Settings, where it is changed', () => {

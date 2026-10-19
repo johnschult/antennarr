@@ -81,7 +81,7 @@ describe('Channels', () => {
     await screen.findAllByTestId('channel')
     const r = row('Locked')
     expect(within(r).getByText('not available to this tuner')).toBeInTheDocument()
-    for (const b of within(r).getAllByRole('button')) expect(b).toBeDisabled()
+    for (const b of within(r).getAllByRole('button', { name: /^(?!About)/ })) expect(b).toBeDisabled() // reading about it is still fine
   })
 
   it('filters by state', async () => {
@@ -218,6 +218,23 @@ describe('changing several at once', () => {
     await user.click(bar().getByRole('button', { name: 'Clear' }))
     expect(pick('WSB-HD')).not.toBeChecked()
     expect(screen.queryByRole('group', { name: 'Change the selected channels' })).not.toBeInTheDocument()
+  })
+})
+
+describe('about a channel', () => {
+  it('has an info button before the name that opens a dialog with its name and number', async () => {
+    show(doc())
+    await screen.findAllByTestId('channel')
+    const user = userEvent.setup()
+    const r = row('WSB-HD')
+    const button = within(r).getByRole('button', { name: 'About 2.1 WSB-HD' })
+    expect(button.compareDocumentPosition(within(r).getByText('WSB-HD')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy() // before the name
+    await user.click(button)
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('WSB-HD')).toBeInTheDocument()
+    expect(within(dialog).getByText('Channel 2.1')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })
 

@@ -67,17 +67,18 @@ function SlotCell({ s, device }: { s: Slot; device: DeviceState }) {
 /** The tabs, as links, so each has an address that can be opened, shared and gone back to. */
 function TunerTabs({ device, current }: { device: DeviceState; current: TunerTab }) {
   return (
-    <nav aria-label="Sections of this tuner" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <ul className="flex w-max gap-1 border-b border-border">
+    <nav aria-label="Sections of this tuner" className="border-b border-border">
+      {/* On a phone the five share the width, each with its icon over its name, so nothing scrolls. */}
+      <ul className="flex gap-1">
         {TUNER_TABS.map((t) => {
           const active = t.id === current
           return (
-            <li key={t.id}>
+            <li key={t.id} className="min-w-0 flex-1 sm:flex-none">
               <Link
                 to={tunerPath(device.name, t.id)}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  '-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  '-mb-px flex flex-col items-center gap-0.5 border-b-2 px-1 py-2 text-xs outline-none sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm focus-visible:ring-2 focus-visible:ring-ring',
                   active ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -92,12 +93,12 @@ function TunerTabs({ device, current }: { device: DeviceState; current: TunerTab
   )
 }
 
-/** A fact on the Overview. Where the tuner's page has its details, the value goes there. */
+/** A fact about the tuner, as a row: what it is on the left, its value on the right. Where the tuner's page has its details, the value goes there. */
 function Fact({ label, value, to }: { label: string; value: string; to?: string }) {
   return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 font-mono text-[13px] font-medium">
+    <div className="flex items-baseline justify-between gap-6 px-4 py-2.5">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 truncate text-right font-mono text-[13px] font-medium">
         {to ? (
           <Link to={to} className="underline-offset-2 hover:underline" title="Details">
             {value}
@@ -149,34 +150,28 @@ function Overview({ device }: { device: DeviceState }) {
   const toSettings = tunerPath(device.name, 'settings')
   return (
     <div className="space-y-5">
-      <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-        {device.label && <Fact label="Name" value={device.label} to={toSettings} />}
-        <Fact label="Device" value={tuner.friendlyName ?? 'Unknown'} to={toDevice} />
-        <Fact label="Model" value={tuner.model ?? 'Unknown'} to={toDevice} />
-        <Fact label="DeviceID" value={tuner.id || 'Not yet seen'} to={toDevice} />
-        <Fact label="Address" value={tuner.baseURL.replace(/^https?:\/\//, '')} to={toDevice} />
-        <Fact label="Port" value={port} to={toSettings} />
-        <Fact label="Tuners" value={String(tuner.tunerCount)} />
-        <Fact label="Last seen" value={timeAgo(tuner.lastSeen)} />
-        <div>
-          <dt className="text-xs text-muted-foreground">Status</dt>
-          <dd className="mt-0.5">
-            {tuner.updating ? (
-              <Link to={tunerPath(device.name, 'firmware')}>
-                <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Updating firmware…</Badge>
-              </Link>
-            ) : tuner.restarting ? (
-              <Link to={toDevice}>
-                <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Restarting…</Badge>
-              </Link>
-            ) : tuner.online ? (
-              <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Online</Badge>
-            ) : (
-              <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>
-            )}
-          </dd>
-        </div>
-      </dl>
+      {/* How it is right now, first: whether it is up, when it was last heard from, and how many tuners it has. */}
+      <div data-testid="status" className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border border-border bg-card/70 px-4 py-3 text-sm">
+        {tuner.updating ? (
+          <Link to={tunerPath(device.name, 'firmware')}>
+            <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Updating firmware…</Badge>
+          </Link>
+        ) : tuner.restarting ? (
+          <Link to={toDevice}>
+            <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Restarting…</Badge>
+          </Link>
+        ) : tuner.online ? (
+          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Online</Badge>
+        ) : (
+          <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>
+        )}
+        <span className="text-muted-foreground">
+          Last seen <span className="font-medium text-foreground">{timeAgo(tuner.lastSeen)}</span>
+        </span>
+        <span className="text-muted-foreground">
+          <span className="font-medium text-foreground">{tuner.tunerCount}</span> {tuner.tunerCount === 1 ? 'tuner' : 'tuners'}
+        </span>
+      </div>
 
       {tuner.slots.length === 0 ? (
         <p className="text-sm text-muted-foreground">No tuner data yet.</p>
@@ -189,6 +184,18 @@ function Overview({ device }: { device: DeviceState }) {
       )}
 
       <FirmwareLine device={device} />
+
+      <section aria-label="About this tuner" className="space-y-2">
+        <h2 className="px-1 text-sm font-semibold">About this tuner</h2>
+        <dl className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card/70">
+          {device.label && <Fact label="Name" value={device.label} to={toSettings} />}
+          <Fact label="Device" value={tuner.friendlyName ?? 'Unknown'} to={toDevice} />
+          <Fact label="Model" value={tuner.model ?? 'Unknown'} to={toDevice} />
+          <Fact label="DeviceID" value={tuner.id || 'Not yet seen'} to={toDevice} />
+          <Fact label="Address" value={tuner.baseURL.replace(/^https?:\/\//, '')} to={toDevice} />
+          <Fact label="Port" value={port} to={toSettings} />
+        </dl>
+      </section>
     </div>
   )
 }
@@ -278,18 +285,21 @@ export function TunerPage() {
 
       <TunerTabs device={device} current={current} />
 
-      {current === 'overview' && <Overview device={device} />}
-      {current === 'channels' && <ChannelsPanel device={device} />}
-      {current === 'device' && (
-        <div className="space-y-3">
-          <DevicePanel device={device} />
-          <a href={device.tuner.baseURL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-            Open the tuner's own page <ExternalLink aria-hidden className="size-3" />
-          </a>
-        </div>
-      )}
-      {current === 'firmware' && <FirmwareSection device={device} />}
-      {current === 'settings' && <Settings device={device} onRemove={() => setRemoving(device)} />}
+      {/* Rows that are a label and a control read badly stretched across a wide screen, so every tab is as wide as the Settings page. */}
+      <div className="max-w-3xl">
+        {current === 'overview' && <Overview device={device} />}
+        {current === 'channels' && <ChannelsPanel device={device} />}
+        {current === 'device' && (
+          <div className="space-y-3">
+            <DevicePanel device={device} />
+            <a href={device.tuner.baseURL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+              Open the tuner's own page <ExternalLink aria-hidden className="size-3" />
+            </a>
+          </div>
+        )}
+        {current === 'firmware' && <FirmwareSection device={device} />}
+        {current === 'settings' && <Settings device={device} onRemove={() => setRemoving(device)} />}
+      </div>
       <RemoveTunerDialog device={removing} onClose={() => setRemoving(null)} />
     </div>
   )
