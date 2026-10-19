@@ -91,7 +91,7 @@ func (c *Conn) Upgrade(ctx context.Context, image []byte, progress func(sent, to
 // rawGet and rawSet are for the steps that ignore the answer. The lock is already held.
 func (c *Conn) rawGet(name string) {
 	if c.send(TypeGetSetReq, AppendTLV(nil, TagGetSetName, cstr(name))) == nil {
-		c.recv(TypeGetSetRpy, ReplyTimeout)
+		_, _ = c.recv(TypeGetSetRpy, ReplyTimeout) // the reply is not used: this only sends the request libhdhomerun sends
 	}
 }
 
@@ -99,7 +99,7 @@ func (c *Conn) rawSet(name, value string) {
 	p := AppendTLV(nil, TagGetSetName, cstr(name))
 	p = AppendTLV(p, TagGetSetValue, cstr(value))
 	if c.send(TypeGetSetReq, p) == nil {
-		c.recv(TypeGetSetRpy, ReplyTimeout)
+		_, _ = c.recv(TypeGetSetRpy, ReplyTimeout) // the reply is not used: this only sends the request libhdhomerun sends
 	}
 }
 

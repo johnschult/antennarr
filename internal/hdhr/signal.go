@@ -120,8 +120,9 @@ func (c *Conn) TestSignal(ctx context.Context, tuner int, vchannel string, o Tes
 	defer func() {
 		rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 		defer cancel()
-		c.SetKeyed(rctx, name("channel"), "none", key)
-		c.SetKeyed(rctx, name("lockkey"), "none", key)
+		// Best effort: if the tuner does not answer there is nothing more to be done from here.
+		_, _ = c.SetKeyed(rctx, name("channel"), "none", key)
+		_, _ = c.SetKeyed(rctx, name("lockkey"), "none", key)
 	}()
 
 	if _, err := c.SetKeyed(ctx, name("vchannel"), vchannel, key); err != nil {

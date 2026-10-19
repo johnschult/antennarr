@@ -41,8 +41,7 @@ func TestSettingsReportTheGuideSwitch(t *testing.T) {
 func TestSwitchingTheGuideOnKicksTheService(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	hits := make(chan struct{}, 4)
-	var sd *httptest.Server
-	sd = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	sd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hits <- struct{}{}
 		body, _ := os.ReadFile("../guide/testdata/xmltv.xml")
 		w.Write(body)

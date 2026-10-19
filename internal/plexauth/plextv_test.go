@@ -16,14 +16,13 @@ import (
 // and lets a test play the part of the person signing in.
 type fakePlexTV struct {
 	*httptest.Server
-	mu       sync.Mutex
-	nextID   int64
-	pins     map[int64]*fakePin
-	users    map[string]fakeUser // by token
-	clientID string              // every request must carry the same one
-	calls    map[string]int
-	fail     bool // answer 500 to everything
-	seenIDs  map[string]bool
+	mu      sync.Mutex
+	nextID  int64
+	pins    map[int64]*fakePin
+	users   map[string]fakeUser // by token
+	calls   map[string]int
+	fail    bool // answer 500 to everything
+	seenIDs map[string]bool
 }
 
 type fakePin struct {

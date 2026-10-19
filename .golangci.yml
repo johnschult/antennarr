@@ -1,0 +1,47 @@
+# golangci-lint, run in CI (.github/workflows/ci.yml). The default set of linters, with a few things said
+# on purpose below. Run it locally with: golangci-lint run ./...
+version: "2"
+
+linters:
+  default: standard
+  settings:
+    errcheck:
+      # Closing something that is being thrown away, or that has been read to the end, has nothing to do about
+      # a failure. A failed write is checked.
+      exclude-functions:
+        - (net.Listener).Close
+        - (net.Conn).Close
+        - (net.PacketConn).Close
+        - (io.ReadCloser).Close
+        - (io.Closer).Close
+        - (io/fs.File).Close
+        - (*os.File).Close
+        - (*github.com/johnschult/antennarr/internal/hdhr.Conn).Close
+        # The deadline of a connection that is about to be used: if it can't be set, the use fails and says so.
+        - (net.Conn).SetReadDeadline
+        - (net.Conn).SetWriteDeadline
+        # Removing a temporary file that a rename has probably already taken away.
+        - os.Remove
+        # Writing a web page or a reply to a person who may have gone: nothing to do about it.
+        - fmt.Fprintf
+        - io.WriteString
+        - io.Copy
+    staticcheck:
+      checks:
+        - all
+        # Error strings are sentences that people read in the web page (a tuner that has not come back, a name
+        # with its capital letter), so they may be capitalized or end in a full stop.
+        - -ST1005
+        # Selecting through an embedded field is sometimes clearer about where a name comes from.
+        - -QF1008
+  exclusions:
+    rules:
+      # In a test, a failure to check is the test failing for another reason, which it will say.
+      - path: _test\.go
+        linters:
+          - errcheck
+      # The fake tuner and the fake lineup server that tests (and the demo) talk to: a reply that doesn't get
+      # through is the test failing for another reason.
+      - path: (hdhrtest|linetest)/
+        linters:
+          - errcheck

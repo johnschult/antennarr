@@ -210,7 +210,7 @@ func (s *Server) serveUDP() {
 			continue
 		}
 		var id uint32
-		fmt.Sscanf(s.opts.DeviceID, "%X", &id)
+		_, _ = fmt.Sscanf(s.opts.DeviceID, "%X", &id)
 		p := hdhr.AppendTLV(nil, hdhr.TagDeviceType, binary.BigEndian.AppendUint32(nil, 1))
 		p = hdhr.AppendTLV(p, hdhr.TagDeviceID, binary.BigEndian.AppendUint32(nil, id))
 		p = hdhr.AppendTLV(p, hdhr.TagTunerCount, []byte{byte(s.opts.Tuners)})

@@ -223,7 +223,7 @@ func (p *Policy) Update(s Settings) error {
 func (p *Policy) Settings() Settings {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return p.cfg.Settings.Clone()
+	return p.cfg.Clone()
 }
 
 // Active lists streams in progress on every device, oldest first.
@@ -310,7 +310,7 @@ func PrivateAddr(ip netip.Addr) bool { return privateAddr(ip) }
 func (p *Policy) HasAdmin() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return len(p.cfg.admin) > 0 || (p.cfg.Settings.PlexEnabled() && len(p.cfg.Plex.Admins) > 0)
+	return len(p.cfg.admin) > 0 || (p.cfg.PlexEnabled() && len(p.cfg.Plex.Admins) > 0)
 }
 
 func notAllowed() error {
@@ -494,7 +494,7 @@ func (p *Policy) ViewerStatuses() []ViewerStatus {
 	defer p.mu.Unlock()
 	out := make([]ViewerStatus, 0, len(p.cfg.viewers))
 	for _, v := range p.cfg.viewers {
-		vs := ViewerStatus{Viewer: v.Viewer.clone(), InUseByDevice: map[string]int{}}
+		vs := ViewerStatus{Viewer: v.clone(), InUseByDevice: map[string]int{}}
 		for _, a := range p.active {
 			if a.Viewer == v.Name {
 				vs.InUse++
