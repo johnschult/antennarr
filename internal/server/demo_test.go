@@ -3,10 +3,14 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"log/slog"
 	"math"
@@ -15,6 +19,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -62,6 +67,27 @@ func demoChannels(logos string) []demoChannel {
 		}
 	}
 	return chs
+}
+
+// demoPoster is a made-up 16:9 picture for a program (a diagonal wash of two colors chosen from its name),
+// standing in for the stills SiliconDust's guide carries.
+func demoPoster(name string) []byte {
+	h := 0
+	for _, c := range name {
+		h = h*31 + int(c)
+	}
+	a := color.RGBA{uint8(40 + h%160), uint8(60 + (h/7)%140), uint8(120 + (h/13)%120), 255}
+	b := color.RGBA{uint8(200 - (h/3)%120), uint8(120 + (h/11)%100), uint8(60 + (h/5)%100), 255}
+	img := image.NewRGBA(image.Rect(0, 0, 480, 270))
+	for y := 0; y < 270; y++ {
+		for x := 0; x < 480; x++ {
+			t := float64(x+y) / 750
+			img.Set(x, y, color.RGBA{uint8(float64(a.R)*(1-t) + float64(b.R)*t), uint8(float64(a.G)*(1-t) + float64(b.G)*t), uint8(float64(a.B)*(1-t) + float64(b.B)*t), 255})
+		}
+	}
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
+	return buf.Bytes()
 }
 
 // wobble varies a bit rate over time, as a real broadcast does.
@@ -226,10 +252,13 @@ func TestDemo(t *testing.T) {
 				if title == "" {
 					title = "Evening News"
 				}
-				xml += `<programme start="` + stamp(-40*time.Minute) + `" stop="` + stamp(80*time.Minute) + fmt.Sprintf(`" channel="c%d"><title>%s</title></programme>`, i, title) + "\n"
+				xml += `<programme start="` + stamp(-40*time.Minute) + `" stop="` + stamp(80*time.Minute) + fmt.Sprintf(`" channel="c%d"><title>%s</title><sub-title>Week 9</sub-title><desc>The second half of a big game, with the teams trading the lead as the clock runs down. Pre-game and post-game coverage follow.</desc><category>Sports</category><icon src="https://img.hdhomerun.com/titles/DEMO%d.png" width="480" height="270"/><episode-num system="onscreen">S12E09</episode-num></programme>`, i, title, i) + "\n"
 			}
 			xml += `</tv>`
 			io.WriteString(w, strings.ReplaceAll(xml, "https://img.hdhomerun.com", base))
+		case strings.HasPrefix(r.URL.Path, "/titles/"):
+			w.Header().Set("Content-Type", "image/png")
+			w.Write(demoPoster(path.Base(r.URL.Path)))
 		case strings.HasPrefix(r.URL.Path, "/channels/"):
 			b, err := os.ReadFile(filepath.Join(logos, filepath.Base(r.URL.Path)))
 			if err != nil {

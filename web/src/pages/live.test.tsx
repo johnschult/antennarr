@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { makeState, makeTwoDeviceState, updateAvailable } from '@/test/fixtures'
 import { renderWithApp } from '@/test/render'
-import { channelIconUrl } from '@/lib/api'
+import { channelIconUrl, programPosterUrl } from '@/lib/api'
 import { LivePage } from './live'
 
 
@@ -185,5 +185,19 @@ describe('LivePage guide', () => {
     renderWithApp(<LivePage />, s)
     expect(screen.getByRole('img', { name: /logo/ })).toHaveAttribute('src', channelIconUrl('antenna', '5.1'))
     expect(screen.getByTestId('tile-now')).toHaveTextContent('Evening News')
+  })
+
+  it("passes a program's picture on, through Antennarr, only when the guide has one", () => {
+    const s = makeState()
+    s.devices[0].guide = {
+      '5.1': { name: 'WFRV', icon: true, now: { title: 'Evening News', start: '2026-10-17T17:00:00Z', stop: '2026-10-17T18:00:00Z', poster: 'ABC123' } },
+    }
+    const { container, unmount } = renderWithApp(<LivePage />, s)
+    expect(container.querySelector(`img[src="${programPosterUrl('antenna', '5.1', 'ABC123')}"]`)).not.toBeNull()
+    unmount()
+
+    s.devices[0].guide['5.1'].now!.poster = undefined
+    const again = renderWithApp(<LivePage />, s)
+    expect(again.container.querySelector('img[src*="/poster/"]')).toBeNull()
   })
 })

@@ -7,17 +7,28 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
+	"path"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Program is one show on one channel.
 type Program struct {
-	Title    string    `json:"title"`
-	SubTitle string    `json:"subTitle,omitempty"`
-	Start    time.Time `json:"start"`
-	Stop     time.Time `json:"stop"`
+	Title       string    `json:"title"`
+	SubTitle    string    `json:"subTitle,omitempty"`
+	Description string    `json:"description,omitempty"`
+	Category    string    `json:"category,omitempty"` // Series, News, Movie...
+	Episode     string    `json:"episode,omitempty"`  // as shown on screen: S01E32
+	Start       time.Time `json:"start"`
+	Stop        time.Time `json:"stop"`
+	// Poster names the program's picture, for asking for it with Service.Poster: the part of its address
+	// that identifies it. Empty when the guide has none. The address itself stays here, on the server.
+	Poster string `json:"poster,omitempty"`
+	icon   string // an https URL from the feed; never from a request
 }
 
 // Channel is what the guide knows about one channel, found by the number the
@@ -79,11 +90,22 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 			byID[c.ID] = ch
 		case "programme":
 			var p struct {
-				Start    string `xml:"start,attr"`
-				Stop     string `xml:"stop,attr"`
-				Channel  string `xml:"channel,attr"`
-				Title    string `xml:"title"`
-				SubTitle string `xml:"sub-title"`
+				Start    string   `xml:"start,attr"`
+				Stop     string   `xml:"stop,attr"`
+				Channel  string   `xml:"channel,attr"`
+				Title    string   `xml:"title"`
+				SubTitle string   `xml:"sub-title"`
+				Desc     string   `xml:"desc"`
+				Category []string `xml:"category"`
+				Icons    []struct {
+					Src    string `xml:"src,attr"`
+					Width  int    `xml:"width,attr"`
+					Height int    `xml:"height,attr"`
+				} `xml:"icon"`
+				Episodes []struct {
+					System string `xml:"system,attr"`
+					Text   string `xml:",chardata"`
+				} `xml:"episode-num"`
 			}
 			if err := dec.DecodeElement(&p, &el); err != nil {
 				return nil, fmt.Errorf("the guide has a broken program: %w", err)
@@ -93,9 +115,34 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 			if err1 != nil || err2 != nil || !stop.After(start) || !stop.After(now) || strings.TrimSpace(p.Title) == "" {
 				continue
 			}
-			progs[p.Channel] = append(progs[p.Channel], Program{
+			prog := Program{
 				Title: strings.TrimSpace(p.Title), SubTitle: strings.TrimSpace(p.SubTitle), Start: start.UTC(), Stop: stop.UTC(),
-			})
+				Description: limit(strings.Join(strings.Fields(p.Desc), " "), maxDescription),
+			}
+			if len(p.Category) > 0 {
+				prog.Category = limit(strings.TrimSpace(p.Category[0]), 40)
+			}
+			for _, e := range p.Episodes {
+				if e.System == "onscreen" {
+					prog.Episode = limit(strings.TrimSpace(e.Text), 20)
+				}
+			}
+			// The picture to show is the first one that is wider than tall (a still, which suits a wide
+			// tile), else the first there is.
+			for _, ic := range p.Icons {
+				if ic.Src == "" {
+					continue
+				}
+				if prog.icon == "" {
+					prog.icon = ic.Src
+				}
+				if ic.Width > ic.Height {
+					prog.icon = ic.Src
+					break
+				}
+			}
+			prog.Poster = posterToken(prog.icon)
+			progs[p.Channel] = append(progs[p.Channel], prog)
 		}
 	}
 	if !sawRoot {
@@ -124,4 +171,42 @@ func (c *Channel) Now(at time.Time) *Program {
 		}
 	}
 	return nil
+}
+
+// maxDescription is the longest description kept: it rides along in every state update, and a tile only
+// shows a couple of lines of it.
+const maxDescription = 400
+
+// limit cuts s to at most n bytes without splitting a character, marking the cut.
+func limit(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	s = s[:n]
+	for len(s) > 0 && !utf8.ValidString(s) {
+		s = s[:len(s)-1]
+	}
+	return strings.TrimSpace(s) + "…"
+}
+
+// posterRe is what a picture's name may be made of: letters, digits, dash and underscore.
+var posterRe = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
+// posterToken is the part of a picture's address that identifies it (C184032ENGD02 for
+// https://img.hdhomerun.com/titles/C184032ENGD02.jpg), or "" if there isn't one that is plain enough to
+// put in a request. It is only ever used to find the program again, never to build an address.
+func posterToken(icon string) string {
+	if icon == "" {
+		return ""
+	}
+	u, err := url.Parse(icon)
+	if err != nil {
+		return ""
+	}
+	name := path.Base(u.Path)
+	name = strings.TrimSuffix(name, path.Ext(name))
+	if !posterRe.MatchString(name) {
+		return ""
+	}
+	return name
 }

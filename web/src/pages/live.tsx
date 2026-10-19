@@ -4,7 +4,7 @@ import { NoTuners } from '@/components/no-tuners'
 import { TunerTile } from '@/components/tuner-tile'
 import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/hooks/app-context'
-import { channelIconUrl } from '@/lib/api'
+import { channelIconUrl, programPosterUrl } from '@/lib/api'
 import { deviceModel, deviceTitle } from '@/lib/device'
 import { formatMbps, timeAgo } from '@/lib/format'
 import { buildTiles, limitFor } from '@/lib/slots'
@@ -127,8 +127,14 @@ function DeviceSection({ device, tick }: { device: DeviceState; tick: unknown })
             tile={t}
             dimmed={!tuner.online}
             tick={tick}
+            now={new Date(String(tick))}
             guide={t.slot?.channel ? device.guide[t.slot.channel] : undefined}
             iconSrc={t.slot?.channel ? channelIconUrl(device.name, t.slot.channel) : undefined}
+            posterSrc={
+              t.slot?.channel && device.guide[t.slot.channel]?.now?.poster
+                ? programPosterUrl(device.name, t.slot.channel, device.guide[t.slot.channel].now!.poster!)
+                : undefined
+            }
           />
         ))}
       </div>

@@ -126,6 +126,7 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}", map[string]http.HandlerFunc{"PATCH": a.patchDevice, "DELETE": a.deleteDevice}},
 		{"discover", map[string]http.HandlerFunc{"POST": a.discover}},
 		{"devices/{name}/guide/{channel}/icon", map[string]http.HandlerFunc{"GET": a.channelIcon}},
+		{"devices/{name}/guide/{channel}/poster/{token}", map[string]http.HandlerFunc{"GET": a.programPoster}},
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
 		{"devices/{name}/restart", map[string]http.HandlerFunc{"POST": a.restartTuner, "DELETE": a.dismissRestart}},
@@ -848,6 +849,28 @@ func (a *API) channelIcon(w http.ResponseWriter, r *http.Request) {
 	default:
 		w.Header().Set("Content-Type", typ)
 		w.Header().Set("Cache-Control", "private, max-age=86400")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		_, _ = w.Write(body)
+	}
+}
+
+// programPoster serves a program's picture, fetched through Antennarr so the browser never contacts
+// SiliconDust. The token in the path only says which of the channel's programs is meant; the address
+// it is fetched from comes from the guide. The picture at a token never changes, so it may be kept.
+func (a *API) programPoster(w http.ResponseWriter, r *http.Request) {
+	if a.Guide == nil || !a.Pol.Settings().GuideEnabled() {
+		writeErr(w, http.StatusNotFound, "the guide is off")
+		return
+	}
+	body, typ, err := a.Guide.Poster(r.Context(), r.PathValue("name"), r.PathValue("channel"), r.PathValue("token"))
+	switch {
+	case errors.Is(err, guide.ErrNoPoster):
+		writeErr(w, http.StatusNotFound, "no picture for that program")
+	case err != nil:
+		writeErr(w, http.StatusBadGateway, err.Error())
+	default:
+		w.Header().Set("Content-Type", typ)
+		w.Header().Set("Cache-Control", "private, max-age=86400, immutable")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		_, _ = w.Write(body)
 	}

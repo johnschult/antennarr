@@ -141,6 +141,8 @@ Built. Live tiles and the Tuner page's table show each watched channel's logo, a
 - The DeviceAuth stays on the server: it is never in the API output or the logs (tested), and error text from failed fetches has the URL stripped.
 - Logos are fetched by Antennarr, only from `img.hdhomerun.com`, only as plain images (SVG is refused), cached in memory, and served from `/antennarr/api/devices/{name}/guide/{channel}/icon`. The browser never contacts SiliconDust, so the strict CSP stays as it is.
 - The switch is Settings > Updates > Show what's on (default on). While off, nothing is sent to SiliconDust. Turning it on, or a tuner appearing, fetches a guide that has never been read or has gone stale, and nothing else.
+- **What's on, in more detail.** Each program also carries its description (cut to 400 characters), its first category, its on-screen episode number (`S01E32`, never the guide's own program ID) and a picture. The tile draws the picture faded behind its top part, with how far into the program it is and how long is left. In the guide a picture is 16:9 (the feed says 360x270, but the files are 480x270), and every program in a real FLEX 4K's guide had one; a tile still works without.
+- **Pictures** are fetched the same way as logos, only from `img.hdhomerun.com`, only as plain images, up to 1 MB each, with at most 120 kept in memory. A request names a picture by a `token` (the picture's file name from the guide) and Antennarr looks the program up by it, so no address from a request is ever fetched. The picture a token stands for never changes, which is why the browser may keep it.
 - Not done: a full guide page, and serving the guide to viewers (Jellyfin and Channels can read XMLTV; Plex gets its guide from Plex).
 
 ## Notifications

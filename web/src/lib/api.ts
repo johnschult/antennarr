@@ -90,5 +90,9 @@ export const signOut = () => request<unknown>('POST', '/logout', undefined, AUTH
 export const channelIconUrl = (device: string, channel: string) =>
   `${API}/devices/${encodeURIComponent(device)}/guide/${encodeURIComponent(channel)}/icon`
 
+/** Where a program's picture is served from: through Antennarr, never straight from SiliconDust. The token is the guide's `now.poster`. */
+export const programPosterUrl = (device: string, channel: string, token: string) =>
+  `${API}/devices/${encodeURIComponent(device)}/guide/${encodeURIComponent(channel)}/poster/${encodeURIComponent(token)}`
+
 /** This machine's Tailscale and LAN addresses and its firewall, for the setup guide. */
 export const getNetwork = () => request<{ addresses: NetworkAddress[]; firewall?: FirewallInfo }>('GET', '/network')
