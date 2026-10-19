@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { HistorySession } from './types'
-import { channelLabel, dailyBytes, dailyMinutes, dataThroughAntennarr, dayLabel, formatBytes, groupByDay, minutesOf, sessionSpan, spanText, summarize, totalsByChannel, totalsByWatcher, watcherOf } from './activity'
+import { channelLabel, dailyBytes, dailyMinutes, dataThroughAntennarr, dayLabel, formatBytes, groupByDay, minutesOf, receptionByChannel, sessionSpan, spanText, summarize, totalsByChannel, totalsByWatcher, watcherOf } from './activity'
 
 // Built from local dates, so the days mean the same wherever the tests run.
 const local = (y: number, mo: number, d: number, h = 0, mi = 0, s = 0) => new Date(y, mo - 1, d, h, mi, s)
@@ -175,5 +175,29 @@ describe('totals', () => {
     expect(rows.map((r) => r.label)).toEqual(['2.1 WSB-HD', '5.1 WFRV']) // most time first
     expect(rows[0].quality).toBe(70) // (100*1 + 60*3) / 4
     expect(rows[1].quality).toBeUndefined()
+  })
+})
+
+describe('receptionByChannel', () => {
+  const h = (n: number) => local(2026, 10, 19, n)
+
+  it('averages the quality of a channel on one tuner, weighted by how long it was watched', () => {
+    const got = receptionByChannel(
+      [
+        session(h(8), h(9), { quality: 100 }), // one hour at 100
+        session(h(10), h(13), { quality: 60 }), // three hours at 60
+        session(h(14), h(15), { channel: '5.1', channelName: 'WFRV', quality: 40 }),
+        session(h(16), h(17), { device: 'other', quality: 10 }), // another tuner's 2.1 is not this one's
+      ],
+      'antenna',
+    )
+    expect(got.get('2.1')).toBe(70)
+    expect(got.get('5.1')).toBe(40)
+    expect(got.size).toBe(2)
+  })
+
+  it('has nothing for a channel that was never watched, or whose quality the tuner never gave', () => {
+    const got = receptionByChannel([session(h(8), h(9), { quality: undefined }), session(h(10), h(11), { quality: 0 })], 'antenna')
+    expect(got.size).toBe(0)
   })
 })

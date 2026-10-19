@@ -125,6 +125,16 @@ Built. A tuner's Device tab shows what it says about itself: hardware model, fir
 - It reads when the panel opens and when someone presses Refresh, not on a timer, and remembers each answer for 30 seconds.
 - Admin-only, like the rest of the API.
 
+### Channels and scanning
+
+Built. A tuner's Channels tab lists the channels it has found and sets each one to enabled, favorite or disabled, and scans for channels, the same things the tuner's own Channel Lineup page does.
+
+- `internal/lineup` reads `lineup.json?show=found` and `lineup_status.json` and writes through `POST /lineup.post`: `favorite=` with `-`, `+` or `x` and the channel number (normal, favorite, disabled) and `scan=start` (with a source) or `abort`. A channel with no `Enabled` flag is enabled; `Subscribed: 0` is one the tuner has but can't play, which can't be changed.
+- Nothing odd is sent: a channel number has to look like one (digits, perhaps a dot and more), the state has to be one of the three, a scan source has to be one the tuner lists, and the API only changes a channel the tuner itself lists. After a change it asks the tuner again and says so if it didn't take. The viewer proxy still answers `404` for `lineup.post`: this is an admin-only route.
+- A scan takes all of the tuner's tuners, so the API refuses while anything is in use unless the request says `interrupt`, as for a restart. The page asks again every two seconds while a scan runs, for its progress, and says once when it ends.
+- Where a channel has been watched, the page shows its average signal quality from the activity history (30 days, weighted by how long). The tuner's lineup has no signal information; only a tuner that is tuned reports it.
+- Not yet: testing a channel's signal on demand, which would tune a free tuner briefly.
+
 ### Restarting a tuner
 
 Built. A Restart row in the Device panel, behind a confirmation that says what it will cut off.

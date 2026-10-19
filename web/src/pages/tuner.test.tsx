@@ -54,12 +54,13 @@ describe('a tuner’s page', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('has four sections as links with their own addresses, and marks the one you are on', () => {
+  it('has five sections as links with their own addresses, and marks the one you are on', () => {
     overview()
     const nav = screen.getByRole('navigation', { name: 'Sections of this tuner' })
     const links = within(nav).getAllByRole('link')
     expect(links.map((l) => [l.textContent, l.getAttribute('href')])).toEqual([
       ['Overview', '/tuner/antenna'],
+      ['Channels', '/tuner/antenna/channels'],
       ['Device', '/tuner/antenna/device'],
       ['Firmware', '/tuner/antenna/firmware'],
       ['Settings', '/tuner/antenna/settings'],

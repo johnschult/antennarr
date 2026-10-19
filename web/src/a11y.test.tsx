@@ -177,6 +177,35 @@ describe('axe: the tuner pages', () => {
   })
 })
 
+describe('axe: channels', () => {
+  const channels = [
+    { number: '2.1', name: 'WSB-HD', hd: true, video: 'MPEG2', state: 'enabled', subscribed: true },
+    { number: '2.2', name: 'Laff', state: 'favorite', subscribed: true },
+    { number: '10.3', name: 'Old Station', state: 'disabled', subscribed: true },
+    { number: '703', name: 'Locked', state: 'enabled', subscribed: false },
+  ]
+  const scan = { inProgress: false, possible: true, source: 'Antenna', sources: ['Antenna', 'Cable'] }
+
+  it('the Channels tab, and the scan confirmation', async () => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /devices/antenna/channels': () => ({ body: { channels, scan } }) }).fn)
+    const s = makeState()
+    s.devices[0].summary.inUse = 2
+    render(s, '/tuner/antenna/channels')
+    await screen.findAllByTestId('channel')
+    expect(await check()).toHaveNoViolations()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Scan for channels' }))
+    await screen.findByRole('alertdialog')
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('the Channels tab while a scan runs', async () => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /devices/antenna/channels': () => ({ body: { channels, scan: { ...scan, inProgress: true, possible: false, progress: 35, found: 9 } } }) }).fn)
+    render(makeState(), '/tuner/antenna/channels')
+    await screen.findByRole('progressbar')
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
 describe('axe: the Device panel', () => {
   const info = { hardwareModel: 'HDFX-4K', model: 'hdhomerun_dvr_atsc3', version: '20260326', drm: 'SD20230420', mac: '00:18:DD:00:00:01', ip: '192.168.1.50', subnet: '255.255.255.0', channelMaps: ['us-bcast'], modulations: ['atsc3'], readAt: new Date().toISOString(), problems: ['the tuner has no System Menu page to read'] }
 

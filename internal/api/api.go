@@ -23,6 +23,7 @@ import (
 	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/history"
 	"github.com/johnschult/antennarr/internal/httpx"
+	"github.com/johnschult/antennarr/internal/lineup"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/restart"
@@ -87,6 +88,8 @@ type API struct {
 	Upgrade *upgrade.Manager
 	// Restart restarts a tuner when asked; nil means it can't.
 	Restart *restart.Manager
+	// Lineup reads and changes a tuner's channels; nil means it can't.
+	Lineup *lineup.Client
 	// History is who watched what, for the Activity page; nil means there is none.
 	History *history.Recorder
 	// Device reads what a tuner says about itself, for the Device panel; nil means it can't.
@@ -132,6 +135,9 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/guide/{channel}/poster/{token}", map[string]http.HandlerFunc{"GET": a.programPoster}},
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
+		{"devices/{name}/channels", map[string]http.HandlerFunc{"GET": a.getChannels}},
+		{"devices/{name}/channel-scan", map[string]http.HandlerFunc{"POST": a.startScan, "DELETE": a.stopScan}},
+		{"devices/{name}/channels/{number}", map[string]http.HandlerFunc{"PUT": a.setChannel}},
 		{"history", map[string]http.HandlerFunc{"GET": a.getHistory, "DELETE": a.clearHistory}},
 		{"devices/{name}/restart", map[string]http.HandlerFunc{"POST": a.restartTuner, "DELETE": a.dismissRestart}},
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
