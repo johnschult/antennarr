@@ -145,6 +145,15 @@ Built. Live tiles and the Tuner page's table show each watched channel's logo, a
 - **Pictures** are fetched the same way as logos, only from `img.hdhomerun.com`, only as plain images, up to 1 MB each, with at most 120 kept in memory. A request names a picture by a `token` (the picture's file name from the guide) and Antennarr looks the program up by it, so no address from a request is ever fetched. The picture a token stands for never changes, which is why the browser may keep it.
 - Not done: a full guide page, and serving the guide to viewers (Jellyfin and Channels can read XMLTV; Plex gets its guide from Plex).
 
+## Activity
+
+Built. The Activity page shows who watched what and for how long, for the last 7 or 30 days: totals, a bar for each day, and the sessions grouped by day.
+
+- **A session** is one tuner on one channel for one viewer, from when it was first seen to when it was last seen. It is recorded (`internal/history`) by looking at the tuners every poll: a stream through Antennarr is paired with its viewer by channel, as the Live page does, and anything else in use is the owner's own device straight from the tuner, which never passes through Antennarr. A change of channel or viewer starts a new session. Anything shorter than 15 seconds is flicking through channels and isn't kept; the program titles the guide named while it ran are kept in order (up to six).
+- **Kept for 30 days**, one JSON line per session, in `<settings>.history.jsonl` beside the settings file (and in memory only when there isn't one). It is written as each session ends, and a session going when Antennarr stops is closed at that moment; one lost to a crash is lost. Old ones are dropped on start and hourly.
+- **What it stores:** the viewer's name, the channel and the show titles. It does not store a viewer's address; for the owner's own device it stores the address on the owner's own network, so two TVs can be told apart.
+- Not yet: filtering by viewer or tuner, and exporting.
+
 ## Notifications
 
 Built. Settings > Notifications. Messages to ntfy, Pushover or a webhook about firmware, tuner and viewer events, each switched on or off. Off until a channel is added, and nothing is contacted until then.

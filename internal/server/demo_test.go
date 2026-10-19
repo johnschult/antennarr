@@ -29,6 +29,7 @@ import (
 	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
+	"github.com/johnschult/antennarr/internal/history"
 	"github.com/johnschult/antennarr/internal/upgrade"
 )
 
@@ -67,6 +68,40 @@ func demoChannels(logos string) []demoChannel {
 		}
 	}
 	return chs
+}
+
+// seedHistory fills the Activity page with a couple of weeks of made-up watching, written the way the
+// recorder writes it, so the page has something to show before anyone has really watched.
+func seedHistory(t *testing.T, path string, chs []demoChannel) {
+	t.Helper()
+	st := &history.Store{Path: path}
+	os.Remove(path)
+	titles := []string{"Evening News", "College Football", "Sesame Street", "Local Weather", "Movie of the Week", "Nightly Talk"}
+	viewers := []string{"Alex", "Sam", "Jordan"}
+	now := time.Now()
+	n := 0
+	for day := 13; day >= 0; day-- {
+		base := time.Date(now.Year(), now.Month(), now.Day()-day, 0, 0, 0, 0, now.Location())
+		for k := 0; k < 2+(day*7)%3; k++ {
+			n++
+			c := chs[n%len(chs)]
+			start := base.Add(time.Duration(17+(n*3)%5)*time.Hour + time.Duration((n*17)%50)*time.Minute)
+			end := start.Add(time.Duration(25+(n*37)%110) * time.Minute)
+			if end.After(now.Add(-10 * time.Minute)) {
+				continue
+			}
+			sess := history.Session{Device: "antenna", Tuner: fmt.Sprintf("tuner%d", n%4), Channel: c.Number, ChannelName: c.Name, Start: start, End: end, Titles: []string{titles[n%len(titles)]}}
+			if n%3 == 0 {
+				sess.Kind, sess.Client = history.KindLocal, "192.168.68.115"
+			} else {
+				sess.Kind, sess.Viewer = history.KindViewer, viewers[n%len(viewers)]
+			}
+			if n%4 == 0 {
+				sess.Titles = append(sess.Titles, titles[(n+2)%len(titles)])
+			}
+			st.Append(sess)
+		}
+	}
 }
 
 // demoPoster is a made-up 16:9 picture for a program (a diagonal wash of two colors chosen from its name),
@@ -298,6 +333,7 @@ func TestDemo(t *testing.T) {
 	if err := access.SaveSettings(cfgPath, s); err != nil {
 		t.Fatal(err)
 	}
+	seedHistory(t, historyFile(cfgPath), chs)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	cfg := Config{

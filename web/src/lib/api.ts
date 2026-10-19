@@ -1,4 +1,4 @@
-import type { AppState, ChannelInput, DeviceInfo, DeviceInput, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
+import type { AppState, ChannelInput, DeviceInfo, DeviceInput, HistoryDoc, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -75,6 +75,7 @@ export const getDeviceInfo = (device: string, refresh = false) =>
 export const restartTuner = (device: string, interrupt: boolean) =>
   request<void>('POST', `/devices/${encodeURIComponent(device)}/restart`, { interrupt })
 export const dismissRestart = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/restart`)
+export const getHistory = (days: number) => request<HistoryDoc>('GET', `/history?days=${days}`)
 export const dismissUpgrade = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/firmware/upgrade`)
 
 export const removePlexAdmin = (id: number) => request<void>('DELETE', `/plex/admins/${id}`)

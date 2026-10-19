@@ -55,7 +55,7 @@ describe('Shell menu on a phone', () => {
     expect(button()).toHaveAttribute('aria-expanded', 'true')
     expect(button()).toHaveAccessibleName('Close menu')
     const menu = within(screen.getByRole('navigation', { name: 'Main menu' }))
-    expect(menu.getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Settings'])
+    expect(menu.getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Activity', 'Settings'])
   })
 
   it('also holds the connection and sign-out that the phone header has no room for, and nothing about the tuners', async () => {

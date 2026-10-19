@@ -343,3 +343,28 @@ export interface DeviceInfo {
   readAt: string
   problems?: string[]
 }
+
+/** One tuner on one channel for one viewer, from when it began to when it was last seen. */
+export interface HistorySession {
+  device: string
+  tuner: string
+  channel: string
+  channelName?: string
+  kind: 'viewer' | 'remote' | 'local'
+  /** For a viewer. */
+  viewer?: string
+  /** For the owner's own device: its address on their network. */
+  client?: string
+  start: string
+  end: string
+  /** The programs that were on, in order. */
+  titles?: string[]
+  /** Not ended yet: `end` is the last time it was seen. */
+  open?: boolean
+}
+
+export interface HistoryDoc {
+  days: number
+  now: string
+  sessions: HistorySession[]
+}
