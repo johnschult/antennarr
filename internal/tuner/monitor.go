@@ -62,6 +62,9 @@ type State struct {
 	// Updating is true while Antennarr is installing firmware: the tuner is expected to go away and
 	// come back, so that is not an outage.
 	Updating bool `json:"updating"`
+	// Restarting is true while Antennarr is restarting the tuner for someone: it is expected to go away
+	// and come back, which is not an outage either.
+	Restarting bool `json:"restarting"`
 }
 
 // InUse counts slots in use, and how many of those are ours.
@@ -113,7 +116,8 @@ type Monitor struct {
 	fails      int
 	lastSearch time.Time
 	// updatingSince is when SetUpdating(true) was called.
-	updatingSince time.Time
+	updatingSince   time.Time
+	restartingSince time.Time
 	// deviceAuth is the tuner's token for SiliconDust's guide service. It is
 	// kept out of State on purpose, so it can't end up in an API response.
 	deviceAuth string
@@ -152,12 +156,37 @@ func (m *Monitor) SetUpdating(on bool) {
 	}
 }
 
-// updatingLocked says whether the tuner is being updated; m.mu must be held.
+// maxRestarting is the longest a tuner is believed to be restarting on request.
+const maxRestarting = 10 * time.Minute
+
+// SetRestarting is SetUpdating for a restart someone asked for: the tuner is expected to go away and
+// come back, so that is not an outage, and State.Restarting tells the page to say "restarting". It
+// clears itself after maxRestarting.
+func (m *Monitor) SetRestarting(on bool) {
+	m.mu.Lock()
+	m.st.Restarting = on
+	if on {
+		m.restartingSince = time.Now()
+	}
+	m.mu.Unlock()
+	if m.cfg.OnChange != nil {
+		m.cfg.OnChange()
+	}
+	if !on {
+		m.Kick()
+	}
+}
+
+// updatingLocked says whether the tuner is expected to be away (being updated, or restarted on
+// request); m.mu must be held.
 func (m *Monitor) updatingLocked() bool {
 	if m.st.Updating && time.Since(m.updatingSince) > maxUpdating {
 		m.st.Updating = false
 	}
-	return m.st.Updating
+	if m.st.Restarting && time.Since(m.restartingSince) > maxRestarting {
+		m.st.Restarting = false
+	}
+	return m.st.Updating || m.st.Restarting
 }
 
 func NewMonitor(cfg Config) *Monitor {

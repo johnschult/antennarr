@@ -72,6 +72,9 @@ export const installFirmware = (device: string, r: UpgradeRequest) =>
 /** Clear a finished install's result. */
 export const getDeviceInfo = (device: string, refresh = false) =>
   request<DeviceInfo>('GET', `/devices/${encodeURIComponent(device)}/info${refresh ? '?refresh=1' : ''}`)
+export const restartTuner = (device: string, interrupt: boolean) =>
+  request<void>('POST', `/devices/${encodeURIComponent(device)}/restart`, { interrupt })
+export const dismissRestart = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/restart`)
 export const dismissUpgrade = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/firmware/upgrade`)
 
 export const removePlexAdmin = (id: number) => request<void>('DELETE', `/plex/admins/${id}`)

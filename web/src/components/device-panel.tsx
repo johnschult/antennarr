@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, RefreshCw, Server } from 'lucide-react'
+import { Check, Loader2, RefreshCw, RotateCw, Server, X } from 'lucide-react'
 import { useState } from 'react'
-import { Section } from '@/components/settings/section'
+import { RestartDialog } from '@/components/restart-dialog'
+import { Row, Section } from '@/components/settings/section'
 import { Button } from '@/components/ui/button'
+import { useEdits } from '@/hooks/mutations'
 import { getDeviceInfo } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import { firmwareDate, timeAgo } from '@/lib/format'
@@ -21,6 +23,10 @@ export function DevicePanel({ device, showName }: { device: DeviceState; showNam
     retry: false,
     refetchOnWindowFocus: false,
   })
+  const { dismissRestartResult } = useEdits()
+  const [confirming, setConfirming] = useState(false)
+  const rs = device.restart
+  const restarting = rs?.phase === 'restarting' || device.tuner.restarting
   const [refreshing, setRefreshing] = useState(false)
   const refresh = async () => {
     setRefreshing(true)
@@ -89,6 +95,32 @@ export function DevicePanel({ device, showName }: { device: DeviceState; showNam
           </Button>
         </div>
       )}
+
+      {rs && (
+        <Row
+          title={restarting ? 'Restarting' : rs.phase === 'done' ? 'Restarted' : 'The restart failed'}
+          description={
+            <span role={restarting ? 'status' : undefined} className={rs.phase === 'failed' ? 'text-red-700 dark:text-red-300' : undefined}>
+              {restarting ? 'The tuner is restarting. It will be back on its own.' : rs.phase === 'done' ? 'The tuner is back.' : (rs.error ?? 'The restart did not finish.')}
+            </span>
+          }
+        >
+          {restarting && <Loader2 aria-label="Working" className="size-4 animate-spin text-muted-foreground" />}
+          {rs.phase === 'done' && <Check aria-hidden className="size-4 text-emerald-600 dark:text-emerald-400" />}
+          {!restarting && (
+            <Button size="sm" variant="outline" disabled={dismissRestartResult.isPending} onClick={() => dismissRestartResult.mutate({ device: device.name })}>
+              <X data-icon="inline-start" /> Dismiss
+            </Button>
+          )}
+        </Row>
+      )}
+
+      <Row title="Restart" description="Turns the tuner off and on again. It is out of reach for a short while, and whatever is streaming from it is cut off.">
+        <Button size="sm" variant="outline" disabled={!online || restarting || device.tuner.updating} onClick={() => setConfirming(true)}>
+          <RotateCw data-icon="inline-start" /> Restart
+        </Button>
+      </Row>
+      <RestartDialog device={confirming ? device : null} onClose={() => setConfirming(false)} />
     </Section>
   )
 }

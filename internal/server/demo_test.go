@@ -118,7 +118,7 @@ func TestDemo(t *testing.T) {
 		}))
 		defer update.files.Close()
 		var err2 error
-		update.ctrl, err2 = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20250815", VersionAfter: "20260326", RebootFor: 9 * time.Second, ChunkDelay: time.Millisecond})
+		update.ctrl, err2 = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20250815", VersionAfter: "20260326", RebootFor: 9 * time.Second, RestartFor: 8 * time.Second, ChunkDelay: time.Millisecond})
 		if err2 != nil {
 			t.Fatal(err2)
 		}
@@ -273,13 +273,29 @@ func TestDemo(t *testing.T) {
 	// The Device panel reads the tuner's control port and its System Menu page: a fake of each.
 	if !update.on {
 		var err error
-		update.ctrl, err = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20260326"})
+		update.ctrl, err = hdhrtest.New("127.0.0.1:0", hdhrtest.Options{Version: "20260326", RestartFor: 8 * time.Second})
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer update.ctrl.Close()
 		cfg.ControlPort = update.ctrl.Addr()[strings.LastIndex(update.ctrl.Addr(), ":")+1:]
 	}
+	// Restarting the tuner: its web side goes quiet while its control port is down, then comes back.
+	go func() {
+		for done := 0; ; {
+			if update.ctrl.Restarts() > done {
+				done = update.ctrl.Restarts()
+				mu.Lock()
+				fwDown = true
+				mu.Unlock()
+				time.Sleep(9 * time.Second)
+				mu.Lock()
+				fwDown = false
+				mu.Unlock()
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
 	if update.on {
 		cfg.FirmwareURL = update.changelog.URL
 		cfg.FirmwareDownloadBase = update.files.URL

@@ -69,6 +69,18 @@ export interface TunerState {
   events: TunerEvent[]
   /** Antennarr is installing firmware: the tuner is expected to go away and come back, so it is not offline. */
   updating: boolean
+  /** Antennarr is restarting the tuner for someone: it will go away and come back, so it is not offline. */
+  restarting: boolean
+}
+
+export type RestartPhase = 'restarting' | 'done' | 'failed'
+
+/** A tuner restart someone asked for: while it runs, and how it ended. */
+export interface RestartStatus {
+  phase: RestartPhase
+  error?: string
+  started: string
+  finished?: string
 }
 
 export type UpgradePhase = 'downloading' | 'sending' | 'restarting' | 'verifying' | 'done' | 'failed'
@@ -222,6 +234,7 @@ export interface DeviceState {
   firmware: FirmwareStatus
   /** The latest firmware install on this tuner, running or finished. Absent when there has been none. */
   upgrade?: UpgradeStatus
+  restart?: RestartStatus
   /** What the program guide says about each channel being watched, by channel number. */
   guide: Record<string, GuideEntry>
 }

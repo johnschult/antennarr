@@ -24,6 +24,7 @@ import (
 	"github.com/johnschult/antennarr/internal/httpx"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
+	"github.com/johnschult/antennarr/internal/restart"
 	"github.com/johnschult/antennarr/internal/tuner"
 	"github.com/johnschult/antennarr/internal/tunerinfo"
 	"github.com/johnschult/antennarr/internal/upgrade"
@@ -83,6 +84,8 @@ type API struct {
 
 	// Upgrade installs firmware on a tuner; nil means it can't.
 	Upgrade *upgrade.Manager
+	// Restart restarts a tuner when asked; nil means it can't.
+	Restart *restart.Manager
 	// Device reads what a tuner says about itself, for the Device panel; nil means it can't.
 	Device *tunerinfo.Reader
 	// Notify sends test messages to a notification channel; nil means there is no
@@ -125,6 +128,7 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/guide/{channel}/icon", map[string]http.HandlerFunc{"GET": a.channelIcon}},
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
+		{"devices/{name}/restart", map[string]http.HandlerFunc{"POST": a.restartTuner, "DELETE": a.dismissRestart}},
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
 		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
@@ -200,6 +204,8 @@ type DeviceDoc struct {
 	// Upgrade is the latest firmware install on this tuner, while it runs and after: what it is doing, or
 	// how it ended. Absent when there has been none.
 	Upgrade *upgrade.Status `json:"upgrade,omitempty"`
+	// Restart is the latest restart of this tuner someone asked for, while it runs and after.
+	Restart *restart.Status `json:"restart,omitempty"`
 	// Guide is what the program guide says about each channel being watched
 	// right now, by channel number. Empty when the guide is off or unknown.
 	Guide map[string]guide.Entry `json:"guide"`
@@ -237,6 +243,9 @@ func (a *API) deviceDoc(d Device, streams []access.Active) DeviceDoc {
 	}
 	if a.Upgrade != nil {
 		doc.Upgrade = a.Upgrade.Status(d.Name)
+	}
+	if a.Restart != nil {
+		doc.Restart = a.Restart.Status(d.Name)
 	}
 	doc.Guide = map[string]guide.Entry{}
 	if a.Guide != nil && a.Pol.Settings().GuideEnabled() {

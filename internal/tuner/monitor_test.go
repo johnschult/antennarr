@@ -594,3 +594,61 @@ func TestTheUpdatingFlagCannotStickForever(t *testing.T) {
 		t.Errorf("updating=%v events=%+v: a stale flag should not hide an outage", s.Updating, s.Events)
 	}
 }
+
+func TestARestartedTunerGoingAwayIsNotAnOutage(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	defer f.Close()
+	var transitions []bool
+	var mu sync.Mutex
+	m := NewMonitor(Config{
+		BaseURL: f.URL, ID: "10ABCC87", Failures: 2, Find: neverFind, LocalIPs: func() []string { return nil },
+		OnTransition: func(online bool) { mu.Lock(); transitions = append(transitions, online); mu.Unlock() },
+	})
+	m.Poll(context.Background())
+	mu.Lock()
+	transitions = nil
+	mu.Unlock()
+	before := len(m.Snapshot().Events)
+
+	m.SetRestarting(true)
+	if !m.Snapshot().Restarting {
+		t.Fatal("not marked as restarting")
+	}
+	f.mu.Lock()
+	f.id = "SOMEONE1"
+	f.mu.Unlock()
+	for i := 0; i < 4; i++ {
+		m.Poll(context.Background())
+	}
+	f.mu.Lock()
+	f.id = "10ABCC87"
+	f.mu.Unlock()
+	m.Poll(context.Background())
+	m.Poll(context.Background())
+	s := m.Snapshot()
+	if !s.Online || !s.Restarting || len(s.Events) != before {
+		t.Errorf("online=%v restarting=%v events %+v", s.Online, s.Restarting, s.Events[before:])
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(transitions) != 0 {
+		t.Errorf("transitions %v for a restart someone asked for", transitions)
+	}
+}
+
+func TestTheRestartingFlagCannotStickForever(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	m := monitorFor(f.URL, "10ABCC87", neverFind)
+	m.Poll(context.Background())
+	m.SetRestarting(true)
+	m.mu.Lock()
+	m.restartingSince = time.Now().Add(-maxRestarting - time.Minute)
+	m.mu.Unlock()
+	f.Close()
+	m.Poll(context.Background())
+	m.Poll(context.Background())
+	s := m.Snapshot()
+	if s.Restarting || s.Events[len(s.Events)-1].Kind != "err" {
+		t.Errorf("restarting=%v events=%+v: a stale flag should not hide an outage", s.Restarting, s.Events)
+	}
+}
