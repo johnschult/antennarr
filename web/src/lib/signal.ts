@@ -14,3 +14,8 @@ export const toneText: Record<SignalTone, string> = {
   fair: 'text-amber-700 dark:text-amber-300',
   poor: 'text-red-700 dark:text-red-300',
 }
+
+/** How many bars a strength is drawn with: four when it is strong, none when there is next to nothing. */
+export function signalBars(pct: number): 0 | 1 | 2 | 3 | 4 {
+  return pct >= 80 ? 4 : pct >= 60 ? 3 : pct >= 40 ? 2 : pct >= 20 ? 1 : 0
+}

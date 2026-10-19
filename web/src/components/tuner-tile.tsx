@@ -1,11 +1,11 @@
-import { Crown, Globe, House, Network, Signal, Tv } from 'lucide-react'
+import { Crown, Globe, House, Network, Signal, SignalHigh, SignalLow, SignalMedium, SignalZero, Tv } from 'lucide-react'
 import { useState } from 'react'
 import { ChannelLogo } from '@/components/channel-logo'
 import { Sparkline } from '@/components/sparkline'
 import { Badge } from '@/components/ui/badge'
 import { useHistory } from '@/hooks/use-history'
 import { formatMbps } from '@/lib/format'
-import { clampPct, signalTone, toneText } from '@/lib/signal'
+import { clampPct, signalBars, signalTone, toneText } from '@/lib/signal'
 import type { GuideEntry } from '@/lib/types'
 import { ownerLabel, type Tile } from '@/lib/slots'
 import { cn } from '@/lib/utils'
@@ -49,6 +49,22 @@ function SignalSparkline({ quality, tick }: { quality: number; tick: unknown }) 
       <Sparkline data={history} height={28} max={100} label="Signal quality" tone="text-chart-2" />
     </Captioned>
   )
+}
+
+/** The signal strength as bars: more bars, stronger. */
+function SignalBars({ pct }: { pct: number }) {
+  switch (signalBars(pct)) {
+    case 4:
+      return <Signal aria-hidden className="size-3.5" />
+    case 3:
+      return <SignalHigh aria-hidden className="size-3.5" />
+    case 2:
+      return <SignalMedium aria-hidden className="size-3.5" />
+    case 1:
+      return <SignalLow aria-hidden className="size-3.5" />
+    default:
+      return <SignalZero aria-hidden className="size-3.5" />
+  }
 }
 
 /** Where a stream is going, for the footer; the pill already says who it is. */
@@ -214,7 +230,7 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc, posterSr
                 title="Signal strength"
                 className={cn('flex shrink-0 items-center gap-1.5 tabular-nums', toneText[signalTone(clampPct(slot.signalStrength!))])}
               >
-                <Signal aria-hidden className="size-3.5" />
+                <SignalBars pct={clampPct(slot.signalStrength!)} />
                 <span className="sr-only">Signal strength </span>
                 {clampPct(slot.signalStrength!)}%
               </span>
