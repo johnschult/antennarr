@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, EyeOff, Gauge, Info, ListChecks, Loader2, Radar, Sigma, Square, Star } from 'lucide-react'
+import { Check, EyeOff, Gauge, ListChecks, Loader2, Radar, Sigma, Square, Star } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { ChannelAbout } from '@/components/channel-about'
 import { ScanDialog } from '@/components/scan-dialog'
 import { Section } from '@/components/settings/section'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/hooks/app-context'
 import { receptionByChannel } from '@/lib/activity'
@@ -156,7 +156,6 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [scanning, setScanning] = useState(false)
-  const [info, setInfo] = useState<TunerChannel | null>(null)
 
   // Testing a channel's signal: tune a free tuner to it for a few seconds. One at a time, and what each told us is
   // kept until the page is left.
@@ -347,15 +346,7 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
                         onChange={() => toggle(c.number)}
                       />
                       <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{c.number}</span>
-                      <button
-                        type="button"
-                        aria-label={`About ${c.number} ${c.name}`}
-                        title="About this channel"
-                        onClick={() => setInfo(c)}
-                        className="-mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <Info aria-hidden className="size-4" />
-                      </button>
+                      <ChannelAbout channel={c} />
                       <span className={cn('min-w-0 flex-1 truncate', c.state === 'disabled' && 'text-muted-foreground line-through', !c.subscribed && 'text-muted-foreground')}>{c.name || '—'}</span>
                       {!c.subscribed && <span className="shrink-0 text-xs text-muted-foreground">not available to this tuner</span>}
                       {c.hd && <Badge variant="secondary">HD</Badge>}
@@ -408,14 +399,6 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
           </>
         )}
       </div>
-      <Dialog open={info !== null} onOpenChange={(o) => !o && setInfo(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{info?.name || 'Unnamed channel'}</DialogTitle>
-            <DialogDescription>Channel {info?.number}</DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
       <ScanDialog device={scanning ? device : null} scan={q.data?.scan} onClose={() => setScanning(false)} onStart={startScan} />
     </Section>
   )

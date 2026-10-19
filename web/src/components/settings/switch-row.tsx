@@ -36,7 +36,7 @@ export function SwitchRow({
   }
 
   return (
-    <Row title={title} description={description} icon={icon} htmlFor={id} error={error}>
+    <Row title={title} description={description} icon={icon} htmlFor={id} error={error} inline>
       <Switch id={id} checked={checked} onCheckedChange={flip} disabled={disabled || busy} />
     </Row>
   )

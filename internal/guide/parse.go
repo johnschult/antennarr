@@ -38,6 +38,16 @@ type Channel struct {
 	Name     string
 	Icon     string // an https URL from the feed; never from a request
 	Programs []Program
+	About    About
+}
+
+// About is what the guide says about a channel as a whole: the network it carries, the languages its programs
+// are in, and what it mostly shows. All of it comes from the guide's own words and nothing is inferred; whatever
+// the guide doesn't say is left empty.
+type About struct {
+	Network    string   `json:"network,omitempty"`
+	Languages  []string `json:"languages,omitempty"`  // language codes as the guide gives them (en, es), most programs first
+	Categories []string `json:"categories,omitempty"` // what its programs are, most common first
 }
 
 const timeLayout = "20060102150405 -0700"
@@ -50,6 +60,7 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 	dec := xml.NewDecoder(r)
 	byID := map[string]*Channel{}
 	progs := map[string][]Program{}
+	tally := map[string]*tallies{}
 	sawRoot := false
 
 	for {
@@ -87,6 +98,7 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 			if len(c.Names) > 0 {
 				ch.Name = strings.TrimSpace(c.Names[0])
 			}
+			ch.About.Network = networkOf(c.Names, num)
 			byID[c.ID] = ch
 		case "programme":
 			var p struct {
@@ -97,6 +109,7 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 				SubTitle string   `xml:"sub-title"`
 				Desc     string   `xml:"desc"`
 				Category []string `xml:"category"`
+				Language string   `xml:"language"`
 				Icons    []struct {
 					Src    string `xml:"src,attr"`
 					Width  int    `xml:"width,attr"`
@@ -143,6 +156,26 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 			}
 			prog.Poster = posterToken(prog.icon)
 			progs[p.Channel] = append(progs[p.Channel], prog)
+			t := tally[p.Channel]
+			if t == nil {
+				t = &tallies{langs: map[string]int{}, cats: map[string]int{}, shown: map[string]string{}}
+				tally[p.Channel] = t
+			}
+			t.programs++
+			if l := strings.ToLower(strings.TrimSpace(p.Language)); l != "" && len(l) <= 8 {
+				t.langs[l]++
+			}
+			seen := map[string]bool{}
+			for _, c := range p.Category {
+				if c = strings.TrimSpace(c); c != "" && len(c) <= 40 && !seen[strings.ToLower(c)] {
+					k := strings.ToLower(c)
+					seen[k] = true
+					t.cats[k]++
+					if _, ok := t.shown[k]; !ok {
+						t.shown[k] = c
+					}
+				}
+			}
 		}
 	}
 	if !sawRoot {
@@ -154,12 +187,73 @@ func Parse(r io.Reader, now time.Time) (map[string]*Channel, error) {
 		ps := progs[id]
 		sort.Slice(ps, func(i, j int) bool { return ps[i].Start.Before(ps[j].Start) })
 		ch.Programs = ps
+		if t := tally[id]; t != nil {
+			ch.About.Languages, ch.About.Categories = t.languages(), t.categories()
+		}
 		out[ch.Number] = ch
 	}
 	if len(out) == 0 {
 		return nil, errors.New("the guide has no channels")
 	}
 	return out, nil
+}
+
+// tallies counts what a channel's programs say about themselves.
+type tallies struct {
+	programs int
+	langs    map[string]int
+	cats     map[string]int    // by lowercase name, so News and news are one
+	shown    map[string]string // the name as first written
+}
+
+// networkOf is the network a channel carries, when the guide gives one. A channel's names run: call sign, then the
+// number and call sign, the number and name, the number alone, the name, and, only when it differs from the name,
+// the network (ABC for WSB-HD). It is read as the name after the number's own entry, never by position alone.
+func networkOf(names []string, number string) string {
+	for i, n := range names {
+		if strings.TrimSpace(n) == number && i+2 < len(names) {
+			name, network := strings.TrimSpace(names[i+1]), strings.TrimSpace(names[i+2])
+			if network != "" && !strings.EqualFold(name, network) {
+				return limit(network, 60)
+			}
+			return ""
+		}
+	}
+	return ""
+}
+
+// ranked is the keys of counts, most first, then by name, keeping those that pass keep.
+func ranked(counts map[string]int, keep func(k string, n int) bool) []string {
+	var out []string
+	for k, n := range counts {
+		if keep(k, n) {
+			out = append(out, k)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if counts[out[i]] != counts[out[j]] {
+			return counts[out[i]] > counts[out[j]]
+		}
+		return out[i] < out[j]
+	})
+	return out
+}
+
+// languages are those of at least a tenth of the programs, so a stray program doesn't make a channel bilingual.
+func (t *tallies) languages() []string {
+	return ranked(t.langs, func(_ string, n int) bool { return n*10 >= t.programs })
+}
+
+// categories are the five most common, leaving out "Series", which says how a show is made, not what it is about.
+func (t *tallies) categories() []string {
+	c := ranked(t.cats, func(k string, _ int) bool { return !strings.EqualFold(k, "series") })
+	if len(c) > 5 {
+		c = c[:5]
+	}
+	for i, k := range c {
+		c[i] = t.shown[k]
+	}
+	return c
 }
 
 // Now returns what is on at `at`, or nil in a gap in the guide.

@@ -176,7 +176,7 @@ function Overview({ device }: { device: DeviceState }) {
       {tuner.slots.length === 0 ? (
         <p className="text-sm text-muted-foreground">No tuner data yet.</p>
       ) : (
-        <ul aria-label="Tuners" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <ul aria-label="Tuners" className="grid gap-2 sm:grid-cols-2">
           {tuner.slots.map((s) => (
             <SlotCell key={s.resource} s={s} device={device} />
           ))}

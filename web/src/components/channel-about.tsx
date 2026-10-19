@@ -1,0 +1,100 @@
+import { Check, EyeOff, Info, Radio, Star, Tv } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { LanguageFlag } from '@/components/language-flag'
+import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import { categoryLooks } from '@/lib/channel-about'
+import type { ChannelState, TunerChannel } from '@/lib/types'
+import { cn } from '@/lib/utils'
+
+const STATE: Record<ChannelState, { label: string; icon: typeof Check; tone: string }> = {
+  enabled: { label: 'In the lineup', icon: Check, tone: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
+  favorite: { label: 'Favorite', icon: Star, tone: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
+  disabled: { label: 'Disabled', icon: EyeOff, tone: 'bg-red-500/15 text-red-700 dark:text-red-300' },
+}
+
+/** One fact: a picture for what kind of fact it is, and then the fact. */
+function Fact({ icon: Icon, label, children }: { icon: typeof Tv; label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <div className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</div>
+        <div className="mt-0.5 text-sm">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+/** The i beside a channel's name: opens what is known about the channel. */
+export function ChannelAbout({ channel }: { channel: TunerChannel }) {
+  const a = channel.about
+  const state = STATE[channel.state]
+  const looks = categoryLooks(a?.categories)
+  const tuner = [channel.video, channel.audio].filter(Boolean).join(' · ')
+  const hasGuide = !!a && (!!a.network || !!a.languages?.length || looks.length > 0)
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={`About ${channel.number} ${channel.name}`}
+        title="About this channel"
+        className="-mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring data-popup-open:bg-muted data-popup-open:text-foreground"
+      >
+        <Info aria-hidden className="size-4" />
+      </PopoverTrigger>
+      <PopoverContent>
+        <div data-testid="channel-about" className="space-y-4 p-4">
+          <div className="flex items-start gap-3">
+            <span className="rounded-lg bg-muted px-2.5 py-1 font-mono text-xl leading-none font-bold tabular-nums">{channel.number}</span>
+            <div className="min-w-0 flex-1">
+              <PopoverTitle className="truncate">{channel.name || 'Unnamed channel'}</PopoverTitle>
+              <PopoverDescription className="sr-only">What is known about this channel</PopoverDescription>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <Badge className={cn('gap-1', state.tone)}>
+                  <state.icon aria-hidden className="size-3" /> {state.label}
+                </Badge>
+                {channel.hd && <Badge variant="secondary">HD</Badge>}
+                {channel.drm && <Badge variant="secondary">DRM</Badge>}
+              </div>
+            </div>
+          </div>
+
+          {a?.network && (
+            <Fact icon={Tv} label="Network">
+              {a.network}
+            </Fact>
+          )}
+          {!!a?.languages?.length && (
+            <Fact icon={Radio} label={a.languages.length > 1 ? 'Languages' : 'Language'}>
+              <span className="flex flex-wrap gap-x-4 gap-y-1">
+                {a.languages.map((l) => (
+                  <LanguageFlag key={l} code={l} />
+                ))}
+              </span>
+            </Fact>
+          )}
+          {looks.length > 0 && (
+            <div>
+              <div className="mb-1.5 text-[11px] tracking-wide text-muted-foreground uppercase">Mostly shows</div>
+              <ul aria-label="Categories" className="flex flex-wrap gap-1.5">
+                {looks.map((l) => (
+                  <li key={l.label} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 py-1 pr-2.5 pl-2 text-xs">
+                    <l.icon aria-hidden className="size-3.5 text-muted-foreground" />
+                    {l.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {tuner && (
+            <Fact icon={Radio} label="From the tuner">
+              {tuner}
+            </Fact>
+          )}
+          {!hasGuide && <p className="text-sm text-muted-foreground">The program guide doesn't say anything about this channel.</p>}
+        </div>
+        {hasGuide && <div className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">Network, language and categories: SiliconDust program guide</div>}
+      </PopoverContent>
+    </Popover>
+  )
+}

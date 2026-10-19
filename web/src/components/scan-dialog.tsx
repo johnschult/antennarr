@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Select } from '@/components/ui/select'
 import { deviceTitle } from '@/lib/device'
 import type { ChannelScan, DeviceState } from '@/lib/types'
 
@@ -60,18 +61,13 @@ export function ScanDialog({ device, scan, onClose, onStart }: Props) {
             <label htmlFor="scan-source" className="text-sm font-medium">
               Scan
             </label>
-            <select
-              id="scan-source"
-              value={source}
-              onChange={(e) => setChosen(e.target.value)}
-              className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
+            <Select id="scan-source" value={source} onChange={(e) => setChosen(e.target.value)}>
               {sources.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
 

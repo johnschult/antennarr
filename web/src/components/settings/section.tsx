@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 /** A group of related settings: a heading, then one bordered list of rows. */
 export function Section({ title, description, icon: Icon, bare = false, children }: { title: string; description?: string; icon?: LucideIcon; /** On a page that already says what it is, such as a tab: no heading, only the description. */ bare?: boolean; children: ReactNode }) {
@@ -29,6 +30,7 @@ export function Row({
   icon,
   htmlFor,
   error,
+  inline = false,
   children,
 }: {
   title: string
@@ -38,11 +40,13 @@ export function Row({
   /** The id of the control, so the title labels it. */
   htmlFor?: string
   error?: string | null
+  /** The control stays on the title's line, at the right, on a phone too (a switch), instead of wrapping below it. */
+  inline?: boolean
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
-      <div className="flex min-w-0 items-start gap-3 sm:max-w-md">
+    <div className={cn('flex gap-3 px-4 py-3.5 sm:gap-8', inline ? 'items-start justify-between sm:items-center' : 'flex-col sm:flex-row sm:items-center sm:justify-between')}>
+      <div className={cn('flex min-w-0 items-start gap-3 sm:max-w-md', inline && 'flex-1')}>
         {icon && <span className="mt-0.5 shrink-0">{icon}</span>}
         <div className="min-w-0">
           <Label htmlFor={htmlFor} className="font-medium">
@@ -56,7 +60,7 @@ export function Row({
           )}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{children}</div>
+      <div className={cn('flex shrink-0 items-center gap-2', inline && 'pt-0.5 sm:pt-0')}>{children}</div>
     </div>
   )
 }
