@@ -162,9 +162,7 @@ export function TunerTile({ tile, dimmed = false, tick, guide, iconSrc, posterSr
             <div className="mt-1 truncate text-sm">{slot.channelName ?? 'Tuning…'}</div>
           </div>
           {guide?.icon && iconSrc && (
-            <span className="shrink-0 rounded-lg bg-background/60 p-1.5 ring-1 ring-border backdrop-blur">
-              <ChannelLogo key={iconSrc} src={iconSrc} name={slot.channelName ?? guide.name ?? 'Channel'} className="h-8 max-w-20" />
-            </span>
+            <ChannelLogo key={iconSrc} src={iconSrc} name={slot.channelName ?? guide.name ?? 'Channel'} />
           )}
         </div>
       </div>
