@@ -55,7 +55,8 @@ func observe(device string, t tuner.State, streams []access.Active, title func(c
 		if !slot.InUse {
 			continue
 		}
-		o := history.Observation{Device: device, Tuner: slot.Resource, Channel: slot.Channel, ChannelName: slot.ChannelName, Title: title(slot.Channel)}
+		o := history.Observation{Device: device, Tuner: slot.Resource, Channel: slot.Channel, ChannelName: slot.ChannelName, Title: title(slot.Channel),
+			BitsPerSecond: slot.BitsPerSecond, Quality: slot.SignalQuality}
 		if slot.ViaAntennarr {
 			o.Kind = history.KindRemote
 			for j, st := range unmatched {

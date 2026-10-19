@@ -41,7 +41,7 @@ One row for each tuner, opening to a strip of what is on each of its tuners and 
 
 <img src="screenshots/activity.jpg" alt="The Activity page: time watched, the most watched channel, who watched most, a bar for each day and the sessions by day" width="900">
 
-Who watched what, and for how long, for the last 7 or 30 days: the total time, the most watched channel, who watched most, the busiest day, a bar for each day, and the sessions by day with the shows that were on. It is kept for 30 days in a file next to the settings file and goes nowhere else. Switch it off, or clear it, in *Settings → Privacy and updates*; the *Activity* item then leaves the top bar. See [Configuration](configuration.md#files-antennarr-keeps).
+Who watched what, and for how long, for the last 7 or 30 days: the total time, how much data went out to viewers (about, through Antennarr, which is what your upload paid for), the most watched channel, who watched most, the busiest day, a bar for each day, a list by viewer (time and data) and by channel (time and the average signal quality, colored when it is fair or poor), and the sessions by day with the shows that were on. A viewer's name opens their own page: their data and time for each day, what they watched and their sessions. It is kept for 30 days in a file next to the settings file and goes nowhere else. Switch it off, or clear it, in *Settings → Privacy and updates*; the *Activity* item then leaves the top bar. See [Configuration](configuration.md#files-antennarr-keeps).
 
 ## Settings
 

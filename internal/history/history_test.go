@@ -216,3 +216,95 @@ func TestSessionsSinceLeavesOutOlderOnes(t *testing.T) {
 		t.Errorf("a session that was going at since: %+v", got)
 	}
 }
+
+func stream(bps int64, quality int) []Observation {
+	o := obs("tuner0", "2.1", KindViewer, "Alex")
+	o.BitsPerSecond, o.Quality = bps, quality
+	return []Observation{o}
+}
+
+func TestBytesAreTheRateOverTheTimeWatched(t *testing.T) {
+	r := New(nil, t0)
+	r.Observe(at(0), stream(8_000_000, 0))  // 1 MB/s
+	r.Observe(at(10), stream(8_000_000, 0)) // 10 seconds at 1 MB/s
+	r.Observe(at(20), stream(16_000_000, 0))
+	// the second stretch is the average of 8 and 16 Mbps: 12 Mbps, 1.5 MB/s, for 10 seconds
+	r.Observe(at(30), nil)
+	got := r.Sessions(at(-3600))
+	if len(got) != 1 || got[0].Bytes != 10_000_000+15_000_000 {
+		t.Fatalf("bytes = %+v", got)
+	}
+}
+
+func TestAGapTooLongToBelieveIsNotCountedAsWatching(t *testing.T) {
+	r := New(nil, t0)
+	r.Observe(at(0), stream(8_000_000, 0))
+	r.Observe(at(10), stream(8_000_000, 0))
+	r.Observe(at(10+int(maxGap/time.Second)+30), stream(8_000_000, 0)) // Antennarr was away for a minute and a half
+	r.Observe(at(10+int(maxGap/time.Second)+40), stream(8_000_000, 0))
+	r.Observe(at(1000), nil)
+	got := r.Sessions(at(-3600))
+	if len(got) != 1 || got[0].Bytes != 10_000_000+10_000_000 {
+		t.Fatalf("bytes = %+v: the long gap should add nothing", got)
+	}
+}
+
+func TestNoBitrateAddsNoBytes(t *testing.T) {
+	r := New(nil, t0)
+	r.Observe(at(0), stream(0, 0))
+	r.Observe(at(30), stream(0, 0))
+	r.Observe(at(60), nil)
+	if got := r.Sessions(at(-3600)); len(got) != 1 || got[0].Bytes != 0 {
+		t.Fatalf("sessions = %+v", got)
+	}
+}
+
+func TestQualityIsTheAverageOfWhatWasReported(t *testing.T) {
+	r := New(nil, t0)
+	for i, q := range []int{100, 80, 0, 60} { // 0 is "not reported", not zero quality
+		r.Observe(at(i*10), stream(1_000_000, q))
+	}
+	r.Observe(at(100), nil)
+	got := r.Sessions(at(-3600))
+	if len(got) != 1 || got[0].Quality != 80 {
+		t.Fatalf("quality = %+v, want the average of 100, 80 and 60", got)
+	}
+}
+
+func TestQualityIsLeftOutWhenTheTunerNeverSaysAndCappedAtAHundred(t *testing.T) {
+	r := New(nil, t0)
+	r.Observe(at(0), stream(1_000_000, 0))
+	r.Observe(at(30), stream(1_000_000, 0))
+	r.Observe(at(60), nil)
+	if got := r.Sessions(at(-3600)); got[0].Quality != 0 {
+		t.Errorf("quality = %d for a tuner that doesn't say", got[0].Quality)
+	}
+	r.Observe(at(100), stream(1_000_000, 250))
+	r.Observe(at(130), stream(1_000_000, 250))
+	r.Observe(at(160), nil)
+	if got := r.Sessions(at(-3600)); got[1].Quality != 100 {
+		t.Errorf("quality = %d for odd readings", got[1].Quality)
+	}
+}
+
+func TestBytesAndQualitySurviveTheFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "h.jsonl")
+	r := New(&Store{Path: path}, t0)
+	r.Observe(at(0), stream(8_000_000, 90))
+	r.Observe(at(20), stream(8_000_000, 70))
+	r.Observe(at(40), nil)
+	got := New(&Store{Path: path}, at(100)).Sessions(at(-3600))
+	if len(got) != 1 || got[0].Bytes != 20_000_000 || got[0].Quality != 80 {
+		t.Fatalf("after a restart: %+v", got)
+	}
+}
+
+func TestAnOpenSessionHasItsBytesAndQualityToo(t *testing.T) {
+	r := New(nil, t0)
+	r.Observe(at(0), stream(8_000_000, 90))
+	r.Observe(at(20), stream(8_000_000, 90))
+	got := r.Sessions(at(-3600))
+	if len(got) != 1 || !got[0].Open || got[0].Bytes != 20_000_000 || got[0].Quality != 90 {
+		t.Fatalf("open session = %+v", got)
+	}
+}

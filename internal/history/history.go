@@ -39,8 +39,20 @@ type Session struct {
 	End         time.Time `json:"end"`
 	// Titles are the programs that were on, in order, as the guide named them.
 	Titles []string `json:"titles,omitempty"`
+	// Bytes is about how much the tuner sent for it: the bitrate it reported, over the time it was
+	// watched. It is an estimate (the tuner is asked every few seconds), and it is the tuner's output,
+	// which for a viewer is what went out over the sharer's upload.
+	Bytes int64 `json:"bytes,omitempty"`
+	// Quality is the average signal quality, 0 to 100, over the times the tuner reported one. Absent when
+	// it never did.
+	Quality int `json:"quality,omitempty"`
 	// Open is true for a session that has not ended yet (End is the last time it was seen).
 	Open bool `json:"open,omitempty"`
+
+	// what is needed to go on measuring it
+	bps        int64 // the last bitrate seen
+	qualitySum int
+	qualityN   int
 }
 
 // Observation is what the server sees of one tuner that is in use right now.
@@ -53,6 +65,9 @@ type Observation struct {
 	Viewer      string
 	Client      string
 	Title       string // what the guide says is on, if it says
+	// BitsPerSecond and Quality are what the tuner reports for the stream now; zero means it doesn't say.
+	BitsPerSecond int64
+	Quality       int
 }
 
 const (
@@ -63,6 +78,9 @@ const (
 	maxTitles  = 6
 	maxTitle   = 120
 	pruneEvery = time.Hour
+	// maxGap is the longest time between two looks that is counted as watching: after a longer silence
+	// (Antennarr was busy or stopped) the bytes in between are not guessed at.
+	maxGap = time.Minute
 )
 
 // Recorder turns observations into sessions.
@@ -119,17 +137,22 @@ func (r *Recorder) Observe(now time.Time, obs []Observation) {
 		k := key(o)
 		seen[k] = true
 		if s, ok := r.open[k]; ok && same(s, o) {
-			s.End = now
-			if o.ChannelName != "" {
-				s.ChannelName = o.ChannelName
+			if gap := now.Sub(s.End); gap > 0 && gap <= maxGap && o.BitsPerSecond > 0 {
+				// the rate over the gap: the average of the last look and this one
+				rate := o.BitsPerSecond
+				if s.bps > 0 {
+					rate = (s.bps + o.BitsPerSecond) / 2
+				}
+				s.Bytes += int64(float64(rate) / 8 * gap.Seconds())
 			}
-			addTitle(s, o.Title)
+			s.End = now
+			observeStream(s, o)
 			continue
 		} else if ok {
 			r.closeLocked(k) // it changed hands or channels
 		}
 		s := &Session{Device: o.Device, Tuner: o.Tuner, Channel: o.Channel, ChannelName: o.ChannelName, Kind: o.Kind, Viewer: o.Viewer, Client: o.Client, Start: now, End: now}
-		addTitle(s, o.Title)
+		observeStream(s, o)
 		r.open[k] = s
 	}
 	for k := range r.open {
@@ -139,6 +162,21 @@ func (r *Recorder) Observe(now time.Time, obs []Observation) {
 	}
 	if now.Sub(r.lastPrune) >= pruneEvery {
 		r.pruneLocked(now)
+	}
+}
+
+// observeStream takes in what a look at the tuner says about a session: its name, the program on, the
+// bitrate to measure the next stretch with, and the signal quality.
+func observeStream(s *Session, o Observation) {
+	if o.ChannelName != "" {
+		s.ChannelName = o.ChannelName
+	}
+	addTitle(s, o.Title)
+	s.bps = o.BitsPerSecond
+	if o.Quality > 0 {
+		s.qualitySum += min(o.Quality, 100)
+		s.qualityN++
+		s.Quality = (s.qualitySum + s.qualityN/2) / s.qualityN
 	}
 }
 

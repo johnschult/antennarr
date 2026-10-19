@@ -143,7 +143,7 @@ Add host addresses to look at those instead.
 - **The settings file** (the one you pass to `-config`): everything above.
 - **`<settings file name without .json>.sessions.json`**, beside it: who is signed in with Plex, so a restart doesn't sign you out. Only a hash of each session is stored, never the session itself or your Plex token. It is created only if Plex sign-in is used, and only when there is a settings file.
 
-- **`<settings file name without .json>.history.jsonl`**, beside it: who watched what, one line per session (which viewer or device, which tuner, which channel and show, when it began and ended), kept for 30 days, for the Activity page. Without a settings file it is kept in memory and starts over with Antennarr. A viewer's address is not stored; for your own devices, their address on your network is.
+- **`<settings file name without .json>.history.jsonl`**, beside it: who watched what, one line per session (which viewer or device, which tuner, which channel and show, when it began and ended, about how much data it was, and the average signal quality), kept for 30 days, for the Activity page. Without a settings file it is kept in memory and starts over with Antennarr. A viewer's address is not stored; for your own devices, their address on your network is.
 - **`<settings file name without .json>.notified.json`**, beside it: which firmware release each tuner was last messaged about, so a restart doesn't send it again. It is only written when notifications are used and there is a settings file.
 
 Back them up with your other configuration. There is no database, and nothing else is kept. Deleting the history file clears the Activity page. Logs go to standard error (`docker logs antennarr`).

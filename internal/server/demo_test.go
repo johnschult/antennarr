@@ -90,7 +90,9 @@ func seedHistory(t *testing.T, path string, chs []demoChannel) {
 			if end.After(now.Add(-10 * time.Minute)) {
 				continue
 			}
-			sess := history.Session{Device: "antenna", Tuner: fmt.Sprintf("tuner%d", n%4), Channel: c.Number, ChannelName: c.Name, Start: start, End: end, Titles: []string{titles[n%len(titles)]}}
+			sess := history.Session{Device: "antenna", Tuner: fmt.Sprintf("tuner%d", n%4), Channel: c.Number, ChannelName: c.Name, Start: start, End: end, Titles: []string{titles[n%len(titles)]},
+				Bytes:   int64(end.Sub(start).Seconds() * float64(900_000+(n*53_000)%400_000)), // about 7 to 10 Mbps
+				Quality: 62 + (n*13)%38}
 			if n%3 == 0 {
 				sess.Kind, sess.Client = history.KindLocal, "192.168.68.115"
 			} else {
