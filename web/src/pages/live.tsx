@@ -1,4 +1,4 @@
-import { Antenna, Clock, Users } from 'lucide-react'
+import { Clock, RadioReceiver, Users } from 'lucide-react'
 import { Link } from 'react-router'
 import { FirmwareBadge } from '@/components/firmware'
 import { tunerPath } from '@/lib/tuner-tabs'
@@ -174,7 +174,7 @@ function ViewerRow({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
               {several && <span className="text-xs text-muted-foreground">{deviceTitle(d)}</span>}
               <div className="flex gap-1" role="img" aria-label={`${several ? `${deviceTitle(d)}: ` : ''}${inUse} of ${limit} tuners in use`}>
                 {Array.from({ length: limit }).map((_, i) => (
-                  <Antenna key={i} className={cn('size-6', i < inUse ? 'text-cyan-400' : 'text-muted-foreground/40')} />
+                  <RadioReceiver key={i} className={cn('size-6', i < inUse ? 'text-cyan-400' : 'text-muted-foreground/40')} />
                 ))}
               </div>
             </div>

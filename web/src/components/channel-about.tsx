@@ -1,4 +1,4 @@
-import { Antenna, Check, EyeOff, Info, Languages, Star, Tags, Tv } from 'lucide-react'
+import { Check, EyeOff, Info, Languages, Star, Tags, Tv, RadioReceiver } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { LanguageFlag } from '@/components/language-flag'
 import { Badge } from '@/components/ui/badge'
@@ -86,7 +86,7 @@ export function ChannelAbout({ channel }: { channel: TunerChannel }) {
             </Fact>
           )}
           {tuner && (
-            <Fact icon={Antenna} label="From the tuner">
+            <Fact icon={RadioReceiver} label="From the tuner">
               {tuner}
             </Fact>
           )}

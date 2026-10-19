@@ -1,4 +1,4 @@
-/** The Yagi mark: a retro TV with rabbit ears. */
+/** The Yagi mark: an antenna on a dark tile. */
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <img

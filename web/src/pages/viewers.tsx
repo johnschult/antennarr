@@ -1,4 +1,4 @@
-import { Antenna, Cable, Info, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Cable, Info, Pencil, Plus, RadioReceiver, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { DeleteViewerDialog } from '@/components/delete-viewer-dialog'
@@ -28,7 +28,7 @@ function Usage({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
             {several && <span className="w-16 truncate text-xs text-muted-foreground">{deviceTitle(d)}</span>}
             <div className="flex gap-1" aria-hidden="true">
               {Array.from({ length: limit }).map((_, i) => (
-                <Antenna key={i} className={cn('size-4', i < inUse ? 'text-cyan-400' : 'text-muted-foreground/40')} />
+                <RadioReceiver key={i} className={cn('size-4', i < inUse ? 'text-cyan-400' : 'text-muted-foreground/40')} />
               ))}
             </div>
             <span className="text-xs text-muted-foreground tabular-nums">

@@ -1,4 +1,4 @@
-import { Antenna, History, Menu, Radio, SlidersHorizontal, Users, X, type LucideIcon } from 'lucide-react'
+import { History, RadioReceiver, Menu, Radio, SlidersHorizontal, Users, X, type LucideIcon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { Banners } from '@/components/banners'
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 const nav: { to: string; label: string; icon: LucideIcon; end?: boolean; needs?: 'history' }[] = [
   { to: '/', label: 'Live', icon: Radio, end: true },
   { to: '/viewers', label: 'Viewers', icon: Users },
-  { to: '/tuner', label: 'Tuners', icon: Antenna },
+  { to: '/tuner', label: 'Tuners', icon: RadioReceiver },
   { to: '/activity', label: 'Activity', icon: History, needs: 'history' },
   { to: '/settings', label: 'Settings', icon: SlidersHorizontal },
 ]
