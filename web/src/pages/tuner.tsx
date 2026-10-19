@@ -42,7 +42,7 @@ const validPort = (text: string) => {
   return text.trim() === '' || !Number.isInteger(n) || n < 1 || n > 65535 ? 'Enter a port from 1 to 65535.' : null
 }
 
-const usedBy = (s: Slot) => (s.viaAntennarr ? 'Antennarr' : (s.targetIP ?? 'Local device'))
+const usedBy = (s: Slot) => (s.viaProxy ? 'Yagi' : (s.targetIP ?? 'Local device'))
 const signalOf = (s: Slot) => (s.signalStrength !== undefined ? `${s.signalStrength}% / ${s.signalQuality ?? 0}%` : null)
 
 /** One tuner's slot: idle, or the channel on it, who has it, its signal and its rate. */
@@ -187,7 +187,7 @@ function Settings({ device, onRemove }: { device: DeviceState; onRemove: () => v
   const { device: edit } = useEdits()
   const port = device.listen.slice(device.listen.lastIndexOf(':') + 1)
   return (
-    <Section bare icon={SlidersHorizontal} title="Settings" description="How Antennarr treats this tuner.">
+    <Section bare icon={SlidersHorizontal} title="Settings" description="How Yagi treats this tuner.">
       <EditRow
         key={`label-${device.name}-${device.label ?? ''}`}
         kind="text"

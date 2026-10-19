@@ -63,7 +63,7 @@ export function ConnectStep({ g }: { g: ConnectGuide }) {
         />
         {g.transport === 'tailscale' && network.isSuccess && !tailscale && (
           <p role="status" className="text-xs text-muted-foreground">
-            Tailscale wasn't found running on this machine. If Antennarr runs in a container it can't see the host's network, so use the steps below to find the address.
+            Tailscale wasn't found running on this machine. If Yagi runs in a container it can't see the host's network, so use the steps below to find the address.
           </p>
         )}
         {/* Wait for the check: until it finishes we can't tell which Tailscale steps apply. */}
@@ -80,13 +80,13 @@ export function ConnectStep({ g }: { g: ConnectGuide }) {
         {g.detected && g.detectedTool && (
           <p role="status" className="text-xs text-muted-foreground">
             {g.detected.active
-              ? `Antennarr found ${g.detectedTool} switched on here.`
-              : `${g.detectedTool} looks to be in use here, but Antennarr can't see its rules, so it can't tell whether port ${g.port} is blocked.`}
+              ? `Yagi found ${g.detectedTool} switched on here.`
+              : `${g.detectedTool} looks to be in use here, but Yagi can't see its rules, so it can't tell whether port ${g.port} is blocked.`}
           </p>
         )}
         {g.hasFirewall && (
           <>
-            <p className="text-xs text-muted-foreground">Antennarr can't read your firewall's rules. These add an allow for the viewer's address, and only that.</p>
+            <p className="text-xs text-muted-foreground">Yagi can't read your firewall's rules. These add an allow for the viewer's address, and only that.</p>
             <Choice label="Firewall" value={g.firewall} onChange={g.setFirewallPick} options={FIREWALLS} />
             {g.rules.add.length === 0 ? (
               <p className="text-sm text-muted-foreground">This viewer has no addresses to allow.</p>

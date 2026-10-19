@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { compareVersions, isRelease, parseChangelog, releasesSince, type Release } from '@/lib/changelog'
 
 /** Where this browser remembers the last release whose notes it showed. */
-export const SEEN_KEY = 'antennarr.lastSeenVersion'
+export const SEEN_KEY = 'yagi.lastSeenVersion'
 
 /** Reads the release notes. They are bundled into the page from CHANGELOG.md, as their own file that is only fetched when needed. */
 export type LoadChangelog = () => Promise<string>

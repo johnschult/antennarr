@@ -34,7 +34,7 @@ describe('AppStateProvider', () => {
   it('holds the page back until the state arrives, then renders it', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }) }).fn)
     mount()
-    expect(screen.getByText('Connecting to Antennarr…')).toBeInTheDocument()
+    expect(screen.getByText('Connecting to Yagi…')).toBeInTheDocument()
     expect(await screen.findByText('Steve FLEX 4K polling')).toBeInTheDocument()
     act(() => FakeEventSource.last().open())
     expect(await screen.findByText('Steve FLEX 4K live')).toBeInTheDocument()
@@ -53,15 +53,15 @@ describe('AppStateProvider', () => {
       throw new TypeError('offline')
     })
     mount()
-    expect(await screen.findByText("Can't reach Antennarr")).toBeInTheDocument()
-    expect(screen.getByText('Could not reach Antennarr')).toBeInTheDocument()
+    expect(await screen.findByText("Can't reach Yagi")).toBeInTheDocument()
+    expect(screen.getByText('Could not reach Yagi')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 
   it('renders from a pushed event even when the first fetch fails', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ status: 500 }) }).fn)
     mount()
-    await waitFor(() => expect(screen.getByText("Can't reach Antennarr")).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText("Can't reach Yagi")).toBeInTheDocument())
     act(() => FakeEventSource.last().emit('state', makeState()))
     expect(await screen.findByText(/Steve FLEX 4K/)).toBeInTheDocument()
   })
@@ -96,7 +96,7 @@ describe('signing in with Plex', () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => forbidden, 'GET /auth/status': () => ({ body: { plexEnabled: false, signedIn: null, admin: false } }) }).fn)
     mount()
     await screen.findByText("This address can't open the admin page")
-    await waitFor(() => expect(screen.getByText(/Open it from the machine running Antennarr/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Open it from the machine running Yagi/)).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: /Sign in with/ })).not.toBeInTheDocument()
   })
 

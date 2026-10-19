@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/firmware"
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/firmware"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 // Phase is how far an install has got.
@@ -58,7 +58,7 @@ type Tuner interface {
 
 // Request is one install.
 type Request struct {
-	Device  string // the device's name in Antennarr
+	Device  string // the device's name in Yagi
 	Title   string // what it is called to a person, for the timeline
 	Host    string // the tuner's address, for its control port
 	Family  string // the firmware family the tuner reports (hdhomerun_dvr_atsc3)

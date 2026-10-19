@@ -55,7 +55,7 @@ export function Banners({ state }: { state: AppState }) {
               {offline[0].tuner.id ? ` (DeviceID ${offline[0].tuner.id})` : ''}
             </>
           )}{' '}
-          Antennarr will keep looking and follow {several ? 'them' : 'it'} if the address changes.
+          Yagi will keep looking and follow {several ? 'them' : 'it'} if the address changes.
         </Banner>
       )}
       {state.settings.mode === 'no-viewers' && (
@@ -69,7 +69,7 @@ export function Banners({ state }: { state: AppState }) {
       )}
       {!state.editable && (
         <Banner tone="amber" icon={<AlertTriangle className="size-4" />}>
-          Antennarr was started without <code>-config</code>, so changes can't be saved. Restart it with a settings
+          Yagi was started without <code>-config</code>, so changes can't be saved. Restart it with a settings
           file to add viewers or change limits.
         </Banner>
       )}

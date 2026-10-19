@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func clientFor(f *fakePlexTV) *Client { return &Client{Base: f.URL, ClientID: "antennarr-testclient"} }
+func clientFor(f *fakePlexTV) *Client { return &Client{Base: f.URL, ClientID: "yagi-testclient"} }
 
 func TestNewPINAsksForAStrongPINAndIdentifiesItself(t *testing.T) {
 	f := newFakePlexTV(t)
@@ -22,7 +22,7 @@ func TestNewPINAsksForAStrongPINAndIdentifiesItself(t *testing.T) {
 	if f.count("POST /api/v2/pins") != 1 {
 		t.Error("expected one request")
 	}
-	if ids := f.ids(); len(ids) != 1 || !ids["antennarr-testclient"] {
+	if ids := f.ids(); len(ids) != 1 || !ids["yagi-testclient"] {
 		t.Errorf("client identifiers seen by plex.tv: %v", ids)
 	}
 }
@@ -36,7 +36,7 @@ func TestNewPINFailures(t *testing.T) {
 
 	url := f.URL
 	f.Close()
-	if _, err := (&Client{Base: url, ClientID: "antennarr-testclient"}).NewPIN(context.Background()); err == nil || !strings.Contains(err.Error(), "could not reach plex.tv") {
+	if _, err := (&Client{Base: url, ClientID: "yagi-testclient"}).NewPIN(context.Background()); err == nil || !strings.Contains(err.Error(), "could not reach plex.tv") {
 		t.Errorf("unreachable: %v", err)
 	}
 }
@@ -104,7 +104,7 @@ func TestUserFailures(t *testing.T) {
 }
 
 func TestAuthURL(t *testing.T) {
-	c := &Client{ClientID: "antennarr-abc123"}
+	c := &Client{ClientID: "yagi-abc123"}
 	link := c.AuthURL(PIN{ID: 5, Code: "the-code"})
 	if !strings.HasPrefix(link, "https://app.plex.tv/auth#?") {
 		t.Fatalf("link = %s", link)
@@ -113,7 +113,7 @@ func TestAuthURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if q.Get("clientID") != "antennarr-abc123" || q.Get("code") != "the-code" || q.Get("context[device][product]") != "Antennarr" {
+	if q.Get("clientID") != "yagi-abc123" || q.Get("code") != "the-code" || q.Get("context[device][product]") != "Yagi" {
 		t.Errorf("query = %v", q)
 	}
 	if strings.Contains(link, "[") {

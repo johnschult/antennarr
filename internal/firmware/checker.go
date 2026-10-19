@@ -151,7 +151,7 @@ func (c *Checker) fetch(ctx context.Context, etag, modified string) (rs []Releas
 	if err != nil {
 		return nil, "", "", false, err
 	}
-	req.Header.Set("User-Agent", "Antennarr (firmware check)")
+	req.Header.Set("User-Agent", "Yagi (firmware check)")
 	req.Header.Set("Accept", "text/html")
 	if etag != "" {
 		req.Header.Set("If-None-Match", etag)

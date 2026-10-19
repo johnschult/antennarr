@@ -192,7 +192,7 @@ export function ViewersPage() {
       <div className="flex items-start gap-3 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-900 dark:text-sky-200">
         <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
         <p>
-          <strong>Over a viewer's limit?</strong> Antennarr answers with a 503, the same as a busy tuner does, so media servers handle it cleanly.
+          <strong>Over a viewer's limit?</strong> Yagi answers with a 503, the same as a busy tuner does, so media servers handle it cleanly.
         </p>
       </div>
 

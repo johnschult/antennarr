@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // cookieOf is the session cookie the rig's browser holds.
 func (r *rig) cookieOf() *http.Cookie {
 	r.t.Helper()
-	for _, c := range r.client.Jar.Cookies(mustURL(r.srv.URL + "/antennarr/")) {
+	for _, c := range r.client.Jar.Cookies(mustURL(r.srv.URL + "/yagi/")) {
 		if c.Name == CookieName {
 			return c
 		}
@@ -32,12 +32,12 @@ func (r *rig) adminWith(c *http.Cookie) bool {
 }
 
 func TestASignInSurvivesARestart(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "antennarr.sessions.json")
+	file := filepath.Join(t.TempDir(), "yagi.sessions.json")
 	before := newRig(t, func(c *Config) { c.SessionsFile = file })
 	before.signedIn()
 	cookie := before.cookieOf()
 
-	// A new Auth over the same file is a restarted Antennarr.
+	// A new Auth over the same file is a restarted Yagi.
 	after := newRig(t, func(c *Config) { c.SessionsFile = file })
 	if !after.adminWith(cookie) {
 		t.Fatal("the browser's cookie no longer works after a restart")
@@ -61,7 +61,7 @@ func TestSigningOutStaysSignedOutAcrossARestart(t *testing.T) {
 	before := newRig(t, func(c *Config) { c.SessionsFile = file })
 	before.signedIn()
 	cookie := before.cookieOf()
-	if code, _, _ := before.post("/antennarr/auth/logout", "{}"); code != 200 && code != 204 {
+	if code, _, _ := before.post("/yagi/auth/logout", "{}"); code != 200 && code != 204 {
 		t.Fatalf("logout: %d", code)
 	}
 	after := newRig(t, func(c *Config) { c.SessionsFile = file })

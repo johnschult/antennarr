@@ -13,12 +13,12 @@ export function NoTuners() {
       <Radar className="size-8 text-muted-foreground" aria-hidden="true" />
       <h2 className="text-lg font-semibold tracking-tight">No tuner yet</h2>
       <p className="max-w-md text-sm text-muted-foreground">
-        Antennarr looks for HDHomeRun tuners on your network when it starts, and none answered. Search again, or add one by its address.
+        Yagi looks for HDHomeRun tuners on your network when it starts, and none answered. Search again, or add one by its address.
       </p>
       <Button onClick={() => setOpen(true)} disabled={!state.editable}>
         <Search data-icon="inline-start" /> Find tuners
       </Button>
-      {!state.editable && <p className="text-xs text-muted-foreground">Antennarr has no settings file to save a tuner in, so none can be added here. Start it with -config to choose one.</p>}
+      {!state.editable && <p className="text-xs text-muted-foreground">Yagi has no settings file to save a tuner in, so none can be added here. Start it with -config to choose one.</p>}
       <AddTunerDialog open={open} onOpenChange={setOpen} />
     </div>
   )

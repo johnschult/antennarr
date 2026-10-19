@@ -26,21 +26,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/discovery"
-	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
-	"github.com/johnschult/antennarr/internal/history"
-	"github.com/johnschult/antennarr/internal/lineup/linetest"
-	"github.com/johnschult/antennarr/internal/logbuf"
-	"github.com/johnschult/antennarr/internal/upgrade"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
+	"github.com/johnschult/yagi/internal/hdhr/hdhrtest"
+	"github.com/johnschult/yagi/internal/history"
+	"github.com/johnschult/yagi/internal/lineup/linetest"
+	"github.com/johnschult/yagi/internal/logbuf"
+	"github.com/johnschult/yagi/internal/upgrade"
 )
 
-// TestDemo runs Antennarr against a made-up tuner and guide until interrupted,
+// TestDemo runs Yagi against a made-up tuner and guide until interrupted,
 // for taking the README screenshots (docs/screenshots/retake.sh). Not part of
 // the normal tests: it only builds with -tags demo.
 //
 // The tuner is an HDHomeRun FLEX 4K with one stream from a viewer (Alex)
-// through Antennarr and one or two local devices, plus three made-up viewers.
+// through Yagi and one or two local devices, plus three made-up viewers.
 // The address it listens on is written to $DEMO_DIR/addr.
 //
 // The channels are two with plain badges, not any network's marks, unless
@@ -260,7 +260,7 @@ func TestDemo(t *testing.T) {
 	lt := linetest.New(demoLineup(chs), 12*time.Second) // the lineup the Channels tab manages, and a scan that takes a while
 	defer lt.Close()
 	var mu sync.Mutex
-	remote := false // Alex is watching the first channel through Antennarr
+	remote := false // Alex is watching the first channel through Yagi
 
 	// DEMO_UPDATE=1 is a tuner that is a release behind, with SiliconDust's side (the changelog and the download)
 	// and the tuner's control port faked, so that installing firmware can be tried: it is downloaded, sent
@@ -456,7 +456,7 @@ func TestDemo(t *testing.T) {
 	s.Labels = map[string]string{"antenna": "Living room antenna"}
 	dev := access.Device{Name: "antenna", Listen: ln.Addr().String(), Tuner: "demo", ID: "10ABCC87", StreamPort: sport}
 	s.Devices = []access.Device{dev}
-	cfgPath := filepath.Join(dir, "antennarr.json")
+	cfgPath := filepath.Join(dir, "yagi.json")
 	if err := access.SaveSettings(cfgPath, s); err != nil {
 		t.Fatal(err)
 	}
@@ -518,7 +518,7 @@ func TestDemo(t *testing.T) {
 	go srv.Run(ctx)
 	base2 := "http://" + ln.Addr().String()
 	os.WriteFile(filepath.Join(dir, "addr"), []byte(base2), 0o644)
-	// Alex watches the first channel through Antennarr.
+	// Alex watches the first channel through Yagi.
 	go func() {
 		time.Sleep(time.Second)
 		resp, err := http.Get(base2 + "/auto/v" + chs[0].Number)

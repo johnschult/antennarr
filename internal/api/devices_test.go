@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/live"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/live"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 func ip(n int) *int { return &n }
@@ -57,7 +57,7 @@ func newMultiEnv(t *testing.T, s access.Settings, withFile bool) *env {
 		devices = append(devices, Device{Name: d.Name, Listen: d.Listen, Mon: mon})
 	}
 	if withFile {
-		e.path = filepath.Join(t.TempDir(), "antennarr.json")
+		e.path = filepath.Join(t.TempDir(), "yagi.json")
 		if err := access.SaveSettings(e.path, s); err != nil {
 			t.Fatal(err)
 		}
@@ -86,7 +86,7 @@ func fakeHDHRWith(t *testing.T, id, status string) *httptest.Server {
 
 func devDoc(t *testing.T, e *env, name string) map[string]any {
 	t.Helper()
-	_, v := e.call(t, "GET", "/antennarr/api/state", "")
+	_, v := e.call(t, "GET", "/yagi/api/state", "")
 	for _, d := range obj(t, v)["devices"].([]any) {
 		if obj(t, d)["name"] == name {
 			return obj(t, d)
@@ -113,7 +113,7 @@ func TestStateListsEveryDeviceWithItsOwnNumbers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, v := e.call(t, "GET", "/antennarr/api/state", "")
+	_, v := e.call(t, "GET", "/yagi/api/state", "")
 	devs := obj(t, v)["devices"].([]any)
 	if len(devs) != 2 || obj(t, devs[0])["name"] != "antenna" || obj(t, devs[1])["name"] != "cable" {
 		t.Fatalf("devices = %v", devs)
@@ -141,7 +141,7 @@ func TestStateListsEveryDeviceWithItsOwnNumbers(t *testing.T) {
 func TestViewersCarryPerDeviceLimits(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
 
-	code, v := e.call(t, "POST", "/antennarr/api/viewers", `{"name":"Mom","addresses":["10.8.0.5"],"limit":1,"limits":{"cable":3,"antenna":0}}`)
+	code, v := e.call(t, "POST", "/yagi/api/viewers", `{"name":"Mom","addresses":["10.8.0.5"],"limit":1,"limits":{"cable":3,"antenna":0}}`)
 	if code != 201 || obj(t, obj(t, v)["limits"])["cable"] != float64(3) || obj(t, obj(t, v)["limits"])["antenna"] != float64(0) {
 		t.Fatalf("add: %d %v", code, v)
 	}
@@ -149,7 +149,7 @@ func TestViewersCarryPerDeviceLimits(t *testing.T) {
 		t.Errorf("not saved: %v", got)
 	}
 
-	code, v = e.call(t, "PUT", "/antennarr/api/viewers/Mom", `{"name":"Mom","addresses":["10.8.0.5"],"limit":2}`)
+	code, v = e.call(t, "PUT", "/yagi/api/viewers/Mom", `{"name":"Mom","addresses":["10.8.0.5"],"limit":2}`)
 	if code != 200 || obj(t, v)["limits"] != nil {
 		t.Errorf("replace without limits should clear the overrides: %d %v", code, v)
 	}
@@ -164,7 +164,7 @@ func TestViewerLimitsMustNameRealDevices(t *testing.T) {
 		"unknown device": `{"name":"X","addresses":["10.9.0.1"],"limit":1,"limits":{"satellite":1}}`,
 		"negative":       `{"name":"X","addresses":["10.9.0.1"],"limit":1,"limits":{"cable":-1}}`,
 	} {
-		code, v := e.call(t, "POST", "/antennarr/api/viewers", body)
+		code, v := e.call(t, "POST", "/yagi/api/viewers", body)
 		if code != 400 {
 			t.Errorf("%s: %d %v", name, code, v)
 		}
@@ -177,7 +177,7 @@ func TestViewerLimitsMustNameRealDevices(t *testing.T) {
 func TestDeviceSettingsAreSavedOnTheDevice(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
 
-	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"ownerReserve":2,"sharedCap":1}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"ownerReserve":2,"sharedCap":1}`)
 	if code != 200 || obj(t, v)["ownerReserve"] != float64(2) || obj(t, v)["sharedCap"] != float64(1) {
 		t.Fatalf("%d %v", code, v)
 	}
@@ -201,13 +201,13 @@ func TestDeviceSettingsAreSavedOnTheDevice(t *testing.T) {
 
 func TestDevicePatchChangesOnlyWhatIsSent(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
-	e.call(t, "PATCH", "/antennarr/api/devices/cable", `{"sharedCap":2}`)
+	e.call(t, "PATCH", "/yagi/api/devices/cable", `{"sharedCap":2}`)
 	s := fileSettings(t, e)
 	if *s.Devices[1].SharedCap != 2 || *s.Devices[1].OwnerReserve != 0 {
 		t.Errorf("cable = %+v (an explicit reserve of 0 must survive)", s.Devices[1])
 	}
 	// Zero is a real value, not "unset".
-	e.call(t, "PATCH", "/antennarr/api/devices/cable", `{"sharedCap":0}`)
+	e.call(t, "PATCH", "/yagi/api/devices/cable", `{"sharedCap":0}`)
 	if got := fileSettings(t, e).Devices[1].SharedCap; got == nil || *got != 0 {
 		t.Errorf("sharedCap after sending 0 = %v", got)
 	}
@@ -216,10 +216,10 @@ func TestDevicePatchChangesOnlyWhatIsSent(t *testing.T) {
 func TestDevicePatchErrors(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
 	for name, c := range map[string][3]string{
-		"unknown device": {"PATCH", "/antennarr/api/devices/satellite", `{"sharedCap":1}`},
-		"negative":       {"PATCH", "/antennarr/api/devices/antenna", `{"ownerReserve":-1}`},
-		"unknown field":  {"PATCH", "/antennarr/api/devices/antenna", `{"tuner":"10.0.0.9"}`}, // a device's tuner can't be changed; remove it and add the other
-		"wrong type":     {"PATCH", "/antennarr/api/devices/antenna", `{"sharedCap":"two"}`},
+		"unknown device": {"PATCH", "/yagi/api/devices/satellite", `{"sharedCap":1}`},
+		"negative":       {"PATCH", "/yagi/api/devices/antenna", `{"ownerReserve":-1}`},
+		"unknown field":  {"PATCH", "/yagi/api/devices/antenna", `{"tuner":"10.0.0.9"}`}, // a device's tuner can't be changed; remove it and add the other
+		"wrong type":     {"PATCH", "/yagi/api/devices/antenna", `{"sharedCap":"two"}`},
 	} {
 		code, v := e.call(t, c[0], c[1], c[2])
 		want := 400
@@ -237,9 +237,9 @@ func TestDevicePatchErrors(t *testing.T) {
 
 func TestEditsKeepTheDeviceList(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
-	e.call(t, "POST", "/antennarr/api/viewers", `{"name":"Mom","addresses":["10.8.0.5"],"limit":1}`)
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"admin":["100.64.0.0/10"]}`)
-	e.call(t, "DELETE", "/antennarr/api/viewers/Mom", "")
+	e.call(t, "POST", "/yagi/api/viewers", `{"name":"Mom","addresses":["10.8.0.5"],"limit":1}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"admin":["100.64.0.0/10"]}`)
+	e.call(t, "DELETE", "/yagi/api/viewers/Mom", "")
 
 	s := fileSettings(t, e)
 	if len(s.Devices) != 2 || s.Devices[0].Name != "antenna" || s.Devices[0].Tuner != "192.168.1.132" || s.Devices[1].ID != "1111AAA2" {
@@ -251,7 +251,7 @@ func TestDeviceFromFlagsEditsTheDefaults(t *testing.T) {
 	// No devices declared: the one device came from command-line flags, so it
 	// has no entry of its own to hold an override.
 	e := newEnv(t, johnAndMom, true) // device "antenna" is registered with the policy but not declared
-	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"ownerReserve":0,"sharedCap":2}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"ownerReserve":0,"sharedCap":2}`)
 	if code != 200 || obj(t, v)["ownerReserve"] != float64(0) || obj(t, v)["sharedCap"] != float64(2) {
 		t.Fatalf("%d %v", code, v)
 	}
@@ -263,7 +263,7 @@ func TestDeviceFromFlagsEditsTheDefaults(t *testing.T) {
 
 func TestDevicePatchNeedsAFile(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), false)
-	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"sharedCap":1}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"sharedCap":1}`)
 	if code != 409 || !strings.Contains(errText(v), "-config") {
 		t.Errorf("%d %v", code, v)
 	}
@@ -273,7 +273,7 @@ func TestOnlyAdminsCanEditDevices(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
 	h := e.pol.AdminOnly(e.api.Handler())
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PATCH", "/antennarr/api/devices/antenna", strings.NewReader(`{"sharedCap":1}`))
+	req := httptest.NewRequest("PATCH", "/yagi/api/devices/antenna", strings.NewReader(`{"sharedCap":1}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = "100.67.117.32:1" // John is a viewer, not an admin
 	h.ServeHTTP(rec, req)
@@ -309,7 +309,7 @@ func TestEventsFollowAnyDevice(t *testing.T) {
 func TestRenamingADevice(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
 
-	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":"Antenna (Steve)"}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"label":"Antenna (Steve)"}`)
 	if code != 200 || obj(t, v)["label"] != "Antenna (Steve)" || obj(t, v)["name"] != "antenna" {
 		t.Fatalf("%d %v", code, v)
 	}
@@ -327,7 +327,7 @@ func TestRenamingADevice(t *testing.T) {
 		t.Errorf("viewer limits were disturbed: %v", got)
 	}
 
-	code, v = e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":""}`)
+	code, v = e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"label":""}`)
 	if code != 200 || obj(t, v)["label"] != nil {
 		t.Errorf("clearing: %d %v", code, v)
 	}
@@ -338,13 +338,13 @@ func TestRenamingADevice(t *testing.T) {
 
 func TestRenamingChangesOnlyWhatIsSent(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
-	e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":"Antenna"}`)
-	e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"ownerReserve":2}`) // no label in this one
+	e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"label":"Antenna"}`)
+	e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"ownerReserve":2}`) // no label in this one
 	s := fileSettings(t, e)
 	if s.Labels["antenna"] != "Antenna" || *s.Devices[0].OwnerReserve != 2 {
 		t.Errorf("labels %v, antenna %+v", s.Labels, s.Devices[0])
 	}
-	e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":"Antenna 2","sharedCap":1}`)
+	e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"label":"Antenna 2","sharedCap":1}`)
 	s = fileSettings(t, e)
 	if s.Labels["antenna"] != "Antenna 2" || *s.Devices[0].SharedCap != 1 || *s.Devices[0].OwnerReserve != 2 {
 		t.Errorf("labels %v, antenna %+v", s.Labels, s.Devices[0])
@@ -361,14 +361,14 @@ func TestBadNamesAreRefused(t *testing.T) {
 		"not a string":  `{"label":5}`,
 		"alongside bad": `{"label":"ok","sharedCap":-1}`,
 	} {
-		if code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", body); code != 400 {
+		if code, v := e.call(t, "PATCH", "/yagi/api/devices/antenna", body); code != 400 {
 			t.Errorf("%s: %d %v", name, code, v)
 		}
 	}
 	if len(fileSettings(t, e).Labels) != 0 || devDoc(t, e, "antenna")["label"] != nil {
 		t.Error("a refused rename changed something")
 	}
-	if code, _ := e.call(t, "PATCH", "/antennarr/api/devices/satellite", `{"label":"x"}`); code != 404 {
+	if code, _ := e.call(t, "PATCH", "/yagi/api/devices/satellite", `{"label":"x"}`); code != 404 {
 		t.Errorf("unknown device: %d", code)
 	}
 }
@@ -376,7 +376,7 @@ func TestBadNamesAreRefused(t *testing.T) {
 func TestADeviceFromFlagsCanBeNamedToo(t *testing.T) {
 	// No devices declared in the file, so the label lives in its own section.
 	e := newEnv(t, johnAndMom, true)
-	code, v := e.call(t, "PATCH", "/antennarr/api/devices/antenna", `{"label":"Living room antenna"}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/devices/antenna", `{"label":"Living room antenna"}`)
 	if code != 200 || obj(t, v)["label"] != "Living room antenna" {
 		t.Fatalf("%d %v", code, v)
 	}
@@ -389,7 +389,7 @@ func TestADeviceFromFlagsCanBeNamedToo(t *testing.T) {
 func TestOnlyAdminsCanRename(t *testing.T) {
 	e := newMultiEnv(t, twoDevices(), true)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("PATCH", "/antennarr/api/devices/antenna", strings.NewReader(`{"label":"mine now"}`))
+	req := httptest.NewRequest("PATCH", "/yagi/api/devices/antenna", strings.NewReader(`{"label":"mine now"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = "100.67.117.32:1"
 	e.pol.AdminOnly(e.api.Handler()).ServeHTTP(rec, req)

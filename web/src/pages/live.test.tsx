@@ -211,7 +211,7 @@ describe('LivePage guide', () => {
     expect(screen.getByTestId('tile-now')).toHaveTextContent('Evening News')
   })
 
-  it("passes a program's picture on, through Antennarr, only when the guide has one", () => {
+  it("passes a program's picture on, through Yagi, only when the guide has one", () => {
     const s = makeState()
     s.devices[0].guide = {
       '5.1': { name: 'WFRV', icon: true, now: { title: 'Evening News', start: '2026-10-17T17:00:00Z', stop: '2026-10-17T18:00:00Z', poster: 'ABC123' } },

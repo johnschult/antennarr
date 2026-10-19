@@ -3,7 +3,7 @@
 // file (not inline) because the page's security policy forbids inline scripts.
 ;(function () {
   try {
-    var pref = localStorage.getItem('antennarr-theme')
+    var pref = localStorage.getItem('yagi-theme')
     var dark =
       pref === 'dark' || ((pref !== 'light') && window.matchMedia('(prefers-color-scheme: dark)').matches)
     document.documentElement.classList.toggle('dark', dark)

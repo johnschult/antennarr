@@ -1,5 +1,5 @@
 /**
- * Antennarr has no logins, passwords or payment forms, so a password manager or the
+ * Yagi has no logins, passwords or payment forms, so a password manager or the
  * browser offering to fill a field is only in the way. `autocomplete="off"` is
  * ignored by 1Password, LastPass and Bitwarden, which each have an attribute of their own.
  * The shared Input and Textarea set these first, so a field can still override them.

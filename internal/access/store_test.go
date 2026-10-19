@@ -13,7 +13,7 @@ import (
 
 func newStore(t *testing.T, initial Settings) (*Store, *testPolicy, string) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	if err := SaveSettings(path, initial); err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 var defaults = deviceFlags{listen: ":5004", streamPort: "5004"}
@@ -85,7 +85,7 @@ func quietLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, n
 // With no settings file, one is created holding the defaults, and it is the
 // file edits are saved to.
 func TestMissingSettingsFileIsCreated(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	s, save, err := loadOrCreateSettings(path, false, quietLog())
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +107,7 @@ func TestMissingSettingsFileIsCreated(t *testing.T) {
 
 // An existing file is read, not overwritten.
 func TestExistingSettingsFileIsKept(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	want := access.DefaultSettings()
 	want.Viewers = []access.Viewer{{Name: "Mom", Addresses: []string{"10.8.0.5"}, Limit: 1}}
 	if err := access.SaveSettings(path, want); err != nil {
@@ -125,7 +125,7 @@ func TestExistingSettingsFileIsKept(t *testing.T) {
 // A file that can't be created is an error when the user named it, and only a
 // warning for the default path.
 func TestUncreatableSettingsFile(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "no-such-dir", "antennarr.json")
+	path := filepath.Join(t.TempDir(), "no-such-dir", "yagi.json")
 
 	if _, _, err := loadOrCreateSettings(path, true, quietLog()); err == nil {
 		t.Error("an explicit -config that can't be created should be an error")
@@ -144,7 +144,7 @@ func TestUncreatableSettingsFile(t *testing.T) {
 
 // A damaged file stops start-up rather than being replaced by defaults.
 func TestBrokenSettingsFileIsNotOverwritten(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	if err := os.WriteFile(path, []byte(`{"viewrs": []}`), 0o600); err != nil {
 		t.Fatal(err)
 	}

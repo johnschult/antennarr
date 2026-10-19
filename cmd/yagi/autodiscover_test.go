@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
 )
 
 func TestWhenToLookForTuners(t *testing.T) {
@@ -157,7 +157,7 @@ func TestNoRoomForEveryTunerAbovePort(t *testing.T) {
 // What was found is what gets saved, and a settings file that already has
 // devices is not looked into again.
 func TestFoundTunersSurviveARestart(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	s, save, err := loadOrCreateSettings(path, false, quietLog())
 	if err != nil || save != path {
 		t.Fatal(save, err)

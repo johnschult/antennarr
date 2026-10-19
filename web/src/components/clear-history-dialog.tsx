@@ -35,7 +35,7 @@ export function ClearHistoryDialog({ open, onClose }: Props) {
         <AlertDialogHeader>
           <AlertDialogTitle>Clear the activity history?</AlertDialogTitle>
           <AlertDialogDescription>
-            Antennarr forgets who watched what, for every day it has kept. It can't be brought back. If the history is on, it starts again from now.
+            Yagi forgets who watched what, for every day it has kept. It can't be brought back. If the history is on, it starts again from now.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

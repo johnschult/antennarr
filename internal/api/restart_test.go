@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
-	"github.com/johnschult/antennarr/internal/restart"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr/hdhrtest"
+	"github.com/johnschult/yagi/internal/restart"
 )
 
-const restartPath = "/antennarr/api/devices/antenna/restart"
+const restartPath = "/yagi/api/devices/antenna/restart"
 
 func restartEnv(t *testing.T, status string, ctrl hdhrtest.Options) (*env, *hdhrtest.Server) {
 	t.Helper()
@@ -123,7 +123,7 @@ func TestOnlyOneRestartAtATime(t *testing.T) {
 
 func TestRestartRefusals(t *testing.T) {
 	e, _ := restartEnv(t, idleTuner, hdhrtest.Options{})
-	if code, _ := e.call(t, "POST", "/antennarr/api/devices/nope/restart", `{}`); code != 404 {
+	if code, _ := e.call(t, "POST", "/yagi/api/devices/nope/restart", `{}`); code != 404 {
 		t.Errorf("unknown tuner: %d", code)
 	}
 	e.api.Restart = nil

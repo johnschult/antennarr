@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { Breakdown, DayBars, RANGES, SessionRow, Stat } from '@/components/activity-parts'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
-import { dailyMinutes, dataThroughAntennarr, dayLabel, formatBytes, groupByDay, spanText, summarize, totalsByChannel, totalsByWatcher } from '@/lib/activity'
+import { dailyMinutes, dataThroughYagi, dayLabel, formatBytes, groupByDay, spanText, summarize, totalsByChannel, totalsByWatcher } from '@/lib/activity'
 import { getHistory } from '@/lib/api'
 import type { HistorySession } from '@/lib/types'
 
@@ -51,7 +51,7 @@ export function ActivityPage() {
         </div>
       )}
 
-      {enabled && !state.editable && <p className="text-xs text-muted-foreground">Antennarr has no settings file to keep this beside, so it is kept in memory and starts over when Antennarr restarts.</p>}
+      {enabled && !state.editable && <p className="text-xs text-muted-foreground">Yagi has no settings file to keep this beside, so it is kept in memory and starts over when Yagi restarts.</p>}
 
       {!enabled ? null : q.isPending ? (
         <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -69,7 +69,7 @@ export function ActivityPage() {
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Stat label="Time watched" value={spanText(sum.totalMs)} detail={`${sum.sessions} ${sum.sessions === 1 ? 'session' : 'sessions'}`} />
-            <Stat label="Data sent to viewers" value={formatBytes(dataThroughAntennarr(sessions))} detail="through Antennarr, about" />
+            <Stat label="Data sent to viewers" value={formatBytes(dataThroughYagi(sessions))} detail="through Yagi, about" />
             <Stat label="Most watched channel" value={sum.topChannel?.label ?? '—'} detail={sum.topChannel ? spanText(sum.topChannel.ms) : undefined} />
             <Stat label="Most active" value={sum.topWatcher?.label ?? '—'} detail={sum.topWatcher ? spanText(sum.topWatcher.ms) : undefined} />
             <Stat label="Busiest day" value={busiest(sessions, days, now)} />

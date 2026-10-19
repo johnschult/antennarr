@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // ---- harness ----
@@ -35,7 +35,7 @@ type logBuf struct {
 func (l *logBuf) Write(p []byte) (int, error) { l.mu.Lock(); defer l.mu.Unlock(); return l.b.Write(p) }
 func (l *logBuf) String() string              { l.mu.Lock(); defer l.mu.Unlock(); return l.b.String() }
 
-// rig is Antennarr's side of the flow: an Auth, a settings store it edits, a
+// rig is Yagi's side of the flow: an Auth, a settings store it edits, a
 // fake plex.tv, and a browser (with a cookie jar) talking to it.
 type rig struct {
 	t      *testing.T
@@ -138,7 +138,7 @@ func (r *rig) do(req *http.Request) (int, map[string]any, *http.Response) {
 // begin starts a login and returns the PIN id.
 func (r *rig) begin(prefix string) int64 {
 	r.t.Helper()
-	code, m, _ := r.post("/antennarr/auth/plex"+prefix+"/start", `{}`)
+	code, m, _ := r.post("/yagi/auth/plex"+prefix+"/start", `{}`)
 	if code != 200 {
 		r.t.Fatalf("start: %d %v", code, m)
 	}
@@ -148,7 +148,7 @@ func (r *rig) begin(prefix string) int64 {
 func (r *rig) poll(prefix string, pin int64) (int, map[string]any, *http.Response) {
 	r.t.Helper()
 	body, _ := json.Marshal(map[string]int64{"pinId": pin})
-	return r.post("/antennarr/auth/plex"+prefix+"/poll", string(body))
+	return r.post("/yagi/auth/plex"+prefix+"/poll", string(body))
 }
 
 // pollOK polls until the status leaves "pending" (moving the clock past the
@@ -168,7 +168,7 @@ func (r *rig) pollDone(prefix string, pin int64) (int, map[string]any, *http.Res
 
 func (r *rig) status() map[string]any {
 	r.t.Helper()
-	_, m, _ := r.getJSON("/antennarr/auth/status")
+	_, m, _ := r.getJSON("/yagi/auth/status")
 	return m
 }
 
@@ -184,7 +184,7 @@ func (r *rig) signedIn() {
 
 func (r *rig) isAdmin() bool {
 	req := httptest.NewRequest("GET", "/x", nil)
-	for _, c := range r.client.Jar.Cookies(mustURL(r.srv.URL + "/antennarr/")) {
+	for _, c := range r.client.Jar.Cookies(mustURL(r.srv.URL + "/yagi/")) {
 		req.AddCookie(c)
 	}
 	return r.auth.IsSignedInAdmin(req)

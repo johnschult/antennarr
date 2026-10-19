@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/history"
+	"github.com/johnschult/yagi/internal/history"
 )
 
 func TestHistoryListsSessionsInTheRange(t *testing.T) {
@@ -24,13 +24,13 @@ func TestHistoryListsSessionsInTheRange(t *testing.T) {
 	r.Observe(now.Add(-time.Hour), obs("5.1"))
 	e.api.History = r
 
-	code, v := e.call(t, "GET", "/antennarr/api/history", "")
+	code, v := e.call(t, "GET", "/yagi/api/history", "")
 	d := obj(t, v)
 	got, _ := d["sessions"].([]any)
 	if code != 200 || d["days"] != float64(7) || len(got) != 1 || obj(t, got[0])["channel"] != "5.1" || obj(t, got[0])["viewer"] != "John" || obj(t, got[0])["open"] != true {
 		t.Fatalf("%d %v", code, v)
 	}
-	_, v = e.call(t, "GET", "/antennarr/api/history?days=30", "")
+	_, v = e.call(t, "GET", "/yagi/api/history?days=30", "")
 	if got, _ := obj(t, v)["sessions"].([]any); len(got) != 2 {
 		t.Fatalf("30 days: %v", v)
 	}
@@ -38,7 +38,7 @@ func TestHistoryListsSessionsInTheRange(t *testing.T) {
 
 func TestHistoryIsAnEmptyListWhenThereIsNone(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
-	_, v := e.call(t, "GET", "/antennarr/api/history", "")
+	_, v := e.call(t, "GET", "/yagi/api/history", "")
 	if s, ok := obj(t, v)["sessions"].([]any); !ok || len(s) != 0 {
 		t.Errorf("sessions = %v, want [] (never null)", obj(t, v)["sessions"])
 	}
@@ -47,7 +47,7 @@ func TestHistoryIsAnEmptyListWhenThereIsNone(t *testing.T) {
 func TestHistoryRefusesOddRanges(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	for _, q := range []string{"days=0", "days=31", "days=-1", "days=abc", "days="} {
-		code, _ := e.call(t, "GET", "/antennarr/api/history?"+q, "")
+		code, _ := e.call(t, "GET", "/yagi/api/history?"+q, "")
 		want := 400
 		if q == "days=" {
 			want = 200 // no value is the default
@@ -61,7 +61,7 @@ func TestHistoryRefusesOddRanges(t *testing.T) {
 func TestHistoryIsForAdminsOnly(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/antennarr/api/history", nil)
+	req := httptest.NewRequest("GET", "/yagi/api/history", nil)
 	req.RemoteAddr = "100.67.117.32:1" // John is a viewer, not an admin
 	e.pol.AdminOnly(e.api.Handler()).ServeHTTP(rec, req)
 	if rec.Code != 403 {
@@ -72,32 +72,32 @@ func TestHistoryIsForAdminsOnly(t *testing.T) {
 func TestSettingsReportTheHistorySwitchAndItClosesTheRoute(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	e.api.History = history.New(nil, time.Now())
-	_, v := e.call(t, "GET", "/antennarr/api/settings", "")
+	_, v := e.call(t, "GET", "/yagi/api/settings", "")
 	if obj(t, v)["history"] != true {
 		t.Errorf("default = %v, want on", obj(t, v)["history"])
 	}
-	if code, _ := e.call(t, "GET", "/antennarr/api/history", ""); code != 200 {
+	if code, _ := e.call(t, "GET", "/yagi/api/history", ""); code != 200 {
 		t.Fatalf("while on: %d", code)
 	}
-	code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"history":false}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"history":false}`)
 	if code != 200 || obj(t, v)["history"] != false {
 		t.Fatalf("%d %v", code, v)
 	}
 	if fileSettings(t, e).HistoryEnabled() {
 		t.Error("the choice was not saved")
 	}
-	if code, v := e.call(t, "GET", "/antennarr/api/history", ""); code != 404 {
+	if code, v := e.call(t, "GET", "/yagi/api/history", ""); code != 404 {
 		t.Errorf("while off: %d %v", code, v)
 	}
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"sharedCap":2}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":2}`)
 	if fileSettings(t, e).HistoryEnabled() {
 		t.Error("an unrelated patch switched it back on")
 	}
-	if code, _ := e.call(t, "PATCH", "/antennarr/api/settings", `{"history":"yes"}`); code != 400 {
+	if code, _ := e.call(t, "PATCH", "/yagi/api/settings", `{"history":"yes"}`); code != 400 {
 		t.Errorf("a non-boolean: %d", code)
 	}
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"history":true}`)
-	if code, _ := e.call(t, "GET", "/antennarr/api/history", ""); code != 200 {
+	e.call(t, "PATCH", "/yagi/api/settings", `{"history":true}`)
+	if code, _ := e.call(t, "GET", "/yagi/api/history", ""); code != 200 {
 		t.Errorf("switched back on: %d", code)
 	}
 }
@@ -118,8 +118,8 @@ func TestClearingTheHistoryForgetsEverythingEvenWhileItIsOff(t *testing.T) {
 		t.Fatal("nothing was written to the file to clear")
 	}
 
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"history":false}`)
-	if code, _ := e.call(t, "DELETE", "/antennarr/api/history", ""); code != 204 {
+	e.call(t, "PATCH", "/yagi/api/settings", `{"history":false}`)
+	if code, _ := e.call(t, "DELETE", "/yagi/api/history", ""); code != 204 {
 		t.Fatalf("clear: %d", code)
 	}
 	if got := r.Sessions(now.Add(-24 * time.Hour)); len(got) != 0 {
@@ -128,8 +128,8 @@ func TestClearingTheHistoryForgetsEverythingEvenWhileItIsOff(t *testing.T) {
 	if b, _ := os.ReadFile(path); len(b) != 0 {
 		t.Errorf("still in the file: %s", b)
 	}
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"history":true}`)
-	if _, v := e.call(t, "GET", "/antennarr/api/history", ""); len(obj(t, v)["sessions"].([]any)) != 0 {
+	e.call(t, "PATCH", "/yagi/api/settings", `{"history":true}`)
+	if _, v := e.call(t, "GET", "/yagi/api/history", ""); len(obj(t, v)["sessions"].([]any)) != 0 {
 		t.Errorf("history after clearing: %v", v)
 	}
 }
@@ -137,7 +137,7 @@ func TestClearingTheHistoryForgetsEverythingEvenWhileItIsOff(t *testing.T) {
 func TestOnlyAdminsCanClearTheHistory(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("DELETE", "/antennarr/api/history", nil)
+	req := httptest.NewRequest("DELETE", "/yagi/api/history", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = "100.67.117.32:1" // John is a viewer, not an admin
 	e.pol.AdminOnly(e.api.Handler()).ServeHTTP(rec, req)

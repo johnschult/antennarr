@@ -240,7 +240,7 @@ func TestAGapTooLongToBelieveIsNotCountedAsWatching(t *testing.T) {
 	r := New(nil, t0)
 	r.Observe(at(0), stream(8_000_000, 0))
 	r.Observe(at(10), stream(8_000_000, 0))
-	r.Observe(at(10+int(maxGap/time.Second)+30), stream(8_000_000, 0)) // Antennarr was away for a minute and a half
+	r.Observe(at(10+int(maxGap/time.Second)+30), stream(8_000_000, 0)) // Yagi was away for a minute and a half
 	r.Observe(at(10+int(maxGap/time.Second)+40), stream(8_000_000, 0))
 	r.Observe(at(1000), nil)
 	got := r.Sessions(at(-3600))

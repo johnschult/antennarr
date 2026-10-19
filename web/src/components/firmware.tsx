@@ -164,7 +164,7 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
             </Button>
           )}
           {!s.modelRecognized && (
-            <p className="text-xs text-muted-foreground">Antennarr doesn't recognize this model, so it can't tell which notes are for it; they are all shown.</p>
+            <p className="text-xs text-muted-foreground">Yagi doesn't recognize this model, so it can't tell which notes are for it; they are all shown.</p>
           )}
           <p className="text-xs text-muted-foreground">
             {canInstall

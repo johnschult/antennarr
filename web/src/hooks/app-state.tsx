@@ -39,16 +39,16 @@ function Splash({ error }: { error?: Error | null }) {
       <div className="max-w-md text-center">
         <div className="mx-auto mb-4 flex w-fit items-end gap-3">
           <Logo size={56} />
-          <span className="font-wordmark pb-2 text-4xl leading-none font-bold tracking-[0.02em]">Antennarr</span>
+          <span className="font-wordmark pb-2 text-4xl leading-none font-bold tracking-[0.02em]">Yagi</span>
         </div>
         {!error ? (
-          <p className="text-muted-foreground">Connecting to Antennarr…</p>
+          <p className="text-muted-foreground">Connecting to Yagi…</p>
         ) : forbidden ? (
           <>
             <h1 className="text-lg font-semibold">This address can't open the admin page</h1>
             {auth.data?.plexEnabled ? (
               <>
-                <p className="mt-2 text-sm text-muted-foreground">Sign in with a Plex account that has been allowed to administer Antennarr.</p>
+                <p className="mt-2 text-sm text-muted-foreground">Sign in with a Plex account that has been allowed to administer Yagi.</p>
                 <div className="mt-5 flex justify-center">
                   <PlexSignInButton onClick={start} busy={busy} />
                 </div>
@@ -56,19 +56,19 @@ function Splash({ error }: { error?: Error | null }) {
                   <PlexFlowMessage flow={flow} onCancel={cancel} />
                 </div>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Or open it from the machine running Antennarr, or add this computer's address to <code>admin</code> in the settings file.
+                  Or open it from the machine running Yagi, or add this computer's address to <code>admin</code> in the settings file.
                 </p>
               </>
             ) : (
               <p className="mt-2 text-sm text-muted-foreground">
-                Open it from the machine running Antennarr, or add this computer's address to <code>admin</code> in the
+                Open it from the machine running Yagi, or add this computer's address to <code>admin</code> in the
                 settings file and reload.
               </p>
             )}
           </>
         ) : (
           <>
-            <h1 className="text-lg font-semibold">Can't reach Antennarr</h1>
+            <h1 className="text-lg font-semibold">Can't reach Yagi</h1>
             <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
             <Button className="mt-4" variant="outline" onClick={() => window.location.reload()}>
               <RefreshCw data-icon="inline-start" /> Try again

@@ -8,14 +8,14 @@ import { renderWithApp } from '@/test/render'
 
 // These use the real CHANGELOG.md, bundled into the page, so the notes that appear are the ones that ship.
 const open = (version: string) => renderWithApp(<App />, makeState({ version }), { route: '/viewers' })
-const dialog = () => screen.findByRole('dialog', { name: /What's new in Antennarr/ })
+const dialog = () => screen.findByRole('dialog', { name: /What's new in Yagi/ })
 
 describe('what is new, after an update', () => {
   it('pops up with the release notes the first time a newer version is opened, and not again once dismissed', async () => {
     localStorage.setItem(SEEN_KEY, '2026.10.4')
     const first = open('2026.10.5')
     const d = await dialog()
-    expect(d).toHaveAccessibleName("What's new in Antennarr 2026.10.5")
+    expect(d).toHaveAccessibleName("What's new in Yagi 2026.10.5")
     expect(await within(d).findByRole('heading', { name: 'Read before updating' })).toBeInTheDocument()
     expect(within(d).getByText(/Media servers now always see the tuner's own name/)).toBeInTheDocument()
 

@@ -39,7 +39,7 @@ describe('savePreference', () => {
   it('writes under the shared key', () => {
     const set = vi.fn()
     savePreference('dark', { setItem: set })
-    expect(set).toHaveBeenCalledWith('antennarr-theme', 'dark')
+    expect(set).toHaveBeenCalledWith('yagi-theme', 'dark')
   })
   it('does not throw when storage is blocked', () => {
     expect(() =>

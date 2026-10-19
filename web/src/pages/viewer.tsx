@@ -84,7 +84,7 @@ export function ViewerPage() {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Data used" value={formatBytes(total)} detail="through Antennarr, about" />
+            <Stat label="Data used" value={formatBytes(total)} detail="through Yagi, about" />
             <Stat label="Time watched" value={spanText(sum.totalMs)} detail={`${sum.sessions} ${sum.sessions === 1 ? 'session' : 'sessions'}`} />
             <Stat label="Most data in a day" value={heaviest.bytes > 0 ? formatBytes(heaviest.bytes) : '—'} detail={heaviest.bytes > 0 ? heaviest.day.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : undefined} />
             <Stat label="Most watched channel" value={sum.topChannel?.label ?? '—'} detail={sum.topChannel ? spanText(sum.topChannel.ms) : undefined} />

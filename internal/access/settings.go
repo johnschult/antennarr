@@ -19,7 +19,7 @@ import (
 	"unicode/utf8"
 )
 
-// Device is one HDHomeRun that Antennarr fronts. Each device looks like its
+// Device is one HDHomeRun that Yagi fronts. Each device looks like its
 // own HDHomeRun to media servers, on its own port.
 type Device struct {
 	// Name identifies the device in settings, limits and the UI. Letters,
@@ -77,7 +77,7 @@ type PlexSettings struct {
 	Enabled bool `json:"enabled"`
 	// Admins are the Plex accounts that may sign in.
 	Admins []PlexAccount `json:"admins"`
-	// ClientID identifies this Antennarr to plex.tv. It is generated once and
+	// ClientID identifies this Yagi to plex.tv. It is generated once and
 	// kept; Plex lists the sign-ins under it in the account's authorized devices.
 	ClientID string `json:"clientId,omitempty"`
 }
@@ -86,7 +86,7 @@ type PlexSettings struct {
 // the tuners; each viewer gets what SharedCap, OwnerReserve and their own limit
 // leave.
 type Settings struct {
-	// Devices to front. If empty, Antennarr is started with one device from
+	// Devices to front. If empty, Yagi is started with one device from
 	// its command-line flags.
 	Devices []Device `json:"devices,omitempty"`
 	Viewers []Viewer `json:"viewers"`
@@ -96,7 +96,7 @@ type Settings struct {
 	// OwnerReserve tuners are always kept free for your own devices. Devices
 	// can override it.
 	OwnerReserve int `json:"ownerReserve"`
-	// Admin lists extra addresses (IPs or CIDRs) allowed to see /antennarr/*.
+	// Admin lists extra addresses (IPs or CIDRs) allowed to see /yagi/*.
 	// Loopback is always allowed once any viewer is configured.
 	Admin []string `json:"admin"`
 	// Labels are display names for devices, by device name. The name itself is
@@ -112,7 +112,7 @@ type Settings struct {
 	// the channel's logo and what is on. It sends the tuner's DeviceAuth to
 	// SiliconDust. Unset means on.
 	Guide *bool `json:"guide,omitempty"`
-	// LogLevel is how much Antennarr logs and shows on the Logs page: debug, info, warn or error. Unset means info.
+	// LogLevel is how much Yagi logs and shows on the Logs page: debug, info, warn or error. Unset means info.
 	LogLevel string `json:"logLevel,omitempty"`
 	// History turns on keeping who watched what (for 30 days, beside the settings file), for the Activity
 	// page. Unset means on. Nothing leaves this machine either way.
@@ -546,7 +546,7 @@ func SaveSettings(path string, s Settings) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".antennarr-*.json")
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".yagi-*.json")
 	if err != nil {
 		return err
 	}

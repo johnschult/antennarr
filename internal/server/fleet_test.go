@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // fleet is a server started for the add/remove tests, serving the admin pages
@@ -52,7 +52,7 @@ func startFleet(t *testing.T, s access.Settings, devices []access.Device, withFi
 		Log: slog.New(slog.NewTextHandler(f.logs, nil)), AdminListen: "127.0.0.1:" + port,
 	}
 	if withFile {
-		f.path = filepath.Join(t.TempDir(), "antennarr.json")
+		f.path = filepath.Join(t.TempDir(), "yagi.json")
 		if err := access.SaveSettings(f.path, s); err != nil {
 			t.Fatal(err)
 		}
@@ -78,7 +78,7 @@ func (f *fleet) waitUp(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		if resp, err := http.Get(f.base + "/antennarr/api/state"); err == nil {
+		if resp, err := http.Get(f.base + "/yagi/api/state"); err == nil {
 			resp.Body.Close()
 			return
 		}
@@ -123,7 +123,7 @@ type stateDoc struct {
 
 func (f *fleet) state(t *testing.T) stateDoc {
 	t.Helper()
-	code, b := call(t, "GET", f.base+"/antennarr/api/state", nil)
+	code, b := call(t, "GET", f.base+"/yagi/api/state", nil)
 	if code != 200 {
 		t.Fatalf("state: %d %s", code, b)
 	}
@@ -164,7 +164,7 @@ func TestAddingATunerTakesOverTheAdminPort(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	f := startFleet(t, access.DefaultSettings(), nil, true, a)
 
-	code, body := call(t, "POST", f.base+"/antennarr/api/devices", map[string]string{"tuner": "antenna-box"})
+	code, body := call(t, "POST", f.base+"/yagi/api/devices", map[string]string{"tuner": "antenna-box"})
 	if code != http.StatusCreated {
 		t.Fatalf("add = %d %s\n%s", code, body, f.logs.String())
 	}
@@ -209,11 +209,11 @@ func TestAddingASecondTunerGetsItsOwnNameAndPort(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	b := newFakeTuner(t, "10DEF123", "cable-box")
 	f := startFleet(t, access.DefaultSettings(), nil, true, a, b)
-	if code, body := call(t, "POST", f.base+"/antennarr/api/devices", map[string]string{"tuner": "antenna-box"}); code != 201 {
+	if code, body := call(t, "POST", f.base+"/yagi/api/devices", map[string]string{"tuner": "antenna-box"}); code != 201 {
 		t.Fatalf("first add = %d %s", code, body)
 	}
 	f.waitUp(t)
-	code, body := call(t, "POST", f.base+"/antennarr/api/devices", map[string]any{"tuner": "cable-box", "id": "10DEF123", "listen": "127.0.0.1:" + freePort(t)})
+	code, body := call(t, "POST", f.base+"/yagi/api/devices", map[string]any{"tuner": "cable-box", "id": "10DEF123", "listen": "127.0.0.1:" + freePort(t)})
 	if code != 201 {
 		t.Fatalf("second add = %d %s\n%s", code, body, f.logs.String())
 	}
@@ -230,7 +230,7 @@ func TestAddingASecondTunerGetsItsOwnNameAndPort(t *testing.T) {
 func TestAddingIsRefusedWhenItCannotWork(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	f := startFleet(t, access.DefaultSettings(), nil, true, a)
-	url := f.base + "/antennarr/api/devices"
+	url := f.base + "/yagi/api/devices"
 
 	for name, tc := range map[string]struct {
 		body map[string]string
@@ -258,7 +258,7 @@ func TestAddingIsRefusedWhenItCannotWork(t *testing.T) {
 		t.Fatalf("add = %d %s", code, body)
 	}
 	f.waitUp(t)
-	if code, _ := call(t, "POST", f.base+"/antennarr/api/devices", map[string]string{"tuner": "antenna-box", "listen": "127.0.0.1:" + freePort(t)}); code != http.StatusConflict {
+	if code, _ := call(t, "POST", f.base+"/yagi/api/devices", map[string]string{"tuner": "antenna-box", "listen": "127.0.0.1:" + freePort(t)}); code != http.StatusConflict {
 		t.Errorf("adding the same tuner twice = %d, want 409", code)
 	}
 }
@@ -266,7 +266,7 @@ func TestAddingIsRefusedWhenItCannotWork(t *testing.T) {
 func TestAddingNeedsASettingsFile(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	f := startFleet(t, access.DefaultSettings(), nil, false, a)
-	if code, _ := call(t, "POST", f.base+"/antennarr/api/devices", map[string]string{"tuner": "antenna-box"}); code != http.StatusConflict {
+	if code, _ := call(t, "POST", f.base+"/yagi/api/devices", map[string]string{"tuner": "antenna-box"}); code != http.StatusConflict {
 		t.Errorf("add without a settings file = %d, want 409", code)
 	}
 }
@@ -275,7 +275,7 @@ func TestTunersFromFlagsCannotBeAddedToOrRemoved(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	dev := access.Device{Name: "antenna", Listen: "127.0.0.1:" + freePort(t), Tuner: "antenna-box", StreamPort: a.streamPort}
 	// Devices given to the server but not in the settings: what -tuner does.
-	f := &fleet{logs: &lockedBuf{}, path: filepath.Join(t.TempDir(), "antennarr.json")}
+	f := &fleet{logs: &lockedBuf{}, path: filepath.Join(t.TempDir(), "yagi.json")}
 	s := access.DefaultSettings()
 	off := false
 	s.FirmwareCheck, s.Guide = &off, &off
@@ -292,10 +292,10 @@ func TestTunersFromFlagsCannotBeAddedToOrRemoved(t *testing.T) {
 	go srv.Run(ctx)
 	f.base = "http://" + dev.Listen
 	f.waitUp(t)
-	if code, _ := call(t, "DELETE", f.base+"/antennarr/api/devices/antenna", nil); code != http.StatusConflict {
+	if code, _ := call(t, "DELETE", f.base+"/yagi/api/devices/antenna", nil); code != http.StatusConflict {
 		t.Errorf("removing a flag tuner = %d, want 409", code)
 	}
-	if code, _ := call(t, "POST", f.base+"/antennarr/api/devices", map[string]string{"tuner": "antenna-box", "name": "again", "listen": "127.0.0.1:" + freePort(t)}); code != http.StatusConflict {
+	if code, _ := call(t, "POST", f.base+"/yagi/api/devices", map[string]string{"tuner": "antenna-box", "name": "again", "listen": "127.0.0.1:" + freePort(t)}); code != http.StatusConflict {
 		t.Errorf("adding next to a flag tuner = %d, want 409", code)
 	}
 }
@@ -325,7 +325,7 @@ func TestRemovingATunerCutsItsStreamsAndTidiesTheSettings(t *testing.T) {
 	}
 
 	// Remove it through the page on its own port: the reply must still arrive.
-	if code, body := call(t, "DELETE", "http://"+devs[0].Listen+"/antennarr/api/devices/antenna", nil); code != http.StatusNoContent {
+	if code, body := call(t, "DELETE", "http://"+devs[0].Listen+"/yagi/api/devices/antenna", nil); code != http.StatusNoContent {
 		t.Fatalf("remove = %d %s\n%s", code, body, f.logs.String())
 	}
 	done := make(chan struct{})
@@ -360,7 +360,7 @@ func TestRemovingATunerCutsItsStreamsAndTidiesTheSettings(t *testing.T) {
 	} else {
 		ln.Close()
 	}
-	if code, _ := call(t, "DELETE", f.base+"/antennarr/api/devices/antenna", nil); code != http.StatusNotFound {
+	if code, _ := call(t, "DELETE", f.base+"/yagi/api/devices/antenna", nil); code != http.StatusNotFound {
 		t.Errorf("removing it again = %d, want 404", code)
 	}
 }
@@ -368,12 +368,12 @@ func TestRemovingATunerCutsItsStreamsAndTidiesTheSettings(t *testing.T) {
 func TestRemovingTheLastTunerBringsTheAdminPageBack(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	f := startFleet(t, access.DefaultSettings(), nil, true, a)
-	if code, body := call(t, "POST", f.base+"/antennarr/api/devices", map[string]string{"tuner": "antenna-box"}); code != 201 {
+	if code, body := call(t, "POST", f.base+"/yagi/api/devices", map[string]string{"tuner": "antenna-box"}); code != 201 {
 		t.Fatalf("add = %d %s", code, body)
 	}
 	f.waitUp(t)
 	// The tuner is on the port the admin page was on. Take it away again.
-	if code, body := call(t, "DELETE", f.base+"/antennarr/api/devices/tuner", nil); code != 204 {
+	if code, body := call(t, "DELETE", f.base+"/yagi/api/devices/tuner", nil); code != 204 {
 		t.Fatalf("remove = %d %s\n%s", code, body, f.logs.String())
 	}
 	f.waitUp(t)
@@ -414,12 +414,12 @@ func TestMovingATunerToAnotherPort(t *testing.T) {
 	dev := access.Device{Name: "antenna", Listen: "127.0.0.1:" + p1, Tuner: "antenna-box", ID: "10ABCC87"}
 	f := startFleet(t, access.DefaultSettings(), []access.Device{dev}, true, a)
 
-	code, body := call(t, "PATCH", f.base+"/antennarr/api/devices/antenna", map[string]string{"listen": "127.0.0.1:" + p2})
+	code, body := call(t, "PATCH", f.base+"/yagi/api/devices/antenna", map[string]string{"listen": "127.0.0.1:" + p2})
 	if code != http.StatusOK {
 		t.Fatalf("move = %d %s\n%s", code, body, f.logs.String())
 	}
 	newBase := "http://127.0.0.1:" + p2
-	if code, _ := call(t, "GET", newBase+"/antennarr/api/state", nil); code != http.StatusOK {
+	if code, _ := call(t, "GET", newBase+"/yagi/api/state", nil); code != http.StatusOK {
 		t.Errorf("new port = %d, want the tuner and admin pages there", code)
 	}
 	if got := f.saved(t).Devices[0].Listen; got != "127.0.0.1:"+p2 {
@@ -451,11 +451,11 @@ func TestMovingATunerToAPortInUseChangesNothing(t *testing.T) {
 	dev := access.Device{Name: "antenna", Listen: "127.0.0.1:" + p1, Tuner: "antenna-box", ID: "10ABCC87"}
 	f := startFleet(t, access.DefaultSettings(), []access.Device{dev}, true, a)
 
-	code, _ := call(t, "PATCH", f.base+"/antennarr/api/devices/antenna", map[string]string{"listen": busy.Addr().String()})
+	code, _ := call(t, "PATCH", f.base+"/yagi/api/devices/antenna", map[string]string{"listen": busy.Addr().String()})
 	if code != http.StatusConflict {
 		t.Errorf("= %d, want 409", code)
 	}
-	if code, _ := call(t, "GET", f.base+"/antennarr/api/state", nil); code != http.StatusOK {
+	if code, _ := call(t, "GET", f.base+"/yagi/api/state", nil); code != http.StatusOK {
 		t.Errorf("the old port stopped answering (%d)", code)
 	}
 	if got := f.saved(t).Devices[0].Listen; got != dev.Listen {
@@ -472,11 +472,11 @@ func TestMovingATunerOntoAnotherTunersPortIsRefused(t *testing.T) {
 		{Name: "cable", Listen: "127.0.0.1:" + p2, Tuner: "cable-box", ID: "10DEF123"},
 	}
 	f := startFleet(t, access.DefaultSettings(), devs, true, a, b)
-	code, _ := call(t, "PATCH", f.base+"/antennarr/api/devices/antenna", map[string]string{"listen": "127.0.0.1:" + p2})
+	code, _ := call(t, "PATCH", f.base+"/yagi/api/devices/antenna", map[string]string{"listen": "127.0.0.1:" + p2})
 	if code != http.StatusBadRequest {
 		t.Errorf("= %d, want 400", code)
 	}
-	if code, _ := call(t, "PATCH", f.base+"/antennarr/api/devices/antenna", map[string]string{"listen": "banana"}); code != http.StatusBadRequest {
+	if code, _ := call(t, "PATCH", f.base+"/yagi/api/devices/antenna", map[string]string{"listen": "banana"}); code != http.StatusBadRequest {
 		t.Errorf("nonsense = %d, want 400", code)
 	}
 }

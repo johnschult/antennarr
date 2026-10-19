@@ -69,7 +69,7 @@ func TestLoadMissingFileGivesDefaults(t *testing.T) {
 
 func write(t *testing.T, content string) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestLoadRejectsBadFiles(t *testing.T) {
 }
 
 func TestSaveLoadRoundTrip(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	in := Settings{
 		OwnerReserve: 1, SharedCap: 2, Admin: []string{"100.64.0.0/10"},
 		Viewers: []Viewer{{Name: "John", Addresses: []string{"100.67.117.32"}, Limit: 2}},
@@ -119,7 +119,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 }
 
 func TestSaveWritesEmptyListsNotNull(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "antennarr.json")
+	path := filepath.Join(t.TempDir(), "yagi.json")
 	if err := SaveSettings(path, DefaultSettings()); err != nil {
 		t.Fatal(err)
 	}

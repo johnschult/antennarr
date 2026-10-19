@@ -93,7 +93,7 @@ export function Breakdown({
               <span className="w-28 shrink-0 text-right text-xs tabular-nums">
                 {first === 'Data' ? (
                   r.bytes > 0 ? (
-                    <span title={r.through ? 'Sent through Antennarr: it counts against your upload' : 'Sent straight from the tuner to your own device: it stays on your network'}>
+                    <span title={r.through ? 'Sent through Yagi: it counts against your upload' : 'Sent straight from the tuner to your own device: it stays on your network'}>
                       {formatBytes(r.bytes)}
                       {!r.through && <span className="text-muted-foreground"> · your network</span>}
                     </span>
@@ -116,7 +116,7 @@ export function Breakdown({
   )
 }
 
-/** Who it was: a viewer by name, the owner's own devices, or a stream through Antennarr that isn't matched to anyone. */
+/** Who it was: a viewer by name, the owner's own devices, or a stream through Yagi that isn't matched to anyone. */
 export function Who({ s }: { s: HistorySession }) {
   const local = s.kind === 'local'
   return (

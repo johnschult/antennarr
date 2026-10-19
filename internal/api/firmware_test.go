@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/firmware"
+	"github.com/johnschult/yagi/internal/firmware"
 )
 
 func changelogServer(t *testing.T, status int) *httptest.Server {
@@ -67,12 +67,12 @@ func TestStateCarriesFirmwareStatus(t *testing.T) {
 
 func TestSettingsReportTheFirmwareSwitch(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
-	_, v := e.call(t, "GET", "/antennarr/api/settings", "")
+	_, v := e.call(t, "GET", "/yagi/api/settings", "")
 	if obj(t, v)["firmwareCheck"] != true {
 		t.Errorf("default = %v, want on", obj(t, v)["firmwareCheck"])
 	}
 
-	code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"firmwareCheck":false}`)
+	code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"firmwareCheck":false}`)
 	if code != 200 || obj(t, v)["firmwareCheck"] != false {
 		t.Fatalf("%d %v", code, v)
 	}
@@ -80,14 +80,14 @@ func TestSettingsReportTheFirmwareSwitch(t *testing.T) {
 		t.Error("the choice was not saved")
 	}
 	// Other settings are left alone by a patch that doesn't mention it.
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"sharedCap":2}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":2}`)
 	if fileSettings(t, e).FirmwareCheckEnabled() {
 		t.Error("an unrelated patch switched the check back on")
 	}
-	if code, _ := e.call(t, "PATCH", "/antennarr/api/settings", `{"firmwareCheck":"yes"}`); code != 400 {
+	if code, _ := e.call(t, "PATCH", "/yagi/api/settings", `{"firmwareCheck":"yes"}`); code != 400 {
 		t.Errorf("a non-boolean: %d", code)
 	}
-	if code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"firmwareCheck":true}`); code != 200 || obj(t, v)["firmwareCheck"] != true {
+	if code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"firmwareCheck":true}`); code != 200 || obj(t, v)["firmwareCheck"] != true {
 		t.Errorf("switching back on: %d %v", code, v)
 	}
 }
@@ -104,7 +104,7 @@ func TestSwitchingTheCheckOnKicksTheChecker(t *testing.T) {
 	c := firmware.NewChecker(firmware.Config{URL: srv.URL, Interval: time.Hour, MinGap: time.Nanosecond,
 		Enabled: func() bool { return e.pol.Settings().FirmwareCheckEnabled() }})
 	e.api.Firmware = c
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"firmwareCheck":false}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"firmwareCheck":false}`)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go c.Run(ctx)
@@ -115,7 +115,7 @@ func TestSwitchingTheCheckOnKicksTheChecker(t *testing.T) {
 	default:
 	}
 
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"firmwareCheck":true}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"firmwareCheck":true}`)
 	select {
 	case <-hits:
 	case <-time.After(3 * time.Second):
@@ -127,7 +127,7 @@ func TestCheckNowReadsTheChangelog(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	c := withChecker(e, changelogServer(t, 200).URL, nil)
 
-	code, v := e.call(t, "POST", "/antennarr/api/firmware/check", "")
+	code, v := e.call(t, "POST", "/yagi/api/firmware/check", "")
 	if code != 200 || obj(t, v)["checkedAt"] == nil || c.CheckedAt().IsZero() {
 		t.Fatalf("%d %v", code, v)
 	}
@@ -136,7 +136,7 @@ func TestCheckNowReadsTheChangelog(t *testing.T) {
 	}
 
 	// A second press straight away is told to wait, not sent to SiliconDust again.
-	code, v = e.call(t, "POST", "/antennarr/api/firmware/check", "")
+	code, v = e.call(t, "POST", "/yagi/api/firmware/check", "")
 	if code != 429 || !strings.Contains(errText(v), "a moment ago") {
 		t.Errorf("%d %v", code, v)
 	}
@@ -146,22 +146,22 @@ func TestCheckNowExplainsFailures(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 
 	// No checker at all.
-	if code, v := e.call(t, "POST", "/antennarr/api/firmware/check", ""); code != 409 || !strings.Contains(errText(v), "not available") {
+	if code, v := e.call(t, "POST", "/yagi/api/firmware/check", ""); code != 409 || !strings.Contains(errText(v), "not available") {
 		t.Errorf("no checker: %d %v", code, v)
 	}
 
 	// The check is switched off.
 	off := false
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"firmwareCheck":false}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"firmwareCheck":false}`)
 	withChecker(e, changelogServer(t, 200).URL, func() bool { return off })
-	if code, v := e.call(t, "POST", "/antennarr/api/firmware/check", ""); code != 409 || !strings.Contains(errText(v), "turned off") {
+	if code, v := e.call(t, "POST", "/yagi/api/firmware/check", ""); code != 409 || !strings.Contains(errText(v), "turned off") {
 		t.Errorf("off: %d %v", code, v)
 	}
 
 	// SiliconDust's site is having a bad day.
-	e.call(t, "PATCH", "/antennarr/api/settings", `{"firmwareCheck":true}`)
+	e.call(t, "PATCH", "/yagi/api/settings", `{"firmwareCheck":true}`)
 	withChecker(e, changelogServer(t, 503).URL, nil)
-	code, v := e.call(t, "POST", "/antennarr/api/firmware/check", "")
+	code, v := e.call(t, "POST", "/yagi/api/firmware/check", "")
 	if code != 502 || !strings.Contains(errText(v), "503") {
 		t.Errorf("site down: %d %v", code, v)
 	}
@@ -175,19 +175,19 @@ func TestCheckNowIsAdminOnlyAndGuarded(t *testing.T) {
 	c := withChecker(e, changelogServer(t, 200).URL, nil)
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/antennarr/api/firmware/check", nil)
+	req := httptest.NewRequest("POST", "/yagi/api/firmware/check", nil)
 	req.RemoteAddr = "100.67.117.32:1" // a viewer, not an admin
 	e.pol.AdminOnly(e.api.Handler()).ServeHTTP(rec, req)
 	if rec.Code != 403 {
 		t.Errorf("viewer: %d", rec.Code)
 	}
-	if code, _ := e.call(t, "POST", "/antennarr/api/firmware/check", "", "Origin", "https://evil.example"); code != 403 {
+	if code, _ := e.call(t, "POST", "/yagi/api/firmware/check", "", "Origin", "https://evil.example"); code != 403 {
 		t.Errorf("cross-origin: %d", code)
 	}
 	if !c.CheckedAt().IsZero() {
 		t.Error("a refused request still reached SiliconDust")
 	}
-	if code, _ := e.call(t, "GET", "/antennarr/api/firmware/check", ""); code != 405 {
+	if code, _ := e.call(t, "GET", "/yagi/api/firmware/check", ""); code != 405 {
 		t.Errorf("GET: %d", code)
 	}
 }

@@ -1,7 +1,7 @@
 # Troubleshooting
 
-Start with the log, it usually says what is wrong. In Docker: `docker logs antennarr`. Every request that reaches Antennarr is logged with the address it came from, and every refusal says why.
-A request that never shows up in the log never arrived, which points at the network or a firewall, not at Antennarr.
+Start with the log, it usually says what is wrong. In Docker: `docker logs yagi`. Every request that reaches Yagi is logged with the address it came from, and every refusal says why.
+A request that never shows up in the log never arrived, which points at the network or a firewall, not at Yagi.
 
 - [A page or the tuner address just hangs, then times out](#it-just-hangs-then-times-out)
 - ["This address can't open the admin page"](#this-address-cant-open-the-admin-page)
@@ -11,7 +11,7 @@ A request that never shows up in the log never arrived, which points at the netw
 - [A 503 when watching](#a-503-when-watching)
 - [Plex shows the tuner twice, or the wrong channels](#plex-shows-the-tuner-twice-or-with-the-wrong-channels)
 - [Settings I change don't stick](#settings-i-change-dont-stick)
-- [Antennarr won't start](#antennarr-wont-start)
+- [Yagi won't start](#yagi-wont-start)
 - [I'm signed out after a restart, or the page says "Reconnecting…"](#im-signed-out-after-a-restart-or-the-page-says-reconnecting)
 - [No channel logos or "what's on"](#no-channel-logos-or-whats-on)
 - [Docker problems](#docker-problems)
@@ -19,43 +19,43 @@ A request that never shows up in the log never arrived, which points at the netw
 
 ## It just hangs, then times out
 
-Nothing came back at all, not even a refusal. The connection is being dropped before it reaches Antennarr.
+Nothing came back at all, not even a refusal. The connection is being dropped before it reaches Yagi.
 
-1. **The machine's firewall** is the usual cause. Allow the viewer's address (and yours, for the admin page) to reach Antennarr's port. See [Networking](networking.md#the-machines-firewall).
+1. **The machine's firewall** is the usual cause. Allow the viewer's address (and yours, for the admin page) to reach Yagi's port. See [Networking](networking.md#the-machines-firewall).
 2. **The wrong address, or the wrong network.** Are both machines on the same Tailscale, VPN or LAN? `tailscale ping <address>` works at the network level even when a port is blocked, so use `curl -i http://<address>:5004/discover.json` to test the port itself.
 3. **Tailscale access controls** may not allow that port between those two machines.
-4. **Safari or another browser changed the address**, for example to `https://`. Antennarr speaks plain `http://`. Type it in full, with `:5004`.
+4. **Safari or another browser changed the address**, for example to `https://`. Yagi speaks plain `http://`. Type it in full, with `:5004`.
 
 Check the log: if the request appears there, it arrived and this section isn't your problem.
 
 ## "This address can't open the admin page"
 
-The page loaded (it is public so you can sign in), but Antennarr doesn't consider your address an admin. Once you have a viewer, only these can open the admin pages:
+The page loaded (it is public so you can sign in), but Yagi doesn't consider your address an admin. Once you have a viewer, only these can open the admin pages:
 
-- this machine itself (`http://localhost:5004/antennarr/`, or through `ssh -L 5004:127.0.0.1:5004 yourserver`);
+- this machine itself (`http://localhost:5004/yagi/`, or through `ssh -L 5004:127.0.0.1:5004 yourserver`);
 - addresses listed under `admin` in the settings;
 - a Plex account you have added, if *Sign in with Plex* is on (the page then shows a **Sign in with Plex** button).
 
-To fix it, add your address to `admin` (the log line for your request shows the address Antennarr saw), or turn on Plex sign-in from an address that is already an admin. If you have locked yourself out completely, edit the settings file on the machine, add your address to `admin`, and send the process `SIGHUP` (or restart it).
+To fix it, add your address to `admin` (the log line for your request shows the address Yagi saw), or turn on Plex sign-in from an address that is already an admin. If you have locked yourself out completely, edit the settings file on the machine, add your address to `admin`, and send the process `SIGHUP` (or restart it).
 
-Your address might not be the one you expect. Behind Docker's bridge network, a reverse proxy, or after NAT, Antennarr sees the gateway's address. See [Networking](networking.md#if-antennarr-runs-in-docker).
+Your address might not be the one you expect. Behind Docker's bridge network, a reverse proxy, or after NAT, Yagi sees the gateway's address. See [Networking](networking.md#if-yagi-runs-in-docker).
 
 ## The bare address says "this address is not allowed to use this tuner"
 
-You opened `http://host:5004/` (no `/antennarr/`), which is the tuner's own address, not the web page. From 2026.10.0 a browser is sent on to the admin page automatically. If you still see the message, you're on an older version, or you aren't using a browser. Use `http://host:5004/antennarr/`.
+You opened `http://host:5004/` (no `/yagi/`), which is the tuner's own address, not the web page. From 2026.10.0 a browser is sent on to the admin page automatically. If you still see the message, you're on an older version, or you aren't using a browser. Use `http://host:5004/yagi/`.
 
-If you open Antennarr by a name like `mini.local`, your phone or laptop may connect over IPv6 using a link-local address (`fe80::…`). Antennarr now treats those as ordinary addresses, so you can list `fe80::/10` under `admin` if you want the whole local network, but it is usually easier to use the machine's IPv4 address.
+If you open Yagi by a name like `mini.local`, your phone or laptop may connect over IPv6 using a link-local address (`fe80::…`). Yagi now treats those as ordinary addresses, so you can list `fe80::/10` under `admin` if you want the whole local network, but it is usually easier to use the machine's IPv4 address.
 
 ## The tuner shows as offline
 
-Antennarr checks the tuner every 5 seconds. After 3 failures in a row it shows it offline, and then searches for it by its DeviceID (a broadcast, and a scan of the nearby subnet) every 30 seconds.
+Yagi checks the tuner every 5 seconds. After 3 failures in a row it shows it offline, and then searches for it by its DeviceID (a broadcast, and a scan of the nearby subnet) every 30 seconds.
 
-- **Is the tuner on?** Power, the Ethernet cable (an extender or switch can fail), and the router. Can you reach `http://<tuner address>/discover.json` from the Antennarr machine?
+- **Is the tuner on?** Power, the Ethernet cable (an extender or switch can fail), and the router. Can you reach `http://<tuner address>/discover.json` from the Yagi machine?
 - **Is it listed at all?** The *Tuners* page lists the tuners being shared (with only one, it opens that tuner's page: use its *Tuners* link back). Press *Add tuner* to search the network again or add one by its address. In Docker, searching needs host networking.
-- **Did its address change?** If you gave the tuner's `id` in the settings (or Antennarr has reached it before), it finds the new address by itself, usually within a minute, and the Live page's timeline records "Tuner moved … (found by DeviceID …)". If you didn't, run `antennarr discover` and put the address and `id` in the settings.
+- **Did its address change?** If you gave the tuner's `id` in the settings (or Yagi has reached it before), it finds the new address by itself, usually within a minute, and the Live page's timeline records "Tuner moved … (found by DeviceID …)". If you didn't, run `yagi discover` and put the address and `id` in the settings.
 - **A restart starts at the address in the settings file** and then searches, so it can take half a minute to come back. Put the tuner's current address in `tuner`, and reserve it in your router, to avoid the wait.
-- **Restarting or updating is not an outage.** While Antennarr restarts a tuner or installs firmware on it, the page says *Restarting…* or *Updating firmware…*, and no offline message is sent. If it stays that way for more than a few minutes, check the tuner's power and cable: the result on the tuner's *Firmware* or *Device* tab says what Antennarr saw.
-- **A broadcast can't cross networks.** If the tuner is on a different subnet or VLAN from Antennarr, the search can't find it. Give its address in `tuner`.
+- **Restarting or updating is not an outage.** While Yagi restarts a tuner or installs firmware on it, the page says *Restarting…* or *Updating firmware…*, and no offline message is sent. If it stays that way for more than a few minutes, check the tuner's power and cable: the result on the tuner's *Firmware* or *Device* tab says what Yagi saw.
+- **A broadcast can't cross networks.** If the tuner is on a different subnet or VLAN from Yagi, the search can't find it. Give its address in `tuner`.
 - **In Docker**, the search needs host networking.
 
 ## A viewer's media server can't add the tuner, or a channel won't play
@@ -65,15 +65,15 @@ From the **viewer's server** (not their TV), try `curl -i http://<address>:5004/
 | You get | It means |
 |---|---|
 | Nothing, then a timeout | The connection never arrived. A firewall, or the wrong address. See [it just hangs](#it-just-hangs-then-times-out). |
-| `403` and `X-Antennarr-Reason: not-allowed` | It arrived, but the sender's address isn't a viewer. The log shows the address Antennarr saw. Add that exact address under *Viewers*. After Tailscale or a VPN it is the viewer's address on that network. |
+| `403` and `X-Yagi-Reason: not-allowed` | It arrived, but the sender's address isn't a viewer. The log shows the address Yagi saw. Add that exact address under *Viewers*. After Tailscale or a VPN it is the viewer's address on that network. |
 | `502 tuner unreachable` | It got through, but the tuner is offline. See [the tuner shows as offline](#the-tuner-shows-as-offline). |
-| `200` with Antennarr's address in `BaseURL` | Antennarr is fine. The problem is in the media server. |
+| `200` with Yagi's address in `BaseURL` | Yagi is fine. The problem is in the media server. |
 
 Also: a viewer with a **limit of 0** is paused and every stream is refused. And **the server itself** must reach the address; a TV or phone being able to reach it is no help.
 
 ## A 503 when watching
 
-A `503` is Antennarr deliberately saying "no tuner for you right now", the same answer a busy tuner gives. The `X-Antennarr-Reason` header says why (`curl -i`, or look at the Live page's timeline):
+A `503` is Yagi deliberately saying "no tuner for you right now", the same answer a busy tuner gives. The `X-Yagi-Reason` header says why (`curl -i`, or look at the Live page's timeline):
 
 | Reason | What happened | What to change |
 |---|---|---|
@@ -84,45 +84,45 @@ A `503` is Antennarr deliberately saying "no tuner for you right now", the same 
 
 ## Plex shows the tuner twice, or with the wrong channels
 
-Media servers treat devices with the **same DeviceID as the same device**. If the viewer's Plex already has this tuner from an older setup (a relay, or by its own address), adding it again by Antennarr's address can merge with, or fight, the old entry.
+Media servers treat devices with the **same DeviceID as the same device**. If the viewer's Plex already has this tuner from an older setup (a relay, or by its own address), adding it again by Yagi's address can merge with, or fight, the old entry.
 
 - Remove the old DVR/tuner in the viewer's Plex first, then add `<address>:5004`.
-- Or give Antennarr's copy its own ID with `reportId` (8 hex digits) in the settings, which makes it a separate device. Restart afterwards, since it is a device setting.
-- Live TV in Plex needs Plex Pass, and the guide data comes from Plex, not from Antennarr.
+- Or give Yagi's copy its own ID with `reportId` (8 hex digits) in the settings, which makes it a separate device. Restart afterwards, since it is a device setting.
+- Live TV in Plex needs Plex Pass, and the guide data comes from Plex, not from Yagi.
 
 ## Settings I change don't stick
 
-- **"Start Antennarr with -config to edit settings"**: it could not create its settings file where it was started (a read-only directory, usually), so there is nowhere to save. The log says so at start-up. Start it with `-config /path/to/antennarr.json` somewhere writable.
-- **Changes to `devices` don't apply**: the list of devices only changes on restart. The log says "restart Antennarr to apply that". Everything else reloads (`SIGHUP`, or any change made in the web page).
+- **"Start Yagi with -config to edit settings"**: it could not create its settings file where it was started (a read-only directory, usually), so there is nowhere to save. The log says so at start-up. Start it with `-config /path/to/yagi.json` somewhere writable.
+- **Changes to `devices` don't apply**: the list of devices only changes on restart. The log says "restart Yagi to apply that". Everything else reloads (`SIGHUP`, or any change made in the web page).
 - **Hand edits are ignored**: tell it to reload (`SIGHUP`), or restart. A mistake in the file keeps the old settings and logs the error ("settings reload failed, keeping the current ones").
-- **Saving fails with a permissions error**: Antennarr needs to be able to create files in the settings file's folder (it saves by writing a temporary file and renaming it). In Docker, make `./config` owned by the user in `user:`.
+- **Saving fails with a permissions error**: Yagi needs to be able to create files in the settings file's folder (it saves by writing a temporary file and renaming it). In Docker, make `./config` owned by the user in `user:`.
 
-## Antennarr won't start
+## Yagi won't start
 
 The message says why. The common ones:
 
 - **An unknown key**: the settings file is strict, so a typo is an error: `json: unknown field "viewrs"`.
 - **A bad value**: a device name with a space, a `listen` without a port, an `id` that isn't 8 hex digits, a viewer with no addresses, the same address listed for two viewers, two devices on one port.
-- **"no tuner found, so starting without one"** is not an error: Antennarr is running with only the web page. Open it and add a tuner (*Find tuners*, or by address).
+- **"no tuner found, so starting without one"** is not an error: Yagi is running with only the web page. Open it and add a tuner (*Find tuners*, or by address).
 - **"… can't be combined with devices declared in the settings file"**: you passed `-tuner`/`-listen`/… and also have `devices` in the file. Choose one.
 - **"address already in use"**: something else has that port. Pick another `listen`.
 
 ## I'm signed out after a restart, or the page says "Reconnecting…"
 
-- Sign-ins are kept in a file beside the settings file, `<settings>.sessions.json`, so a restart shouldn't sign you out. If it does, Antennarr couldn't create its settings file, or it couldn't write the sessions file (check the log), or the sign-in had expired (12 hours idle, 7 days at most).
-- A page left open while Antennarr restarts shows **Reconnecting…**. It opens a new connection by itself, so it recovers on its own. If the server no longer recognizes you, it shows the sign-in screen.
+- Sign-ins are kept in a file beside the settings file, `<settings>.sessions.json`, so a restart shouldn't sign you out. If it does, Yagi couldn't create its settings file, or it couldn't write the sessions file (check the log), or the sign-in had expired (12 hours idle, 7 days at most).
+- A page left open while Yagi restarts shows **Reconnecting…**. It opens a new connection by itself, so it recovers on its own. If the server no longer recognizes you, it shows the sign-in screen.
 
 ## No channel logos or "what's on"
 
 - It is on by default: check *Settings → Privacy → Show what's on*.
 - It needs the machine to reach `api.hdhomerun.com` and `img.hdhomerun.com`, and the tuner has to have reported its guide key. The log shows `guide fetch failed` with the reason.
 - It only appears for channels being watched right now.
-- The picture behind a tile comes from the same guide, through Antennarr, so it needs the same two addresses. A tile without a picture is normal when the guide has none for that program.
+- The picture behind a tile comes from the same guide, through Yagi, so it needs the same two addresses. A tile without a picture is normal when the guide has none for that program.
 
 ## Installing firmware or restarting says it didn't work
 
-- **"Didn't take" or "still running …"**: the tuner accepted the file and came back on the old version. Antennarr never tries a second time by itself. Check what the tuner's own page says, and try again from the tuner's *Firmware* tab when nothing is using it.
-- **"SiliconDust has no firmware file …"**: Antennarr builds the download address from the tuner's firmware family and the release the check found, and SiliconDust doesn't document those addresses. The firmware check keeps working; open an issue with the model and version.
+- **"Didn't take" or "still running …"**: the tuner accepted the file and came back on the old version. Yagi never tries a second time by itself. Check what the tuner's own page says, and try again from the tuner's *Firmware* tab when nothing is using it.
+- **"SiliconDust has no firmware file …"**: Yagi builds the download address from the tuner's firmware family and the release the check found, and SiliconDust doesn't document those addresses. The firmware check keeps working; open an issue with the model and version.
 - **"The tuner has not come back"**: give it a few minutes, then check power and the Ethernet cable and unplug it for ten seconds. Nothing more is sent to it.
 - **Restart says it kept answering**: the tuner didn't appear to restart. Try again, or restart it from its own page or by unplugging it.
 - Neither runs while something is using the tuner unless you confirm that you want to interrupt it.
@@ -138,7 +138,7 @@ The message says why. The common ones:
 
 - It is switched on by default under *Settings → Privacy → Keep activity history*, and the *Activity* item is hidden while it is off.
 - It records what is in use as it happens, so it starts empty, and a session shorter than 15 seconds is not kept.
-- Without a settings file it is kept in memory and starts over with Antennarr. Otherwise it is in `<settings file>.history.jsonl` beside it.
+- Without a settings file it is kept in memory and starts over with Yagi. Otherwise it is in `<settings file>.history.jsonl` beside it.
 
 ## Docker problems
 
@@ -149,9 +149,9 @@ The message says why. The common ones:
 
 ## Asking for help
 
-[Open an issue](https://github.com/johnschult/antennarr/issues) and include:
+[Open an issue](https://github.com/johnschult/yagi/issues) and include:
 
-- the **version** (the bottom of the web page, or `antennarr -version`) and how you run it (Docker or not, and the network setup);
+- the **version** (the bottom of the web page, or `yagi -version`) and how you run it (Docker or not, and the network setup);
 - what you did and what you expected;
 - the relevant lines of the **log**, with any addresses you'd rather not share replaced;
 - your settings file, with addresses changed if you prefer. It has no passwords or tokens in it.

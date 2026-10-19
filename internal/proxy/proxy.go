@@ -1,5 +1,5 @@
 // Package proxy fronts one HDHomeRun tuner and rewrites its HTTP API so that
-// remote media servers only ever talk to Antennarr, never to the tuner's LAN IP.
+// remote media servers only ever talk to Yagi, never to the tuner's LAN IP.
 package proxy
 
 import (
@@ -121,7 +121,7 @@ type Policy interface {
 // Denied is a refusal from a Policy.
 type Denied struct {
 	Code   int    // HTTP status: 403 not allowed, 503 no tuner for you right now
-	Reason string // short machine-readable cause, sent as X-Antennarr-Reason
+	Reason string // short machine-readable cause, sent as X-Yagi-Reason
 	Text   string // for the viewer
 }
 
@@ -132,7 +132,7 @@ func (p *Proxy) deny(w http.ResponseWriter, err error) {
 	if !errors.As(err, &d) {
 		d = &Denied{Code: http.StatusForbidden, Reason: "denied", Text: err.Error()}
 	}
-	w.Header().Set("X-Antennarr-Reason", d.Reason)
+	w.Header().Set("X-Yagi-Reason", d.Reason)
 	http.Error(w, d.Text, d.Code)
 }
 
@@ -198,7 +198,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// passthrough lists the tuner endpoints, besides the ones Antennarr rewrites
+// passthrough lists the tuner endpoints, besides the ones Yagi rewrites
 // itself (discover.json, lineup.json) and the streams, that are handed to the
 // tuner as they are. They are read-only status pages. Anything not listed here
 // is refused with a 404, so a viewer can't reach the tuner's management API.

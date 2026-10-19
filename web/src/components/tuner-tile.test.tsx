@@ -151,7 +151,7 @@ describe('TunerTile', () => {
   describe('guide', () => {
     const watching = tile({ slot: remoteSlot(1), owner: { kind: 'remote' } })
     const entry = { name: 'WFRV', icon: true, now: { title: "Rosie's Rules", subTitle: 'The Catrina Mystery', start: '2026-10-17T17:30:00Z', stop: '2026-10-17T18:00:00Z' } }
-    const icon = '/antennarr/api/devices/antenna/guide/5.1/icon'
+    const icon = '/yagi/api/devices/antenna/guide/5.1/icon'
 
     it('shows the channel logo and what is on', () => {
       render(<TunerTile tile={watching} guide={entry} iconSrc={icon} />)
@@ -206,7 +206,7 @@ describe('TunerTile', () => {
       icon: true,
       now: { title: "Rosie's Rules", subTitle: 'The Catrina Mystery', episode: 'S01E32', category: 'Series', description: 'For the Day of the Dead celebration.', start, stop, poster: 'C22744932ENOGRU' },
     }
-    const poster = '/antennarr/api/devices/antenna/guide/5.1/poster/C22744932ENOGRU'
+    const poster = '/yagi/api/devices/antenna/guide/5.1/poster/C22744932ENOGRU'
     const at = (iso: string) => new Date(iso)
 
     it('shows the category, the episode with its title, and the description', () => {

@@ -79,7 +79,7 @@ func TestRefreshReadsThePageAndSaysWhereATunerStands(t *testing.T) {
 	if st := c.StatusFor(old); st.State != StateUpdateAvailable || st.Latest != "20260326" {
 		t.Errorf("an older tuner: %+v", st)
 	}
-	if !strings.HasPrefix(p.lastUA, "Antennarr") {
+	if !strings.HasPrefix(p.lastUA, "Yagi") {
 		t.Errorf("User-Agent = %q: say who is asking", p.lastUA)
 	}
 }

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 const maxSessions = 100

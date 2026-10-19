@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
+	"github.com/johnschult/yagi/internal/access"
 )
 
 // Event is something to tell the owner.
@@ -66,8 +66,8 @@ const (
 	unknownPerHour  = 6                // unknown addresses in all, however many there are
 	cooldownKeepMax = 1000             // entries in the cooldown table before old ones are dropped
 	unknownWindow   = time.Hour
-	TestTitle       = "Antennarr test"
-	testMessage     = "If you can read this, notifications from Antennarr are working."
+	TestTitle       = "Yagi test"
+	testMessage     = "If you can read this, notifications from Yagi are working."
 )
 
 // testKind is the kind of the message the Test button sends. It is not one the owner can switch off.
@@ -167,7 +167,7 @@ func (n *Notifier) save() {
 		return
 	}
 	b, _ := json.MarshalIndent(n.known, "", "  ")
-	tmp, err := os.CreateTemp(filepath.Dir(n.statePath), ".antennarr-notified-*")
+	tmp, err := os.CreateTemp(filepath.Dir(n.statePath), ".yagi-notified-*")
 	if err != nil {
 		n.log.Warn("couldn't remember which firmware was announced", "err", err)
 		return
@@ -287,7 +287,7 @@ func (n *Notifier) FirmwareFound(device, title, version, text string) {
 // TunerState is called when a tuner is seen going offline or coming online. Going
 // offline is only reported if it is still offline after the grace period, and
 // coming online only if the owner was told it was offline, so a restart of
-// Antennarr, a first sighting, or a blip says nothing.
+// Yagi, a first sighting, or a blip says nothing.
 func (n *Notifier) TunerState(device, title string, online bool) {
 	n.mu.Lock()
 	if n.shutdown {
@@ -318,7 +318,7 @@ func (n *Notifier) TunerState(device, title string, online bool) {
 			n.mu.Unlock()
 			n.Send(Event{
 				Kind: access.NotifyTuner, Device: device, Title: title + " is offline",
-				Message: fmt.Sprintf("Antennarr hasn't been able to reach it for %s. It will keep looking.", roundGrace(n.grace)),
+				Message: fmt.Sprintf("Yagi hasn't been able to reach it for %s. It will keep looking.", roundGrace(n.grace)),
 			})
 		})
 		n.mu.Unlock()
@@ -334,7 +334,7 @@ func (n *Notifier) TunerState(device, title string, online bool) {
 	st.sent = false
 	n.mu.Unlock()
 	if !canceled && wasSent {
-		n.Send(Event{Kind: access.NotifyTuner, Device: device, Title: title + " is back online", Message: "Antennarr can reach it again."})
+		n.Send(Event{Kind: access.NotifyTuner, Device: device, Title: title + " is back online", Message: "Yagi can reach it again."})
 	}
 }
 

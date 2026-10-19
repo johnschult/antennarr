@@ -129,7 +129,7 @@ describe('Shell logo', () => {
 
   it('is a link to the Live page, named for the app', () => {
     mount('/tuner')
-    const link = screen.getByRole('link', { name: 'Antennarr' })
+    const link = screen.getByRole('link', { name: 'Yagi' })
     expect(link).toHaveAttribute('href', '/')
     expect(link).toHaveAttribute('title', 'Live')
     expect(link.querySelector('img')).toHaveAttribute('aria-hidden', 'true') // the name comes from the word, not the picture
@@ -137,7 +137,7 @@ describe('Shell logo', () => {
 
   it('is not one of the pages in the menu, which are only the pages', () => {
     mount('/')
-    expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: 'Antennarr' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: 'Yagi' })).not.toBeInTheDocument()
   })
 })
 
@@ -171,8 +171,8 @@ describe('Shell footer', () => {
 
   it('has the GitHub icon linking to the project', () => {
     mount()
-    const gh = screen.getByRole('link', { name: 'Antennarr on GitHub' })
-    expect(gh).toHaveAttribute('href', 'https://github.com/johnschult/antennarr')
+    const gh = screen.getByRole('link', { name: 'Yagi on GitHub' })
+    expect(gh).toHaveAttribute('href', 'https://github.com/johnschult/yagi')
     expect(gh.querySelector('svg')).not.toBeNull() // an icon, not text
     expect(gh.querySelector('svg')).toHaveAttribute('aria-hidden', 'true') // the link's name comes from the label, not the drawing
   })
@@ -181,7 +181,7 @@ describe('Shell footer', () => {
     mount()
     const version = screen.getByTestId('version')
     expect(version).toHaveTextContent('2026.10.0')
-    expect(version).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0')
+    expect(version).toHaveAttribute('href', 'https://github.com/johnschult/yagi/releases/tag/v2026.10.0')
     expect(version.className).toContain('text-muted-foreground/70') // quieter than the other muted text: lighter in the light theme, darker in the dark one
     expect(version.className).toContain('right-0') // at the right edge of the name
     expect(within(screen.getByRole('banner')).getByTestId('version')).toBe(version)
@@ -193,7 +193,7 @@ describe('Shell footer', () => {
     mount()
     const footer = screen.getByRole('contentinfo')
     expect(footer.className).toContain('justify-center')
-    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['Logs', 'Help', 'Antennarr on GitHub'])
+    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['Logs', 'Help', 'Yagi on GitHub'])
   })
 
   it('keeps the footer at the bottom of a short page: the page is a full-height column and the content takes the spare room', () => {
@@ -210,17 +210,17 @@ describe('Shell footer', () => {
   it('has a Help link to the documentation for this version', () => {
     mount()
     const help = screen.getByRole('link', { name: 'Help' })
-    expect(help).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/blob/v2026.10.0/docs/README.md')
+    expect(help).toHaveAttribute('href', 'https://github.com/johnschult/yagi/blob/v2026.10.0/docs/README.md')
   })
 
   it('points Help at the latest docs for a build from a checkout', () => {
-    mount({ version: 'dev+3553344', versionUrl: 'https://github.com/johnschult/antennarr', docsUrl: 'https://github.com/johnschult/antennarr/blob/main/docs/README.md' })
-    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/blob/main/docs/README.md')
+    mount({ version: 'dev+3553344', versionUrl: 'https://github.com/johnschult/yagi', docsUrl: 'https://github.com/johnschult/yagi/blob/main/docs/README.md' })
+    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute('href', 'https://github.com/johnschult/yagi/blob/main/docs/README.md')
   })
 
   it('opens all three in a new tab, without handing the page to the other site', () => {
     mount()
-    for (const link of [screen.getByTestId('version'), screen.getByRole('link', { name: 'Help' }), screen.getByRole('link', { name: 'Antennarr on GitHub' })]) {
+    for (const link of [screen.getByTestId('version'), screen.getByRole('link', { name: 'Help' }), screen.getByRole('link', { name: 'Yagi on GitHub' })]) {
       expect(link).toHaveAttribute('target', '_blank')
       expect(link.getAttribute('rel')).toMatch(/noopener/)
       expect(link.getAttribute('rel')).toMatch(/noreferrer/)
@@ -228,8 +228,8 @@ describe('Shell footer', () => {
   })
 
   it('says dev for a build from a checkout, linked to the project', () => {
-    mount({ version: 'dev+3553344', versionUrl: 'https://github.com/johnschult/antennarr' })
+    mount({ version: 'dev+3553344', versionUrl: 'https://github.com/johnschult/yagi' })
     expect(screen.getByTestId('version')).toHaveTextContent('dev+3553344')
-    expect(screen.getByTestId('version')).toHaveAttribute('href', 'https://github.com/johnschult/antennarr')
+    expect(screen.getByTestId('version')).toHaveAttribute('href', 'https://github.com/johnschult/yagi')
   })
 })

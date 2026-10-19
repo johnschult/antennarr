@@ -6,7 +6,7 @@ import { WhatsNewDialog } from './whats-new-dialog'
 
 const releases = parseChangelog(`## 2026.10.5 (2026-10-18)
 
-Antennarr 2026.10.5 in a line.
+Yagi 2026.10.5 in a line.
 
 ### Read before updating
 
@@ -31,9 +31,9 @@ const show = (props: Partial<Parameters<typeof WhatsNewDialog>[0]> = {}) => {
 describe('WhatsNewDialog', () => {
   it('is titled with the version, says it was updated, and shows the notes', () => {
     show()
-    expect(screen.getByRole('dialog', { name: "What's new in Antennarr 2026.10.5" })).toBeInTheDocument()
-    expect(screen.getByText('Antennarr was updated. Here is what changed.')).toBeInTheDocument()
-    expect(screen.getByText('Antennarr 2026.10.5 in a line.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: "What's new in Yagi 2026.10.5" })).toBeInTheDocument()
+    expect(screen.getByText('Yagi was updated. Here is what changed.')).toBeInTheDocument()
+    expect(screen.getByText('Yagi 2026.10.5 in a line.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Read before updating' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Added' })).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(3) // one item in the first group, two in the second
@@ -57,7 +57,7 @@ describe('WhatsNewDialog', () => {
 
   it('names each release when several went by, newest first, and says so', () => {
     show({ releases })
-    expect(screen.getByText('Antennarr was updated. Here is what changed since you last looked.')).toBeInTheDocument()
+    expect(screen.getByText('Yagi was updated. Here is what changed since you last looked.')).toBeInTheDocument()
     const headings = within(screen.getByRole('region', { name: 'Release notes' })).getAllByRole('heading', { level: 3 })
     expect(headings.map((h) => h.textContent)).toEqual(['2026.10.518 Oct 2026', '2026.10.417 Oct 2026'])
     expect(screen.getByText('Older and plain.')).toBeInTheDocument()
@@ -88,7 +88,7 @@ describe('WhatsNewDialog', () => {
     show()
     expect(screen.getByRole('region', { name: 'Release notes' })).toHaveAttribute('tabindex', '0')
     const all = screen.getByRole('link', { name: /All releases/ })
-    expect(all).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/releases')
+    expect(all).toHaveAttribute('href', 'https://github.com/johnschult/yagi/releases')
     expect(all).toHaveAttribute('rel', 'noopener noreferrer')
   })
 

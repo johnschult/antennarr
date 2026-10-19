@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/proxy"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/proxy"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 // StateSource reports what a tuner is doing (the tuner.Monitor).
@@ -52,7 +52,7 @@ type Active struct {
 	Started time.Time `json:"started"`
 }
 
-// Refusal reasons, sent to clients as X-Antennarr-Reason.
+// Refusal reasons, sent to clients as X-Yagi-Reason.
 const (
 	ReasonNotAllowed   = "not-allowed"
 	ReasonViewerLimit  = "viewer-limit"
@@ -410,7 +410,7 @@ func (d *DeviceView) Stream(r *http.Request) (func(), error) {
 	if st.TunerCount > 0 {
 		local := 0
 		for _, s := range st.Slots {
-			if s.InUse && !s.ViaAntennarr {
+			if s.InUse && !s.ViaProxy {
 				local++
 			}
 		}
@@ -533,7 +533,7 @@ func (p *Policy) Mode() string {
 	return "enforced"
 }
 
-// AdminOnly restricts a handler (the /antennarr/* endpoints) to the owner.
+// AdminOnly restricts a handler (the /yagi/* endpoints) to the owner.
 // Only loopback, the configured admin addresses and a signed-in Plex admin get
 // through.
 func (p *Policy) AdminOnly(next http.Handler) http.Handler {
@@ -555,7 +555,7 @@ func (p *Policy) SetSessionCheck(check func(*http.Request) bool) {
 	p.mu.Unlock()
 }
 
-// IsAdmin reports whether the request may use the /antennarr/* admin
+// IsAdmin reports whether the request may use the /yagi/* admin
 // endpoints: from an admin address, or signed in as an admin.
 func (p *Policy) IsAdmin(r *http.Request) bool {
 	if p.isAdminAddress(r) {

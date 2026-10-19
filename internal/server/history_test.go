@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/history"
-	"github.com/johnschult/antennarr/internal/tuner"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/history"
+	"github.com/johnschult/yagi/internal/tuner"
 )
 
 func inUse(res, ch string, via bool, ip string) tuner.Slot {
-	return tuner.Slot{Resource: res, InUse: true, Channel: ch, ChannelName: "N" + ch, ViaAntennarr: via, TargetIP: ip, BitsPerSecond: 8_000_000, SignalQuality: 90}
+	return tuner.Slot{Resource: res, InUse: true, Channel: ch, ChannelName: "N" + ch, ViaProxy: via, TargetIP: ip, BitsPerSecond: 8_000_000, SignalQuality: 90}
 }
 
 func TestObservationsPairViewersByChannelAndLeaveTheRestLocalOrRemote(t *testing.T) {
@@ -57,7 +57,7 @@ func TestAnOfflineTunerHasNothingInUse(t *testing.T) {
 }
 
 func TestTheHistoryFileIsBesideTheSettingsFileAndOnlyThenKept(t *testing.T) {
-	if got := historyFile("/etc/antennarr/antennarr.json"); got != "/etc/antennarr/antennarr.history.jsonl" {
+	if got := historyFile("/etc/yagi/yagi.json"); got != "/etc/yagi/yagi.history.jsonl" {
 		t.Errorf("got %q", got)
 	}
 	if got := historyFile(""); got != "" {

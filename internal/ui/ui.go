@@ -1,5 +1,5 @@
 // Package ui serves the web UI that is built from /web and embedded in the
-// binary, so Antennarr stays a single file.
+// binary, so Yagi stays a single file.
 package ui
 
 import (
@@ -19,7 +19,7 @@ import (
 //go:embed all:dist
 var dist embed.FS
 
-// Handler serves the embedded UI at prefix (e.g. "/antennarr/").
+// Handler serves the embedded UI at prefix (e.g. "/yagi/").
 func Handler(prefix string) http.Handler {
 	root, err := fs.Sub(dist, "dist")
 	if err != nil {
@@ -28,10 +28,10 @@ func Handler(prefix string) http.Handler {
 	return handler(prefix, root)
 }
 
-const notBuilt = `The Antennarr web UI has not been built into this binary.
+const notBuilt = `The Yagi web UI has not been built into this binary.
 
 Build it with:   cd web && npm install && npm run build
-then rebuild Antennarr. The JSON API under /antennarr/api/ works without it.
+then rebuild Yagi. The JSON API under /yagi/api/ works without it.
 `
 
 // csp is strict because this page can change who may use the tuner: nothing

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/lineup/linetest"
+	"github.com/johnschult/yagi/internal/lineup/linetest"
 )
 
 func fake(t *testing.T) *linetest.Server {

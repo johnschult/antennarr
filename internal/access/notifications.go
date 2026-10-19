@@ -215,7 +215,7 @@ func (c NotifyChannel) Validate() error {
 	return nil
 }
 
-// NotifyAddrAllowed reports whether Antennarr will send a notification to this
+// NotifyAddrAllowed reports whether Yagi will send a notification to this
 // address. A private or LAN address is allowed on purpose, since a ntfy server on
 // your own network is the usual case, and so is this machine. What isn't is an
 // address no server is ever at, and the one that holds the keys of a cloud machine:

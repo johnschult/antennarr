@@ -9,7 +9,7 @@
 #
 #   TUNER=192.168.1.50 CHANNELS=2.1,5.1,11.1,46.1 docs/screenshots/retake.sh
 #
-# That reads the tuner's guide (fetch-logos.py: the same request Antennarr makes) and
+# That reads the tuner's guide (fetch-logos.py: the same request Yagi makes) and
 # keeps the logos in a temporary folder that is deleted afterwards, so only the
 # screenshots are committed, not the networks' marks. Leave CHANNELS out to take the
 # first four main channels.

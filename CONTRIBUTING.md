@@ -4,7 +4,7 @@ Thank you for wanting to help. Bug reports, ideas and pull requests are all welc
 
 ## Reporting a problem or asking for something
 
-[Open an issue](https://github.com/johnschult/antennarr/issues). For a bug, include the version (shown at the bottom of the web page, or `antennarr -version`), how you run Antennarr, what you did and what you expected, and the relevant lines of its log.
+[Open an issue](https://github.com/johnschult/yagi/issues). For a bug, include the version (shown at the bottom of the web page, or `yagi -version`), how you run Yagi, what you did and what you expected, and the relevant lines of its log.
 [Troubleshooting](docs/troubleshooting.md) says what else is useful. Security problems go through [SECURITY.md](SECURITY.md), not a public issue.
 
 ## Changing the code
@@ -29,16 +29,16 @@ golangci-lint run ./...                   # the linters CI runs (settings in .go
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...   # known vulnerabilities the code can reach
 cd web && npm ci && npm test              # the web UI (Vitest)
 cd web && npx tsc -b                      # type-check the UI
-go run ./cmd/antennarr -config /tmp/antennarr-dev.json   # the Go server (the API), on :5004; start this first
+go run ./cmd/yagi -config /tmp/yagi-dev.json   # the Go server (the API), on :5004; start this first
 cd web && npm run dev                     # the UI with hot reload, in a second terminal; it proxies to the server above (see web/README.md)
-(cd web && npm run build) && go build -o antennarr ./cmd/antennarr    # the real thing: the UI is built first, because the program embeds it
+(cd web && npm run build) && go build -o yagi ./cmd/yagi    # the real thing: the UI is built first, because the program embeds it
 ```
 
 ### How the code is laid out
 
 | Folder | What is in it |
 |---|---|
-| `cmd/antennarr` | The command: flags, the `discover` command, reloading on `SIGHUP`. |
+| `cmd/yagi` | The command: flags, the `discover` command, reloading on `SIGHUP`. |
 | `internal/proxy` | The rewriting proxy for the tuner's own address. |
 | `internal/tuner` | Watches a tuner: online or offline, who is using it, finding it again by DeviceID. |
 | `internal/discovery` | Finding HDHomeRuns: a UDP broadcast, and a scan of the nearby subnet. |

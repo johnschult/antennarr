@@ -63,7 +63,7 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
     <div className="space-y-5">
       <DialogHeader>
         <DialogTitle>Add a tuner</DialogTitle>
-        <DialogDescription>Antennarr shares the tuner with your viewers. It gets its own port.</DialogDescription>
+        <DialogDescription>Yagi shares the tuner with your viewers. It gets its own port.</DialogDescription>
       </DialogHeader>
 
       <section aria-label="Tuners on your network" className="space-y-2">
@@ -81,7 +81,7 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
         )}
         {search.isSuccess && found.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No tuner answered. If yours is on another network, or Antennarr runs in Docker without host networking, add it by its address below.
+            No tuner answered. If yours is on another network, or Yagi runs in Docker without host networking, add it by its address below.
           </p>
         )}
         {found.length > 0 && (

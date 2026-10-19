@@ -37,7 +37,7 @@ function NavLabel({ item, active, always }: { item: (typeof nav)[number]; active
 }
 
 /** Where the project lives, for the footer. */
-const REPO_URL = 'https://github.com/johnschult/antennarr'
+const REPO_URL = 'https://github.com/johnschult/yagi'
 
 /**
  * Whether the page's live feed is connected. Nothing here about the tuners: there can be
@@ -123,7 +123,7 @@ export function Shell() {
           <div className="relative">
             <Link to="/" title="Live" className="flex items-end gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Logo size={42} />
-              <span className="font-wordmark pb-1.5 text-2xl leading-none font-bold tracking-[0.02em]">Antennarr</span>
+              <span className="font-wordmark pb-1.5 text-2xl leading-none font-bold tracking-[0.02em]">Yagi</span>
             </Link>
             {/* Under the wordmark, at its right edge: small and quiet, but there when someone asks which version this is. */}
             <a
@@ -206,8 +206,8 @@ export function Shell() {
             href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Antennarr on GitHub"
-            title="Antennarr on GitHub"
+            aria-label="Yagi on GitHub"
+            title="Yagi on GitHub"
             className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted hover:text-foreground"
           >
             <GithubIcon className="size-5" />

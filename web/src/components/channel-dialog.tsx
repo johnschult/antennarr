@@ -89,7 +89,7 @@ function ChannelForm({ channel, onDone }: { channel?: NotifyChannel; onDone: () 
     <form onSubmit={submit} noValidate className="space-y-4">
       <DialogHeader>
         <DialogTitle>{channel ? `Edit ${channel.name}` : 'Add a channel'}</DialogTitle>
-        <DialogDescription>Where Antennarr sends messages. Tokens and keys are saved in the settings file and are never shown again.</DialogDescription>
+        <DialogDescription>Where Yagi sends messages. Tokens and keys are saved in the settings file and are never shown again.</DialogDescription>
       </DialogHeader>
 
       <Field id="channel-name" label="Name">
@@ -104,7 +104,7 @@ function ChannelForm({ channel, onDone }: { channel?: NotifyChannel; onDone: () 
             <Input id="channel-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={NTFY_SERVER} spellCheck={false} className="font-mono" />
           </Field>
           <Field id="channel-topic" label="Topic" hint="On ntfy.sh anyone who knows a topic can read it, so pick one that is hard to guess.">
-            <Input id="channel-topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="antennarr-x7k2q9" spellCheck={false} className="font-mono" />
+            <Input id="channel-topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="yagi-x7k2q9" spellCheck={false} className="font-mono" />
           </Field>
           <Field id="channel-token" label="Access token (optional)" hint="Only for a server that needs a login.">
             <Input id="channel-token" type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder={saved?.hasToken && !clearToken ? keep : ''} spellCheck={false} className="font-mono" />
@@ -125,7 +125,7 @@ function ChannelForm({ channel, onDone }: { channel?: NotifyChannel; onDone: () 
 
       {type === 'webhook' && (
         <>
-          <Field id="channel-url" label="Webhook address" hint="Antennarr sends a JSON POST here with the event, title, message, device and time.">
+          <Field id="channel-url" label="Webhook address" hint="Yagi sends a JSON POST here with the event, title, message, device and time.">
             <Input id="channel-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={saved?.host ? `Saved (${saved.host}). Leave empty to keep it.` : 'https://…'} spellCheck={false} className="font-mono" />
           </Field>
           <Field id="channel-token" label="Token (optional)" hint="Sent as a Bearer token in the Authorization header.">

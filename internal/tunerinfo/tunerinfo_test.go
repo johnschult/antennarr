@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr/hdhrtest"
 )
 
 func page(t *testing.T) string {

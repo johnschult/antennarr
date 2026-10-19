@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/johnschult/antennarr/internal/logbuf"
+	"github.com/johnschult/yagi/internal/logbuf"
 )
 
 // logsDoc is the Logs page: the recent lines that matched, oldest first.

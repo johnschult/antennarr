@@ -54,7 +54,7 @@ describe('api client', () => {
       throw new TypeError('Failed to fetch')
     })
     const err = await getState().catch((e) => e)
-    expect(err).toMatchObject({ status: 0, message: 'Could not reach Antennarr' })
+    expect(err).toMatchObject({ status: 0, message: 'Could not reach Yagi' })
   })
 
   it('patches a device by name, escaping it', async () => {

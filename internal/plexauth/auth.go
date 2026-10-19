@@ -9,15 +9,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/httpx"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/httpx"
 )
 
 // CookieName is the session cookie. It is only sent to the admin pages.
-const CookieName = "antennarr_session"
+const CookieName = "yagi_session"
 
 // CookiePath keeps the cookie off the tuner endpoints that media servers use.
-const CookiePath = "/antennarr/"
+const CookiePath = "/yagi/"
 
 // Config for Auth.
 type Config struct {
@@ -27,16 +27,16 @@ type Config struct {
 	Settings func() access.Settings
 	// Edit saves a change to the settings (adding an admin, keeping the client
 	// ID). It may be nil, or fail with access.ErrNoFile, when there is no
-	// settings file; Antennarr then works but forgets on restart.
+	// settings file; Yagi then works but forgets on restart.
 	Edit func(fn func(*access.Settings) error) (access.Settings, error)
-	// IsAdmin says whether a request may administer Antennarr, by address or
+	// IsAdmin says whether a request may administer Yagi, by address or
 	// by an existing sign-in. Adding a Plex account needs it.
 	IsAdmin func(*http.Request) bool
 	Now     func() time.Time
 	Log     *slog.Logger
 
 	// SessionsFile, if set, is where sign-ins are kept so they survive a
-	// restart. Empty means they are forgotten when Antennarr stops.
+	// restart. Empty means they are forgotten when Yagi stops.
 	SessionsFile string
 
 	SessionIdle     time.Duration // default 12h
@@ -118,7 +118,7 @@ func (a *Auth) Admin(r *http.Request) (access.PlexAccount, bool) {
 // IsSignedInAdmin is Admin as a yes/no, for the policy.
 func (a *Auth) IsSignedInAdmin(r *http.Request) bool { _, ok := a.Admin(r); return ok }
 
-// clientIDFor returns this Antennarr's identity for plex.tv, making and saving
+// clientIDFor returns this Yagi's identity for plex.tv, making and saving
 // one the first time.
 func (a *Auth) clientIDFor() string {
 	a.mu.Lock()
@@ -130,7 +130,7 @@ func (a *Auth) clientIDFor() string {
 		a.clientID = set.Plex.ClientID
 		return a.clientID
 	}
-	id := "antennarr-" + randomID(18)
+	id := "yagi-" + randomID(18)
 	if a.cfg.Edit != nil {
 		_, err := a.cfg.Edit(func(s *access.Settings) error {
 			if s.Plex == nil {
@@ -155,17 +155,17 @@ func (a *Auth) client() *Client {
 	return &Client{Base: a.cfg.Base, AuthBase: a.cfg.AuthBase, HTTP: a.cfg.HTTP, ClientID: a.clientIDFor()}
 }
 
-// Handler serves /antennarr/auth/*. It is public by design (you can't sign in
+// Handler serves /yagi/auth/*. It is public by design (you can't sign in
 // to reach the sign-in), so each endpoint does its own checks.
 func (a *Auth) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /antennarr/auth/status", a.status)
-	mux.HandleFunc("POST /antennarr/auth/plex/start", func(w http.ResponseWriter, r *http.Request) { a.start(w, r, false) })
-	mux.HandleFunc("POST /antennarr/auth/plex/poll", func(w http.ResponseWriter, r *http.Request) { a.poll(w, r, false) })
-	mux.HandleFunc("POST /antennarr/auth/plex/add/start", func(w http.ResponseWriter, r *http.Request) { a.start(w, r, true) })
-	mux.HandleFunc("POST /antennarr/auth/plex/add/poll", func(w http.ResponseWriter, r *http.Request) { a.poll(w, r, true) })
-	mux.HandleFunc("POST /antennarr/auth/logout", a.logout)
-	mux.HandleFunc("/antennarr/auth/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /yagi/auth/status", a.status)
+	mux.HandleFunc("POST /yagi/auth/plex/start", func(w http.ResponseWriter, r *http.Request) { a.start(w, r, false) })
+	mux.HandleFunc("POST /yagi/auth/plex/poll", func(w http.ResponseWriter, r *http.Request) { a.poll(w, r, false) })
+	mux.HandleFunc("POST /yagi/auth/plex/add/start", func(w http.ResponseWriter, r *http.Request) { a.start(w, r, true) })
+	mux.HandleFunc("POST /yagi/auth/plex/add/poll", func(w http.ResponseWriter, r *http.Request) { a.poll(w, r, true) })
+	mux.HandleFunc("POST /yagi/auth/logout", a.logout)
+	mux.HandleFunc("/yagi/auth/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteErr(w, http.StatusNotFound, "no such endpoint")
 	})
 	return httpx.GuardWrites(mux)

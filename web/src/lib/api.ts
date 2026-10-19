@@ -1,6 +1,6 @@
 import type { AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, LogLevel, LogsDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
 
-// The UI is served from /antennarr/ and the API lives beside it.
+// The UI is served from /yagi/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
 
 /** An error reply from the Go API; message is safe to show to the user. */
@@ -25,7 +25,7 @@ async function request<T>(method: string, path: string, body?: unknown, base: st
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch {
-    throw new ApiError(0, 'Could not reach Antennarr')
+    throw new ApiError(0, 'Could not reach Yagi')
   }
   if (res.status === 204) return undefined as T
 
@@ -105,11 +105,11 @@ export const pollPlex = (pinId: number, add = false) =>
   request<PlexPollStatus>('POST', `/plex${add ? '/add' : ''}/poll`, { pinId }, AUTH)
 export const signOut = () => request<unknown>('POST', '/logout', undefined, AUTH)
 
-/** Where a channel's logo is served from: through Antennarr, never straight from SiliconDust. */
+/** Where a channel's logo is served from: through Yagi, never straight from SiliconDust. */
 export const channelIconUrl = (device: string, channel: string) =>
   `${API}/devices/${encodeURIComponent(device)}/guide/${encodeURIComponent(channel)}/icon`
 
-/** Where a program's picture is served from: through Antennarr, never straight from SiliconDust. The token is the guide's `now.poster`. */
+/** Where a program's picture is served from: through Yagi, never straight from SiliconDust. The token is the guide's `now.poster`. */
 export const programPosterUrl = (device: string, channel: string, token: string) =>
   `${API}/devices/${encodeURIComponent(device)}/guide/${encodeURIComponent(channel)}/poster/${encodeURIComponent(token)}`
 

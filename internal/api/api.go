@@ -18,22 +18,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/access"
-	"github.com/johnschult/antennarr/internal/discovery"
-	"github.com/johnschult/antennarr/internal/firmware"
-	"github.com/johnschult/antennarr/internal/guide"
-	"github.com/johnschult/antennarr/internal/hdhr"
-	"github.com/johnschult/antennarr/internal/history"
-	"github.com/johnschult/antennarr/internal/httpx"
-	"github.com/johnschult/antennarr/internal/lineup"
-	"github.com/johnschult/antennarr/internal/live"
-	"github.com/johnschult/antennarr/internal/logbuf"
-	"github.com/johnschult/antennarr/internal/netinfo"
-	"github.com/johnschult/antennarr/internal/restart"
-	"github.com/johnschult/antennarr/internal/tuner"
-	"github.com/johnschult/antennarr/internal/tunerinfo"
-	"github.com/johnschult/antennarr/internal/upgrade"
-	"github.com/johnschult/antennarr/internal/version"
+	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
+	"github.com/johnschult/yagi/internal/firmware"
+	"github.com/johnschult/yagi/internal/guide"
+	"github.com/johnschult/yagi/internal/hdhr"
+	"github.com/johnschult/yagi/internal/history"
+	"github.com/johnschult/yagi/internal/httpx"
+	"github.com/johnschult/yagi/internal/lineup"
+	"github.com/johnschult/yagi/internal/live"
+	"github.com/johnschult/yagi/internal/logbuf"
+	"github.com/johnschult/yagi/internal/netinfo"
+	"github.com/johnschult/yagi/internal/restart"
+	"github.com/johnschult/yagi/internal/tuner"
+	"github.com/johnschult/yagi/internal/tunerinfo"
+	"github.com/johnschult/yagi/internal/upgrade"
+	"github.com/johnschult/yagi/internal/version"
 )
 
 const (
@@ -42,7 +42,7 @@ const (
 	coalesceFor = 100 * time.Millisecond // bursts of changes become one event
 )
 
-// Fleet is the set of tuners Antennarr is fronting, which can change while it
+// Fleet is the set of tuners Yagi is fronting, which can change while it
 // runs. The server provides it.
 type Fleet interface {
 	Devices() []Device
@@ -60,7 +60,7 @@ type Fleet interface {
 // NewError is an error that reaches the person as this status and message.
 func NewError(code int, msg string) error { return &httpErr{code: code, msg: msg} }
 
-// API serves /antennarr/api/*.
+// API serves /yagi/api/*.
 type API struct {
 	// Devices is a fixed set of tuners, for when Fleet is nil.
 	Devices []Device
@@ -122,7 +122,7 @@ type Device struct {
 }
 
 // Prefix is where the API is mounted.
-const Prefix = "/antennarr/api/"
+const Prefix = "/yagi/api/"
 
 func (a *API) Handler() http.Handler {
 	if a.Log == nil {
@@ -184,7 +184,7 @@ func (a *API) Handler() http.Handler {
 type Summary struct {
 	Total    int `json:"total"`    // tuners on the device
 	InUse    int `json:"inUse"`    // in use by anyone
-	Remote   int `json:"remote"`   // of those, through Antennarr
+	Remote   int `json:"remote"`   // of those, through Yagi
 	Local    int `json:"local"`    // of those, the owner's own devices
 	Reserved int `json:"reserved"` // always kept free for the owner
 	Free     int `json:"free"`
@@ -873,7 +873,7 @@ func writeErr(w http.ResponseWriter, code int, msg string)      { httpx.WriteErr
 func decode(w http.ResponseWriter, r *http.Request, v any) bool { return httpx.Decode(w, r, v) }
 func guardWrites(next http.Handler) http.Handler                { return httpx.GuardWrites(next) }
 
-// channelIcon serves a channel's logo, fetched through Antennarr so the
+// channelIcon serves a channel's logo, fetched through Yagi so the
 // browser never contacts SiliconDust. Only a channel the guide knows has one;
 // the address it is fetched from comes from the guide, never from this request.
 func (a *API) channelIcon(w http.ResponseWriter, r *http.Request) {
@@ -895,7 +895,7 @@ func (a *API) channelIcon(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// programPoster serves a program's picture, fetched through Antennarr so the browser never contacts
+// programPoster serves a program's picture, fetched through Yagi so the browser never contacts
 // SiliconDust. The token in the path only says which of the channel's programs is meant; the address
 // it is fetched from comes from the guide. The picture at a token never changes, so it may be kept.
 func (a *API) programPoster(w http.ResponseWriter, r *http.Request) {

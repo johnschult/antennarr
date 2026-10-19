@@ -47,7 +47,7 @@ export function UpgradeDialog({ device, onClose }: Props) {
         <AlertDialogHeader>
           <AlertDialogTitle>Update firmware to {firmwareDate(release)}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Antennarr will download this release from SiliconDust and install it on {title}. The tuner restarts, which takes two to three minutes. Don't unplug it while it updates.
+            Yagi will download this release from SiliconDust and install it on {title}. The tuner restarts, which takes two to three minutes. Don't unplug it while it updates.
           </AlertDialogDescription>
         </AlertDialogHeader>
 

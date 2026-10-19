@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/johnschult/antennarr/internal/restart"
+	"github.com/johnschult/yagi/internal/restart"
 )
 
 // restartInput is a request to restart a tuner. Interrupt says the person has been told that things are
@@ -50,7 +50,7 @@ func (a *API) restartTuner(w http.ResponseWriter, r *http.Request) {
 	}
 	u, err := url.Parse(t.BaseURL)
 	if err != nil || u.Hostname() == "" {
-		writeErr(w, http.StatusConflict, "Antennarr doesn't know where the tuner is")
+		writeErr(w, http.StatusConflict, "Yagi doesn't know where the tuner is")
 		return
 	}
 	err = a.Restart.Start(restart.Request{Device: d.Name, Title: a.deviceTitle(d.Name, t.FriendlyName), Host: u.Hostname(), Tuner: d.Mon})

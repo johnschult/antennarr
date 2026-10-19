@@ -1,4 +1,4 @@
-/** The Antennarr mark: a retro TV with rabbit ears. */
+/** The Yagi mark: a retro TV with rabbit ears. */
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <img

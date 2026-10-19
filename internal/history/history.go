@@ -1,10 +1,10 @@
 // Package history remembers who watched what and for how long, for the Activity page. It watches the
-// tuners' streams as the server sees them (a viewer's stream through Antennarr, the owner's own device
+// tuners' streams as the server sees them (a viewer's stream through Yagi, the owner's own device
 // straight from the tuner) and turns them into sessions: one tuner on one channel for one viewer, from when
 // it began to when it stopped.
 //
 // Sessions are kept for thirty days in a file beside the settings, one JSON object per line, appended as
-// each session ends. A session still going when Antennarr stops is closed at that moment; one lost to a
+// each session ends. A session still going when Yagi stops is closed at that moment; one lost to a
 // crash is lost.
 package history
 
@@ -21,8 +21,8 @@ import (
 type Kind string
 
 const (
-	KindViewer Kind = "viewer" // a viewer, through Antennarr, whose name is known
-	KindRemote Kind = "remote" // through Antennarr, but not matched to a viewer
+	KindViewer Kind = "viewer" // a viewer, through Yagi, whose name is known
+	KindRemote Kind = "remote" // through Yagi, but not matched to a viewer
 	KindLocal  Kind = "local"  // the owner's own device, straight from the tuner
 )
 
@@ -79,7 +79,7 @@ const (
 	maxTitle   = 120
 	pruneEvery = time.Hour
 	// maxGap is the longest time between two looks that is counted as watching: after a longer silence
-	// (Antennarr was busy or stopped) the bytes in between are not guessed at.
+	// (Yagi was busy or stopped) the bytes in between are not guessed at.
 	maxGap = time.Minute
 )
 
@@ -206,7 +206,7 @@ func (r *Recorder) closeLocked(k string) {
 	}
 }
 
-// Close ends every session still going, at the last time each was seen: for when Antennarr stops.
+// Close ends every session still going, at the last time each was seen: for when Yagi stops.
 func (r *Recorder) Close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()

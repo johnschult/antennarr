@@ -41,7 +41,7 @@ export function RemoveTunerDialog({ device, onClose }: Props) {
         <AlertDialogHeader>
           <AlertDialogTitle>Remove {device ? deviceTitle(device) : ''}?</AlertDialogTitle>
           <AlertDialogDescription>
-            Antennarr stops sharing this tuner, and its port is freed.
+            Yagi stops sharing this tuner, and its port is freed.
             {watching > 0 && ` ${watching === 1 ? 'One stream is' : `${watching} streams are`} running on it and will be cut off.`}{' '}
             The tuner itself is not touched, and you can add it again. Its name and any per-tuner limits for viewers are forgotten.
           </AlertDialogDescription>

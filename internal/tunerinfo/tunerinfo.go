@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/johnschult/antennarr/internal/hdhr"
+	"github.com/johnschult/yagi/internal/hdhr"
 )
 
 // Info is what the tuner reported. A field that couldn't be read is empty, and Problems says why in
@@ -88,7 +88,7 @@ func (r *Reader) client() *http.Client {
 func (r *Reader) Read(ctx context.Context, key, baseURL string, refresh bool) (Info, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil || u.Hostname() == "" {
-		return Info{}, errors.New("Antennarr doesn't know where the tuner is")
+		return Info{}, errors.New("Yagi doesn't know where the tuner is")
 	}
 	r.mu.Lock()
 	if c, ok := r.cache[key]; ok && !refresh && r.now().Sub(c.at) < cacheFor {

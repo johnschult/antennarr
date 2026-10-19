@@ -88,7 +88,7 @@ export function SettingsPage() {
               kind="lines"
               id="setting-admin"
               title="Admin addresses"
-              description="Addresses allowed to open this page, besides the machine Antennarr runs on. One per line: an IP or a range like 192.168.1.0/24. Keep viewers out of these ranges: anyone listed here can change settings. Take care not to lock yourself out."
+              description="Addresses allowed to open this page, besides the machine Yagi runs on. One per line: an IP or a range like 192.168.1.0/24. Keep viewers out of these ranges: anyone listed here can change settings. Take care not to lock yourself out."
               initial={settings.admin.join('\n')}
               placeholder="100.64.0.1"
               disabled={!editable}
@@ -112,11 +112,11 @@ export function SettingsPage() {
           )}
           {tab === 'privacy' && (
             <>
-          <Section bare title="Privacy and updates" icon={ShieldCheck} description="What Antennarr reads from outside and what it keeps. Nothing about your viewers is ever sent.">
+          <Section bare title="Privacy and updates" icon={ShieldCheck} description="What Yagi reads from outside and what it keeps. Nothing about your viewers is ever sent.">
             <SwitchRow
               id="setting-firmwareCheck"
               title="Check for new tuner firmware"
-              description="Reads SiliconDust's public firmware changelog once every 12 hours. Nothing about you or your tuners is sent. Antennarr tells you about new releases, and installs one only when you press Install on a tuner's Firmware tab."
+              description="Reads SiliconDust's public firmware changelog once every 12 hours. Nothing about you or your tuners is sent. Yagi tells you about new releases, and installs one only when you press Install on a tuner's Firmware tab."
               checked={settings.firmwareCheck}
               disabled={!editable}
               onChange={(next) => update.mutateAsync({ firmwareCheck: next })}
@@ -124,7 +124,7 @@ export function SettingsPage() {
             <SwitchRow
               id="setting-guide"
               title="Show what's on"
-              description="Shows each watched channel's logo and current program on its tile. Antennarr reads SiliconDust's program guide for your tuner every 6 hours, which sends SiliconDust your tuner's guide key. Nothing about your viewers is sent, and logos are served by Antennarr, not loaded by your browser."
+              description="Shows each watched channel's logo and current program on its tile. Yagi reads SiliconDust's program guide for your tuner every 6 hours, which sends SiliconDust your tuner's guide key. Nothing about your viewers is sent, and logos are served by Yagi, not loaded by your browser."
               checked={settings.guide}
               disabled={!editable}
               onChange={(next) => update.mutateAsync({ guide: next })}
