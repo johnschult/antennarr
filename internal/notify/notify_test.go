@@ -109,7 +109,7 @@ func (ts *timers) after(d time.Duration, f func()) func() bool {
 
 func (ts *timers) count() int { ts.mu.Lock(); defer ts.mu.Unlock(); return len(ts.pending) }
 
-// fire runs every wait that has not been cancelled.
+// fire runs every wait that has not been canceled.
 func (ts *timers) fire() {
 	ts.mu.Lock()
 	var fs []func()
@@ -298,7 +298,7 @@ func TestABlipIsNotReportedAtAll(t *testing.T) {
 	r.timers.fire()
 	r.srv.none(t)
 	if r.timers.count() != 0 {
-		t.Errorf("the wait was not cancelled: %d", r.timers.count())
+		t.Errorf("the wait was not canceled: %d", r.timers.count())
 	}
 }
 
@@ -323,7 +323,7 @@ func TestBackOnlineIsOnlyReportedIfOfflineWas(t *testing.T) {
 	r.srv.next(t)
 }
 
-func TestAWaitThatWasCancelledAsItFiredDoesNotSend(t *testing.T) {
+func TestAWaitThatWasCanceledAsItFiredDoesNotSend(t *testing.T) {
 	r := newRig(t)
 	r.n.TunerState("antenna", "L", false)
 	var stale func()

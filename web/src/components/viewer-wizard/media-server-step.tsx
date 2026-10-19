@@ -5,10 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MEDIA_SERVERS, mediaServerSteps, verifyCommands, type MediaServer } from '@/lib/setup-guide'
 import type { ConnectGuide } from './use-connect-guide'
 
-/** The selected tab is outlined in the accent colour and set apart from the others, so it can't be mistaken for them. */
+/** The selected tab is outlined in the accent color and set apart from the others, so it can't be mistaken for them. */
 const TAB =
   'gap-2 px-4 text-sm data-active:border-primary/60 data-active:bg-primary/15 data-active:font-semibold data-active:text-foreground ' +
-  // In the dark theme the strip is mid-grey, so a faint tint doesn't stand out: make the selected tab darker than the strip, with a bright outline.
+  // In the dark theme the strip is mid-gray, so a faint tint doesn't stand out: make the selected tab darker than the strip, with a bright outline.
   'dark:data-active:border-primary dark:data-active:bg-background dark:data-active:ring-2 dark:data-active:ring-primary/70'
 
 /** What to do in the viewer's media server, and how to check it worked. */

@@ -18,7 +18,7 @@ type applies int
 
 const (
 	no    applies = iota // the note is for other models
-	maybe                // the scope names something we don't recognise
+	maybe                // the scope names something we don't recognize
 	yes                  // for this model, or for all of them
 )
 
@@ -27,7 +27,7 @@ const (
 type profile struct {
 	model   string
 	aliases map[string]bool
-	known   bool // the model number is one we recognise
+	known   bool // the model number is one we recognize
 }
 
 // families maps the start of a model number to the names SiliconDust uses for

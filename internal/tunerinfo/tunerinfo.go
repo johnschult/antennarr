@@ -52,7 +52,7 @@ const (
 type Reader struct {
 	// Dial opens a control connection to a tuner's host. Required.
 	Dial func(ctx context.Context, host string) (*hdhr.Conn, error)
-	// Client fetches the System Menu page; http.DefaultClient's behaviour is not used because the page
+	// Client fetches the System Menu page; http.DefaultClient's behavior is not used because the page
 	// must not be followed anywhere else.
 	Client *http.Client
 	Now    func() time.Time

@@ -59,7 +59,7 @@ function ViewerForm({ viewer, devices, onDone }: { viewer?: Viewer; devices: Dev
       <DialogHeader>
         <DialogTitle>{viewer ? `Edit ${viewer.name}` : 'Add a viewer'}</DialogTitle>
         <DialogDescription>
-          A viewer is someone's media server. It is recognised by the address it connects from.
+          A viewer is someone's media server. It is recognized by the address it connects from.
         </DialogDescription>
       </DialogHeader>
 

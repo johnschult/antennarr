@@ -16,11 +16,11 @@ export const john: Viewer = {
 export const mom: Viewer = { name: 'Mom', addresses: ['10.8.0.0/24'], limit: 1, inUse: 0, inUseByDevice: {}, lastSeen: null }
 
 export const upToDate: FirmwareStatus = {
-  state: 'up-to-date', current: '20260326', latest: '20260326', updates: [], modelRecognised: true, checkedAt: '2026-10-17T09:00:00Z',
+  state: 'up-to-date', current: '20260326', latest: '20260326', updates: [], modelRecognized: true, checkedAt: '2026-10-17T09:00:00Z',
 }
 
 export const updateAvailable: FirmwareStatus = {
-  state: 'update-available', current: '20250815', latest: '20260326', modelRecognised: true, checkedAt: '2026-10-17T09:00:00Z',
+  state: 'update-available', current: '20250815', latest: '20260326', modelRecognized: true, checkedAt: '2026-10-17T09:00:00Z',
   updates: [
     { version: '20260326', certain: true, notes: [{ scope: 'ATSC3 models', text: 'Security update.' }] },
     { version: '20260313', certain: true, notes: [{ scope: 'All models', text: 'Upgrade TLS root certificates.' }, { text: 'A line with no scope.' }] },

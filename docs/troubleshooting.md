@@ -109,7 +109,7 @@ The message says why. The common ones:
 ## I'm signed out after a restart, or the page says "Reconnecting…"
 
 - Sign-ins are kept in a file beside the settings file, `<settings>.sessions.json`, so a restart shouldn't sign you out. If it does, Antennarr couldn't create its settings file, or it couldn't write the sessions file (check the log), or the sign-in had expired (12 hours idle, 7 days at most).
-- A page left open while Antennarr restarts shows **Reconnecting…**. It opens a new connection by itself, so it recovers on its own. If the server no longer recognises you, it shows the sign-in screen.
+- A page left open while Antennarr restarts shows **Reconnecting…**. It opens a new connection by itself, so it recovers on its own. If the server no longer recognizes you, it shows the sign-in screen.
 
 ## No channel logos or "what's on"
 

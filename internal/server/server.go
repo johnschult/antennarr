@@ -62,7 +62,7 @@ type Config struct {
 	// firmware changelog is read; they exist for tests.
 	FirmwareURL      string
 	FirmwareInterval time.Duration
-	// GuideURL and GuideIconBase override where the programme guide and
+	// GuideURL and GuideIconBase override where the program guide and
 	// channel logos come from; they exist for tests, which must never reach
 	// SiliconDust.
 	GuideURL      string
@@ -122,7 +122,7 @@ type Server struct {
 	mu        sync.Mutex
 	announced map[string]string // device -> the firmware version we last told the owner about
 
-	// fleetMu serialises adding and removing devices. The fields below it are
+	// fleetMu serializes adding and removing devices. The fields below it are
 	// set by Run and used by them.
 	fleetMu sync.Mutex
 	runCtx  context.Context // nil until Run

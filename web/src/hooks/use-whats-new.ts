@@ -47,13 +47,13 @@ export function useWhatsNew(current: string, load: LoadChangelog = bundled) {
 
   useEffect(() => {
     if (!wanted || text !== null) return
-    let cancelled = false
+    let canceled = false
     load().then(
-      (t) => !cancelled && setText(t),
-      () => !cancelled && setText(''), // can't read them: there is nothing to show
+      (t) => !canceled && setText(t),
+      () => !canceled && setText(''), // can't read them: there is nothing to show
     )
     return () => {
-      cancelled = true
+      canceled = true
     }
   }, [wanted, text, load])
 

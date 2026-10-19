@@ -44,7 +44,7 @@ cd web && npm run dev                     # the UI with hot reload, in a second 
 | `internal/api` | The admin JSON API the web page uses. |
 | `internal/server` | Puts it together: one listener per device, the admin pages, the sign-in, the checks. |
 | `internal/plexauth` | Sign in with Plex (server side), with sessions kept across restarts. |
-| `internal/firmware`, `internal/guide` | The firmware changelog and the programme guide. |
+| `internal/firmware`, `internal/guide` | The firmware changelog and the program guide. |
 | `internal/netinfo` | This machine's addresses and firewall, for the Connect page. |
 | `internal/live`, `internal/httpx`, `internal/version`, `internal/ui` | Event notifications, shared HTTP helpers, the version, the embedded web page. |
 | `web` | The web UI: React, TypeScript, Vite, Tailwind and shadcn/ui. See `web/README.md`. |
@@ -54,7 +54,7 @@ cd web && npm run dev                     # the UI with hot reload, in a second 
 
 - **It has tests.** The Go side uses the standard library only (there are no third-party Go dependencies, and that is on purpose), and tests use fake tuners and fake plex.tv and SiliconDust servers. **A test must never reach the real network.** Run Go tests with `-race`.
 - **The UI tests** use Vitest and Testing Library. The admin API's types in `web/src/lib/types.ts` must be kept in step with `internal/api/api.go`.
-- **Accessibility is checked with axe** in `web/src/a11y.test.tsx`: every page in each of its states, the phone menu, and every dialog. Add a new page or dialog there. jsdom has no layout, so colour contrast and focus order still need a look in a browser.
+- **Accessibility is checked with axe** in `web/src/a11y.test.tsx`: every page in each of its states, the phone menu, and every dialog. Add a new page or dialog there. jsdom has no layout, so color contrast and focus order still need a look in a browser.
 - **Tests don't depend on the date they run.** Use an injected clock or build times relative to now.
 - **Nothing leaves the network without a setting** that turns it off, and it is listed in [Security](docs/security.md#what-leaves-your-network).
 - **It fails loudly.** The settings file rejects unknown keys on purpose. Prefer a clear error to a guess.

@@ -157,7 +157,7 @@ export function mediaServerSteps(m: MediaServer, address: string): string[] {
         'In Jellyfin, open Dashboard → Live TV → Tuner Devices → + (add).',
         'Choose HDHomeRun as the tuner type.',
         `Enter ${address} as the tuner address and save.`,
-        'Add a guide data provider on the same page (XMLTV or Schedules Direct); the channels appear without one but have no programme listings.',
+        'Add a guide data provider on the same page (XMLTV or Schedules Direct); the channels appear without one but have no program listings.',
       ]
     case 'emby':
       return [

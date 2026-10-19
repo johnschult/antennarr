@@ -39,7 +39,7 @@ func (c *Conn) EndSent() bool {
 }
 
 // redial is how long to wait before the one retry of a connection: libhdhomerun tries twice, and a first
-// attempt to a tuner on the local network does fail now and then (a neighbour not yet known to the
+// attempt to a tuner on the local network does fail now and then (a neighbor not yet known to the
 // router, or a local-network permission being granted) and work a moment later.
 const redial = 300 * time.Millisecond
 

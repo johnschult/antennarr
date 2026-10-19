@@ -101,7 +101,7 @@ type job struct {
 // offlineState is one tuner's offline notice: waiting out the grace period, or already sent.
 type offlineState struct {
 	stop func() bool // cancels the wait; nil when it is not waiting
-	gen  int         // which wait this is, so one that was cancelled as it fired can tell
+	gen  int         // which wait this is, so one that was canceled as it fired can tell
 	sent bool        // the owner was told it is offline, so should be told when it is back
 }
 
@@ -307,7 +307,7 @@ func (n *Notifier) TunerState(device, title string, online bool) {
 		gen := st.gen
 		st.stop = n.after(n.grace, func() {
 			n.mu.Lock()
-			// A newer wait, or none, means this one was cancelled just as it fired.
+			// A newer wait, or none, means this one was canceled just as it fired.
 			if st.stop == nil || st.gen != gen {
 				n.mu.Unlock()
 				return
@@ -323,16 +323,16 @@ func (n *Notifier) TunerState(device, title string, online bool) {
 		n.mu.Unlock()
 		return
 	}
-	cancelled := false
+	canceled := false
 	if st.stop != nil {
 		st.stop()
 		st.stop = nil
-		cancelled = true
+		canceled = true
 	}
 	wasSent := st.sent
 	st.sent = false
 	n.mu.Unlock()
-	if !cancelled && wasSent {
+	if !canceled && wasSent {
 		n.Send(Event{Kind: access.NotifyTuner, Device: device, Title: title + " is back online", Message: "Antennarr can reach it again."})
 	}
 }

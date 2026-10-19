@@ -66,7 +66,7 @@ describe('resolveTheme', () => {
 })
 
 describe('applyTheme', () => {
-  it("sets Tailwind's dark class and the browser's colour scheme, and undoes them", () => {
+  it("sets Tailwind's dark class and the browser's color scheme, and undoes them", () => {
     const root = document.createElement('div')
     applyTheme('dark', root)
     expect(root.classList.contains('dark')).toBe(true)

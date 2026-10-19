@@ -114,7 +114,7 @@ describe('usePlexFlow', () => {
     expect(result.current.flow).toEqual({ phase: 'waiting', authUrl: start.authUrl })
   })
 
-  it('can be cancelled, which stops the polling and closes the window', async () => {
+  it('can be canceled, which stops the polling and closes the window', async () => {
     const calls = install({ 'POST /auth/plex/start': () => ({ body: start }), 'POST /auth/plex/poll': () => ({ body: { status: 'pending' } }) })
     const { result, win } = await begin()
     await tick()

@@ -59,7 +59,7 @@ describe('firmwareDate', () => {
 })
 
 describe('isNever', () => {
-  it('recognises "never" in its several forms', () => {
+  it('recognizes "never" in its several forms', () => {
     expect(isNever(undefined)).toBe(true)
     expect(isNever(null)).toBe(true)
     expect(isNever('')).toBe(true)

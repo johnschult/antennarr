@@ -53,7 +53,7 @@ func TestStateCarriesFirmwareStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	fw := fwOf(t, e)
-	if fw["state"] != "update-available" || fw["latest"] != "20260326" || fw["modelRecognised"] != true || fw["checkedAt"] == nil {
+	if fw["state"] != "update-available" || fw["latest"] != "20260326" || fw["modelRecognized"] != true || fw["checkedAt"] == nil {
 		t.Fatalf("firmware = %v", fw)
 	}
 	updates := fw["updates"].([]any)

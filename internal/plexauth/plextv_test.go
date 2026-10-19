@@ -102,7 +102,7 @@ func (f *fakePlexTV) signIn(pinID int64, token string, u fakeUser) {
 	f.users[token] = u
 }
 
-// addUser registers a token that plex.tv will recognise, without any PIN.
+// addUser registers a token that plex.tv will recognize, without any PIN.
 func (f *fakePlexTV) addUser(token string, u fakeUser) {
 	f.mu.Lock()
 	f.users[token] = u

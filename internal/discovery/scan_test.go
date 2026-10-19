@@ -104,7 +104,7 @@ func TestScanHostsHonoursContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if got := ScanHosts(ctx, []string{"127.0.0.1:1", "127.0.0.1:2"}, ""); len(got) != 0 {
-		t.Errorf("got %+v from a cancelled scan", got)
+		t.Errorf("got %+v from a canceled scan", got)
 	}
 }
 

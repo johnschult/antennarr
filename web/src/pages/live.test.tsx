@@ -14,7 +14,7 @@ function named() {
 }
 
 describe('LivePage', () => {
-  it('summarises what is on air', () => {
+  it('summarizes what is on air', () => {
     renderWithApp(<LivePage />, makeState())
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('2 of 4 tuners live')
     expect(screen.getByText('1 remote · 1 local · 1 held for you · 27 Mbps')).toBeInTheDocument()
@@ -177,7 +177,7 @@ describe('LivePage', () => {
 })
 
 describe('LivePage guide', () => {
-  it('passes each watched channel its logo and programme', () => {
+  it('passes each watched channel its logo and program', () => {
     const s = makeState()
     s.devices[0].guide = {
       '5.1': { name: 'WFRV', icon: true, now: { title: 'Evening News', start: '2026-10-17T17:00:00Z', stop: '2026-10-17T18:00:00Z' } },

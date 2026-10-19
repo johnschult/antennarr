@@ -103,7 +103,7 @@ export function SettingsPage() {
         <SwitchRow
           id="setting-guide"
           title="Show what's on"
-          description="Shows each watched channel's logo and current programme on its tile. Antennarr reads SiliconDust's programme guide for your tuner every 6 hours, which sends SiliconDust your tuner's guide key. Nothing about your viewers is sent, and logos are served by Antennarr, not loaded by your browser."
+          description="Shows each watched channel's logo and current program on its tile. Antennarr reads SiliconDust's program guide for your tuner every 6 hours, which sends SiliconDust your tuner's guide key. Nothing about your viewers is sent, and logos are served by Antennarr, not loaded by your browser."
           checked={settings.guide}
           disabled={!editable}
           onChange={(next) => update.mutateAsync({ guide: next })}

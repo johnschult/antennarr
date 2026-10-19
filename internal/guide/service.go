@@ -266,9 +266,9 @@ func (s *Service) fetch(ctx context.Context, auth, etag, modified string) (chans
 
 // Entry is what a tile shows for a channel.
 type Entry struct {
-	Name string     `json:"name,omitempty"`
-	Icon bool       `json:"icon"` // whether a logo can be fetched with Icon
-	Now  *Programme `json:"now,omitempty"`
+	Name string   `json:"name,omitempty"`
+	Icon bool     `json:"icon"` // whether a logo can be fetched with Icon
+	Now  *Program `json:"now,omitempty"`
 }
 
 // Lookup says what the guide knows about a channel on a device right now.

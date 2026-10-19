@@ -34,7 +34,7 @@ If you share a tuner with a friend, note that Plex only shares Live TV with peop
 1. Open *Dashboard → Live TV → Tuner Devices* and click **+**.
 2. Choose **HDHomeRun** as the tuner type.
 3. Enter `<address>:5004` as the tuner address and save.
-4. Add a guide data provider on the same page (XMLTV or Schedules Direct). The channels appear without one but have no programme listings.
+4. Add a guide data provider on the same page (XMLTV or Schedules Direct). The channels appear without one but have no program listings.
 
 ## Emby
 
