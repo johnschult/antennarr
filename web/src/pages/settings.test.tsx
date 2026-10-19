@@ -23,7 +23,7 @@ const okState = { 'GET /state': () => ({ body: makeState() }) }
 describe('SettingsPage', () => {
   it('groups settings into sections of rows, not a card each', () => {
     renderSettings(state(), 'access')
-    for (const name of ['Limits', 'Access']) expect(section(name)).toBeInTheDocument()
+    for (const name of ['Limits', 'Admins and viewers']) expect(section(name)).toBeInTheDocument()
     expect(screen.queryByText(/^Save$/)).not.toBeInTheDocument() // nothing to save until something changes
     expect(document.querySelector('[data-slot="card"]')).toBeNull()
   })
@@ -72,14 +72,14 @@ describe('SettingsPage', () => {
     expect(within(tuner).getByLabelText('Max tuners for viewers')).toHaveValue(2)
     expect(within(tuner).getByText(/4 tuners/)).toBeInTheDocument()
     expect(screen.getByLabelText('Admin addresses')).toHaveValue('100.64.0.0/10')
-    expect(within(section('Access')).getByRole('link', { name: 'Viewers only' })).toHaveAttribute('href', '/viewers')
+    expect(within(section('Admins and viewers')).getByRole('link', { name: 'Viewers only' })).toHaveAttribute('href', '/viewers')
   })
 
   it('says when there are no viewers yet', () => {
     const s = state()
     s.settings.mode = 'no-viewers'
     renderSettings(s, 'access')
-    expect(within(section('Access')).getByText('No viewers yet')).toBeInTheDocument()
+    expect(within(section('Admins and viewers')).getByText('No viewers yet')).toBeInTheDocument()
   })
 
   describe('numbers', () => {
@@ -153,7 +153,7 @@ describe('SettingsPage', () => {
       const box = screen.getByLabelText('Admin addresses')
       await user.clear(box)
       await user.type(box, '192.168.1.5{Enter}10.0.0.0/8') // Enter makes a new line in a multi-line box
-      await user.click(saveButton(section('Access'))!)
+      await user.click(saveButton(section('Admins and viewers'))!)
       await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ admin: ['192.168.1.5', '10.0.0.0/8'] }))
     })
 
@@ -163,7 +163,7 @@ describe('SettingsPage', () => {
       const user = userEvent.setup()
       renderSettings(state(), 'access')
       await user.clear(screen.getByLabelText('Admin addresses'))
-      await user.click(saveButton(section('Access'))!)
+      await user.click(saveButton(section('Admins and viewers'))!)
       await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ admin: [] }))
     })
 
@@ -174,8 +174,8 @@ describe('SettingsPage', () => {
       renderSettings(state(), 'access')
       await user.clear(screen.getByLabelText('Admin addresses'))
       await user.type(screen.getByLabelText('Admin addresses'), 'nope')
-      await user.click(saveButton(section('Access'))!)
-      expect(await within(section('Access')).findByRole('alert')).toHaveTextContent('admin: bad address "nope"')
+      await user.click(saveButton(section('Admins and viewers'))!)
+      expect(await within(section('Admins and viewers')).findByRole('alert')).toHaveTextContent('admin: bad address "nope"')
     })
   })
 
@@ -343,7 +343,7 @@ describe('Plex sign-in settings', () => {
     s.settings.plex = { enabled, admins }
     return s
   }
-  const access = () => section('Access')
+  const access = () => section('Admins and viewers')
 
   it('is off by default and shows no accounts list', () => {
     renderSettings(withPlex([], false), 'access')

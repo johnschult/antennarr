@@ -1,4 +1,4 @@
-import { Bell, Gauge, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
+import { Bell, Gauge, ShieldCheck, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
 import { ClearHistoryDialog } from '@/components/clear-history-dialog'
@@ -82,7 +82,7 @@ export function SettingsPage() {
           ))}
 
 
-          <Section title="Access" icon={KeyRound}>
+          <Section title="Admins and viewers" icon={Users}>
             <EditRow
               key={`admin-${settings.admin.join(',')}`}
               kind="lines"
