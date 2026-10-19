@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, EyeOff, Gauge, ListChecks, Loader2, Radar, Sigma, Square, Star } from 'lucide-react'
+import { Check, EyeOff, Gauge, Loader2, Radar, Sigma, Square, Star, Tv, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ChannelAbout } from '@/components/channel-about'
+import { ActiveFilters, ChannelFilters } from '@/components/channel-filters'
 import { ScanDialog } from '@/components/scan-dialog'
 import { Section } from '@/components/settings/section'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/hooks/app-context'
 import { receptionByChannel } from '@/lib/activity'
+import { type Facets, NO_FACETS, passes } from '@/lib/channel-filters'
 import { getChannels, getHistory, setChannelState, startChannelScan, stopChannelScan, testChannelSignal } from '@/lib/api'
 import { signalTone, toneText } from '@/lib/signal'
 import type { ChannelsDoc, ChannelState, DeviceState, SignalTestResult, TunerChannel } from '@/lib/types'
@@ -155,6 +157,7 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
   const reception = useMemo(() => receptionByChannel(history.data?.sessions ?? [], device.name), [history.data, device.name])
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
+  const [facets, setFacets] = useState<Facets>(NO_FACETS)
   const [scanning, setScanning] = useState(false)
 
   // Testing a channel's signal: tune a free tuner to it for a few seconds. One at a time, and what each told us is
@@ -250,8 +253,8 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
   }, [channels])
   const shown = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return channels.filter((c) => (filter === 'all' || c.state === filter) && (term === '' || c.number.toLowerCase().includes(term) || c.name.toLowerCase().includes(term)))
-  }, [channels, filter, search])
+    return channels.filter((c) => (filter === 'all' || c.state === filter) && passes(c, facets) && (term === '' || c.number.toLowerCase().includes(term) || c.name.toLowerCase().includes(term)))
+  }, [channels, filter, search, facets])
 
   const pickable = shown.filter((c) => c.subscribed)
   const picked = pickable.filter((c) => selected.has(c.number)).length
@@ -264,7 +267,7 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
     })
 
   return (
-    <Section bare icon={ListChecks} title="Channels" description="Which channels viewers and media servers get. A disabled channel is left out of the lineup, and a favorite is starred. Where a channel has been watched, its average signal quality over the last 30 days is shown.">
+    <Section bare icon={Tv} title="Channels" description="Which channels viewers and media servers get. A disabled channel is left out of the lineup, and a favorite is starred. Where a channel has been watched, its average signal quality over the last 30 days is shown.">
       <div className="space-y-4 p-4">
         {!online ? (
           <p className="text-sm text-muted-foreground">The tuner is offline, so there is nothing to read.</p>
@@ -280,21 +283,36 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
           <>
             <ScanCard doc={q.data} device={device} onStart={() => setScanning(true)} onStop={() => stop.mutate()} stopping={stop.isPending} />
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p data-testid="counts" className="text-sm text-muted-foreground">
-                {counts.enabled + counts.favorite} in the lineup · {counts.favorite} {counts.favorite === 1 ? 'favorite' : 'favorites'} · {counts.disabled} disabled
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <div role="group" aria-label="Show" className="flex gap-1">
-                  {FILTERS.map((f) => (
-                    <Button key={f.id} size="sm" variant={filter === f.id ? 'default' : 'outline'} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
-                      {f.label}
-                    </Button>
-                  ))}
+            <p data-testid="counts" className="text-sm text-muted-foreground">
+              {counts.enabled + counts.favorite} in the lineup · {counts.favorite} {counts.favorite === 1 ? 'favorite' : 'favorites'} · {counts.disabled} disabled
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div role="group" aria-label="Show" className="grid grid-cols-4 gap-1 sm:flex">
+                {FILTERS.map((f) => (
+                  <Button key={f.id} size="sm" variant={filter === f.id ? 'default' : 'outline'} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
+                    {f.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative min-w-0 flex-1 sm:w-44 sm:flex-none">
+                  <Input aria-label="Search channels" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 w-full pr-8" />
+                  {search !== '' && (
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      title="Clear search"
+                      onClick={() => setSearch('')}
+                      className="absolute top-1/2 right-1.5 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <X aria-hidden className="size-3.5" />
+                    </button>
+                  )}
                 </div>
-                <Input aria-label="Search channels" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 w-40" />
+                <ChannelFilters channels={channels} facets={facets} onChange={setFacets} shown={shown.length} />
               </div>
             </div>
+            <ActiveFilters facets={facets} onChange={setFacets} />
 
             {shown.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
