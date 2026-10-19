@@ -109,6 +109,19 @@ describe('ActivityPage', () => {
     expect(row).toHaveTextContent(/Cable HDHR · Tuner 3/)
   })
 
+  it('says it is off, links to Settings, and asks for nothing, when the history is off', async () => {
+    const { fn, calls } = stubFetch({})
+    vi.stubGlobal('fetch', fn)
+    const state = makeState()
+    state.settings.history = false
+    renderWithApp(<ActivityPage />, state)
+    expect(screen.getByText(/The activity history is off/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Turn it on in Settings' })).toHaveAttribute('href', '/settings')
+    expect(screen.queryByRole('button', { name: '7 days' })).not.toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 30))
+    expect(calls).toHaveLength(0)
+  })
+
   it('warns that it is only in memory when there is no settings file', async () => {
     show(doc([s({})]), makeState({ editable: false }))
     expect(await screen.findByText(/kept in memory and starts over/)).toBeInTheDocument()

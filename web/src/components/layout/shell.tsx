@@ -18,11 +18,11 @@ import { cn } from '@/lib/utils'
 // The pages, in the order they are used: watching, who may watch, the hardware,
 // then everything else. The path of /tuner is older than its name here and stays,
 // so existing links keep working.
-const nav: { to: string; label: string; icon: LucideIcon; end?: boolean }[] = [
+const nav: { to: string; label: string; icon: LucideIcon; end?: boolean; needs?: 'history' }[] = [
   { to: '/', label: 'Live', icon: Radio, end: true },
   { to: '/viewers', label: 'Viewers', icon: Users },
   { to: '/tuner', label: 'Tuners', icon: Antenna },
-  { to: '/activity', label: 'Activity', icon: History },
+  { to: '/activity', label: 'Activity', icon: History, needs: 'history' },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -93,6 +93,8 @@ const menuLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function Shell() {
   const { state } = useApp()
   const whatsNew = useWhatsNew(state.version)
+  // A page that depends on a setting that is off isn't offered.
+  const pages = nav.filter((n) => n.needs !== 'history' || state.settings.history)
   useUpgradeToasts()
   useRestartToasts()
   const location = useLocation()
@@ -123,7 +125,7 @@ export function Shell() {
             <span className="font-wordmark pb-1.5 text-2xl leading-none font-bold tracking-[0.02em]">Antennarr</span>
           </div>
           <nav aria-label="Main" className="hidden gap-1 md:flex">
-            {nav.map((n) => (
+            {pages.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} className={linkClass}>
                 {({ isActive }) => <NavLabel item={n} active={isActive} />}
               </NavLink>
@@ -155,7 +157,7 @@ export function Shell() {
           {open && (
             <div className="border-t border-border/60 bg-background/95">
               <nav aria-label="Main menu" className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 sm:px-6">
-                {nav.map((n) => (
+                {pages.map((n) => (
                   <NavLink key={n.to} to={n.to} end={n.end} className={menuLinkClass}>
                     {({ isActive }) => <NavLabel item={n} active={isActive} always />}
                   </NavLink>

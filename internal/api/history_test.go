@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -60,6 +62,83 @@ func TestHistoryIsForAdminsOnly(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/antennarr/api/history", nil)
+	req.RemoteAddr = "100.67.117.32:1" // John is a viewer, not an admin
+	e.pol.AdminOnly(e.api.Handler()).ServeHTTP(rec, req)
+	if rec.Code != 403 {
+		t.Errorf("status %d", rec.Code)
+	}
+}
+
+func TestSettingsReportTheHistorySwitchAndItClosesTheRoute(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	e.api.History = history.New(nil, time.Now())
+	_, v := e.call(t, "GET", "/antennarr/api/settings", "")
+	if obj(t, v)["history"] != true {
+		t.Errorf("default = %v, want on", obj(t, v)["history"])
+	}
+	if code, _ := e.call(t, "GET", "/antennarr/api/history", ""); code != 200 {
+		t.Fatalf("while on: %d", code)
+	}
+	code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"history":false}`)
+	if code != 200 || obj(t, v)["history"] != false {
+		t.Fatalf("%d %v", code, v)
+	}
+	if fileSettings(t, e).HistoryEnabled() {
+		t.Error("the choice was not saved")
+	}
+	if code, v := e.call(t, "GET", "/antennarr/api/history", ""); code != 404 {
+		t.Errorf("while off: %d %v", code, v)
+	}
+	e.call(t, "PATCH", "/antennarr/api/settings", `{"sharedCap":2}`)
+	if fileSettings(t, e).HistoryEnabled() {
+		t.Error("an unrelated patch switched it back on")
+	}
+	if code, _ := e.call(t, "PATCH", "/antennarr/api/settings", `{"history":"yes"}`); code != 400 {
+		t.Errorf("a non-boolean: %d", code)
+	}
+	e.call(t, "PATCH", "/antennarr/api/settings", `{"history":true}`)
+	if code, _ := e.call(t, "GET", "/antennarr/api/history", ""); code != 200 {
+		t.Errorf("switched back on: %d", code)
+	}
+}
+
+func TestClearingTheHistoryForgetsEverythingEvenWhileItIsOff(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	path := filepath.Join(t.TempDir(), "h.jsonl")
+	r := history.New(&history.Store{Path: path}, time.Now())
+	now := time.Now()
+	o := []history.Observation{{Device: "antenna", Tuner: "tuner0", Channel: "2.1", Kind: history.KindLocal}}
+	r.Observe(now.Add(-3*time.Hour), o)
+	r.Observe(now.Add(-2*time.Hour), o)
+	r.Observe(now.Add(-time.Hour), nil) // a finished session, in the file
+	r.Observe(now.Add(-30*time.Minute), o)
+	r.Observe(now, o) // and one still going
+	e.api.History = r
+	if b, _ := os.ReadFile(path); len(b) == 0 {
+		t.Fatal("nothing was written to the file to clear")
+	}
+
+	e.call(t, "PATCH", "/antennarr/api/settings", `{"history":false}`)
+	if code, _ := e.call(t, "DELETE", "/antennarr/api/history", ""); code != 204 {
+		t.Fatalf("clear: %d", code)
+	}
+	if got := r.Sessions(now.Add(-24 * time.Hour)); len(got) != 0 {
+		t.Errorf("still in memory: %+v", got)
+	}
+	if b, _ := os.ReadFile(path); len(b) != 0 {
+		t.Errorf("still in the file: %s", b)
+	}
+	e.call(t, "PATCH", "/antennarr/api/settings", `{"history":true}`)
+	if _, v := e.call(t, "GET", "/antennarr/api/history", ""); len(obj(t, v)["sessions"].([]any)) != 0 {
+		t.Errorf("history after clearing: %v", v)
+	}
+}
+
+func TestOnlyAdminsCanClearTheHistory(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("DELETE", "/antennarr/api/history", nil)
+	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = "100.67.117.32:1" // John is a viewer, not an admin
 	e.pol.AdminOnly(e.api.Handler()).ServeHTTP(rec, req)
 	if rec.Code != 403 {

@@ -194,6 +194,19 @@ func (r *Recorder) pruneLocked(now time.Time) {
 	r.done = kept
 }
 
+// Clear forgets every session, finished or still going, in memory and in the file.
+func (r *Recorder) Clear() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.done = nil
+	r.open = map[string]*Session{}
+	if r.store != nil {
+		if err := r.store.Rewrite(nil); err != nil && r.OnError != nil {
+			r.OnError(err)
+		}
+	}
+}
+
 // Sessions are the sessions that ended or were going at any time since, oldest first, including those
 // still going (marked Open).
 func (r *Recorder) Sessions(since time.Time) []Session {

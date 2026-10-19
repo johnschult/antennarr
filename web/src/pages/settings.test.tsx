@@ -10,7 +10,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, plex: { enabled: false, admins: [] }, notifications: noNotifications() }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, plex: { enabled: false, admins: [] }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -248,6 +248,53 @@ describe('guide setting', () => {
     s.editable = false
     renderWithApp(<SettingsPage />, s)
     expect(within(section('Privacy and updates')).getByRole('switch', { name: "Show what's on" })).toHaveAttribute('aria-disabled', 'true')
+  })
+})
+
+describe('activity history setting', () => {
+  const privacy = () => within(section('Privacy and updates'))
+
+  it('is on by default and can be switched off, saying what it keeps', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    renderWithApp(<SettingsPage />, state())
+    const sw = privacy().getByRole('switch', { name: 'Keep activity history' })
+    expect(sw).toBeChecked()
+    expect(privacy().getByText(/A viewer's address is not kept/)).toBeInTheDocument()
+    await userEvent.setup().click(sw)
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ history: false }))
+  })
+
+  it('cannot be switched from a read-only view', () => {
+    const s = state()
+    s.editable = false
+    renderWithApp(<SettingsPage />, s)
+    expect(privacy().getByRole('switch', { name: 'Keep activity history' })).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('can be cleared, after asking, and sends nothing until you agree', async () => {
+    const { fn, calls } = stubFetch({ 'DELETE /history': () => ({ status: 204 }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    renderWithApp(<SettingsPage />, state())
+    const user = userEvent.setup()
+    await user.click(within(screen.getByText('Clear activity history').closest('div')!.parentElement!.parentElement!).getByRole('button', { name: /Clear/ }))
+    const d = await screen.findByRole('alertdialog')
+    expect(within(d).getByText('Clear the activity history?')).toBeInTheDocument()
+    expect(calls.filter((c) => c.method === 'DELETE')).toHaveLength(0)
+
+    await user.click(within(d).getByRole('button', { name: 'Clear' }))
+    await waitFor(() => expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/history'))).toBe(true))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+  })
+
+  it('can be cancelled', async () => {
+    const { fn, calls } = stubFetch({ 'DELETE /history': () => ({ status: 204 }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    renderWithApp(<SettingsPage />, state())
+    const user = userEvent.setup()
+    await user.click(within(screen.getByText('Clear activity history').closest('div')!.parentElement!.parentElement!).getByRole('button', { name: /Clear/ }))
+    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: /Keep it/ }))
+    expect(calls.filter((c) => c.method === 'DELETE')).toHaveLength(0)
   })
 })
 

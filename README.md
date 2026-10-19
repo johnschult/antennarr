@@ -176,7 +176,7 @@ All of this can be changed in the UI. The file is JSON, written atomically, and 
 | `ownerReserve` | Tuners kept free for your own devices, in addition to any you are using. |
 | `admin` | Extra addresses (IPs or CIDRs) allowed to use the admin pages. Loopback always is, once a viewer exists. |
 | `labels` | Display names by device name, for the web page only. Media servers are always told the device (such as HDHomeRun FLEX 4K), so renaming doesn't change what Plex shows. |
-| `firmwareCheck`, `guide` | Turn the firmware changelog check and the program guide off. On by default. |
+| `firmwareCheck`, `guide`, `history` | Turn the firmware changelog check, the program guide and the activity history off. On by default. |
 | `plex` | Sign in with Plex: `enabled`, and the allowed `admins` (`id`, `name`). |
 | `notifications` | `channels` (ntfy, Pushover or webhook, with their tokens) and which `events` to send. See [Configuration](docs/configuration.md#notifications). |
 

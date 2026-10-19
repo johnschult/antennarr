@@ -26,6 +26,10 @@ func (a *API) getHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		days = n
 	}
+	if !a.Pol.Settings().HistoryEnabled() {
+		writeErr(w, http.StatusNotFound, "the activity history is off")
+		return
+	}
 	now := time.Now()
 	doc := historyDoc{Days: days, Now: now, Sessions: []history.Session{}}
 	if a.History != nil {
@@ -34,4 +38,13 @@ func (a *API) getHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, doc)
+}
+
+// clearHistory forgets everything that has been kept, however far back. It works while the history is off,
+// since that is when someone is most likely to want it gone.
+func (a *API) clearHistory(w http.ResponseWriter, r *http.Request) {
+	if a.History != nil {
+		a.History.Clear()
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Globe, House, Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
@@ -99,7 +100,8 @@ function Row({ s, devices }: { s: HistorySession; devices: DeviceState[] }) {
 export function ActivityPage() {
   const { state } = useApp()
   const [days, setDays] = useState<number>(7)
-  const q = useQuery({ queryKey: ['history', days], queryFn: () => getHistory(days), refetchInterval: 30_000, staleTime: 10_000, retry: false, refetchOnWindowFocus: false })
+  const enabled = state.settings.history
+  const q = useQuery({ queryKey: ['history', days], queryFn: () => getHistory(days), enabled, refetchInterval: 30_000, staleTime: 10_000, retry: false, refetchOnWindowFocus: false })
   const sessions = useMemo(() => q.data?.sessions ?? [], [q.data])
   const now = useMemo(() => new Date(q.data?.now ?? 0), [q.data])
   const groups = useMemo(() => groupByDay(sessions), [sessions])
@@ -112,6 +114,7 @@ export function ActivityPage() {
           <h1 className="text-xl font-semibold tracking-tight">Activity</h1>
           <p className="mt-1 text-sm text-muted-foreground">Who watched what, and for how long. Kept for 30 days.</p>
         </div>
+        {enabled && (
         <div role="group" aria-label="How far back" className="flex gap-1">
           {RANGES.map((n) => (
             <Button key={n} size="sm" variant={days === n ? 'default' : 'outline'} aria-pressed={days === n} onClick={() => setDays(n)}>
@@ -119,11 +122,22 @@ export function ActivityPage() {
             </Button>
           ))}
         </div>
+        )}
       </div>
 
-      {!state.editable && <p className="text-xs text-muted-foreground">Antennarr has no settings file to keep this beside, so it is kept in memory and starts over when Antennarr restarts.</p>}
+      {!enabled && (
+        <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+          The activity history is off, so nothing is being kept.{' '}
+          <Link to="/settings" className="underline underline-offset-2 hover:text-foreground">
+            Turn it on in Settings
+          </Link>
+          .
+        </div>
+      )}
 
-      {q.isPending ? (
+      {enabled && !state.editable && <p className="text-xs text-muted-foreground">Antennarr has no settings file to keep this beside, so it is kept in memory and starts over when Antennarr restarts.</p>}
+
+      {!enabled ? null : q.isPending ? (
         <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 aria-hidden className="size-4 animate-spin" /> Loading…
         </p>
