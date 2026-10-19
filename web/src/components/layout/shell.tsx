@@ -9,6 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { PlexIcon } from '@/components/plex-button'
 import { useApp } from '@/hooks/app-context'
 import { useAuthStatus } from '@/hooks/use-auth'
+import { useRestartToasts } from '@/hooks/use-restart-toasts'
 import { useUpgradeToasts } from '@/hooks/use-upgrade-toasts'
 import { useWhatsNew } from '@/hooks/use-whats-new'
 import { signOut } from '@/lib/api'
@@ -92,6 +93,7 @@ export function Shell() {
   const { state } = useApp()
   const whatsNew = useWhatsNew(state.version)
   useUpgradeToasts()
+  useRestartToasts()
   const location = useLocation()
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)

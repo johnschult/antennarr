@@ -106,12 +106,13 @@ function DeviceSection({ device, tick }: { device: DeviceState; tick: unknown })
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
           <span
-            title={tuner.updating ? 'Updating firmware' : tuner.online ? 'Online' : 'Offline'}
-            className={cn('size-2 rounded-full', tuner.updating ? 'animate-pulse bg-amber-400' : tuner.online ? 'bg-emerald-400' : 'bg-red-400')}
+            title={tuner.updating ? 'Updating firmware' : tuner.restarting ? 'Restarting' : tuner.online ? 'Online' : 'Offline'}
+            className={cn('size-2 rounded-full', tuner.updating || tuner.restarting ? 'animate-pulse bg-amber-400' : tuner.online ? 'bg-emerald-400' : 'bg-red-400')}
           />
           {deviceTitle(device)}
         </h2>
         {tuner.updating && <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Updating firmware…</Badge>}
+        {tuner.restarting && <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Restarting…</Badge>}
         <span className="text-sm text-muted-foreground">
           {model && `${model} · `}
           {summary.inUse} of {summary.total} live

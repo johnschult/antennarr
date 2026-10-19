@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, replaceViewer, testChannel } from '@/lib/api'
+import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, dismissRestart, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, restartTuner, replaceViewer, testChannel } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import type { AppState, ChannelInput, DeviceInput, UpgradeRequest, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
@@ -121,5 +121,14 @@ export function useEdits() {
     mutationFn: ({ device }: { device: string }) => dismissUpgrade(device),
     onSuccess: () => void refresh(),
   })
-  return { add, replace, remove, settings, device, firmware, install, dismiss, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
+  const restart = useMutation({
+    mutationFn: ({ device, interrupt }: { device: string; interrupt: boolean }) => restartTuner(device, interrupt),
+    onSuccess: () => void refresh(),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not restart the tuner'),
+  })
+  const dismissRestartResult = useMutation({
+    mutationFn: ({ device }: { device: string }) => dismissRestart(device),
+    onSuccess: () => void refresh(),
+  })
+  return { add, replace, remove, settings, device, firmware, install, dismiss, restart, dismissRestartResult, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
 }

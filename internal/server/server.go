@@ -28,6 +28,7 @@ import (
 	"github.com/johnschult/antennarr/internal/notify"
 	"github.com/johnschult/antennarr/internal/plexauth"
 	"github.com/johnschult/antennarr/internal/proxy"
+	"github.com/johnschult/antennarr/internal/restart"
 	"github.com/johnschult/antennarr/internal/tuner"
 	"github.com/johnschult/antennarr/internal/tunerinfo"
 	"github.com/johnschult/antennarr/internal/ui"
@@ -77,6 +78,8 @@ type Config struct {
 	FirmwareDownloadBase string
 	ControlPort          string
 	UpgradeConfig        func(*upgrade.Config)
+	// RestartConfig, if set, may change the timings of restarting a tuner (the demo and tests).
+	RestartConfig func(*restart.Config)
 	// Find looks for a tuner that has gone missing, at another address. Nil means a UDP discover and a scan
 	// of the nearby network; tests supply one that doesn't, so a fake tuner that goes quiet never sends them
 	// looking for a real one.
@@ -109,6 +112,7 @@ type Server struct {
 	notify    *notify.Notifier
 	upgrade   *upgrade.Manager
 	tunerinfo *tunerinfo.Reader
+	restart   *restart.Manager
 	plex      *plexauth.Auth
 	claim     *claim.Claimer
 	admin     http.Handler // the admin pages, shared by every listener
@@ -209,6 +213,11 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		}
 	}
 	s.tunerinfo = &tunerinfo.Reader{Dial: dial}
+	rcfg := restart.Config{Dial: dial, OnChange: s.hub.Notify, Log: cfg.Log}
+	if cfg.RestartConfig != nil {
+		cfg.RestartConfig(&rcfg)
+	}
+	s.restart = restart.New(ctx, rcfg)
 
 	// A stream starting or ending changes the tuners' own status too: tell the
 	// dashboards now, and have the monitors look again straight away.
@@ -237,7 +246,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;

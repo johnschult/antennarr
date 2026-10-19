@@ -122,7 +122,15 @@ Built. The Tuners page shows what each tuner says about itself: hardware model, 
 
 - `internal/tunerinfo` reads a fixed list of values (`/sys/model`, `/sys/hwmodel`, `/sys/version`, `/sys/features`) over the control port, and the tuner's System Menu page (`/system.html`) for what the control protocol doesn't have (DRM, MAC, subnet). It never sends a value to set, and no name comes from a request. The page is a plain HTML table with no JSON behind it, so a layout change leaves those fields out and the panel says why: it never guesses.
 - It reads when the panel opens and when someone presses Refresh, not on a timer, and remembers each answer for 30 seconds.
-- Admin-only, like the rest of the API. Not yet: reboot and rescan, which change the tuner and wait for their own confirmation and tests.
+- Admin-only, like the rest of the API.
+
+### Restarting a tuner
+
+Built. A Restart row in the Device panel, behind a confirmation that says what it will cut off.
+
+- `internal/restart` sends `set /sys/restart self` (the command SiliconDust documents for `hdhomerun_config`; a tuner lists `/sys/restart` in `get help`). It then checks that the tuner stopped answering and that it came back, because a tuner that kept answering did not restart. A tuner that never returns is reported with what to check. It never repeats a restart by itself.
+- The server refuses when the tuner is offline, being updated or already restarting, and, if anything is in use, unless the request says `interrupt`. While it runs the monitor does not call the tuner offline (`Monitor.SetRestarting`, which expires after 10 minutes).
+- Not yet: rescanning channels, which is deferred.
 
 ## Guide
 

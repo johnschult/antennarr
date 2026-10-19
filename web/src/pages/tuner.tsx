@@ -122,8 +122,8 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
           {open ? <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden /> : <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
           <span
             aria-hidden
-            title={tuner.updating ? 'Updating firmware' : tuner.online ? 'Online' : 'Offline'}
-            className={`size-2.5 shrink-0 rounded-full ${tuner.updating ? 'animate-pulse bg-amber-500' : tuner.online ? 'bg-emerald-500' : 'bg-red-500'}`}
+            title={tuner.updating ? 'Updating firmware' : tuner.restarting ? 'Restarting' : tuner.online ? 'Online' : 'Offline'}
+            className={`size-2.5 shrink-0 rounded-full ${tuner.updating || tuner.restarting ? 'animate-pulse bg-amber-500' : tuner.online ? 'bg-emerald-500' : 'bg-red-500'}`}
           />
           <img src={asset('hdhomerun-icon.svg')} alt="" aria-hidden="true" className="size-8 shrink-0 rounded-md" draggable={false} />
           <span className="min-w-0">
@@ -153,6 +153,8 @@ function DeviceDetails({ device, showName, onRemove }: { device: DeviceState; sh
               <dd className="mt-0.5">
                 {tuner.updating ? (
                   <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Updating firmware…</Badge>
+                ) : tuner.restarting ? (
+                  <Badge className="bg-amber-500/15 text-amber-800 dark:text-amber-300">Restarting…</Badge>
                 ) : tuner.online ? (
                   <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Online</Badge>
                 ) : (

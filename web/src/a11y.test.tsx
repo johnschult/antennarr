@@ -127,6 +127,18 @@ describe('axe: the Device panel', () => {
   })
 })
 
+describe('axe: restarting a tuner', () => {
+  it('the confirmation, with something running to interrupt', async () => {
+    const s = makeState()
+    s.devices[0].summary.inUse = 2
+    vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: s }), 'GET /devices/antenna/info': () => ({ body: { hardwareModel: 'HDFX-4K', readAt: new Date().toISOString() } }) }).fn)
+    render(s, '/tuner')
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Restart' }))
+    await screen.findByRole('alertdialog')
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
 describe('axe: installing firmware', () => {
   const upgrading = (u?: { phase: 'downloading' | 'sending' | 'restarting' | 'verifying' | 'done' | 'failed'; error?: string }, over: Partial<ReturnType<typeof makeDevice>> = {}) =>
     makeState({

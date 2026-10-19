@@ -48,6 +48,11 @@ type Options struct {
 	// ChunkDelay slows the reading of each upgrade chunk, so an upload takes long enough to watch (the
 	// demo). It is not for tests that want to be quick.
 	ChunkDelay time.Duration
+	// RestartFor is how long the tuner is unreachable after it is told to restart (set /sys/restart self).
+	// The zero value is a tuner that says yes and doesn't go anywhere. RestartNoReply closes the connection
+	// instead of answering the set, as a tuner might that restarts at once.
+	RestartFor     time.Duration
+	RestartNoReply bool
 	// Unknown is a value name the tuner answers with an error for, besides the ones it doesn't have.
 	Unknown map[string]bool
 }
@@ -67,6 +72,7 @@ type Server struct {
 	upgraded bool
 	closed   bool
 	downTill time.Time // the tuner is restarting until then
+	restarts int
 }
 
 // New starts a fake tuner on addr ("127.0.0.1:0" for any free port; the official tool needs 65001). It
@@ -94,7 +100,7 @@ func New(addr string, o Options) (*Server, error) {
 		o.Tuners = 4
 	}
 	s := &Server{opts: o, tcp: tcp, udp: udp, values: map[string]string{
-		"/sys/version": o.Version, "/sys/model": "hdhomerun_dvr_atsc3", "/sys/hwmodel": o.Model,
+		"/sys/restart": "", "/sys/version": o.Version, "/sys/model": "hdhomerun_dvr_atsc3", "/sys/hwmodel": o.Model,
 		"/sys/features": "channelmap: us-bcast us-cable us-hrc us-irc kr-bcast kr-cable\nmodulation: atsc3 8vsb qam256 qam64\nauto-modulation: auto auto6t auto6c qam\n",
 	}}
 	for i := 0; i < o.Tuners; i++ {
@@ -229,7 +235,14 @@ func (s *Server) handle(c net.Conn, id int) {
 
 		switch typ {
 		case hdhr.TypeGetSetReq:
-			c.Write(hdhr.Encode(hdhr.TypeGetSetRpy, s.getSet(payload)))
+			reply := s.getSet(payload)
+			if s.restartRequested(payload) {
+				if !s.opts.RestartNoReply {
+					c.Write(hdhr.Encode(hdhr.TypeGetSetRpy, reply))
+				}
+				return
+			}
+			c.Write(hdhr.Encode(hdhr.TypeGetSetRpy, reply))
 		case hdhr.TypeUpgradeReq:
 			if len(payload) < 4 {
 				return
@@ -314,4 +327,40 @@ func (s *Server) getSet(payload []byte) []byte {
 		cur = *value
 	}
 	return hdhr.AppendTLV(nil, hdhr.TagGetSetValue, append([]byte(cur), 0))
+}
+
+// restartRequested says whether a get/set was "set /sys/restart self", and if so takes the tuner down for
+// RestartFor and counts it.
+func (s *Server) restartRequested(payload []byte) bool {
+	tlvs, err := hdhr.ParseTLVs(payload)
+	if err != nil {
+		return false
+	}
+	var name, value string
+	var hasValue bool
+	for _, t := range tlvs {
+		switch t.Tag {
+		case hdhr.TagGetSetName:
+			name = string(bytes.TrimRight(t.Value, "\x00"))
+		case hdhr.TagGetSetValue:
+			value, hasValue = string(bytes.TrimRight(t.Value, "\x00")), true
+		}
+	}
+	if name != "/sys/restart" || !hasValue || value != "self" || s.opts.Unknown[name] {
+		return false
+	}
+	s.mu.Lock()
+	s.restarts++
+	if s.opts.RestartFor > 0 {
+		s.downTill = time.Now().Add(s.opts.RestartFor)
+	}
+	s.mu.Unlock()
+	return true
+}
+
+// Restarts is how many times the tuner has been told to restart.
+func (s *Server) Restarts() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.restarts
 }
