@@ -67,7 +67,7 @@ Every change, and the main branch each week, is checked in the open on GitHub:
 
 - **Tests** with the Go race detector, the web page's tests and its type check, and **golangci-lint** (settings in `.golangci.yml`).
 - **Known vulnerabilities**: `govulncheck` for the Go code (it only reports a vulnerability the code can reach) and `npm audit` for the web page's packages, which fail a change; Dependabot proposes updates and raises an alert for a vulnerable dependency.
-- **CodeQL**, GitHub's code scanning, for the Go and TypeScript code and the workflows themselves.
+- **CodeQL**, GitHub's code scanning (its default setup, switched on in the repository's settings), for the Go and TypeScript code and the workflows themselves.
 - **Trivy** on the container image, reported to the *Security* tab (it does not fail a change, since a problem in the base image is not what the change did).
 - The **OpenSSF Scorecard**, which checks the repository's own practices and publishes the score; the actions the workflows use are pinned to an exact commit.
 
