@@ -121,6 +121,28 @@ describe('Shell menu on a phone', () => {
   })
 })
 
+describe('Shell pages', () => {
+  const mount = (history: boolean) => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /auth/status': () => ({ body: { plexEnabled: false, signedIn: null, admin: true } }) }).fn)
+    const s = makeState()
+    s.settings.history = history
+    return renderWithApp(<Shell />, s)
+  }
+
+  it('offers Activity while the history is kept', () => {
+    mount(true)
+    expect(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', { name: 'Activity' })).toBeInTheDocument()
+  })
+
+  it('does not offer Activity, in the bar or the phone menu, when the history is off', async () => {
+    mount(false)
+    expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: 'Activity' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Settings'])
+    await userEvent.setup().click(screen.getByRole('button', { name: /menu/i }))
+    expect(within(screen.getByRole('navigation', { name: 'Main menu' })).queryByRole('link', { name: 'Activity' })).not.toBeInTheDocument()
+  })
+})
+
 describe('Shell footer', () => {
   const mount = (over: Parameters<typeof makeState>[0] = {}) => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /auth/status': () => ({ body: { plexEnabled: false, signedIn: null, admin: true } }) }).fn)

@@ -587,3 +587,33 @@ func TestTheGuideIsOnUnlessSwitchedOff(t *testing.T) {
 		t.Errorf("an unset choice should not be written: %s", b)
 	}
 }
+
+func TestTheActivityHistoryIsOnUnlessSwitchedOff(t *testing.T) {
+	off, on := false, true
+	if !(Settings{}).HistoryEnabled() || !DefaultSettings().HistoryEnabled() {
+		t.Error("the history should default to on")
+	}
+	if (Settings{History: &off}).HistoryEnabled() || !(Settings{History: &on}).HistoryEnabled() {
+		t.Error("an explicit choice should win")
+	}
+	s := Settings{History: &off}
+	c := s.Clone()
+	*c.History = true
+	if *s.History {
+		t.Error("clone shares the pointer")
+	}
+	path := filepath.Join(t.TempDir(), "a.json")
+	if err := SaveSettings(path, Settings{History: &off}); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := LoadSettings(path)
+	if err != nil || got.HistoryEnabled() {
+		t.Errorf("a saved 'off' came back on: %+v %v", got, err)
+	}
+	if err := SaveSettings(path, DefaultSettings()); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); strings.Contains(string(b), "history") {
+		t.Errorf("an unset choice should not be written: %s", b)
+	}
+}

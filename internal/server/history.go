@@ -73,6 +73,16 @@ func observe(device string, t tuner.State, streams []access.Active, title func(c
 	return out
 }
 
+// stepHistory is one look at the tuners. With the history switched off it looks at nothing, and ends any
+// session that was going, so nothing is recorded from the moment it is switched off.
+func stepHistory(r *history.Recorder, enabled bool, now time.Time, observe func() []history.Observation) {
+	if !enabled {
+		r.Observe(now, nil)
+		return
+	}
+	r.Observe(now, observe())
+}
+
 // recordHistory keeps the Activity page's sessions up to date until ctx ends, then closes any still going.
 func (s *Server) recordHistory(ctx context.Context) {
 	t := time.NewTicker(s.cfg.Poll)
@@ -83,7 +93,7 @@ func (s *Server) recordHistory(ctx context.Context) {
 			s.history.Close()
 			return
 		case now := <-t.C:
-			s.history.Observe(now, s.observations(now))
+			stepHistory(s.history, s.policy.Settings().HistoryEnabled(), now, func() []history.Observation { return s.observations(now) })
 		}
 	}
 }

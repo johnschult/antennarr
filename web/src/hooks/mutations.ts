@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, dismissRestart, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, restartTuner, replaceViewer, testChannel } from '@/lib/api'
+import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, clearHistory, dismissRestart, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, restartTuner, replaceViewer, testChannel } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import type { AppState, ChannelInput, DeviceInput, UpgradeRequest, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
@@ -121,6 +121,14 @@ export function useEdits() {
     mutationFn: ({ device }: { device: string }) => dismissUpgrade(device),
     onSuccess: () => void refresh(),
   })
+  const history = useMutation({
+    mutationFn: () => clearHistory(),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['history'] })
+      toast.success('Activity history cleared')
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not clear the history'),
+  })
   const restart = useMutation({
     mutationFn: ({ device, interrupt }: { device: string; interrupt: boolean }) => restartTuner(device, interrupt),
     onSuccess: () => void refresh(),
@@ -130,5 +138,5 @@ export function useEdits() {
     mutationFn: ({ device }: { device: string }) => dismissRestart(device),
     onSuccess: () => void refresh(),
   })
-  return { add, replace, remove, settings, device, firmware, install, dismiss, restart, dismissRestartResult, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
+  return { add, replace, remove, settings, device, firmware, install, dismiss, restart, dismissRestartResult, history, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
 }

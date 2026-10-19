@@ -205,6 +205,8 @@ export interface Settings {
   /** Whether SiliconDust's changelog is read (one request every 12 hours). */
   firmwareCheck: boolean
   guide: boolean
+  /** Whether who watched what is being kept, for the Activity page. */
+  history: boolean
   plex: PlexSettings
   notifications: Notifications
 }
@@ -302,6 +304,7 @@ export interface SettingsPatch {
   admin?: string[]
   firmwareCheck?: boolean
   guide?: boolean
+  history?: boolean
   plexEnabled?: boolean
   notifyEvents?: Partial<NotifyEvents>
 }

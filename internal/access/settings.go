@@ -111,6 +111,9 @@ type Settings struct {
 	// the channel's logo and what is on. It sends the tuner's DeviceAuth to
 	// SiliconDust. Unset means on.
 	Guide *bool `json:"guide,omitempty"`
+	// History turns on keeping who watched what (for 30 days, beside the settings file), for the Activity
+	// page. Unset means on. Nothing leaves this machine either way.
+	History *bool `json:"history,omitempty"`
 	// Notifications says where to send word of firmware, tuner and viewer events.
 	// Nothing is sent, or contacted, while it has no channels.
 	Notifications *Notifications `json:"notifications,omitempty"`
@@ -133,6 +136,9 @@ func (s Settings) PlexAdmin(id int64) (PlexAccount, bool) {
 
 // FirmwareCheckEnabled reports whether the firmware check is on (the default).
 func (s Settings) FirmwareCheckEnabled() bool { return s.FirmwareCheck == nil || *s.FirmwareCheck }
+
+// HistoryEnabled reports whether the activity history is being kept (the default).
+func (s Settings) HistoryEnabled() bool { return s.History == nil || *s.History }
 
 // GuideEnabled reports whether the program guide is on (the default).
 func (s Settings) GuideEnabled() bool { return s.Guide == nil || *s.Guide }
@@ -180,6 +186,10 @@ func (s Settings) Clone() Settings {
 	if s.Guide != nil {
 		b := *s.Guide
 		out.Guide = &b
+	}
+	if s.History != nil {
+		b := *s.History
+		out.History = &b
 	}
 	if s.Plex != nil {
 		pl := *s.Plex

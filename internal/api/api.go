@@ -132,7 +132,7 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/guide/{channel}/poster/{token}", map[string]http.HandlerFunc{"GET": a.programPoster}},
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
-		{"history", map[string]http.HandlerFunc{"GET": a.getHistory}},
+		{"history", map[string]http.HandlerFunc{"GET": a.getHistory, "DELETE": a.clearHistory}},
 		{"devices/{name}/restart", map[string]http.HandlerFunc{"POST": a.restartTuner, "DELETE": a.dismissRestart}},
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
 		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},
@@ -181,6 +181,7 @@ type SettingsDoc struct {
 	Admin         []string `json:"admin"`
 	FirmwareCheck bool     `json:"firmwareCheck"`
 	Guide         bool     `json:"guide"`
+	History       bool     `json:"history"`
 	Plex          PlexDoc  `json:"plex"`
 	// Notifications is where messages go and which events send them, without
 	// the secrets in the channels.
@@ -294,6 +295,7 @@ func (a *API) state() State {
 			Mode: a.Pol.Mode(), SharedCap: set.SharedCap, OwnerReserve: set.OwnerReserve, Admin: nonNil(set.Admin),
 			FirmwareCheck: set.FirmwareCheckEnabled(),
 			Guide:         set.GuideEnabled(),
+			History:       set.HistoryEnabled(),
 			Plex:          plexDoc(set),
 			Notifications: notificationsDoc(set),
 		},
@@ -504,6 +506,7 @@ type settingsPatch struct {
 	Admin         *[]string `json:"admin"`
 	FirmwareCheck *bool     `json:"firmwareCheck"`
 	Guide         *bool     `json:"guide"`
+	History       *bool     `json:"history"`
 	PlexEnabled   *bool     `json:"plexEnabled"`
 	// NotifyEvents switches kinds of event on and off for notifications.
 	NotifyEvents *notifyEventsPatch `json:"notifyEvents"`
@@ -531,6 +534,10 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 		if in.Guide != nil {
 			b := *in.Guide
 			s.Guide = &b
+		}
+		if in.History != nil {
+			b := *in.History
+			s.History = &b
 		}
 		if in.PlexEnabled != nil {
 			if s.Plex == nil {

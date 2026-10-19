@@ -2,6 +2,7 @@ package server
 
 import (
 	"testing"
+	"time"
 
 	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/history"
@@ -61,5 +62,28 @@ func TestTheHistoryFileIsBesideTheSettingsFileAndOnlyThenKept(t *testing.T) {
 	}
 	if got := historyFile(""); got != "" {
 		t.Errorf("with no settings file: %q", got)
+	}
+}
+
+func TestWithTheHistorySwitchedOffNothingIsLookedAtAndWhatWasGoingEnds(t *testing.T) {
+	r := history.New(nil, time.Now())
+	o := []history.Observation{{Device: "antenna", Tuner: "tuner0", Channel: "2.1", Kind: history.KindLocal}}
+	t0 := time.Now()
+	stepHistory(r, true, t0, func() []history.Observation { return o })
+	stepHistory(r, true, t0.Add(time.Minute), func() []history.Observation { return o })
+
+	looked := false
+	stepHistory(r, false, t0.Add(2*time.Minute), func() []history.Observation { looked = true; return o })
+	if looked {
+		t.Error("the tuners were looked at while the history was off")
+	}
+	got := r.Sessions(t0.Add(-time.Hour))
+	if len(got) != 1 || got[0].Open {
+		t.Fatalf("the session was not ended: %+v", got)
+	}
+	stepHistory(r, false, t0.Add(3*time.Minute), func() []history.Observation { return o })
+	stepHistory(r, false, t0.Add(4*time.Minute), func() []history.Observation { return o })
+	if got := r.Sessions(t0.Add(-time.Hour)); len(got) != 1 {
+		t.Errorf("something was recorded while off: %+v", got)
 	}
 }

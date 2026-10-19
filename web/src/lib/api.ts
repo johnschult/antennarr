@@ -75,6 +75,7 @@ export const getDeviceInfo = (device: string, refresh = false) =>
 export const restartTuner = (device: string, interrupt: boolean) =>
   request<void>('POST', `/devices/${encodeURIComponent(device)}/restart`, { interrupt })
 export const dismissRestart = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/restart`)
+export const clearHistory = () => request<void>('DELETE', '/history')
 export const getHistory = (days: number) => request<HistoryDoc>('GET', `/history?days=${days}`)
 export const dismissUpgrade = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/firmware/upgrade`)
 

@@ -1,5 +1,8 @@
-import { Bell, Gauge, KeyRound, ShieldCheck } from 'lucide-react'
+import { Bell, Gauge, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router'
+import { ClearHistoryDialog } from '@/components/clear-history-dialog'
+import { Button } from '@/components/ui/button'
 
 import { EditRow } from '@/components/settings/edit-row'
 import { NotificationRows } from '@/components/settings/notification-rows'
@@ -20,6 +23,7 @@ export function SettingsPage() {
   const { settings, devices, editable } = state
   const { device, settings: update } = useEdits()
   const several = devices.length > 1
+  const [clearing, setClearing] = useState(false)
 
   const saveDevice = (name: string, patch: DevicePatch) => device.mutateAsync({ name, patch })
 
@@ -108,6 +112,20 @@ export function SettingsPage() {
           disabled={!editable}
           onChange={(next) => update.mutateAsync({ guide: next })}
         />
+        <SwitchRow
+          id="setting-history"
+          title="Keep activity history"
+          description="Remembers who watched what for 30 days, for the Activity page: the viewer's name (or Local for your own devices), the tuner, the channel, the show titles and when it began and ended. A viewer's address is not kept. It stays on this machine, beside the settings file, and nothing is sent anywhere. Turning it off stops recording and hides the page; what was kept stays until you clear it."
+          checked={settings.history}
+          disabled={!editable}
+          onChange={(next) => update.mutateAsync({ history: next })}
+        />
+        <Row title="Clear activity history" description="Forgets everything that has been kept, however far back. It can't be brought back.">
+          <Button variant="outline" size="sm" onClick={() => setClearing(true)}>
+            <Trash2 data-icon="inline-start" /> Clear
+          </Button>
+        </Row>
+        <ClearHistoryDialog open={clearing} onClose={() => setClearing(false)} />
       </Section>
     </div>
   )
