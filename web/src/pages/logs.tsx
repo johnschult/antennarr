@@ -123,10 +123,13 @@ export function LogsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <p className="max-w-xl text-sm text-muted-foreground">What Antennarr has been doing. The newest lines are kept in memory, not in a file, and start over when it restarts.</p>
-        <div className="flex items-center gap-2 text-sm">
+        <p className="max-w-xl text-sm text-muted-foreground">
+          What Antennarr has been doing. The newest lines are kept in memory, not in a file, and start over when it restarts. <strong className="font-medium text-foreground">Show</strong> picks which of the kept lines are listed;{' '}
+          <strong className="font-medium text-foreground">Record</strong> sets how much it writes down from now on.
+        </p>
+        <div className="flex items-center gap-2 text-sm" title="How much Antennarr writes down from now on. Lines already kept don't change.">
           <label htmlFor="log-level" className="text-muted-foreground">
-            Log
+            Record
           </label>
           <Select
             id="log-level"
@@ -145,13 +148,18 @@ export function LogsPanel() {
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <Select aria-label="Show" value={level} onChange={(e) => setLevel(e.target.value as LogLevel | '')} className="h-8 sm:w-52">
-          {SHOW.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </Select>
+        <div className="flex items-center gap-2 text-sm">
+          <label htmlFor="log-show" className="text-muted-foreground">
+            Show
+          </label>
+          <Select id="log-show" value={level} onChange={(e) => setLevel(e.target.value as LogLevel | '')} className="h-8 min-w-0 flex-1 sm:w-52 sm:flex-none">
+            {SHOW.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </Select>
+        </div>
         <div className="relative min-w-0 flex-1 sm:max-w-sm">
           <Input aria-label="Search the log" placeholder="Search" value={text} onChange={(e) => setText(e.target.value)} className="h-8 w-full pr-8" />
           {text !== '' && (

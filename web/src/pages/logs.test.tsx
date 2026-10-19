@@ -98,7 +98,7 @@ describe('the Logs tab', () => {
   it('changes how much is logged, as a setting', async () => {
     const calls = show(doc(), makeState(), { 'PATCH /settings': () => ({ body: {} }) })
     await screen.findAllByTestId('log-line')
-    const level = screen.getByRole('combobox', { name: 'Log' })
+    const level = screen.getByRole('combobox', { name: 'Record' })
     expect(level).toHaveValue('info')
     expect(within(level).getByRole('option', { name: 'Info (default)' })).toBeInTheDocument()
     await userEvent.setup().selectOptions(level, 'debug')
@@ -110,7 +110,7 @@ describe('the Logs tab', () => {
     s.editable = false
     show(doc(), s)
     await screen.findAllByTestId('log-line')
-    expect(screen.getByRole('combobox', { name: 'Log' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: 'Record' })).toBeDisabled()
   })
 
   it('polls while it is live and stops when that is switched off', async () => {
