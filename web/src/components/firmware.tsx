@@ -32,10 +32,10 @@ function upgradeText(u: UpgradeStatus): string {
 export const CHANGELOG_URL = 'https://www.silicondust.com/support/downloads/firmware-changelog.html'
 
 /** A small flag on a tuner that has newer firmware, linking to the details. */
-export function FirmwareBadge({ status }: { status: FirmwareStatus }) {
+export function FirmwareBadge({ status, to = '/tuner' }: { status: FirmwareStatus; /** Where it goes: the tuner's Firmware tab. */ to?: string }) {
   if (status.state !== 'update-available' && status.state !== 'possible-update') return null
   return (
-    <Link to="/tuner" className="inline-flex" title="See what's new">
+    <Link to={to} className="inline-flex" title="See what's new">
       <Badge className="gap-1 bg-amber-500/15 text-amber-800 dark:text-amber-300">
         <ArrowUpCircle className="size-3" />
         {status.state === 'update-available' ? 'Firmware update' : 'Firmware: check'}
@@ -60,13 +60,12 @@ function StatusBadge({ s }: { s: FirmwareStatus }) {
 }
 
 /** One tuner's firmware: where it stands, when SiliconDust's changelog was last read, and what's new. */
-export function FirmwareSection({ device }: { device: DeviceState }) {
+export function FirmwareSection({ device, showName = false }: { device: DeviceState; showName?: boolean }) {
   const { state } = useApp()
   const { firmware: s, tuner } = device
   const { firmware: check, dismiss } = useEdits()
   const [showAll, setShowAll] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const several = state.devices.length > 1
   const checking = state.settings.firmwareCheck
   const shown = showAll ? s.updates : s.updates.slice(0, 2)
   const up = device.upgrade
@@ -75,7 +74,7 @@ export function FirmwareSection({ device }: { device: DeviceState }) {
   const canInstall = s.state === 'update-available' && tuner.online && !tuner.updating && !running
 
   return (
-    <Section icon={Cpu} title={several ? `Firmware — ${deviceTitle(device)}` : 'Firmware'}>
+    <Section icon={Cpu} title={showName ? `Firmware — ${deviceTitle(device)}` : 'Firmware'}>
       <Row
         title="Version"
         description={`${tuner.firmware.name ?? tuner.model ?? 'Tuner'} · ${s.current || tuner.firmware.version || 'unknown'}`}

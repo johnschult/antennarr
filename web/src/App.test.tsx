@@ -8,12 +8,22 @@ describe('App routes', () => {
   it.each([
     ['/', 'tuners live'],
     ['/viewers', 'Viewers'],
-    ['/tuner', 'Tuner'],
+    ['/tuner?list', 'Tuners'],
+    ['/tuner/antenna', 'Steve FLEX 4K'],
+    ['/tuner/antenna/firmware', 'Steve FLEX 4K'],
     ['/settings', 'Settings'],
   ])('renders %s inside the shell', (route, heading) => {
     renderWithApp(<App />, makeState(), { route })
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(heading)
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+  })
+
+  it('opens the only tuner’s page from /tuner, and the list when there are several', () => {
+    const { unmount } = renderWithApp(<App />, makeState(), { route: '/tuner' })
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Steve FLEX 4K')
+    unmount()
+    renderWithApp(<App />, makeTwoDeviceState(), { route: '/tuner' })
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
   })
 
   it('sends the old Connect page to Viewers, where adding a viewer now walks through it', () => {

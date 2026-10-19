@@ -162,12 +162,27 @@ describe('axe: a viewer’s page', () => {
   })
 })
 
+describe('axe: the tuner pages', () => {
+  it('the list of several tuners', async () => {
+    render(makeTwoDeviceState(), '/tuner')
+    await screen.findByRole('list', { name: 'Tuners' })
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it.each(['', '/firmware', '/settings'])('a tuner’s page at %s', async (tab) => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }) }).fn)
+    render(makeState({ devices: [makeDevice({ firmware: updateAvailable })] }), `/tuner/antenna${tab}`)
+    await screen.findByRole('navigation', { name: 'Sections of this tuner' })
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
 describe('axe: the Device panel', () => {
   const info = { hardwareModel: 'HDFX-4K', model: 'hdhomerun_dvr_atsc3', version: '20260326', drm: 'SD20230420', mac: '00:18:DD:00:00:01', ip: '192.168.1.50', subnet: '255.255.255.0', channelMaps: ['us-bcast'], modulations: ['atsc3'], readAt: new Date().toISOString(), problems: ['the tuner has no System Menu page to read'] }
 
   it('with the details read, and with a note on what could not be', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /devices/antenna/info': () => ({ body: info }) }).fn)
-    render(makeState(), '/tuner')
+    render(makeState(), '/tuner/antenna/device')
     await screen.findByText('SD20230420')
     expect(await check()).toHaveNoViolations()
   })
@@ -178,7 +193,7 @@ describe('axe: restarting a tuner', () => {
     const s = makeState()
     s.devices[0].summary.inUse = 2
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: s }), 'GET /devices/antenna/info': () => ({ body: { hardwareModel: 'HDFX-4K', readAt: new Date().toISOString() } }) }).fn)
-    render(s, '/tuner')
+    render(s, '/tuner/antenna/device')
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Restart' }))
     await screen.findByRole('alertdialog')
     expect(await check()).toHaveNoViolations()
@@ -198,7 +213,7 @@ describe('axe: installing firmware', () => {
     })
 
   it('the Tuners page offering the update, and its confirmation', async () => {
-    render(upgrading(), '/tuner')
+    render(upgrading(), '/tuner/antenna/firmware')
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Install' }))
     await screen.findByRole('alertdialog')
@@ -208,7 +223,7 @@ describe('axe: installing firmware', () => {
   it('the confirmation with something running to interrupt', async () => {
     const s = upgrading()
     s.devices[0].summary.inUse = 2
-    render(s, '/tuner')
+    render(s, '/tuner/antenna/firmware')
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Install' }))
     await screen.findByRole('alertdialog')
@@ -216,7 +231,7 @@ describe('axe: installing firmware', () => {
   })
 
   it.each(['downloading', 'sending', 'restarting', 'verifying', 'done', 'failed'] as const)('the page while it is %s', async (phase) => {
-    render(upgrading({ phase, error: phase === 'failed' ? 'the tuner has not come back.' : undefined }), '/tuner')
+    render(upgrading({ phase, error: phase === 'failed' ? 'the tuner has not come back.' : undefined }), '/tuner/antenna/firmware')
     await screen.findByRole('region', { name: 'Firmware' })
     expect(await check()).toHaveNoViolations()
   })
@@ -291,14 +306,14 @@ describe('axe: dialogs', () => {
 
   it('Add tuner', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'POST /discover': () => ({ body: { found: [] } }) }).fn)
-    render(makeState(), '/tuner')
+    render(makeState(), '/tuner?list')
     await userEvent.setup().click(screen.getByRole('button', { name: /Add tuner/ }))
     await screen.findByRole('dialog')
     expect(await check()).toHaveNoViolations()
   })
 
   it('Remove tuner', async () => {
-    await open('/tuner', makeState(), /Remove/, 'alertdialog')
+    await open('/tuner/antenna/settings', makeState(), /Remove/, 'alertdialog')
     expect(await check()).toHaveNoViolations()
   })
 })

@@ -29,13 +29,16 @@ Who may use the tuner, from which addresses, and how many tuners each gets at on
 
 ## Tuners
 
-<img src="screenshots/tuners.jpg" alt="The Tuners page: a tuner's strip of what is on each of its tuners, with Manage, Device and Firmware sections" width="900">
+<img src="screenshots/tuners.jpg" alt="A tuner's page, on its Overview: its facts, what is on each of its tuners and a line about its firmware, with Overview, Device, Firmware and Settings tabs" width="900">
 
-One row for each tuner, opening to a strip of what is on each of its tuners and three sections:
+The **Tuners** page is a list, one row for each tuner with its status, where it is, how many of its tuners are in use and a flag when it has a firmware update. With only one tuner it opens that tuner's page directly (its *Tuners* link back goes to the list, where you add another).
 
-- **Manage:** the name shown on this page (media servers are always told the device's own name), the port media servers use, and removing the tuner from Antennarr (the tuner itself is untouched).
-- **Device:** what the tuner says about itself: hardware model, firmware, ATSC 3.0 DRM version, device ID, MAC address, IP address, subnet mask, channel maps and modulations. It is read when you open it and on **Refresh**, and it is read-only. **Restart** turns the tuner off and on again, after asking, and says if anything is in use.
+A tuner's page has four sections as tabs, each with its own address (`/tuner/<name>/device` and so on):
+
+- **Overview:** what Antennarr knows at a glance (its name, device, model, DeviceID, address and port, how many tuners it has and when it was last seen), what is on each of its tuners, and a line about its firmware. Anything with more behind it is a link to the tab that has it: the device's details go to *Device*, the name and port to *Settings*, and the firmware line to *Firmware*.
+- **Device:** what the tuner says about itself: hardware model, firmware, ATSC 3.0 DRM version, device ID, MAC address, IP address, subnet mask, channel maps and modulations. It is read when you open it and on **Refresh**, and it is read-only. **Restart** turns the tuner off and on again, after asking, and says if anything is in use. There is a link to the tuner's own page for what Antennarr does not show.
 - **Firmware:** the version, when SiliconDust's changelog was last read, and what changed. When a newer release applies to your tuner there is an **Install** button; see [Configuration](configuration.md) for what it does and [Security](security.md) for what it contacts.
+- **Settings:** the name shown on this page (media servers are always told the device's own name), the port media servers use, and removing the tuner from Antennarr (the tuner itself is untouched).
 
 ## Activity
 

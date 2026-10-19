@@ -1,6 +1,7 @@
 import { AlertTriangle, WifiOff } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
+import { tunerPath } from '@/lib/tuner-tabs'
 import { deviceTitle } from '@/lib/device'
 import type { AppState } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -34,11 +35,23 @@ export function Banners({ state }: { state: AppState }) {
           {several ? (
             <>
               <strong>{offline.length === 1 ? 'A tuner is offline' : `${offline.length} tuners are offline`}:</strong>{' '}
-              {offline.map(deviceTitle).join(', ')}.
+              {offline.map((d, i) => (
+                <span key={d.name}>
+                  {i > 0 && ', '}
+                  <Link to={tunerPath(d.name)} className="underline underline-offset-2">
+                    {deviceTitle(d)}
+                  </Link>
+                </span>
+              ))}
+              .
             </>
           ) : (
             <>
-              <strong>The tuner is offline.</strong>
+              <strong>
+                <Link to={tunerPath(offline[0].name)} className="underline underline-offset-2">
+                  The tuner is offline.
+                </Link>
+              </strong>
               {offline[0].tuner.id ? ` (DeviceID ${offline[0].tuner.id})` : ''}
             </>
           )}{' '}

@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
 import type { ReactElement } from 'react'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { AppContext } from '@/hooks/app-context'
+import { TunerPage } from '@/pages/tuner'
+import { TunersPage } from '@/pages/tuners'
 import type { AppState } from '@/lib/types'
 
 /** Render a page with a fixed app state, no network, and a router. */
@@ -42,4 +44,17 @@ export function stubFetch(routes: Record<string, (body: unknown) => { status?: n
     return new Response(status === 204 ? null : JSON.stringify(r.body ?? {}), { status })
   }
   return { fn, calls }
+}
+
+/** The tuner pages with their routes, opened at `path` (a list at /tuner, a tuner at /tuner/antenna, a tab at /tuner/antenna/device). */
+export function renderTunerRoutes(state: AppState, path: string, opts: { connected?: boolean } = {}) {
+  return renderWithApp(
+    <Routes>
+      <Route path="/tuner" element={<TunersPage />} />
+      <Route path="/tuner/:name" element={<TunerPage />} />
+      <Route path="/tuner/:name/:tab" element={<TunerPage />} />
+    </Routes>,
+    state,
+    { ...opts, route: path },
+  )
 }
