@@ -93,7 +93,7 @@ export function ChannelAbout({ channel }: { channel: TunerChannel }) {
           )}
           {!hasGuide && <p className="text-sm text-muted-foreground">The program guide doesn't say anything about this channel.</p>}
         </div>
-        {hasGuide && <div className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">Network, language and categories: SiliconDust program guide</div>}
+        {hasGuide && <div className="border-t border-border px-4 py-2 text-[11px] text-muted-foreground">Metadata provided by SiliconDust</div>}
       </PopoverContent>
     </Popover>
   )

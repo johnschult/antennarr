@@ -259,7 +259,7 @@ describe('about a channel', () => {
     expect(items.map((i) => i.textContent)).toEqual(['Comedy', 'News', 'Shopping', 'Thing the list lacks'])
     for (const i of items) expect(i.querySelector('svg')).not.toBeNull()
     expect(a.getByText('Favorite')).toBeInTheDocument()
-    expect(screen.getByText(/SiliconDust program guide/)).toBeInTheDocument()
+    expect(screen.getByText('Metadata provided by SiliconDust')).toBeInTheDocument()
   })
 
   it('names a single language in the singular and a language without a flag by its code', async () => {
@@ -275,7 +275,7 @@ describe('about a channel', () => {
     expect(a.getByText(/guide doesn't say anything about this channel/)).toBeInTheDocument()
     expect(a.queryByText('Network')).not.toBeInTheDocument()
     expect(a.queryByText(/Language/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/SiliconDust program guide/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/SiliconDust/)).not.toBeInTheDocument()
     expect(a.getByText('MPEG2')).toBeInTheDocument() // what the tuner says is still there
   })
 
