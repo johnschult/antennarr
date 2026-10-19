@@ -5,6 +5,30 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.6 (2026-10-19)
+
+### Read before updating
+
+- **Antennarr can now install tuner firmware, when you press *Install*.** On the *Tuners* page, a tuner with a newer firmware release (one the changelog is sure applies to it) has an **Install** button. It asks first, and says how many streams or recordings it will cut off. Antennarr then downloads that release from `download.silicondust.com` and sends it to the tuner over its control port, the way SiliconDust's own tool does, waits for the tuner to restart, and checks that it is running the new release. It only ever installs the latest release for the tuner's own firmware family, never an older one and never by itself, and it never tries a flash twice. This adds one place Antennarr contacts, and only when you press the button: see [what leaves your network](https://github.com/johnschult/antennarr/blob/main/docs/security.md#what-leaves-your-network). SiliconDust doesn't document where its firmware files are, so the address is inferred; if it ever changes, *Install* says so and the firmware check keeps working. The protocol was compared byte for byte with SiliconDust's tool and a real FLEX 4K accepted a re-flash of the firmware it already runs, but the first real update through *Install* is the one to watch.
+- **Antennarr now keeps a 30-day history of who watched what.** It is shown on the new *Activity* page and kept in `<settings file>.history.jsonl` beside the settings file: the viewer's name (or *Local* for your own devices), the tuner, the channel, the show titles and when it began and ended. A viewer's address is not stored. Delete the file to clear it. Without a settings file it is kept in memory only. See [Files Antennarr keeps](https://github.com/johnschult/antennarr/blob/main/docs/configuration.md#files-antennarr-keeps).
+
+### Added
+
+- **Install firmware from Antennarr** (see above), with progress, one message when it ends, and the tuner shown as *Updating firmware…* instead of offline while it restarts.
+- **A Device panel** on the *Tuners* page: hardware model, firmware, ATSC 3.0 DRM version, device ID, MAC, IP, subnet, channel maps and modulations, read from the tuner when you open it and on **Refresh**. Read-only.
+- **Restart a tuner** from the Device panel, behind a confirmation that says what it will cut off. Antennarr checks that the tuner went away and came back, and says so if it didn't.
+- **An Activity page**: totals, a bar for each day and the sessions by day, for the last 7 or 30 days.
+- **What's on, in more detail, on each Live tile**: the program's picture drawn faded behind the top of the tile, its category, episode and description, and how far into it you are. Antennarr fetches the pictures itself, only from SiliconDust's image host, so your browser still contacts nothing outside.
+- **A signal quality trend** on each tuner in use, beside the bitrate line. Each line says what it is and its current value.
+- **Icons on the owner pills**: a house for your own devices and a globe for viewers. The *Live* pill has a dot that pulses while connected.
+
+### Changed
+
+- **A new theme**, ExploreMiam from tweakcn (indigo and emerald), with the page background from the theme. The fonts are the same. One adjustment: the light theme's secondary text is dark, since white on that green is hard to read.
+- **Live tiles are redesigned** and taller. The *Signal* and *Quality* bars are gone: signal quality is a percentage on its trend line, and signal strength is in the footer next to where the stream is going, colored only when reception is fair or poor.
+- The *Tuners* page says media servers always see the device (for example *HDHomeRun FLEX 4K*), which is what it has done since the last release.
+- US spelling throughout: *program guide*, *color*, *recognize*.
+
 ## 2026.10.5 (2026-10-18)
 
 ### Read before updating
