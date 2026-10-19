@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"github.com/johnschult/antennarr/internal/httpx"
 	"github.com/johnschult/antennarr/internal/lineup"
 	"github.com/johnschult/antennarr/internal/live"
+	"github.com/johnschult/antennarr/internal/logbuf"
 	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/restart"
 	"github.com/johnschult/antennarr/internal/tuner"
@@ -69,6 +71,8 @@ type API struct {
 	Discover func(ctx context.Context, wait time.Duration) ([]discovery.Device, error)
 	// Firmware reads SiliconDust's changelog; nil means no firmware checking.
 	Firmware *firmware.Checker
+	// Logs holds the recent log lines for the Logs page; nil means there is no page.
+	Logs *logbuf.Buffer
 	// Guide reads SiliconDust's program guide; nil means no guide.
 	Guide *guide.Service
 	Pol   *access.Policy
@@ -146,6 +150,7 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/channels/{number}", map[string]http.HandlerFunc{"PUT": a.setChannel}},
 		{"devices/{name}/channels/{number}/test", map[string]http.HandlerFunc{"POST": a.testSignal}},
 		{"history", map[string]http.HandlerFunc{"GET": a.getHistory, "DELETE": a.clearHistory}},
+		{"logs", map[string]http.HandlerFunc{"GET": a.getLogs, "DELETE": a.clearLogs}},
 		{"devices/{name}/restart", map[string]http.HandlerFunc{"POST": a.restartTuner, "DELETE": a.dismissRestart}},
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
 		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},
@@ -195,6 +200,7 @@ type SettingsDoc struct {
 	FirmwareCheck bool     `json:"firmwareCheck"`
 	Guide         bool     `json:"guide"`
 	History       bool     `json:"history"`
+	LogLevel      string   `json:"logLevel"`
 	Plex          PlexDoc  `json:"plex"`
 	// Notifications is where messages go and which events send them, without
 	// the secrets in the channels.
@@ -309,6 +315,7 @@ func (a *API) state() State {
 			FirmwareCheck: set.FirmwareCheckEnabled(),
 			Guide:         set.GuideEnabled(),
 			History:       set.HistoryEnabled(),
+			LogLevel:      set.LogLevelName(),
 			Plex:          plexDoc(set),
 			Notifications: notificationsDoc(set),
 		},
@@ -520,6 +527,7 @@ type settingsPatch struct {
 	FirmwareCheck *bool     `json:"firmwareCheck"`
 	Guide         *bool     `json:"guide"`
 	History       *bool     `json:"history"`
+	LogLevel      *string   `json:"logLevel"`
 	PlexEnabled   *bool     `json:"plexEnabled"`
 	// NotifyEvents switches kinds of event on and off for notifications.
 	NotifyEvents *notifyEventsPatch `json:"notifyEvents"`
@@ -547,6 +555,15 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 		if in.Guide != nil {
 			b := *in.Guide
 			s.Guide = &b
+		}
+		if in.LogLevel != nil {
+			if !slices.Contains(access.LogLevels, *in.LogLevel) {
+				return &httpErr{http.StatusBadRequest, fmt.Sprintf("logLevel must be one of %s", strings.Join(access.LogLevels, ", "))}
+			}
+			s.LogLevel = *in.LogLevel
+			if s.LogLevel == "info" {
+				s.LogLevel = "" // the default is not written
+			}
 		}
 		if in.History != nil {
 			b := *in.History

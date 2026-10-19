@@ -55,6 +55,10 @@ Who watched what, and for how long, for the last 7 or 30 days: the total time, h
 
 Who may open this page, the limits, notifications (ntfy, Pushover or a webhook), Sign in with Plex, and the switches for what Antennarr reads and keeps: the firmware check, the program guide and the activity history. Every setting is explained in [Configuration](configuration.md).
 
+## Logs
+
+Antennarr's own log, from the **Logs** link in the footer: what it has been doing, with the newest line at the bottom. Each line has its time, a level (Debug, Info, Warning or Error, each with its own icon and color), the message and its details. Show everything, info and above, warnings and errors, or errors only; search the messages and their details (the search box has a clear button); **Live** keeps it up to date every few seconds and following the newest line until you scroll up to read; **Download** saves what is shown as a text file; **Clear** forgets what is kept. The **Log** menu at the top right is how much is logged: *Info* is the default, *Debug* adds the detail that is useful when something is wrong, and it is a setting, so it changes at once and is kept. The lines are kept in memory (the last 2,000), not in a file, so they start over when Antennarr restarts; they are also still written to standard error as before (`docker logs antennarr`). Anything that looks like a secret (a token, a key, the guide key) is hidden before a line is kept.
+
 ## On a phone
 
 <p>

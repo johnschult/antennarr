@@ -10,7 +10,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, plex: { enabled: false, admins: [] }, notifications: noNotifications() }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s

@@ -80,7 +80,9 @@ type Policy struct {
 	lastSeen map[string]time.Time // by viewer name
 	onChange func()
 	events   Events
-	session  func(*http.Request) bool // an admin signed in some other way (Plex)
+	// onSettings is told each new set of settings.
+	onSettings func(Settings)
+	session    func(*http.Request) bool // an admin signed in some other way (Plex)
 }
 
 type deviceState struct {
@@ -185,6 +187,18 @@ func (p *Policy) changed() {
 	}
 }
 
+// SetOnSettings registers what is told the new settings whenever they are swapped in (and once now), so what
+// depends on them, such as the log level, follows without being asked.
+func (p *Policy) SetOnSettings(f func(Settings)) {
+	p.mu.Lock()
+	p.onSettings = f
+	cur := p.cfg.Settings
+	p.mu.Unlock()
+	if f != nil {
+		f(cur)
+	}
+}
+
 // Update swaps in new settings. Streams already running are left alone.
 func (p *Policy) Update(s Settings) error {
 	cfg, err := s.Clone().parse() // our own copy: the caller may go on changing theirs
@@ -193,7 +207,11 @@ func (p *Policy) Update(s Settings) error {
 	}
 	p.mu.Lock()
 	p.cfg = cfg
+	onSettings := p.onSettings
 	p.mu.Unlock()
+	if onSettings != nil {
+		onSettings(cfg.Settings)
+	}
 	for _, w := range cfg.warnings() {
 		p.log.Warn(w)
 	}
@@ -406,6 +424,7 @@ func (d *DeviceView) Stream(r *http.Request) (func(), error) {
 	p.active[a.ID] = a
 	p.mu.Unlock()
 	p.changed()
+	p.log.Debug("stream given", "device", d.name, "viewer", v.Name, "channel", a.Channel)
 	p.started(d.name, v.Name, a.Channel)
 
 	var once sync.Once

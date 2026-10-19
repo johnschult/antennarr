@@ -207,6 +207,8 @@ export interface Settings {
   guide: boolean
   /** Whether who watched what is being kept, for the Activity page. */
   history: boolean
+  /** How much is logged, and shown on the Logs page. */
+  logLevel: LogLevel
   plex: PlexSettings
   notifications: Notifications
 }
@@ -305,6 +307,7 @@ export interface SettingsPatch {
   firmwareCheck?: boolean
   guide?: boolean
   history?: boolean
+  logLevel?: LogLevel
   plexEnabled?: boolean
   notifyEvents?: Partial<NotifyEvents>
 }
@@ -428,4 +431,27 @@ export interface SignalTestResult {
   strength: number
   quality: number
   symbol: number
+}
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+
+/** One line of Antennarr's log. */
+export interface LogEntry {
+  /** Counts up from 1 for as long as Antennarr runs. */
+  seq: number
+  time: string
+  level: LogLevel
+  message: string
+  attrs?: { key: string; value: string }[]
+}
+
+/** The recent log lines that matched, oldest first. */
+export interface LogsDoc {
+  entries: LogEntry[]
+  latest: number
+  /** How many lines are held, and how many can be. */
+  kept: number
+  capacity: number
+  /** The level being logged at: lines below it are never kept. */
+  level: LogLevel
 }

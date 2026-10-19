@@ -14,6 +14,7 @@ import (
 
 	"github.com/johnschult/antennarr/internal/access"
 	"github.com/johnschult/antennarr/internal/discovery"
+	"github.com/johnschult/antennarr/internal/logbuf"
 	"github.com/johnschult/antennarr/internal/server"
 	"github.com/johnschult/antennarr/internal/version"
 )
@@ -57,7 +58,11 @@ func main() {
 	set := map[string]bool{}
 	flag.Visit(func(fl *flag.Flag) { set[fl.Name] = true })
 
-	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	// What is logged goes to standard error as before, and the last few thousand lines are kept in memory for the
+	// Logs page. The level starts at info and follows the log level setting once the settings are read.
+	level := new(slog.LevelVar)
+	logs := logbuf.New(2000)
+	log := slog.New(logbuf.Tee(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}), logs))
 	log.Info("starting", "version", version.Get())
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -105,7 +110,7 @@ func main() {
 	}
 
 	srv, err := server.New(ctx, server.Config{
-		Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: f.listen, Poll: *poll, Log: log, FirmwareURL: *firmwareURL,
+		Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: f.listen, Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
 	})
 	if err != nil {
 		fail(err)

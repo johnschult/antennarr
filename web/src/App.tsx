@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { Shell } from '@/components/layout/shell'
 import { ActivityPage } from '@/pages/activity'
 import { LivePage } from '@/pages/live'
+import { LogsPage } from '@/pages/logs'
 import { SettingsPage } from '@/pages/settings'
 import { TunerPage } from '@/pages/tuner'
 import { TunersPage } from '@/pages/tuners'
@@ -22,6 +23,7 @@ export function App() {
         <Route path="tuner/:name/:tab" element={<TunerPage />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="logs" element={<LogsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

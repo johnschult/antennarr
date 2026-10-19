@@ -213,8 +213,10 @@ func (s *Service) refreshOne(ctx context.Context, auth string) bool {
 		s.log.Warn("guide fetch failed", "err", err) // err never contains the DeviceAuth: see fetch
 	case notModified:
 		f.checkedAt, f.lastErr = s.cfg.Now(), ""
+		s.log.Debug("guide unchanged")
 	default:
 		f.channels, f.etag, f.modified = chans, newTag, newMod
+		s.log.Debug("guide fetched", "channels", len(chans))
 		f.checkedAt, f.lastErr = s.cfg.Now(), ""
 	}
 	return err == nil && !notModified

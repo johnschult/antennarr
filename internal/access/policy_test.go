@@ -758,3 +758,29 @@ func TestPolicyWorksWithoutEvents(t *testing.T) {
 	p.Stream(mom)
 	p.Stream(mom)
 }
+
+func TestTheLogLevelSettingIsToldNowAndOnEveryChange(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	p, _ := newPolicy(t, twoViewers, mon)
+	var got []string
+	p.SetOnSettings(func(s Settings) { got = append(got, s.LogLevelName()) })
+	if len(got) != 1 || got[0] != "info" {
+		t.Fatalf("at once: %v", got)
+	}
+	s := twoViewers
+	s.LogLevel = "debug"
+	if err := p.Update(s); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[1] != "debug" {
+		t.Errorf("after an update: %v", got)
+	}
+	s.LogLevel = "loud"
+	if err := p.Update(s); err == nil {
+		t.Error("a level that does not exist was accepted")
+	}
+	if len(got) != 2 {
+		t.Errorf("told about settings that were refused: %v", got)
+	}
+}

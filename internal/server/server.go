@@ -26,6 +26,7 @@ import (
 	"github.com/johnschult/antennarr/internal/history"
 	"github.com/johnschult/antennarr/internal/lineup"
 	"github.com/johnschult/antennarr/internal/live"
+	"github.com/johnschult/antennarr/internal/logbuf"
 	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/notify"
 	"github.com/johnschult/antennarr/internal/plexauth"
@@ -56,6 +57,10 @@ type Config struct {
 	AdminListen string
 	Poll        time.Duration
 	Log         *slog.Logger
+	// LogLevel is the level the logger filters at, which the log level setting moves; nil means the setting has
+	// no effect. Logs is where the Logs page reads the recent lines from; nil means there is no page to show.
+	LogLevel *slog.LevelVar
+	Logs     *logbuf.Buffer
 	// Locate is DefaultLocate unless a test supplies another.
 	Locate Locator
 	// Listeners are pre-bound listeners by device name; any device without one
@@ -192,6 +197,10 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		StatePath: notifiedFile(cfg.ConfigPath),
 	})
 	policy.SetEvents(s.notify)
+	if cfg.LogLevel != nil {
+		// The level follows the setting, now and whenever it changes (an edit, or a reload of the file).
+		policy.SetOnSettings(func(set access.Settings) { cfg.LogLevel.Set(logLevel(set.LogLevelName())) })
+	}
 
 	// Installing firmware: only ever started by an admin pressing the button, one tuner at a time.
 	ucfg := upgrade.Config{
@@ -255,7 +264,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;

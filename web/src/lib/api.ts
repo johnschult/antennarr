@@ -1,4 +1,4 @@
-import type { AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
+import type { AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, LogLevel, LogsDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
 
 // The UI is served from /antennarr/ and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -76,6 +76,14 @@ export const restartTuner = (device: string, interrupt: boolean) =>
   request<void>('POST', `/devices/${encodeURIComponent(device)}/restart`, { interrupt })
 export const dismissRestart = (device: string) => request<void>('DELETE', `/devices/${encodeURIComponent(device)}/restart`)
 export const clearHistory = () => request<void>('DELETE', '/history')
+/** The recent log lines: at or above `level`, containing `q`, the newest `limit`. */
+export const getLogs = (level: LogLevel | '', q: string, limit = 500) => {
+  const p = new URLSearchParams({ limit: String(limit) })
+  if (level) p.set('level', level)
+  if (q.trim()) p.set('q', q.trim())
+  return request<LogsDoc>('GET', `/logs?${p}`)
+}
+export const clearLogs = () => request<void>('DELETE', '/logs')
 export const getChannels = (device: string) => request<ChannelsDoc>('GET', `/devices/${encodeURIComponent(device)}/channels`)
 export const setChannelState = (device: string, number: string, state: ChannelState) =>
   request<TunerChannel>('PUT', `/devices/${encodeURIComponent(device)}/channels/${encodeURIComponent(number)}`, { state })

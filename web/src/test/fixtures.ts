@@ -85,7 +85,7 @@ export function makeState(over: Partial<AppState> = {}): AppState {
     time: '2026-10-17T10:05:00Z',
     devices: [makeDevice()],
     viewers: [john, mom],
-    settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true, guide: true, history: true, plex: { enabled: false, admins: [] }, notifications: noNotifications() },
+    settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, notifications: noNotifications() },
     editable: true,
     version: '2026.10.0',
     versionUrl: 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0',
