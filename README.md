@@ -27,7 +27,7 @@ media servers only ever talk to Antennarr. It also decides who may use the tuner
 - **Limits.** An allowlist of viewer addresses, tuners per viewer, a cap on all viewers together, and tuners always kept free for you.
   Over the limit, a viewer gets the same HTTP 503 a busy tuner gives, so their software already knows what to do.
 - **Several tuners.** Each looks like its own HDHomeRun on its own port.
-- **A web UI.** Live tiles for each tuner (channel, logo, what's on with its picture and progress, who's watching, bitrate, signal), viewers, settings,
+- **A web UI.** Live tiles for each tuner (channel, logo, what's on with its picture and progress, who's watching, bitrate, signal), an Activity page of who watched what for the last 30 days, viewers, settings,
   a copy-paste setup guide, light and dark themes.
 - **Firmware news.** Tells you when SiliconDust releases firmware for your model, and installs it when you press Install on the Tuners page: the latest release for that tuner only, never an older one, and never on its own.
 - **Notifications.** Optional messages to ntfy, Pushover or a webhook when there is new firmware, a tuner is offline for a couple of minutes (and when it's back), or a viewer is turned away. Each kind can be switched off, and each channel has a Test button.

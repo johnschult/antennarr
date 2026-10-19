@@ -23,6 +23,7 @@ import (
 	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/hdhr"
+	"github.com/johnschult/antennarr/internal/history"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
 	"github.com/johnschult/antennarr/internal/notify"
@@ -113,6 +114,7 @@ type Server struct {
 	upgrade   *upgrade.Manager
 	tunerinfo *tunerinfo.Reader
 	restart   *restart.Manager
+	history   *history.Recorder
 	plex      *plexauth.Auth
 	claim     *claim.Claimer
 	admin     http.Handler // the admin pages, shared by every listener
@@ -218,6 +220,12 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		cfg.RestartConfig(&rcfg)
 	}
 	s.restart = restart.New(ctx, rcfg)
+	var hstore *history.Store
+	if p := historyFile(cfg.ConfigPath); p != "" {
+		hstore = &history.Store{Path: p}
+	}
+	s.history = history.New(hstore, time.Now())
+	s.history.OnError = func(err error) { cfg.Log.Warn("couldn't save the activity history", "err", err) }
 
 	// A stream starting or ending changes the tuners' own status too: tell the
 	// dashboards now, and have the monitors look again straight away.
@@ -246,7 +254,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/antennarr/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -359,6 +367,7 @@ func (s *Server) Run(ctx context.Context) error {
 	go s.firmware.Run(ctx)
 	go s.guide.Run(ctx)
 	go s.notify.Run(ctx)
+	go s.recordHistory(ctx)
 
 	for i, d := range devs {
 		s.start(d, lns[i])

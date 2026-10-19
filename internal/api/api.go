@@ -21,6 +21,7 @@ import (
 	"github.com/johnschult/antennarr/internal/discovery"
 	"github.com/johnschult/antennarr/internal/firmware"
 	"github.com/johnschult/antennarr/internal/guide"
+	"github.com/johnschult/antennarr/internal/history"
 	"github.com/johnschult/antennarr/internal/httpx"
 	"github.com/johnschult/antennarr/internal/live"
 	"github.com/johnschult/antennarr/internal/netinfo"
@@ -86,6 +87,8 @@ type API struct {
 	Upgrade *upgrade.Manager
 	// Restart restarts a tuner when asked; nil means it can't.
 	Restart *restart.Manager
+	// History is who watched what, for the Activity page; nil means there is none.
+	History *history.Recorder
 	// Device reads what a tuner says about itself, for the Device panel; nil means it can't.
 	Device *tunerinfo.Reader
 	// Notify sends test messages to a notification channel; nil means there is no
@@ -129,6 +132,7 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/guide/{channel}/poster/{token}", map[string]http.HandlerFunc{"GET": a.programPoster}},
 		{"network", map[string]http.HandlerFunc{"GET": a.network}},
 		{"firmware/check", map[string]http.HandlerFunc{"POST": a.checkFirmware}},
+		{"history", map[string]http.HandlerFunc{"GET": a.getHistory}},
 		{"devices/{name}/restart", map[string]http.HandlerFunc{"POST": a.restartTuner, "DELETE": a.dismissRestart}},
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
 		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},

@@ -128,6 +128,27 @@ describe('axe: Live tiles with the guide', () => {
   })
 })
 
+describe('axe: the Activity page', () => {
+  it('with sessions, a chart and day groups', async () => {
+    const at = (d: number, h: number, m = 0) => new Date(2026, 9, d, h, m).toISOString()
+    const base = { device: 'antenna', tuner: 'tuner2', channel: '2.1', channelName: 'WSB-HD' }
+    vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /history?days=7': () => ({ body: { days: 7, now: at(19, 21), sessions: [
+      { ...base, kind: 'viewer', viewer: 'Alex', start: at(19, 20), end: at(19, 21, 30), titles: ['College Football'], open: true },
+      { ...base, kind: 'local', client: '192.168.1.5', tuner: 'tuner3', start: at(18, 8), end: at(18, 9) },
+    ] } }) }).fn)
+    render(makeState(), '/activity')
+    await screen.findAllByTestId('session')
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('with nothing yet', async () => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /history?days=7': () => ({ body: { days: 7, now: new Date().toISOString(), sessions: [] } }) }).fn)
+    render(makeState(), '/activity')
+    await screen.findByText(/Nothing watched/)
+    expect(await check()).toHaveNoViolations()
+  })
+})
+
 describe('axe: the Device panel', () => {
   const info = { hardwareModel: 'HDFX-4K', model: 'hdhomerun_dvr_atsc3', version: '20260326', drm: 'SD20230420', mac: '00:18:DD:00:00:01', ip: '192.168.1.50', subnet: '255.255.255.0', channelMaps: ['us-bcast'], modulations: ['atsc3'], readAt: new Date().toISOString(), problems: ['the tuner has no System Menu page to read'] }
 
