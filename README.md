@@ -8,6 +8,14 @@
   Share an HDHomeRun tuner with Plex, Jellyfin or Emby servers on other networks, and keep track of who is using it.
 </p>
 
+<p align="center">
+  <a href="https://github.com/johnschult/antennarr/actions/workflows/ci.yml"><img src="https://github.com/johnschult/antennarr/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/johnschult/antennarr/releases/latest"><img src="https://img.shields.io/github/v/release/johnschult/antennarr" alt="Latest release"></a>
+  <a href="https://github.com/johnschult/antennarr/pkgs/container/antennarr"><img src="https://img.shields.io/badge/container-ghcr.io-2496ED?logo=docker&amp;logoColor=white" alt="Container image on ghcr.io"></a>
+  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/johnschult/antennarr" alt="Go version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/johnschult/antennarr" alt="MIT license"></a>
+</p>
+
 ---
 
 <p align="center">
