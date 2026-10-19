@@ -123,7 +123,7 @@ export function Shell() {
           <div className="relative">
             <Link to="/" title="Live" className="flex items-end gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <Logo size={42} />
-              <span className="font-wordmark pb-1 text-3xl leading-none font-bold tracking-[0.02em]">Yagi</span>
+              <span className="font-wordmark pb-1 text-4xl leading-none font-bold tracking-[0.02em]">Yagi</span>
             </Link>
             {/* Under the wordmark, at its right edge: small and quiet, but there when someone asks which version this is. */}
             <a
