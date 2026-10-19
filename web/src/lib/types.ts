@@ -177,7 +177,7 @@ export interface NotifyChannel {
   hasUser: boolean
 }
 
-export type NotifyEvent = 'firmware' | 'tuner' | 'viewer' | 'unknown'
+export type NotifyEvent = 'firmware' | 'tuner' | 'viewer' | 'unknown' | 'watching'
 export type NotifyEvents = Record<NotifyEvent, boolean>
 
 export interface Notifications {

@@ -316,6 +316,22 @@ func TestEventsAreSwitchedThroughTheSettings(t *testing.T) {
 	}
 }
 
+func TestWatchingIsOffUntilSwitchedOn(t *testing.T) {
+	e, _ := notifyEnv(t)
+	if ev := obj(t, notificationsOf(t, e)["events"]); ev["watching"] != false {
+		t.Errorf("by default: %v", ev)
+	}
+	if code, v := e.call(t, "PATCH", "/antennarr/api/settings", `{"notifyEvents":{"watching":true}}`); code != 200 {
+		t.Fatalf("%d %v", code, v)
+	}
+	if ev := obj(t, notificationsOf(t, e)["events"]); ev["watching"] != true || ev["viewer"] != true {
+		t.Errorf("after: %v", ev)
+	}
+	if !saved(t, e).NotifyEnabled(access.NotifyWatching) {
+		t.Error("not saved")
+	}
+}
+
 func TestSwitchingEventsDoesNotDisturbTheChannels(t *testing.T) {
 	e, _ := notifyEnv(t)
 	addNtfy(t, e, "Phone", "tk_KEEP")

@@ -95,6 +95,8 @@ func tag(kind string) string {
 		return "tv"
 	case access.NotifyUnknown:
 		return "no_entry"
+	case access.NotifyWatching:
+		return "eyes"
 	case testKind:
 		return "white_check_mark"
 	}
@@ -103,8 +105,11 @@ func tag(kind string) string {
 
 // priority is ntfy's 1 to 5. A tuner going offline matters more than a firmware release.
 func priority(kind string) int {
-	if kind == access.NotifyTuner {
+	switch kind {
+	case access.NotifyTuner:
 		return 4
+	case access.NotifyWatching:
+		return 2 // good to know, not worth a buzz
 	}
 	return 3
 }

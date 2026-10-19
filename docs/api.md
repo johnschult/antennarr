@@ -39,7 +39,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `PUT viewers/{name}` | Replace a viewer (the same body). |
 | `DELETE viewers/{name}` | Remove a viewer, `204`. Removing the last viewer leaves nobody able to use the tuner. The `mode` in the settings is then `no-viewers`. |
 | `GET settings` | The general settings. |
-| `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `history`, `plexEnabled`, `notifyEvents` (`{"firmware": false, "unknown": true}`: any of `firmware`, `tuner`, `viewer`, `unknown`; `firmware: true` is refused with `400` while `firmwareCheck` is off). Only the fields you send change. |
+| `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `history`, `plexEnabled`, `notifyEvents` (`{"firmware": false, "unknown": true}`: any of `firmware`, `tuner`, `viewer`, `watching`, `unknown`; `firmware: true` is refused with `400` while `firmwareCheck` is off). Only the fields you send change. |
 | `POST notifications/channels` | Add a channel: `{"name", "type": "ntfy"\|"pushover"\|"webhook", "url", "topic", "token", "user"}`. Replies `201` with the channel, without its secrets. `400` with the reason if it isn't valid; `409` without a settings file. |
 | `PUT notifications/channels/{id}` | Change a channel. A `token`, `user` or (for a webhook) `url` left empty keeps the saved one; `"clearToken": true` removes the token. Secrets aren't carried to a different `type`. `404` if there is no such channel. |
 | `DELETE notifications/channels/{id}` | Remove a channel, `204`. |
@@ -72,7 +72,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
   "time": "2026-10-17T20:00:00Z",
   "devices": [ { "name": "antenna", "label": "…", "listen": ":5004", "tuner": { "online": true, "id": "10C03B06", "baseURL": "http://192.168.1.50", "tunerCount": 4, "slots": [ … ], "events": [ … ], "updating": false, "restarting": false }, "streams": [ … ], "summary": { … }, "firmware": { … }, "upgrade": { … }, "restart": { … }, "guide": { … } } ],
   "viewers": [ … ],
-  "settings": { "mode": "enforced", "sharedCap": 0, "ownerReserve": 1, "admin": [], "firmwareCheck": true, "guide": true, "history": true, "plex": { "enabled": false, "admins": [] }, "notifications": { "channels": [ … ], "events": { "firmware": true, "tuner": true, "viewer": true, "unknown": false } } },
+  "settings": { "mode": "enforced", "sharedCap": 0, "ownerReserve": 1, "admin": [], "firmwareCheck": true, "guide": true, "history": true, "plex": { "enabled": false, "admins": [] }, "notifications": { "channels": [ … ], "events": { "firmware": true, "tuner": true, "viewer": true, "watching": false, "unknown": false } } },
   "editable": true,
   "version": "2026.10.0",
   "versionUrl": "https://github.com/johnschult/antennarr/releases/tag/v2026.10.0"

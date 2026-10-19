@@ -36,6 +36,9 @@ type Events interface {
 	Refused(device, title, viewer, reason string)
 	// Unknown is a request from an address that isn't a viewer, one call per request.
 	Unknown(device, title, addr string)
+	// Started is a viewer given a tuner: one call per stream, with the channel number when the request names one
+	// (empty when it doesn't). It is the notifier that decides how often that is worth a message.
+	Started(device, title, viewer, channel string)
 }
 
 // Active is one stream flowing through us right now.
@@ -157,6 +160,20 @@ func (p *Policy) unknown(device string, r *http.Request) {
 		title = device
 	}
 	e.Unknown(device, title, ip.String())
+}
+
+// started tells the events, if there are any, that a viewer was given a tuner.
+func (p *Policy) started(device, viewer, channel string) {
+	p.mu.Lock()
+	e, title := p.events, p.cfg.Labels[device]
+	p.mu.Unlock()
+	if e == nil {
+		return
+	}
+	if title == "" {
+		title = device
+	}
+	e.Started(device, title, viewer, channel)
 }
 
 func (p *Policy) changed() {
@@ -389,6 +406,7 @@ func (d *DeviceView) Stream(r *http.Request) (func(), error) {
 	p.active[a.ID] = a
 	p.mu.Unlock()
 	p.changed()
+	p.started(d.name, v.Name, a.Channel)
 
 	var once sync.Once
 	return func() {

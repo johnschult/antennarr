@@ -23,6 +23,7 @@ const (
 	NotifyTuner    = "tuner"    // a tuner went offline, or came back
 	NotifyViewer   = "viewer"   // a viewer was refused: at its limit, or over a cap
 	NotifyUnknown  = "unknown"  // an address that isn't a viewer tried to connect
+	NotifyWatching = "watching" // a viewer started watching
 )
 
 const (
@@ -57,12 +58,14 @@ type NotifyChannel struct {
 
 // NotifyEvents says which kinds of event are sent. An unset one takes its default:
 // firmware, tuner and viewer are on, and unknown addresses are off, since a tuner
-// port that faces the internet is scanned all day.
+// port that faces the internet is scanned all day. A viewer starting to watch is off too: it is only wanted by
+// someone who wants to know each time.
 type NotifyEvents struct {
 	Firmware *bool `json:"firmware,omitempty"`
 	Tuner    *bool `json:"tuner,omitempty"`
 	Viewer   *bool `json:"viewer,omitempty"`
 	Unknown  *bool `json:"unknown,omitempty"`
+	Watching *bool `json:"watching,omitempty"`
 }
 
 // Notifications is the optional "tell me about it" settings. With no channels
@@ -101,6 +104,8 @@ func (s Settings) NotifyEnabled(kind string) bool {
 		return pick(ev.Viewer, true)
 	case NotifyUnknown:
 		return pick(ev.Unknown, false)
+	case NotifyWatching:
+		return pick(ev.Watching, false)
 	}
 	return false
 }
@@ -123,7 +128,7 @@ func (n *Notifications) clone() *Notifications {
 	}
 	out := *n
 	out.Channels = append([]NotifyChannel(nil), n.Channels...)
-	out.Events = NotifyEvents{Firmware: cloneBool(n.Events.Firmware), Tuner: cloneBool(n.Events.Tuner), Viewer: cloneBool(n.Events.Viewer), Unknown: cloneBool(n.Events.Unknown)}
+	out.Events = NotifyEvents{Firmware: cloneBool(n.Events.Firmware), Tuner: cloneBool(n.Events.Tuner), Viewer: cloneBool(n.Events.Viewer), Unknown: cloneBool(n.Events.Unknown), Watching: cloneBool(n.Events.Watching)}
 	return &out
 }
 

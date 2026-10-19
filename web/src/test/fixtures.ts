@@ -68,7 +68,7 @@ export function makeCableDevice(over: Partial<DeviceState> = {}): DeviceState {
   })
 }
 
-export const noNotifications = (): Notifications => ({ channels: [], events: { firmware: true, tuner: true, viewer: true, unknown: false } })
+export const noNotifications = (): Notifications => ({ channels: [], events: { firmware: true, tuner: true, viewer: true, unknown: false, watching: false } })
 
 export const phone: NotifyChannel = { id: 'c1', name: 'Phone', type: 'ntfy', url: 'https://ntfy.sh', topic: 'antennarr', hasToken: true, hasUser: false }
 export const pushover: NotifyChannel = { id: 'c2', name: 'Pushover', type: 'pushover', hasToken: true, hasUser: true }

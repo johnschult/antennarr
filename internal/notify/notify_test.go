@@ -417,6 +417,50 @@ func TestViewerEventsCanBeSwitchedOff(t *testing.T) {
 	r.srv.next(t)
 }
 
+// ---- a viewer starting to watch ----
+
+func watchingOn(s *access.Settings, _ *server) { on := true; s.Notifications.Events.Watching = &on }
+
+func TestStartingToWatchIsOffUntilSwitchedOn(t *testing.T) {
+	r := newRig(t)
+	r.n.Started("antenna", "Living room", "Mom", "5.1")
+	r.srv.none(t)
+	// and an event that was off doesn't use up the turn it would have had
+	on := true
+	r.set.Notifications.Events.Watching = &on
+	r.n.Started("antenna", "Living room", "Mom", "5.1")
+	r.srv.next(t)
+}
+
+func TestStartingToWatchSaysWhoWhereAndWhichChannel(t *testing.T) {
+	r := newRig(t, watchingOn)
+	r.n.Started("antenna", "Living room", "Mom", "5.1")
+	m := decode(t, r.srv.next(t))
+	if m["title"] != "Mom started watching" || m["message"] != "Mom started watching channel 5.1 on Living room." || m["priority"] != float64(2) {
+		t.Errorf("body = %v", m)
+	}
+	r.n.Started("antenna", "Cable box", "Dad", "") // a stream that doesn't name a channel
+	if m := decode(t, r.srv.next(t)); m["message"] != "Dad started watching on Cable box." {
+		t.Errorf("body = %v", m)
+	}
+}
+
+func TestAViewerIsOnlyToldAboutOnceInAWhilePerTuner(t *testing.T) {
+	r := newRig(t, watchingOn)
+	r.n.Started("antenna", "Living room", "Mom", "5.1")
+	r.srv.next(t)
+	r.n.Started("antenna", "Living room", "Mom", "7.1") // flipped channel
+	r.n.Started("antenna", "Living room", "Mom", "5.1") // a media server connecting again
+	r.srv.none(t)
+	r.n.Started("antenna", "Living room", "Dad", "5.1") // another viewer
+	r.srv.next(t)
+	r.n.Started("cable", "Cable box", "Mom", "5.1") // the same viewer on another tuner
+	r.srv.next(t)
+	r.clock.advance(startedEvery + time.Second)
+	r.n.Started("antenna", "Living room", "Mom", "7.1")
+	r.srv.next(t)
+}
+
 // ---- unknown addresses ----
 
 func unknownOn(s *access.Settings, _ *server) { on := true; s.Notifications.Events.Unknown = &on }
