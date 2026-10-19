@@ -14,6 +14,7 @@
   <a href="https://github.com/johnschult/antennarr/pkgs/container/antennarr"><img src="https://img.shields.io/badge/container-ghcr.io-2496ED?logo=docker&amp;logoColor=white" alt="Container image on ghcr.io"></a>
   <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/johnschult/antennarr" alt="Go version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/johnschult/antennarr" alt="MIT license"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/johnschult/antennarr"><img src="https://img.shields.io/ossf-scorecard/github.com/johnschult/antennarr" alt="OpenSSF Scorecard"></a>
 </p>
 
 ---
