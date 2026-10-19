@@ -155,3 +155,100 @@ func TestADescriptionIsTidiedAndCapped(t *testing.T) {
 		t.Errorf("a long description: %d bytes, valid=%v", len(p.Description), utf8.ValidString(p.Description))
 	}
 }
+
+// aboutGuide is a guide with the words a channel as a whole is read from: its names, and its programs' languages
+// and categories.
+const aboutGuide = `<?xml version="1.0"?><tv>
+<channel id="a"><display-name>WSBDT</display-name><display-name>2.1 WSBDT</display-name><display-name>2.1 WSB-HD</display-name><display-name>2.1</display-name><display-name>WSB-HD</display-name><display-name>ABC</display-name><lcn>2.1</lcn></channel>
+<channel id="b"><display-name>WSBDT2</display-name><display-name>2.2 WSBDT2</display-name><display-name>2.2 BOUNCE</display-name><display-name>2.2</display-name><display-name>BOUNCE</display-name><lcn>2.2</lcn></channel>
+<channel id="c"><display-name>X</display-name><display-name>26.1 X</display-name><display-name>26.1 VENT</display-name><display-name>26.1</display-name><display-name>VENT</display-name><display-name>vent</display-name><lcn>26.1</lcn></channel>
+<channel id="d"><display-name>Bare</display-name><lcn>9.1</lcn></channel>
+%s
+</tv>`
+
+func aboutProg(ch, lang string, cats ...string) string {
+	c := ""
+	for _, x := range cats {
+		c += "<category>" + x + "</category>"
+	}
+	l := ""
+	if lang != "" {
+		l = "<language>" + lang + "</language>"
+	}
+	return `<programme start="20990101000000 +0000" stop="20990101010000 +0000" channel="` + ch + `"><title>T</title>` + c + l + `</programme>`
+}
+
+func TestAChannelSaysWhatItCarriesInWhatLanguagesAndWhatItShows(t *testing.T) {
+	var progs string
+	for i := 0; i < 8; i++ {
+		progs += aboutProg("a", "en", "Series", "News")
+	}
+	progs += aboutProg("a", "en", "Talk", "news") // the same category in another case counts as one
+	progs += aboutProg("a", "es", "Talk")         // 1 of 10: under a tenth is not enough... exactly a tenth is
+	chs, err := Parse(strings.NewReader(strings.Replace(aboutGuide, "%s", progs, 1)), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := chs["2.1"].About
+	if a.Network != "ABC" {
+		t.Errorf("network = %q", a.Network)
+	}
+	if len(a.Languages) != 2 || a.Languages[0] != "en" || a.Languages[1] != "es" {
+		t.Errorf("languages = %v, want en then es (es is a tenth of the programs)", a.Languages)
+	}
+	if len(a.Categories) != 2 || a.Categories[0] != "News" || a.Categories[1] != "Talk" {
+		t.Errorf("categories = %v, want News then Talk, and never Series", a.Categories)
+	}
+}
+
+func TestAStrayProgramDoesNotMakeAChannelBilingual(t *testing.T) {
+	var progs string
+	for i := 0; i < 19; i++ {
+		progs += aboutProg("a", "en", "News")
+	}
+	progs += aboutProg("a", "es", "News")
+	chs, _ := Parse(strings.NewReader(strings.Replace(aboutGuide, "%s", progs, 1)), time.Now())
+	if l := chs["2.1"].About.Languages; len(l) != 1 || l[0] != "en" {
+		t.Errorf("languages = %v", l)
+	}
+}
+
+func TestNothingIsMadeUpForWhatTheGuideDoesNotSay(t *testing.T) {
+	progs := aboutProg("b", "", "") + aboutProg("d", "")
+	chs, _ := Parse(strings.NewReader(strings.Replace(aboutGuide, "%s", progs, 1)), time.Now())
+	for _, n := range []string{"2.2", "9.1"} {
+		a := chs[n].About
+		if a.Network != "" || len(a.Languages) != 0 || len(a.Categories) != 0 {
+			t.Errorf("%s = %+v, want nothing", n, a)
+		}
+	}
+}
+
+func TestANetworkIsOnlyWhatDiffersFromTheName(t *testing.T) {
+	chs, _ := Parse(strings.NewReader(strings.Replace(aboutGuide, "%s", "", 1)), time.Now())
+	if n := chs["2.2"].About.Network; n != "" {
+		t.Errorf("BOUNCE has no network of its own: %q", n)
+	}
+	if n := chs["26.1"].About.Network; n != "" {
+		t.Errorf("a network that is the name in another case is not a network: %q", n)
+	}
+	if n := chs["2.1"].About.Network; n != "ABC" {
+		t.Errorf("%q", n)
+	}
+}
+
+func TestAboutIsFoundByDeviceAndChannel(t *testing.T) {
+	s := NewService(Config{})
+	s.devices = map[string]func() string{"antenna": func() string { return "auth" }}
+	chs, _ := Parse(strings.NewReader(strings.Replace(aboutGuide, "%s", aboutProg("a", "en", "News"), 1)), time.Now())
+	s.feeds = map[string]*feed{"auth": {channels: chs}}
+	if a, ok := s.About("antenna", "2.1"); !ok || a.Network != "ABC" {
+		t.Errorf("%+v %v", a, ok)
+	}
+	if _, ok := s.About("antenna", "99.9"); ok {
+		t.Error("an unknown channel")
+	}
+	if _, ok := s.About("nope", "2.1"); ok {
+		t.Error("an unknown device")
+	}
+}

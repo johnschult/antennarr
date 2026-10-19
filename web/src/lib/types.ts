@@ -389,6 +389,18 @@ export interface TunerChannel {
   state: ChannelState
   /** False: the tuner has it but can't play it, so it can't be changed. */
   subscribed: boolean
+  /** What the program guide says about it as a whole. Absent when the guide doesn't have the channel or is off. */
+  about?: ChannelAbout
+}
+
+/** What SiliconDust's program guide says about a channel as a whole. Anything it doesn't say is absent: nothing is guessed. */
+export interface ChannelAbout {
+  /** The network it carries (ABC), when that differs from its name. */
+  network?: string
+  /** Language codes as the guide gives them (en, es), most programs first. */
+  languages?: string[]
+  /** What its programs are, most common first. */
+  categories?: string[]
 }
 
 /** What the tuner says about scanning for channels. */

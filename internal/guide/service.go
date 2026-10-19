@@ -285,6 +285,15 @@ func (s *Service) Lookup(device, channel string, at time.Time) (Entry, bool) {
 	return Entry{Name: ch.Name, Icon: validIcon(ch.Icon, s.cfg.IconBase), Now: ch.Now(at)}, true
 }
 
+// About says what the guide knows about a channel as a whole, whether or not anyone is watching it.
+func (s *Service) About(device, channel string) (About, bool) {
+	ch := s.channel(device, channel)
+	if ch == nil {
+		return About{}, false
+	}
+	return ch.About, true
+}
+
 func (s *Service) channel(device, channel string) *Channel {
 	if s == nil {
 		return nil

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/hdhr"
 	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
 	"github.com/johnschult/antennarr/internal/lineup"
@@ -400,5 +401,56 @@ func TestSignalTestIsForAdminsOnlyAndNeedsAControlPort(t *testing.T) {
 	e.api.Control = nil
 	if code, _ := e.call(t, "POST", testPath("2.1"), ""); code != 409 {
 		t.Errorf("unavailable: %d", code)
+	}
+}
+
+// guideService has read a small guide in which 2.2 (Laff) is an English comedy channel on a network.
+func guideService(t *testing.T, enabled func() bool) *guide.Service {
+	t.Helper()
+	xml := `<?xml version="1.0"?><tv><channel id="a"><display-name>X</display-name><display-name>2.2 X</display-name><display-name>2.2 Laff</display-name><display-name>2.2</display-name><display-name>Laff</display-name><display-name>ION</display-name><lcn>2.2</lcn></channel>
+<programme start="20990101000000 +0000" stop="20990101010000 +0000" channel="a"><title>T</title><category>Sitcom</category><category>Comedy</category><language>en</language></programme></tv>`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(xml)) }))
+	t.Cleanup(srv.Close)
+	svc := guide.NewService(guide.Config{URL: srv.URL, Enabled: enabled})
+	svc.Watch("antenna", func() string { return "auth" })
+	svc.Refresh(context.Background())
+	return svc
+}
+
+func TestChannelsCarryWhatTheGuideSaysAboutThem(t *testing.T) {
+	e, _ := channelsEnv(t, idleTuner)
+	e.api.Guide = guideService(t, nil)
+	_, v := e.call(t, "GET", chanPath, "")
+	by := map[string]map[string]any{}
+	for _, c := range obj(t, v)["channels"].([]any) {
+		m := obj(t, c)
+		by[m["number"].(string)] = m
+	}
+	about := obj(t, by["2.2"]["about"])
+	if about["network"] != "ION" || about["languages"].([]any)[0] != "en" || len(about["categories"].([]any)) != 2 {
+		t.Errorf("about = %v", about)
+	}
+	if by["2.2"]["state"] != "favorite" {
+		t.Errorf("the tuner's own fields are lost: %v", by["2.2"])
+	}
+	// a channel the guide doesn't have has no about at all, rather than an empty one
+	if _, has := by["2.1"]["about"]; has {
+		t.Errorf("about for a channel the guide doesn't have: %v", by["2.1"]["about"])
+	}
+}
+
+func TestChannelsHaveNoAboutWithoutAGuideOrWhileItIsOff(t *testing.T) {
+	e, _ := channelsEnv(t, idleTuner)
+	_, v := e.call(t, "GET", chanPath, "")
+	if _, has := obj(t, obj(t, v)["channels"].([]any)[1])["about"]; has {
+		t.Error("about without a guide")
+	}
+	e.api.Guide = guideService(t, nil)
+	e.call(t, "PATCH", "/antennarr/api/settings", `{"guide":false}`)
+	_, v = e.call(t, "GET", chanPath, "")
+	for _, c := range obj(t, v)["channels"].([]any) {
+		if _, has := obj(t, c)["about"]; has {
+			t.Error("about while the guide is off")
+		}
 	}
 }

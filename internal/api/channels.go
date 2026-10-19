@@ -11,15 +11,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/johnschult/antennarr/internal/guide"
 	"github.com/johnschult/antennarr/internal/hdhr"
 	"github.com/johnschult/antennarr/internal/lineup"
 	"github.com/johnschult/antennarr/internal/tuner"
 )
 
 // channelsDoc is a tuner's channels and its scan, as the tuner says them.
+// channelOut is a channel as the tuner has it, with what the program guide says about it as a whole when it says anything.
+type channelOut struct {
+	lineup.Channel
+	About *guide.About `json:"about,omitempty"`
+}
+
 type channelsDoc struct {
-	Channels []lineup.Channel `json:"channels"`
-	Scan     lineup.Scan      `json:"scan"`
+	Channels []channelOut `json:"channels"`
+	Scan     lineup.Scan  `json:"scan"`
 }
 
 // tuner is where to reach the web side of an online tuner, or writes why not and returns false.
@@ -70,7 +77,17 @@ func (a *API) getChannels(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadGateway, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, channelsDoc{Channels: chans, Scan: scan})
+	out := make([]channelOut, len(chans))
+	guideOn := a.Guide != nil && a.Pol.Settings().GuideEnabled()
+	for i, c := range chans {
+		out[i].Channel = c
+		if guideOn {
+			if ab, ok := a.Guide.About(d.Name, c.Number); ok {
+				out[i].About = &ab
+			}
+		}
+	}
+	writeJSON(w, http.StatusOK, channelsDoc{Channels: out, Scan: scan})
 }
 
 // lineupStateInput is a channel's new state.

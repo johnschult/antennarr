@@ -222,7 +222,14 @@ describe('changing several at once', () => {
 })
 
 describe('about a channel', () => {
-  it('has an info button before the name that opens a dialog with its name and number', async () => {
+  const withAbout = (about: TunerChannel['about'], number = '2.2') => doc({ channels: channels.map((c) => (c.number === number ? { ...c, about } : c)) })
+  const open = async (name: string) => {
+    await screen.findAllByTestId('channel')
+    await userEvent.setup().click(within(row(name)).getByRole('button', { name: /^About / }))
+    return within(await screen.findByTestId('channel-about'))
+  }
+
+  it('has an info button before the name that opens a popover with its number, name and state', async () => {
     show(doc())
     await screen.findAllByTestId('channel')
     const user = userEvent.setup()
@@ -230,11 +237,52 @@ describe('about a channel', () => {
     const button = within(r).getByRole('button', { name: 'About 2.1 WSB-HD' })
     expect(button.compareDocumentPosition(within(r).getByText('WSB-HD')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy() // before the name
     await user.click(button)
-    const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText('WSB-HD')).toBeInTheDocument()
-    expect(within(dialog).getByText('Channel 2.1')).toBeInTheDocument()
+    const about = within(await screen.findByTestId('channel-about'))
+    expect(about.getByText('WSB-HD')).toBeInTheDocument()
+    expect(about.getByText('2.1')).toBeInTheDocument()
+    expect(about.getByText('In the lineup')).toBeInTheDocument()
+    expect(about.getByText('HD')).toBeInTheDocument()
     await user.keyboard('{Escape}')
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByTestId('channel-about')).not.toBeInTheDocument())
+  })
+
+  it('shows the network, the language with its flag, and what the channel shows, with a picture each, and says where it is from', async () => {
+    show(withAbout({ network: 'ION', languages: ['en', 'es'], categories: ['Sitcom', 'Comedy', 'News', 'Shop', 'Shopping', 'Thing the list lacks'] }))
+    const a = await open('Laff')
+    expect(a.getByText('ION')).toBeInTheDocument()
+    expect(a.getByText('Languages')).toBeInTheDocument()
+    expect(a.getByText('English')).toBeInTheDocument()
+    expect(a.getByText('Spanish')).toBeInTheDocument()
+    expect(a.getByText('English').parentElement!.querySelector('svg')).not.toBeNull() // a flag
+    // each look once: Sitcom and Comedy are one, Shop and Shopping are one; each has a picture
+    const items = within(a.getByRole('list', { name: 'Categories' })).getAllByRole('listitem')
+    expect(items.map((i) => i.textContent)).toEqual(['Comedy', 'News', 'Shopping', 'Thing the list lacks'])
+    for (const i of items) expect(i.querySelector('svg')).not.toBeNull()
+    expect(a.getByText('Favorite')).toBeInTheDocument()
+    expect(screen.getByText('Metadata provided by SiliconDust')).toBeInTheDocument()
+  })
+
+  it('names a single language in the singular and a language without a flag by its code', async () => {
+    show(withAbout({ languages: ['xx'] }))
+    const a = await open('Laff')
+    expect(a.getByText('Language')).toBeInTheDocument()
+    expect(a.getByText('xx')).toBeInTheDocument()
+  })
+
+  it('says the guide has nothing, and credits nothing, for a channel it does not know', async () => {
+    show(doc())
+    const a = await open('WSB-HD')
+    expect(a.getByText(/guide doesn't say anything about this channel/)).toBeInTheDocument()
+    expect(a.queryByText('Network')).not.toBeInTheDocument()
+    expect(a.queryByText(/Language/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/SiliconDust/)).not.toBeInTheDocument()
+    expect(a.getByText('MPEG2')).toBeInTheDocument() // what the tuner says is still there
+  })
+
+  it('still opens for a channel the tuner cannot play', async () => {
+    show(doc())
+    const a = await open('Locked')
+    expect(a.getByText('703')).toBeInTheDocument()
   })
 })
 

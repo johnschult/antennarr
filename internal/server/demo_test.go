@@ -91,6 +91,44 @@ func demoLineup(chs []demoChannel) []linetest.Channel {
 	return out
 }
 
+// demoGuideChannel is what the made-up guide says about one channel of the lineup that nobody is watching.
+type demoGuideChannel struct {
+	name, number, network string
+	langs, cats           []string
+}
+
+func (d demoGuideChannel) networkName() string {
+	if d.network == "" {
+		return ""
+	}
+	return "<display-name>" + d.network + "</display-name>"
+}
+
+// demoAbout gives each of the lineup's made-up extra channels something for the guide to say about it.
+func demoAbout(chs []demoChannel) []demoGuideChannel {
+	profiles := []demoGuideChannel{
+		{network: "ABC", langs: []string{"en"}, cats: []string{"News", "Talk", "Series"}},
+		{network: "", langs: []string{"en"}, cats: []string{"Movie", "Drama", "Action"}},
+		{network: "NOAA", langs: []string{"en"}, cats: []string{"Weather", "News"}},
+		{network: "", langs: []string{"en"}, cats: []string{"Children", "Animated", "Comedy"}},
+		{network: "SHOP LC", langs: []string{"en"}, cats: []string{"Shop", "Shopping", "Consumer"}},
+		{network: "", langs: []string{"en"}, cats: []string{"Sitcom", "Comedy", "Series"}},
+		{network: "ESTRELLATV", langs: []string{"es"}, cats: []string{"Sport", "Football"}},
+		{network: "", langs: []string{"en", "es"}, cats: []string{"News", "Bus./financial"}},
+		{network: "", langs: []string{"en"}, cats: []string{"Music", "Entertainment"}},
+		{network: "", langs: []string{"en"}, cats: []string{"Cooking", "How-to", "Travel"}},
+		{network: "", langs: []string{"en"}, cats: []string{"Mystery", "Crime drama", "Law"}},
+		{network: "TBN", langs: []string{"en"}, cats: []string{"Religious", "Community"}},
+	}
+	var out []demoGuideChannel
+	for i, l := range demoLineup(chs)[len(chs):] {
+		p := profiles[i%len(profiles)]
+		p.name, p.number = l.Name, l.Number
+		out = append(out, p)
+	}
+	return out
+}
+
 // demoSignals is what the made-up tuner reports when a channel of the lineup is tested: strong, middling, weak, and
 // one that never locks, in turn, so the results show every color.
 func demoSignals(lineup []linetest.Channel) map[string]hdhrtest.Signal {
@@ -354,14 +392,28 @@ func TestDemo(t *testing.T) {
 		case r.URL.Path == "/api/xmltv":
 			xml := `<?xml version="1.0" encoding="utf-8"?><tv>` + "\n"
 			for i, c := range chs {
-				xml += fmt.Sprintf(`<channel id="c%d"><display-name>%s</display-name><lcn>%s</lcn><icon src="https://img.hdhomerun.com/channels/%s"/></channel>`+"\n", i, c.Name, c.Number, c.Logo)
+				xml += fmt.Sprintf(`<channel id="c%d"><display-name>%s</display-name><display-name>%s %s</display-name><display-name>%s</display-name><display-name>%s</display-name><lcn>%s</lcn><icon src="https://img.hdhomerun.com/channels/%s"/></channel>`+"\n", i, c.Name, c.Number, c.Name, c.Number, c.Name, c.Number, c.Logo)
+			}
+			// The rest of the lineup is in the guide too, saying what each carries, so the info popover has something to
+			// show: its network, its language (one in Spanish, one in two) and what it mostly shows.
+			for i, e := range demoAbout(chs) {
+				id := fmt.Sprintf("x%d", i)
+				xml += fmt.Sprintf(`<channel id="%s"><display-name>%s</display-name><display-name>%s %s</display-name><display-name>%s</display-name><display-name>%s</display-name>%s<lcn>%s</lcn></channel>`+"\n", id, e.name, e.number, e.name, e.number, e.name, e.networkName(), e.number)
+				for k := 0; k < 6; k++ {
+					lang := e.langs[k%len(e.langs)]
+					cats := ""
+					for _, c := range e.cats {
+						cats += "<category>" + c + "</category>"
+					}
+					xml += fmt.Sprintf(`<programme start="%s" stop="%s" channel="%s"><title>Program %d</title>%s<language>%s</language></programme>`+"\n", stamp(time.Duration(k)*time.Hour), stamp(time.Duration(k+1)*time.Hour), id, k+1, cats, lang)
+				}
 			}
 			for i, c := range chs {
 				title := c.Title
 				if title == "" {
 					title = "Evening News"
 				}
-				xml += `<programme start="` + stamp(-40*time.Minute) + `" stop="` + stamp(80*time.Minute) + fmt.Sprintf(`" channel="c%d"><title>%s</title><sub-title>Week 9</sub-title><desc>The second half of a big game, with the teams trading the lead as the clock runs down. Pre-game and post-game coverage follow.</desc><category>Sports</category><icon src="https://img.hdhomerun.com/titles/DEMO%d.png" width="480" height="270"/><episode-num system="onscreen">S12E09</episode-num></programme>`, i, title, i) + "\n"
+				xml += `<programme start="` + stamp(-40*time.Minute) + `" stop="` + stamp(80*time.Minute) + fmt.Sprintf(`" channel="c%d"><title>%s</title><sub-title>Week 9</sub-title><desc>The second half of a big game, with the teams trading the lead as the clock runs down. Pre-game and post-game coverage follow.</desc><category>Sports</category><category>News</category><language>en</language><icon src="https://img.hdhomerun.com/titles/DEMO%d.png" width="480" height="270"/><episode-num system="onscreen">S12E09</episode-num></programme>`, i, title, i) + "\n"
 			}
 			xml += `</tv>`
 			io.WriteString(w, strings.ReplaceAll(xml, "https://img.hdhomerun.com", base))
