@@ -1,4 +1,4 @@
-/** The Antennarr mark: a retro TV with rabbit ears. */
+/** The Antennarr mark: an antenna on a dark tile. */
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <img

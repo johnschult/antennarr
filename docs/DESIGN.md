@@ -17,7 +17,7 @@ The setup it replaces is a friend's HDHomeRun shared with the user's Plex. It's 
 
 **Antennarr**: over-the-air TV plus the -arr family. It's deliberately not "Tunarr", which is an existing, popular project that also emulates an HDHomeRun. A quick search found no other "Antennarr"; check GitHub, Docker Hub and Unraid Community Apps before committing.
 
-Logo direction: rabbit-ear antennas on a TV, with dot tips as a nod to Tailscale, without copying Tailscale's mark. The logos are in `docs/brand/`.
+Logo: Lucide's `antenna` icon (ISC licence) in teal on a dark tile; the SVG and PNGs are in `docs/brand/`. It replaced an earlier retro-TV-with-rabbit-ears mark.
 
 ## Core (works on any network)
 
