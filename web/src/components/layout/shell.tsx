@@ -176,7 +176,10 @@ export function Shell() {
         <Outlet />
       </main>
       <WhatsNewDialog open={whatsNew.open} onClose={whatsNew.dismiss} version={whatsNew.current} releases={whatsNew.releases} updated={whatsNew.byItself} />
-      <footer className="mx-auto flex w-full max-w-7xl items-center justify-center px-4 pb-8 text-xs text-muted-foreground sm:px-6">
+      <footer className="mx-auto flex w-full max-w-7xl flex-col items-center justify-center gap-1 px-4 pb-8 text-xs text-muted-foreground sm:px-6">
+        <p>
+          Point your antenna <strong className="font-semibold text-foreground">anywhere</strong>.
+        </p>
         <div className="flex items-center gap-1">
           {/* The version is here, not under the wordmark, which is big enough now to cover it. */}
           <a

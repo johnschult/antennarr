@@ -1,8 +1,13 @@
-<p align="center">
-  <img src="docs/brand/yagi-logo-512.png" alt="Yagi" width="160">
-</p>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/yagi-wordmark-dark.png">
+    <img src="docs/brand/yagi-wordmark-light.png" alt="Yagi" width="300">
+  </picture>
+</h1>
 
-<h1 align="center">Yagi</h1>
+<p align="center">
+  Point your antenna <strong>anywhere</strong>.
+</p>
 
 <p align="center">
   Share an HDHomeRun tuner with Plex, Jellyfin or Emby servers on other networks, and keep track of who is using it.

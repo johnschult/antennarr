@@ -187,6 +187,13 @@ describe('Shell footer', () => {
     expect(within(screen.getByRole('contentinfo')).getAllByRole('link')[0]).toBe(version)
   })
 
+  it('says the tagline in the footer, with anywhere in bold', () => {
+    mount()
+    const footer = within(screen.getByRole('contentinfo'))
+    expect(footer.getByText('anywhere').tagName).toBe('STRONG')
+    expect(screen.getByRole('contentinfo')).toHaveTextContent('Point your antenna anywhere.')
+  })
+
   it('centers the footer links', () => {
     mount()
     const footer = screen.getByRole('contentinfo')
