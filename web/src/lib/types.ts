@@ -362,6 +362,10 @@ export interface HistorySession {
   end: string
   /** The programs that were on, in order. */
   titles?: string[]
+  /** About how much the tuner sent for it, in bytes. */
+  bytes?: number
+  /** The average signal quality, 0 to 100, when the tuner reported one. */
+  quality?: number
   /** Not ended yet: `end` is the last time it was seen. */
   open?: boolean
 }

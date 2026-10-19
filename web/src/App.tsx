@@ -4,6 +4,7 @@ import { ActivityPage } from '@/pages/activity'
 import { LivePage } from '@/pages/live'
 import { SettingsPage } from '@/pages/settings'
 import { TunerPage } from '@/pages/tuner'
+import { ViewerPage } from '@/pages/viewer'
 import { ViewersPage } from '@/pages/viewers'
 
 export function App() {
@@ -12,6 +13,7 @@ export function App() {
       <Route element={<Shell />}>
         <Route index element={<LivePage />} />
         <Route path="viewers" element={<ViewersPage />} />
+        <Route path="viewers/:name" element={<ViewerPage />} />
         {/* The Connect page is now part of adding a viewer; keep old links working. */}
         <Route path="setup" element={<Navigate to="/viewers" replace />} />
         <Route path="tuner" element={<TunerPage />} />

@@ -1,6 +1,6 @@
 import { Antenna, Cable, Info, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { DeleteViewerDialog } from '@/components/delete-viewer-dialog'
 import { ViewerDialog } from '@/components/viewer-dialog'
 import { ViewerWizard } from '@/components/viewer-wizard/viewer-wizard'
@@ -80,6 +80,15 @@ function RowActions({
 export function ViewersPage() {
   const { state } = useApp()
   const { viewers, devices, editable } = state
+  // A viewer's name goes to their page (what they watched and how much data it was) while the history is kept.
+  const nameOf = (v: Viewer) =>
+    state.settings.history ? (
+      <Link to={`/viewers/${encodeURIComponent(v.name)}`} className="underline-offset-2 hover:underline">
+        {v.name}
+      </Link>
+    ) : (
+      v.name
+    )
   const phone = useIsPhone()
   const [params, setParams] = useSearchParams()
   const [editing, setEditing] = useState<Viewer | undefined>()
@@ -132,7 +141,7 @@ export function ViewersPage() {
               <li key={v.name} className="space-y-3 rounded-xl border border-border bg-card/70 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate font-medium">{v.name}</div>
+                    <div className="truncate font-medium">{nameOf(v)}</div>
                     <div className="mt-0.5 font-mono text-xs break-all text-muted-foreground">{v.addresses.join(', ')}</div>
                   </div>
                   <div className="-mt-1 -mr-2 flex shrink-0">
@@ -161,7 +170,7 @@ export function ViewersPage() {
               <TableBody>
                 {viewers.map((v) => (
                   <TableRow key={v.name}>
-                    <TableCell className="pl-4 font-medium">{v.name}</TableCell>
+                    <TableCell className="pl-4 font-medium">{nameOf(v)}</TableCell>
                     <TableCell className="font-mono text-xs">{v.addresses.join(', ')}</TableCell>
                     <TableCell>
                       <Usage v={v} devices={devices} />

@@ -104,3 +104,81 @@ export function summarize(sessions: HistorySession[]): Summary {
   }
   return { totalMs, sessions: sessions.length, topChannel: top(channels), topWatcher: top(watchers) }
 }
+
+/** "1.4 GB", "230 MB", "12 MB", "800 KB": how much data, for people (decimal units, as network figures are). */
+export function formatBytes(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(n >= 1e10 ? 0 : 1)} GB`
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)} MB`
+  if (n >= 1e3) return `${Math.round(n / 1e3)} KB`
+  return `${Math.round(n)} B`
+}
+
+/** A session's data, if it was measured. */
+export const bytesOf = (s: HistorySession) => Math.max(0, s.bytes ?? 0)
+
+/** Whether a stream went out through Antennarr (a viewer's), rather than straight from the tuner to the owner's own device. */
+export const throughAntennarr = (s: HistorySession) => s.kind !== 'local'
+
+export interface Total {
+  label: string
+  /** Time watched, in milliseconds. */
+  ms: number
+  bytes: number
+  sessions: number
+  /** The average signal quality over the time it was reported, 0 to 100, when it was. */
+  quality?: number
+  /** Whether it went through Antennarr: the data counts against the sharer's upload. */
+  through: boolean
+}
+
+function totalsBy(sessions: HistorySession[], key: (s: HistorySession) => string): Total[] {
+  const rows = new Map<string, Total & { qMs: number; qSum: number }>()
+  for (const s of sessions) {
+    const label = key(s)
+    const ms = Math.max(0, new Date(s.end).getTime() - new Date(s.start).getTime())
+    const r = rows.get(label) ?? { label, ms: 0, bytes: 0, sessions: 0, through: throughAntennarr(s), qMs: 0, qSum: 0 }
+    r.ms += ms
+    r.bytes += bytesOf(s)
+    r.sessions++
+    if (s.quality) {
+      r.qMs += ms
+      r.qSum += s.quality * ms
+    }
+    rows.set(label, r)
+  }
+  return [...rows.values()]
+    .map(({ qMs, qSum, ...t }) => ({ ...t, quality: qMs > 0 ? Math.round(qSum / qMs) : undefined }))
+    .sort((a, b) => b.bytes - a.bytes || b.ms - a.ms)
+}
+
+/** Who watched, with how long and how much data each: most data first. */
+export const totalsByWatcher = (sessions: HistorySession[]) => totalsBy(sessions, watcherOf)
+
+/** Which channels were watched, with how long, how much data and how good the reception was: most time first. */
+export const totalsByChannel = (sessions: HistorySession[]) => totalsBy(sessions, channelLabel).sort((a, b) => b.ms - a.ms)
+
+/** The data that went out through Antennarr (viewers and unmatched streams), which is what the sharer's upload paid for. */
+export const dataThroughAntennarr = (sessions: HistorySession[]) => sessions.filter(throughAntennarr).reduce((n, s) => n + bytesOf(s), 0)
+
+export interface DayBytes {
+  day: Date
+  bytes: number
+}
+
+/** Bytes sent each of the last `days` days, oldest first, ending today. A session that runs past midnight is split between the days by how long it was on each. */
+export function dailyBytes(sessions: HistorySession[], days: number, now: Date): DayBytes[] {
+  const today = startOfDay(now)
+  const out: DayBytes[] = []
+  for (let i = days - 1; i >= 0; i--) out.push({ day: addDays(today, -i), bytes: 0 })
+  for (const s of sessions) {
+    const b = bytesOf(s)
+    const start = new Date(s.start).getTime()
+    const end = new Date(s.end).getTime()
+    if (b === 0 || !(end > start)) continue
+    for (const d of out) {
+      const overlap = Math.min(end, addDays(d.day, 1).getTime()) - Math.max(start, d.day.getTime())
+      if (overlap > 0) d.bytes += (b * overlap) / (end - start)
+    }
+  }
+  return out.map((d) => ({ ...d, bytes: Math.round(d.bytes) }))
+}

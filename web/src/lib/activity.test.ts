@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { HistorySession } from './types'
-import { channelLabel, dailyMinutes, dayLabel, groupByDay, minutesOf, sessionSpan, spanText, summarize, watcherOf } from './activity'
+import { channelLabel, dailyBytes, dailyMinutes, dataThroughAntennarr, dayLabel, formatBytes, groupByDay, minutesOf, sessionSpan, spanText, summarize, totalsByChannel, totalsByWatcher, watcherOf } from './activity'
 
 // Built from local dates, so the days mean the same wherever the tests run.
 const local = (y: number, mo: number, d: number, h = 0, mi = 0, s = 0) => new Date(y, mo - 1, d, h, mi, s)
@@ -106,5 +106,74 @@ describe('labels', () => {
   it('shows a channel by number and name, or the number alone', () => {
     expect(channelLabel(session(now, now))).toBe('2.1 WSB-HD')
     expect(channelLabel(session(now, now, { channelName: undefined }))).toBe('2.1')
+  })
+})
+
+describe('formatBytes', () => {
+  it.each([
+    [0, '0 B'],
+    [900, '900 B'],
+    [4_500, '5 KB'],
+    [800_000, '800 KB'],
+    [1_500_000, '1.5 MB'],
+    [12_400_000, '12 MB'],
+    [1_400_000_000, '1.4 GB'],
+    [25_000_000_000, '25 GB'],
+  ])('%i bytes is %s', (n, text) => expect(formatBytes(n)).toBe(text))
+})
+
+describe('data', () => {
+  const GB = 1_000_000_000
+  const withBytes = (over: Partial<HistorySession>) => session(local(2026, 10, 19, 20), local(2026, 10, 19, 21), over)
+
+  it('is split between days by how long a session was on each', () => {
+    // 3 hours across midnight: 1 hour on the 18th, 2 on the 19th, so a third and two thirds
+    const s = session(local(2026, 10, 18, 23), local(2026, 10, 19, 2), { bytes: 3 * GB })
+    const days = dailyBytes([s], 3, now)
+    expect(days.map((d) => d.bytes)).toEqual([0, GB, 2 * GB])
+  })
+
+  it('has one entry per day, oldest first, and counts only what was measured', () => {
+    const days = dailyBytes([withBytes({ bytes: 2 * GB }), withBytes({ bytes: undefined })], 7, now)
+    expect(days).toHaveLength(7)
+    expect(days[6].bytes).toBe(2 * GB)
+    expect(days[0].bytes).toBe(0)
+  })
+
+  it('counts only what went out through Antennarr as the sharer’s upload', () => {
+    const sessions = [withBytes({ bytes: 2 * GB }), withBytes({ kind: 'remote', viewer: undefined, bytes: GB }), withBytes({ kind: 'local', viewer: undefined, bytes: 5 * GB })]
+    expect(dataThroughAntennarr(sessions)).toBe(3 * GB)
+  })
+})
+
+describe('totals', () => {
+  const GB = 1_000_000_000
+  const h = (n: number) => local(2026, 10, 19, n)
+
+  it('add up each viewer’s time and data, most data first, and say what stayed on your network', () => {
+    const rows = totalsByWatcher([
+      session(h(8), h(9), { viewer: 'Alex', bytes: 2 * GB }),
+      session(h(10), h(12), { viewer: 'Sam', bytes: 5 * GB }),
+      session(h(13), h(14), { viewer: 'Alex', bytes: GB }),
+      session(h(15), h(16), { kind: 'local', viewer: undefined, bytes: 9 * GB }),
+    ])
+    expect(rows.map((r) => [r.label, r.bytes, r.sessions, r.through])).toEqual([
+      ['Your devices', 9 * GB, 1, false],
+      ['Sam', 5 * GB, 1, true],
+      ['Alex', 3 * GB, 2, true],
+    ])
+    expect(rows[2].ms).toBe(2 * 3_600_000)
+  })
+
+  it('give a channel its average quality, weighted by how long it was watched, and none when never reported', () => {
+    const rows = totalsByChannel([
+      session(h(8), h(9), { quality: 100 }), // one hour at 100
+      session(h(10), h(13), { quality: 60 }), // three hours at 60
+      session(h(14), h(15), { channel: '5.1', channelName: 'WFRV', quality: undefined }),
+      session(h(16), h(17), { channel: '5.1', channelName: 'WFRV', quality: 0 }),
+    ])
+    expect(rows.map((r) => r.label)).toEqual(['2.1 WSB-HD', '5.1 WFRV']) // most time first
+    expect(rows[0].quality).toBe(70) // (100*1 + 60*3) / 4
+    expect(rows[1].quality).toBeUndefined()
   })
 })

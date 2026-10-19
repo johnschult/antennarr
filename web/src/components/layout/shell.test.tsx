@@ -121,6 +121,26 @@ describe('Shell menu on a phone', () => {
   })
 })
 
+describe('Shell logo', () => {
+  const mount = (route: string) => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /auth/status': () => ({ body: { plexEnabled: false, signedIn: null, admin: true } }) }).fn)
+    return renderWithApp(<Shell />, makeState(), { route })
+  }
+
+  it('is a link to the Live page, named for the app', () => {
+    mount('/tuner')
+    const link = screen.getByRole('link', { name: 'Antennarr' })
+    expect(link).toHaveAttribute('href', '/')
+    expect(link).toHaveAttribute('title', 'Live')
+    expect(link.querySelector('img')).toHaveAttribute('aria-hidden', 'true') // the name comes from the word, not the picture
+  })
+
+  it('is not one of the pages in the menu, which are only the pages', () => {
+    mount('/')
+    expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: 'Antennarr' })).not.toBeInTheDocument()
+  })
+})
+
 describe('Shell pages', () => {
   const mount = (history: boolean) => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /auth/status': () => ({ body: { plexEnabled: false, signedIn: null, admin: true } }) }).fn)
@@ -149,15 +169,31 @@ describe('Shell footer', () => {
     return renderWithApp(<Shell />, makeState(over))
   }
 
-  it('shows the version, linked to its release page, and the GitHub icon linking to the project', () => {
+  it('has the GitHub icon linking to the project', () => {
     mount()
-    const version = screen.getByTestId('version')
-    expect(version).toHaveTextContent('2026.10.0')
-    expect(version).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0')
     const gh = screen.getByRole('link', { name: 'Antennarr on GitHub' })
     expect(gh).toHaveAttribute('href', 'https://github.com/johnschult/antennarr')
     expect(gh.querySelector('svg')).not.toBeNull() // an icon, not text
     expect(gh.querySelector('svg')).toHaveAttribute('aria-hidden', 'true') // the link's name comes from the label, not the drawing
+  })
+
+  it('shows the version in the top bar, under the name and linked to its release page, and not in the footer', () => {
+    mount()
+    const version = screen.getByTestId('version')
+    expect(version).toHaveTextContent('2026.10.0')
+    expect(version).toHaveAttribute('href', 'https://github.com/johnschult/antennarr/releases/tag/v2026.10.0')
+    expect(version.className).toContain('text-muted-foreground/70') // quieter than the other muted text: lighter in the light theme, darker in the dark one
+    expect(version.className).toContain('right-0') // at the right edge of the name
+    expect(within(screen.getByRole('banner')).getByTestId('version')).toBe(version)
+    expect(within(screen.getByRole('contentinfo')).queryByTestId('version')).not.toBeInTheDocument()
+    expect(screen.getByRole('contentinfo')).not.toHaveTextContent('2026.10.0')
+  })
+
+  it('centers the footer links', () => {
+    mount()
+    const footer = screen.getByRole('contentinfo')
+    expect(footer.className).toContain('justify-center')
+    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['Help', 'Antennarr on GitHub'])
   })
 
   it('keeps the footer at the bottom of a short page: the page is a full-height column and the content takes the spare room', () => {

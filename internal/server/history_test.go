@@ -10,7 +10,7 @@ import (
 )
 
 func inUse(res, ch string, via bool, ip string) tuner.Slot {
-	return tuner.Slot{Resource: res, InUse: true, Channel: ch, ChannelName: "N" + ch, ViaAntennarr: via, TargetIP: ip}
+	return tuner.Slot{Resource: res, InUse: true, Channel: ch, ChannelName: "N" + ch, ViaAntennarr: via, TargetIP: ip, BitsPerSecond: 8_000_000, SignalQuality: 90}
 }
 
 func TestObservationsPairViewersByChannelAndLeaveTheRestLocalOrRemote(t *testing.T) {
@@ -29,9 +29,9 @@ func TestObservationsPairViewersByChannelAndLeaveTheRestLocalOrRemote(t *testing
 		t.Fatalf("%d observations: %+v", len(got), got)
 	}
 	want := []history.Observation{
-		{Device: "antenna", Tuner: "tuner1", Channel: "2.1", ChannelName: "N2.1", Kind: history.KindViewer, Viewer: "Alex", Title: "Show 2.1"},
-		{Device: "antenna", Tuner: "tuner2", Channel: "5.1", ChannelName: "N5.1", Kind: history.KindRemote, Title: "Show 5.1"},
-		{Device: "antenna", Tuner: "tuner3", Channel: "69.1", ChannelName: "N69.1", Kind: history.KindLocal, Client: "192.168.68.115", Title: "Show 69.1"},
+		{Device: "antenna", Tuner: "tuner1", Channel: "2.1", ChannelName: "N2.1", Kind: history.KindViewer, Viewer: "Alex", Title: "Show 2.1", BitsPerSecond: 8_000_000, Quality: 90},
+		{Device: "antenna", Tuner: "tuner2", Channel: "5.1", ChannelName: "N5.1", Kind: history.KindRemote, Title: "Show 5.1", BitsPerSecond: 8_000_000, Quality: 90},
+		{Device: "antenna", Tuner: "tuner3", Channel: "69.1", ChannelName: "N69.1", Kind: history.KindLocal, Client: "192.168.68.115", Title: "Show 69.1", BitsPerSecond: 8_000_000, Quality: 90},
 	}
 	for i := range want {
 		if got[i] != want[i] {

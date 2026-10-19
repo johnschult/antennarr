@@ -122,6 +122,42 @@ describe('ActivityPage', () => {
     expect(calls).toHaveLength(0)
   })
 
+  it('says how much data went out to viewers, and by viewer and by channel', async () => {
+    const GB = 1_000_000_000
+    show(
+      doc([
+        s({ bytes: 2 * GB, quality: 90 }),
+        s({ start: local(2026, 10, 19, 10), end: local(2026, 10, 19, 11), viewer: 'Sam', channel: '5.1', channelName: 'WFRV', bytes: GB, quality: 50 }),
+        s({ kind: 'local', viewer: undefined, client: '192.168.1.5', start: local(2026, 10, 19, 12), end: local(2026, 10, 19, 13), bytes: 9 * GB }),
+      ]),
+    )
+    await screen.findByText('Data sent to viewers')
+    const stat = (label: string) => screen.getByText(label).parentElement!
+    expect(stat('Data sent to viewers')).toHaveTextContent('3.0 GB') // not the 9 GB that stayed on your network
+
+    const viewers = screen.getByRole('region', { name: 'By viewer' })
+    const rows = within(viewers).getAllByTestId('total')
+    expect(rows[0]).toHaveTextContent('Your devices')
+    expect(rows[0]).toHaveTextContent('9.0 GB · your network')
+    expect(rows[1]).toHaveTextContent('Alex')
+    expect(rows[1]).toHaveTextContent('2.0 GB')
+
+    const channels = within(screen.getByRole('region', { name: 'By channel' })).getAllByTestId('total')
+    expect(channels[0]).toHaveTextContent('2.1 WSB-HD')
+    expect(channels[0]).toHaveTextContent('90% quality')
+    const poor = within(channels[1]).getByText('50% quality')
+    expect(poor).toHaveClass('text-amber-700')
+  })
+
+  it('shows a dash where the tuner never gave a quality, or data was not measured', async () => {
+    show(doc([s({ bytes: undefined, quality: undefined })]))
+    const row = (await screen.findAllByTestId('total'))[0]
+    expect(row).toHaveTextContent('—')
+    const channelRow = within(screen.getByRole('region', { name: 'By channel' })).getByTestId('total')
+    expect(channelRow).toHaveTextContent('—')
+    expect(channelRow).not.toHaveTextContent('quality')
+  })
+
   it('warns that it is only in memory when there is no settings file', async () => {
     show(doc([s({})]), makeState({ editable: false }))
     expect(await screen.findByText(/kept in memory and starts over/)).toBeInTheDocument()
