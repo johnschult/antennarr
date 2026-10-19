@@ -3,14 +3,15 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fakeWindow, stubOpen } from '@/test/fake-window'
 import { makeDevice, makeState, makeTwoDeviceState, noNotifications } from '@/test/fixtures'
-import { renderWithApp, stubFetch } from '@/test/render'
+import { Route, Routes } from 'react-router'
+import { renderSettings, renderWithApp, stubFetch } from '@/test/render'
 import { SettingsPage } from './settings'
 
 afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, plex: { enabled: false, admins: [] }, notifications: noNotifications() }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -21,34 +22,70 @@ const okState = { 'GET /state': () => ({ body: makeState() }) }
 
 describe('SettingsPage', () => {
   it('groups settings into sections of rows, not a card each', () => {
-    renderWithApp(<SettingsPage />, state())
-    for (const name of ['Limits', 'Access', 'Privacy and updates']) expect(section(name)).toBeInTheDocument()
+    renderSettings(state(), 'access')
+    for (const name of ['Limits', 'Admins and viewers']) expect(section(name)).toBeInTheDocument()
     expect(screen.queryByText(/^Save$/)).not.toBeInTheDocument() // nothing to save until something changes
     expect(document.querySelector('[data-slot="card"]')).toBeNull()
   })
 
+  it('has four tabs, as links with an address each, and marks the one you are on', () => {
+    renderSettings(state(), 'privacy')
+    const nav = within(screen.getByRole('navigation', { name: 'Sections of the settings' }))
+    expect(nav.getAllByRole('link').map((l) => [l.textContent, l.getAttribute('href')])).toEqual([
+      ['Access', '/settings'],
+      ['Notifications', '/settings/notifications'],
+      ['Privacy', '/settings/privacy'],
+      ['Logs', '/settings/logs'],
+    ])
+    expect(nav.getByRole('link', { name: 'Privacy' })).toHaveAttribute('aria-current', 'page')
+    expect(nav.getByRole('link', { name: 'Access' })).not.toHaveAttribute('aria-current')
+    expect(nav.getAllByRole('link').every((l) => l.querySelector('svg'))).toBe(true) // an icon on each
+  })
+
+  it('shows only the section of the tab you are on', () => {
+    const { unmount } = renderSettings(state(), 'privacy')
+    expect(screen.getByRole('switch', { name: 'Check for new tuner firmware' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Admin addresses')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Notifications' })).not.toBeInTheDocument()
+    unmount()
+    renderSettings(state(), 'notifications')
+    expect(screen.getByRole('region', { name: 'Notifications' })).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Check for new tuner firmware' })).not.toBeInTheDocument()
+  })
+
+  it('sends an unknown tab to the first', () => {
+    renderWithApp(
+      <Routes>
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/:tab" element={<SettingsPage />} />
+      </Routes>,
+      state(),
+      { route: '/settings/nonsense' },
+    )
+    expect(screen.getByRole('link', { name: 'Access' })).toHaveAttribute('aria-current', 'page')
+  })
+
   it("shows each setting's current value", () => {
-    renderWithApp(<SettingsPage />, state())
+    renderSettings(state(), 'access')
     const tuner = section('Limits')
     expect(within(tuner).getByLabelText('Tuners reserved for you')).toHaveValue(1)
     expect(within(tuner).getByLabelText('Max tuners for viewers')).toHaveValue(2)
     expect(within(tuner).getByText(/4 tuners/)).toBeInTheDocument()
     expect(screen.getByLabelText('Admin addresses')).toHaveValue('100.64.0.0/10')
-    expect(screen.getByRole('switch', { name: 'Check for new tuner firmware' })).toBeChecked()
-    expect(within(section('Access')).getByRole('link', { name: 'Viewers only' })).toHaveAttribute('href', '/viewers')
+    expect(within(section('Admins and viewers')).getByRole('link', { name: 'Viewers only' })).toHaveAttribute('href', '/viewers')
   })
 
   it('says when there are no viewers yet', () => {
     const s = state()
     s.settings.mode = 'no-viewers'
-    renderWithApp(<SettingsPage />, s)
-    expect(within(section('Access')).getByText('No viewers yet')).toBeInTheDocument()
+    renderSettings(s, 'access')
+    expect(within(section('Admins and viewers')).getByText('No viewers yet')).toBeInTheDocument()
   })
 
   describe('numbers', () => {
     it('offers Save and Reset only once a value has changed, and Reset puts it back', async () => {
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'access')
       const box = screen.getByLabelText('Tuners reserved for you')
       expect(saveButton(section('Limits'))).toBeNull()
 
@@ -68,7 +105,7 @@ describe('SettingsPage', () => {
       const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'access')
 
       const box = screen.getByLabelText('Tuners reserved for you')
       await user.clear(box)
@@ -82,7 +119,7 @@ describe('SettingsPage', () => {
       const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'access')
       await user.clear(screen.getByLabelText('Max tuners for viewers'))
       await user.type(screen.getByLabelText('Max tuners for viewers'), '0')
       await user.click(saveButton(section('Limits'))!)
@@ -93,7 +130,7 @@ describe('SettingsPage', () => {
       const { fn, calls } = stubFetch({})
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'access')
 
       for (const bad of ['-1', '1.5', '']) {
         const input = screen.getByLabelText('Tuners reserved for you')
@@ -111,12 +148,12 @@ describe('SettingsPage', () => {
       const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'access')
 
       const box = screen.getByLabelText('Admin addresses')
       await user.clear(box)
       await user.type(box, '192.168.1.5{Enter}10.0.0.0/8') // Enter makes a new line in a multi-line box
-      await user.click(saveButton(section('Access'))!)
+      await user.click(saveButton(section('Admins and viewers'))!)
       await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ admin: ['192.168.1.5', '10.0.0.0/8'] }))
     })
 
@@ -124,9 +161,9 @@ describe('SettingsPage', () => {
       const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'access')
       await user.clear(screen.getByLabelText('Admin addresses'))
-      await user.click(saveButton(section('Access'))!)
+      await user.click(saveButton(section('Admins and viewers'))!)
       await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ admin: [] }))
     })
 
@@ -134,11 +171,11 @@ describe('SettingsPage', () => {
       const { fn } = stubFetch({ 'PATCH /settings': () => ({ status: 400, body: { error: 'admin: bad address "nope"' } }) })
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'access')
       await user.clear(screen.getByLabelText('Admin addresses'))
       await user.type(screen.getByLabelText('Admin addresses'), 'nope')
-      await user.click(saveButton(section('Access'))!)
-      expect(await within(section('Access')).findByRole('alert')).toHaveTextContent('admin: bad address "nope"')
+      await user.click(saveButton(section('Admins and viewers'))!)
+      expect(await within(section('Admins and viewers')).findByRole('alert')).toHaveTextContent('admin: bad address "nope"')
     })
   })
 
@@ -147,7 +184,7 @@ describe('SettingsPage', () => {
       const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'privacy')
 
       await user.click(screen.getByRole('switch', { name: 'Check for new tuner firmware' }))
       await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')).toBeDefined())
@@ -160,7 +197,7 @@ describe('SettingsPage', () => {
       const user = userEvent.setup()
       const s = state()
       s.settings.firmwareCheck = false
-      renderWithApp(<SettingsPage />, s)
+      renderSettings(s, 'privacy')
 
       expect(screen.getByRole('switch', { name: 'Check for new tuner firmware' })).not.toBeChecked()
       await user.click(screen.getByRole('switch', { name: 'Check for new tuner firmware' }))
@@ -168,7 +205,7 @@ describe('SettingsPage', () => {
     })
 
     it('says what it sends: nothing about you', () => {
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'privacy')
       expect(within(section('Privacy and updates')).getByText(/Nothing about you or your tuners is sent/)).toBeInTheDocument()
       expect(within(section('Privacy and updates')).getByText(/installs one only when you press Install/)).toBeInTheDocument()
     })
@@ -177,7 +214,7 @@ describe('SettingsPage', () => {
       const { fn } = stubFetch({ 'PATCH /settings': () => ({ status: 500, body: { error: 'could not save the settings' } }) })
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, state())
+      renderSettings(state(), 'privacy')
       await user.click(screen.getByRole('switch', { name: 'Check for new tuner firmware' }))
       expect(await within(section('Privacy and updates')).findByRole('alert')).toHaveTextContent('could not save the settings')
     })
@@ -185,9 +222,11 @@ describe('SettingsPage', () => {
 
   it('cannot be edited when there is no settings file', async () => {
     const user = userEvent.setup()
-    renderWithApp(<SettingsPage />, { ...state(), editable: false })
-    for (const label of ['Tuners reserved for you', 'Max tuners for viewers', 'Admin addresses']) expect(screen.getByLabelText(label)).toBeDisabled()
+    const { unmount } = renderSettings({ ...state(), editable: false }, 'privacy')
     expect(screen.getByRole('switch', { name: 'Check for new tuner firmware' })).toHaveAttribute('aria-disabled', 'true')
+    unmount()
+    renderSettings({ ...state(), editable: false }, 'access')
+    for (const label of ['Tuners reserved for you', 'Max tuners for viewers', 'Admin addresses']) expect(screen.getByLabelText(label)).toBeDisabled()
     await user.type(screen.getByLabelText('Tuners reserved for you'), '1') // typing into a disabled box does nothing
     expect(saveButton(section('Limits'))).toBeNull()
   })
@@ -197,7 +236,7 @@ describe('SettingsPage', () => {
       const s = makeTwoDeviceState()
       s.devices[0].sharedCap = 2
       s.devices[1] = makeDevice({ ...s.devices[1], label: 'Cable box' })
-      renderWithApp(<SettingsPage />, s)
+      renderSettings(s, 'access')
 
       const antenna = section('Limits: Steve FLEX 4K')
       const cable = section('Limits: Cable box')
@@ -211,7 +250,7 @@ describe('SettingsPage', () => {
       const { fn, calls } = stubFetch({ 'PATCH /devices/cable': () => ({ body: {} }), ...okState })
       vi.stubGlobal('fetch', fn)
       const user = userEvent.setup()
-      renderWithApp(<SettingsPage />, makeTwoDeviceState())
+      renderSettings(makeTwoDeviceState(), 'access')
 
       const cable = section('Limits: Cable HDHR')
       const box = within(cable).getByLabelText('Tuners reserved for you')
@@ -226,7 +265,7 @@ describe('SettingsPage', () => {
   it('keeps the limits section plainly titled for a single tuner, whatever it is named', () => {
     const s = state()
     s.devices[0].label = 'Living room antenna'
-    renderWithApp(<SettingsPage />, s)
+    renderSettings(s, 'access')
     expect(section('Limits')).toBeInTheDocument()
   })
 })
@@ -235,7 +274,7 @@ describe('guide setting', () => {
   it('is on by default and can be switched off, saying what it sends', async () => {
     const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<SettingsPage />, state())
+    renderSettings(state(), 'privacy')
     const sw = within(section('Privacy and updates')).getByRole('switch', { name: "Show what's on" })
     expect(sw).toBeChecked()
     expect(within(section('Privacy and updates')).getByText(/sends SiliconDust your tuner's guide key/)).toBeInTheDocument()
@@ -246,7 +285,7 @@ describe('guide setting', () => {
   it('cannot be changed from a read-only view', () => {
     const s = state()
     s.editable = false
-    renderWithApp(<SettingsPage />, s)
+    renderSettings(s, 'privacy')
     expect(within(section('Privacy and updates')).getByRole('switch', { name: "Show what's on" })).toHaveAttribute('aria-disabled', 'true')
   })
 })
@@ -257,7 +296,7 @@ describe('activity history setting', () => {
   it('is on by default and can be switched off, saying what it keeps', async () => {
     const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<SettingsPage />, state())
+    renderSettings(state(), 'privacy')
     const sw = privacy().getByRole('switch', { name: 'Keep activity history' })
     expect(sw).toBeChecked()
     expect(privacy().getByText(/A viewer's address is not kept/)).toBeInTheDocument()
@@ -268,14 +307,14 @@ describe('activity history setting', () => {
   it('cannot be switched from a read-only view', () => {
     const s = state()
     s.editable = false
-    renderWithApp(<SettingsPage />, s)
+    renderSettings(s, 'privacy')
     expect(privacy().getByRole('switch', { name: 'Keep activity history' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('can be cleared, after asking, and sends nothing until you agree', async () => {
     const { fn, calls } = stubFetch({ 'DELETE /history': () => ({ status: 204 }), ...okState })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<SettingsPage />, state())
+    renderSettings(state(), 'privacy')
     const user = userEvent.setup()
     await user.click(within(screen.getByText('Clear activity history').closest('div')!.parentElement!.parentElement!).getByRole('button', { name: /Clear/ }))
     const d = await screen.findByRole('alertdialog')
@@ -290,7 +329,7 @@ describe('activity history setting', () => {
   it('can be cancelled', async () => {
     const { fn, calls } = stubFetch({ 'DELETE /history': () => ({ status: 204 }), ...okState })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<SettingsPage />, state())
+    renderSettings(state(), 'privacy')
     const user = userEvent.setup()
     await user.click(within(screen.getByText('Clear activity history').closest('div')!.parentElement!.parentElement!).getByRole('button', { name: /Clear/ }))
     await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: /Keep it/ }))
@@ -304,10 +343,10 @@ describe('Plex sign-in settings', () => {
     s.settings.plex = { enabled, admins }
     return s
   }
-  const access = () => section('Access')
+  const access = () => section('Admins and viewers')
 
   it('is off by default and shows no accounts list', () => {
-    renderWithApp(<SettingsPage />, withPlex([], false))
+    renderSettings(withPlex([], false), 'access')
     expect(within(access()).getByRole('switch', { name: 'Sign in with Plex' })).not.toBeChecked()
     expect(screen.queryByText('Allowed Plex accounts')).not.toBeInTheDocument()
   })
@@ -315,16 +354,16 @@ describe('Plex sign-in settings', () => {
   it('turns on with the switch', async () => {
     const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<SettingsPage />, withPlex([], false))
+    renderSettings(withPlex([], false), 'access')
     await userEvent.setup().click(within(access()).getByRole('switch', { name: 'Sign in with Plex' }))
     await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ plexEnabled: true }))
   })
 
   it('lists the allowed accounts, or says there are none', () => {
-    const { unmount } = renderWithApp(<SettingsPage />, withPlex())
+    const { unmount } = renderSettings(withPlex(), 'access')
     expect(screen.getByText('No accounts yet.')).toBeInTheDocument()
     unmount()
-    renderWithApp(<SettingsPage />, withPlex([{ id: 1, name: 'john' }, { id: 2, name: 'steve' }]))
+    renderSettings(withPlex([{ id: 1, name: 'john' }, { id: 2, name: 'steve' }]), 'access')
     expect(screen.getByText('john')).toBeInTheDocument()
     expect(screen.getByText('steve')).toBeInTheDocument()
     expect(screen.queryByText('No accounts yet.')).not.toBeInTheDocument()
@@ -333,7 +372,7 @@ describe('Plex sign-in settings', () => {
   it('removes an account', async () => {
     const { fn, calls } = stubFetch({ 'DELETE /plex/admins/2': () => ({ status: 204 }), ...okState })
     vi.stubGlobal('fetch', fn)
-    renderWithApp(<SettingsPage />, withPlex([{ id: 1, name: 'john' }, { id: 2, name: 'steve' }]))
+    renderSettings(withPlex([{ id: 1, name: 'john' }, { id: 2, name: 'steve' }]), 'access')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Remove steve' }))
     await waitFor(() => expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/plex/admins/2'))).toBe(true))
     expect(await screen.findByText('steve can no longer sign in')).toBeInTheDocument()
@@ -341,7 +380,7 @@ describe('Plex sign-in settings', () => {
 
   it('shows why removing failed', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'DELETE /plex/admins/1': () => ({ status: 409, body: { error: 'that is the last admin' } }) }).fn)
-    renderWithApp(<SettingsPage />, withPlex([{ id: 1, name: 'john' }]))
+    renderSettings(withPlex([{ id: 1, name: 'john' }]), 'access')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Remove john' }))
     expect(await screen.findByText('that is the last admin')).toBeInTheDocument()
   })
@@ -355,7 +394,7 @@ describe('Plex sign-in settings', () => {
     vi.stubGlobal('fetch', fn)
     const win = fakeWindow()
     stubOpen(win)
-    renderWithApp(<SettingsPage />, withPlex())
+    renderSettings(withPlex(), 'access')
     await userEvent.setup().click(screen.getByRole('button', { name: 'Add a Plex account' }))
     expect(win.location.href).toBe('https://app.plex.tv/auth#?code=z')
     expect(await screen.findByText('newbie can now sign in.', {}, { timeout: 6000 })).toBeInTheDocument()
@@ -365,7 +404,7 @@ describe('Plex sign-in settings', () => {
   it('cannot be changed from a read-only view', () => {
     const s = withPlex([{ id: 1, name: 'john' }])
     s.editable = false
-    renderWithApp(<SettingsPage />, s)
+    renderSettings(s, 'access')
     expect(screen.getByRole('button', { name: 'Remove john' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Add a Plex account' })).toBeDisabled()
     expect(within(access()).getByRole('switch', { name: 'Sign in with Plex' })).toHaveAttribute('aria-disabled', 'true')

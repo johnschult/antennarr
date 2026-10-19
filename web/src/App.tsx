@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { Shell } from '@/components/layout/shell'
 import { ActivityPage } from '@/pages/activity'
 import { LivePage } from '@/pages/live'
@@ -7,6 +7,12 @@ import { TunerPage } from '@/pages/tuner'
 import { TunersPage } from '@/pages/tuners'
 import { ViewerPage } from '@/pages/viewer'
 import { ViewersPage } from '@/pages/viewers'
+
+/** The log was a page of its own before it was a tab of the settings: an old link still arrives, with what it searched for. */
+function LogsRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/settings/logs${search}`} replace />
+}
 
 export function App() {
   return (
@@ -22,6 +28,8 @@ export function App() {
         <Route path="tuner/:name/:tab" element={<TunerPage />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings/:tab" element={<SettingsPage />} />
+        <Route path="logs" element={<LogsRedirect />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

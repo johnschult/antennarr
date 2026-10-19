@@ -44,7 +44,7 @@ export function ActivityPage() {
       {!enabled && (
         <div className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
           The activity history is off, so nothing is being kept.{' '}
-          <Link to="/settings" className="underline underline-offset-2 hover:text-foreground">
+          <Link to="/settings/privacy" className="underline underline-offset-2 hover:text-foreground">
             Turn it on in Settings
           </Link>
           .

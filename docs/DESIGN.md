@@ -181,6 +181,15 @@ Built. Settings > Notifications. Messages to ntfy, Pushover or a webhook about f
 - A channel can be tested before it is saved: Test sends the form's values, or a saved channel's values with the form's changes, and saves nothing.
 - Not done: routing a kind of event to particular channels (every channel gets every enabled event), quiet hours, a daily digest, and more kinds of event. They would want a small scheduler of their own.
 
+## Logs
+
+Built. The **Logs** page shows Antennarr's own log, for when something is wrong and you don't have a shell.
+
+- `internal/logbuf` wraps the logger Antennarr already has. Every line still goes to standard error as before, and a copy (time, level, message, and its attributes flattened to `key=value`, groups as dotted keys) goes into a ring of the last 2,000 lines in memory. Nothing is written to disk, so a restart starts it over; `docker logs` is still the history.
+- **Secrets are hidden before a line is kept**: an attribute whose name looks like a token, secret, password, key, authorization, cookie or lock key is replaced, and `token=…`, `DeviceAuth=…`, `key=…` and bearer tokens inside a message or value are too. Lines and values are cut at 2,000 and 500 characters. The rest of the code already keeps secrets out of its logs (tested); this is a second line of defence for the one place where logs leave the process.
+- `GET logs` is admin only like the rest of the API and takes a level, a search, a number to continue from and a limit. The page asks again every few seconds while Live is on; it does not stream.
+- **The level is a setting** (`logLevel`, default `info`, not written when it is the default): `slog.LevelVar` is the logger's level, and the policy tells a callback each new set of settings (now, on an edit, and on a reload of the file), which moves it. So changing it on the page, editing the file and reloading, and starting with it set all do the same thing. Debug lines are few: the guide fetch, a stream being given to a viewer, a tuner check failing, a device being built.
+
 ## What's new
 
 Built. After an update, a dialog shows the release notes, like the "What's new" of any app, and *What's new* in the footer opens the current release's notes at any time.

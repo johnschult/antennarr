@@ -8,6 +8,7 @@ import { FirmwareSection } from '@/components/firmware'
 import { RemoveTunerDialog } from '@/components/remove-tuner-dialog'
 import { EditRow } from '@/components/settings/edit-row'
 import { Row, Section } from '@/components/settings/section'
+import { TabLinks } from '@/components/tab-links'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
@@ -17,9 +18,9 @@ import { channelIconUrl } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import { firmwareDate, formatMbps, timeAgo } from '@/lib/format'
 import { moveToPort } from '@/lib/navigate'
+import { settingsPath } from '@/lib/settings-tabs'
 import { isTunerTab, TUNER_TABS, tunerPath, type TunerTab } from '@/lib/tuner-tabs'
 import type { DeviceState, Slot } from '@/lib/types'
-import { cn } from '@/lib/utils'
 
 const asset = (name: string) => `${import.meta.env.BASE_URL}${name}`
 
@@ -66,31 +67,7 @@ function SlotCell({ s, device }: { s: Slot; device: DeviceState }) {
 
 /** The tabs, as links, so each has an address that can be opened, shared and gone back to. */
 function TunerTabs({ device, current }: { device: DeviceState; current: TunerTab }) {
-  return (
-    <nav aria-label="Sections of this tuner" className="border-b border-border">
-      {/* On a phone the five share the width, each with its icon over its name, so nothing scrolls. */}
-      <ul className="flex gap-1">
-        {TUNER_TABS.map((t) => {
-          const active = t.id === current
-          return (
-            <li key={t.id} className="min-w-0 flex-1 sm:flex-none">
-              <Link
-                to={tunerPath(device.name, t.id)}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  '-mb-px flex flex-col items-center gap-0.5 border-b-2 px-1 py-2 text-xs outline-none sm:inline-flex sm:flex-row sm:gap-1.5 sm:px-3 sm:text-sm focus-visible:ring-2 focus-visible:ring-ring',
-                  active ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <t.icon aria-hidden className="size-4" />
-                {t.label}
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
-    </nav>
-  )
+  return <TabLinks label="Sections of this tuner" tabs={TUNER_TABS} current={current} to={(id) => tunerPath(device.name, id)} />
 }
 
 /** A fact about the tuner, as a row: what it is on the left, its value on the right. Where the tuner's page has its details, the value goes there. */
@@ -163,7 +140,12 @@ function Overview({ device }: { device: DeviceState }) {
         ) : tuner.online ? (
           <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Online</Badge>
         ) : (
-          <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>
+          <>
+            <Badge className="bg-red-500/15 text-red-700 dark:text-red-300">Offline</Badge>
+            <Link to={`${settingsPath('logs')}?q=${encodeURIComponent(device.name)}`} className="text-muted-foreground underline underline-offset-2 hover:text-foreground">
+              See why in the logs
+            </Link>
+          </>
         )}
         <span className="text-muted-foreground">
           Last seen <span className="font-medium text-foreground">{timeAgo(tuner.lastSeen)}</span>

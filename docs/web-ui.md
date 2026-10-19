@@ -19,7 +19,7 @@ What is happening right now. Each tuner has a header (its name, its model, how m
 - **What is on.** The channel, its logo, and, from SiliconDust's program guide, the show's picture faded behind the top of the tile, its title, category, episode and description, and how far into it you are. A tile without a picture is normal when the guide has none.
 - **How it is doing.** The bitrate and the signal quality over the last couple of minutes, and the signal strength as bars (more bars, stronger) with where the stream is going. They are only colored when reception is fair (amber) or poor (red).
 
-Below the tiles are your viewers, who is watching, and a timeline of events (a stream starting, a viewer turned away, a tuner offline). A tuner that is being restarted or updated is shown that way, not as offline. Turn the guide off in *Settings → Privacy and updates* and the tiles show only the channel.
+Below the tiles are your viewers, who is watching, and a timeline of events (a stream starting, a viewer turned away, a tuner offline). A tuner that is being restarted or updated is shown that way, not as offline. Turn the guide off in *Settings → Privacy* and the tiles show only the channel.
 
 ## Viewers
 
@@ -47,13 +47,17 @@ A tuner's page has five sections as tabs, each with its own address (`/tuner/<na
 
 <img src="screenshots/activity.jpg" alt="The Activity page: time watched, the most watched channel, who watched most, a bar for each day and the sessions by day" width="900">
 
-Who watched what, and for how long, for the last 7 or 30 days: the total time, how much data went out to viewers (about, through Antennarr, which is what your upload paid for), the most watched channel, who watched most, the busiest day, a bar for each day, a list by viewer (time and data) and by channel (time and the average signal quality, colored when it is fair or poor), and the sessions by day with the shows that were on. A viewer's name opens their own page: their data and time for each day, what they watched and their sessions. It is kept for 30 days in a file next to the settings file and goes nowhere else. Switch it off, or clear it, in *Settings → Privacy and updates*; the *Activity* item then leaves the top bar. See [Configuration](configuration.md#files-antennarr-keeps).
+Who watched what, and for how long, for the last 7 or 30 days: the total time, how much data went out to viewers (about, through Antennarr, which is what your upload paid for), the most watched channel, who watched most, the busiest day, a bar for each day, a list by viewer (time and data) and by channel (time and the average signal quality, colored when it is fair or poor), and the sessions by day with the shows that were on. A viewer's name opens their own page: their data and time for each day, what they watched and their sessions. It is kept for 30 days in a file next to the settings file and goes nowhere else. Switch it off, or clear it, in *Settings → Privacy*; the *Activity* item then leaves the top bar. See [Configuration](configuration.md#files-antennarr-keeps).
 
 ## Settings
 
-<img src="screenshots/settings.jpg" alt="The Settings page, at its privacy and updates section" width="900">
+<img src="screenshots/settings.jpg" alt="The Settings page, on its Privacy tab" width="900">
 
-Who may open this page, the limits, notifications (ntfy, Pushover or a webhook), Sign in with Plex, and the switches for what Antennarr reads and keeps: the firmware check, the program guide and the activity history. Every setting is explained in [Configuration](configuration.md).
+Four tabs, each with its own address: **Access** (how much of each tuner viewers may use, who may open this page, and Sign in with Plex), **Notifications** (ntfy, Pushover or a webhook, and which events send a message), **Privacy** (the switches for what Antennarr reads and keeps: the firmware check, the program guide and the activity history, and clearing that history) and **Logs** (below). Every setting is explained in [Configuration](configuration.md). On a phone the tabs share the width, each with its icon above its name.
+
+### Logs
+
+Antennarr's own log. Open it from the *Logs* tab of *Settings*, the **Logs** link in the footer, or, when a tuner is offline, from *See why in the logs* on its Overview (which opens the log already searched for that tuner): what it has been doing, with the newest line at the bottom. Each line has its time, a level (Debug, Info, Warning or Error, each with its own icon and color), the message and its details. Show everything, info and above, warnings and errors, or errors only; search the messages and their details (the search box has a clear button); **Live** keeps it up to date every few seconds and following the newest line until you scroll up to read; **Download** saves what is shown as a text file; **Clear** forgets what is kept. The **Log** menu at the top right is how much is logged: *Info* is the default, *Debug* adds the detail that is useful when something is wrong, and it is a setting, so it changes at once and is kept. The lines are kept in memory (the last 2,000), not in a file, so they start over when Antennarr restarts; they are also still written to standard error as before (`docker logs antennarr`). Anything that looks like a secret (a token, a key, the guide key) is hidden before a line is kept.
 
 ## On a phone
 

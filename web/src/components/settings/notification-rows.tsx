@@ -59,7 +59,7 @@ export function NotificationRows() {
             key={e.id}
             id={`setting-notify-${e.id}`}
             title={e.title}
-            description={blocked ? `${e.description} Turn on “Check for new tuner firmware” under Privacy and updates first.` : e.description}
+            description={blocked ? `${e.description} Turn on “Check for new tuner firmware” under Settings → Privacy first.` : e.description}
             checked={events[e.id] && !blocked}
             disabled={!editable || blocked}
             onChange={(next) => update.mutateAsync({ notifyEvents: { [e.id]: next } })}

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Loader2, RefreshCw, RotateCw, Server, X } from 'lucide-react'
+import { Check, Loader2, RefreshCw, RotateCw, Router, X } from 'lucide-react'
 import { useState } from 'react'
 import { RestartDialog } from '@/components/restart-dialog'
 import { Row, Section } from '@/components/settings/section'
@@ -55,7 +55,7 @@ export function DevicePanel({ device }: { device: DeviceState }) {
     : []
 
   return (
-    <Section bare icon={Server} title="Device" description="What the tuner reports about itself, and restarting it.">
+    <Section bare icon={Router} title="Device" description="What the tuner reports about itself, and restarting it.">
       <div className="px-4 py-3.5">
         {!online ? (
           <p className="text-sm text-muted-foreground">The tuner is offline, so there is nothing to read.</p>

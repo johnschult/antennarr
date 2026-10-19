@@ -193,7 +193,7 @@ describe('Shell footer', () => {
     mount()
     const footer = screen.getByRole('contentinfo')
     expect(footer.className).toContain('justify-center')
-    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['Help', 'Antennarr on GitHub'])
+    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['Logs', 'Help', 'Antennarr on GitHub'])
   })
 
   it('keeps the footer at the bottom of a short page: the page is a full-height column and the content takes the spare room', () => {

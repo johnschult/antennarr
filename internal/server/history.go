@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
@@ -97,4 +98,17 @@ func (s *Server) recordHistory(ctx context.Context) {
 			stepHistory(s.history, s.policy.Settings().HistoryEnabled(), now, func() []history.Observation { return s.observations(now) })
 		}
 	}
+}
+
+// logLevel is a level named in the settings, as the logger's.
+func logLevel(name string) slog.Level {
+	switch name {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	}
+	return slog.LevelInfo
 }

@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { Toaster } from '@/components/ui/sonner'
 import { AppContext } from '@/hooks/app-context'
 import { TunerPage } from '@/pages/tuner'
+import { SettingsPage } from '@/pages/settings'
 import { TunersPage } from '@/pages/tuners'
 import type { AppState } from '@/lib/types'
 
@@ -56,5 +57,17 @@ export function renderTunerRoutes(state: AppState, path: string, opts: { connect
     </Routes>,
     state,
     { ...opts, route: path },
+  )
+}
+
+/** The settings, opened on one of its tabs. */
+export function renderSettings(state: AppState, tab: 'access' | 'notifications' | 'privacy' | 'logs' = 'access', opts: { connected?: boolean } = {}) {
+  return renderWithApp(
+    <Routes>
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/settings/:tab" element={<SettingsPage />} />
+    </Routes>,
+    state,
+    { ...opts, route: tab === 'access' ? '/settings' : `/settings/${tab}` },
   )
 }

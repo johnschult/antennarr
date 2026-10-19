@@ -110,7 +110,7 @@ describe('ViewerPage', () => {
     state.settings.history = false
     const calls = show([s({})], '/viewers/John', state)
     expect(await screen.findByText(/The activity history is off/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Turn it on in Settings' })).toHaveAttribute('href', '/settings')
+    expect(screen.getByRole('link', { name: 'Turn it on in Settings' })).toHaveAttribute('href', '/settings/privacy')
     await new Promise((r) => setTimeout(r, 30))
     expect(calls.filter((c) => c.url.includes('/history'))).toHaveLength(0)
   })

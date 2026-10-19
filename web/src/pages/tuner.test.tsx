@@ -129,6 +129,18 @@ describe('the overview', () => {
     expect(rows[2]).toHaveTextContent('idle')
   })
 
+  it('points an offline tuner at the logs for it', () => {
+    const s = makeState()
+    s.devices[0].tuner = { ...s.devices[0].tuner, online: false }
+    overview(s)
+    expect(screen.getByRole('link', { name: 'See why in the logs' })).toHaveAttribute('href', '/settings/logs?q=antenna')
+  })
+
+  it('has no pointer to the logs while it is online', () => {
+    overview()
+    expect(screen.queryByRole('link', { name: 'See why in the logs' })).not.toBeInTheDocument()
+  })
+
   it('copes with a tuner that has never been seen', () => {
     const s = makeState()
     s.devices[0].tuner = { ...s.devices[0].tuner, online: false, id: '', friendlyName: undefined, model: undefined, slots: [] }

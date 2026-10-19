@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -111,6 +112,8 @@ type Settings struct {
 	// the channel's logo and what is on. It sends the tuner's DeviceAuth to
 	// SiliconDust. Unset means on.
 	Guide *bool `json:"guide,omitempty"`
+	// LogLevel is how much Antennarr logs and shows on the Logs page: debug, info, warn or error. Unset means info.
+	LogLevel string `json:"logLevel,omitempty"`
 	// History turns on keeping who watched what (for 30 days, beside the settings file), for the Activity
 	// page. Unset means on. Nothing leaves this machine either way.
 	History *bool `json:"history,omitempty"`
@@ -139,6 +142,17 @@ func (s Settings) FirmwareCheckEnabled() bool { return s.FirmwareCheck == nil ||
 
 // HistoryEnabled reports whether the activity history is being kept (the default).
 func (s Settings) HistoryEnabled() bool { return s.History == nil || *s.History }
+
+// LogLevels are the levels LogLevel may be, quietest last.
+var LogLevels = []string{"debug", "info", "warn", "error"}
+
+// LogLevelName is the log level in use: what was chosen, or info.
+func (s Settings) LogLevelName() string {
+	if s.LogLevel == "" {
+		return "info"
+	}
+	return s.LogLevel
+}
 
 // GuideEnabled reports whether the program guide is on (the default).
 func (s Settings) GuideEnabled() bool { return s.Guide == nil || *s.Guide }
@@ -366,6 +380,9 @@ func (s Settings) parse() (parsed, error) {
 	}
 	if s.OwnerReserve < 0 {
 		return out, errors.New("ownerReserve cannot be negative")
+	}
+	if s.LogLevel != "" && !slices.Contains(LogLevels, s.LogLevel) {
+		return out, fmt.Errorf("logLevel must be one of %s", strings.Join(LogLevels, ", "))
 	}
 	for _, a := range s.Admin {
 		p, err := parsePrefix(a)

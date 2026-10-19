@@ -2,9 +2,8 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SettingsPage } from '@/pages/settings'
 import { discord, makeState, phone, pushover, withChannels } from '@/test/fixtures'
-import { renderWithApp, stubFetch } from '@/test/render'
+import { renderSettings, stubFetch } from '@/test/render'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -13,7 +12,7 @@ afterEach(() => {
 
 type State = ReturnType<typeof makeState>
 const section = () => screen.getByRole('region', { name: 'Notifications' })
-const show = (state: State = makeState()) => renderWithApp(<SettingsPage />, state)
+const show = (state: State = makeState()) => renderSettings(state, 'notifications')
 const ok = { 'GET /state': () => ({ body: makeState() }) }
 
 describe('Notifications: what sends a message', () => {
@@ -52,7 +51,7 @@ describe('Notifications: what sends a message', () => {
     const sw = within(section()).getByRole('switch', { name: /New tuner firmware/ })
     expect(sw).not.toBeChecked() // even though the setting is on, it can't do anything now
     expect(sw).toHaveAttribute('aria-disabled', 'true')
-    expect(within(section()).getByText(/Turn on “Check for new tuner firmware” under Privacy and updates first/)).toBeInTheDocument()
+    expect(within(section()).getByText(/Turn on “Check for new tuner firmware” under Settings → Privacy first/)).toBeInTheDocument()
     // the other events are not held up by it
     expect(within(section()).getByRole('switch', { name: /goes offline/ })).not.toHaveAttribute('aria-disabled', 'true')
   })

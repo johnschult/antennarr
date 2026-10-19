@@ -116,7 +116,7 @@ describe('ActivityPage', () => {
     state.settings.history = false
     renderWithApp(<ActivityPage />, state)
     expect(screen.getByText(/The activity history is off/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Turn it on in Settings' })).toHaveAttribute('href', '/settings')
+    expect(screen.getByRole('link', { name: 'Turn it on in Settings' })).toHaveAttribute('href', '/settings/privacy')
     expect(screen.queryByRole('button', { name: '7 days' })).not.toBeInTheDocument()
     await new Promise((r) => setTimeout(r, 30))
     expect(calls).toHaveLength(0)

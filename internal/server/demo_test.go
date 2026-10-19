@@ -31,6 +31,7 @@ import (
 	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
 	"github.com/johnschult/antennarr/internal/history"
 	"github.com/johnschult/antennarr/internal/lineup/linetest"
+	"github.com/johnschult/antennarr/internal/logbuf"
 	"github.com/johnschult/antennarr/internal/upgrade"
 )
 
@@ -460,10 +461,16 @@ func TestDemo(t *testing.T) {
 		t.Fatal(err)
 	}
 	seedHistory(t, historyFile(cfgPath), chs)
+	// The log the Logs page shows: what the demo logs, and a few lines of the kind a real install has.
+	demoLevel := new(slog.LevelVar)
+	demoLogs := logbuf.New(2000)
+	demoLog := slog.New(logbuf.Tee(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: demoLevel}), demoLogs))
+	demoLog.Warn("guide fetch failed", "err", "Get \"https://api.hdhomerun.com/api/xmltv\": context deadline exceeded")
+	demoLog.Error("firmware update could not start", "device", "antenna", "err", "the tuner is in use")
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	cfg := Config{
-		Settings: s, Devices: s.Devices, ConfigPath: cfgPath, Poll: time.Second, Log: slog.New(slog.NewTextHandler(os.Stderr, nil)),
+		Settings: s, Devices: s.Devices, ConfigPath: cfgPath, Poll: time.Second, Log: demoLog, LogLevel: demoLevel, Logs: demoLogs,
 		Locate:    func(context.Context, string, string) (string, error) { return api.URL, nil },
 		Listeners: map[string]net.Listener{"antenna": ln}, GuideURL: guide.URL + "/api/xmltv", GuideIconBase: guide.URL,
 		AdminListen: "127.0.0.1:0",

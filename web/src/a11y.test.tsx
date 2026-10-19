@@ -44,7 +44,10 @@ describe('axe: every page, in each state', () => {
     ['/', 'Live'],
     ['/viewers', 'Viewers'],
     ['/tuner', 'Tuners'],
-    ['/settings', 'Settings'],
+    ['/settings', 'Settings: Access'],
+    ['/settings/notifications', 'Settings: Notifications'],
+    ['/settings/privacy', 'Settings: Privacy'],
+    ['/settings/logs', 'Settings: Logs'],
   ]
   for (const [route, name] of pages) {
     it.each(states)(`${name}: %s`, async (_, make) => {
@@ -63,7 +66,7 @@ describe('axe: every page, in each state', () => {
 
 describe('axe: notification dialogs', () => {
   const settings = (state: State = makeState()) => {
-    render(state, '/settings')
+    render(state, '/settings/notifications')
     return userEvent.setup()
   }
 
