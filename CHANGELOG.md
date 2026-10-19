@@ -5,6 +5,31 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/antennarr/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.8 (2026-10-19)
+
+### Added
+
+- **A page for each tuner**, with tabs: *Overview*, *Channels*, *Device*, *Firmware* and *Settings*. The *Tuners* page is now a list of your tuners, and each opens its own page (with one tuner, *Tuners* goes straight to it). The *Overview* leads with how the tuner is now (online, when it was last seen, how many tuners it has), then what is on each tuner, a line about its firmware and its details, and anything with more behind it links to the tab that has it. On a phone the five tabs share the width, so they never scroll.
+- **A *Channels* tab, so you rarely need the tuner's own web page.** It lists every channel the tuner has found, and each can be **enabled**, made a **favorite** or **disabled**, the same as on the tuner's page: a disabled channel is left out of the lineup that Plex, Jellyfin and Emby get. Only channels the tuner itself lists can be changed, and each change is checked by asking the tuner again. Tick channels, or **select all** of those shown, to change many at once. **Scan for channels** starts the tuner's own scan (Antenna or Cable) after asking how many streams it would cut off, with progress and a Stop button.
+- **Test a channel's signal.** The gauge button on a channel tunes a tuner that nothing is using to it for about ten seconds and shows its signal strength and quality (or *No signal*), colored when it is fair or poor. It never interrupts anything: it only uses a tuner that is free, takes its lock with a key of its own, and gives the tuner back however the test ends. It is greyed out, with the reason, when every tuner is in use or the tuner is scanning.
+- **What is known about a channel.** The **i** beside a channel's name opens a card with its number, name and whether it is in the lineup, and, from SiliconDust's program guide, the network it carries, its language (with a flag) and its categories (each with an icon). Anything the guide doesn't say is left out, and nothing is guessed. This reads the guide Antennarr already fetches, so nothing new leaves your network.
+- **Filter channels** by quality (HD only), by category and by language, from a **Filters** button next to the search box, with the filters in use shown as chips above the list. The search box has a clear button.
+- **Reception on watched channels.** Where a channel has been watched, the *Channels* tab shows its average signal quality over the last 30 days (marked with a Σ), colored when it is fair or poor.
+- **More on *Activity*:** how much data each viewer used, the average reception of what they watched, and a page for each viewer (click a name) with their own history.
+- **A notification when a viewer starts watching**, off by default (*Settings → Notifications → A viewer starts watching*). It says who, which channel and which tuner, and a viewer is reported at most once every half hour per tuner, so changing channels or a media server connecting again is not a message each time.
+- **The logo links to *Live***, and the version sits under the name in the top bar instead of in the footer.
+
+### Changed
+
+- The *Device* and *Firmware* panels and a tuner's own settings (its name and port) moved from the *Tuners* page into the tuner's tabs. Nothing about how they work changed.
+- *Channels* and *Test signal* have been tried on a real FLEX 4K: changing a channel, and testing one on a free tuner. Starting a channel scan has not been run on a real tuner.
+- Settings switches stay on their title's line on a phone, with the switch at the right.
+
+### Fixed
+
+- **Test signal on a real tuner.** A real tuner answers a lock with the address that holds it, not the key that was set, so Test signal called a free tuner busy and left it locked. It now treats a tuner that refuses the lock as busy and one that takes it as its own, and always gives it back.
+- Adding a tuner on the port the admin pages were using no longer fails on systems where the old listener hadn't let go of it yet (it showed up on macOS).
+
 ## 2026.10.7 (2026-10-19)
 
 ### Added
