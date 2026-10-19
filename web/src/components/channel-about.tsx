@@ -1,4 +1,4 @@
-import { Check, EyeOff, Info, Radio, Star, Tv } from 'lucide-react'
+import { Antenna, Check, EyeOff, Info, Languages, Star, Tags, Tv } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { LanguageFlag } from '@/components/language-flag'
 import { Badge } from '@/components/ui/badge'
@@ -16,11 +16,11 @@ const STATE: Record<ChannelState, { label: string; icon: typeof Check; tone: str
 /** One fact: a picture for what kind of fact it is, and then the fact. */
 function Fact({ icon: Icon, label, children }: { icon: typeof Tv; label: string; children: ReactNode }) {
   return (
-    <div className="flex items-start gap-3">
-      <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+    <div className="grid grid-cols-[1rem_1fr] gap-x-3">
+      <Icon aria-hidden className="mt-px size-4 text-muted-foreground" />
       <div className="min-w-0">
         <div className="text-[11px] tracking-wide text-muted-foreground uppercase">{label}</div>
-        <div className="mt-0.5 text-sm">{children}</div>
+        <div className="mt-1 min-h-5 text-sm">{children}</div>
       </div>
     </div>
   )
@@ -65,7 +65,7 @@ export function ChannelAbout({ channel }: { channel: TunerChannel }) {
             </Fact>
           )}
           {!!a?.languages?.length && (
-            <Fact icon={Radio} label={a.languages.length > 1 ? 'Languages' : 'Language'}>
+            <Fact icon={Languages} label={a.languages.length > 1 ? 'Languages' : 'Language'}>
               <span className="flex flex-wrap gap-x-4 gap-y-1">
                 {a.languages.map((l) => (
                   <LanguageFlag key={l} code={l} />
@@ -74,8 +74,7 @@ export function ChannelAbout({ channel }: { channel: TunerChannel }) {
             </Fact>
           )}
           {looks.length > 0 && (
-            <div>
-              <div className="mb-1.5 text-[11px] tracking-wide text-muted-foreground uppercase">Categories</div>
+            <Fact icon={Tags} label="Categories">
               <ul aria-label="Categories" className="flex flex-wrap gap-1.5">
                 {looks.map((l) => (
                   <li key={l.label} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 py-1 pr-2.5 pl-2 text-xs">
@@ -84,10 +83,10 @@ export function ChannelAbout({ channel }: { channel: TunerChannel }) {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Fact>
           )}
           {tuner && (
-            <Fact icon={Radio} label="From the tuner">
+            <Fact icon={Antenna} label="From the tuner">
               {tuner}
             </Fact>
           )}
