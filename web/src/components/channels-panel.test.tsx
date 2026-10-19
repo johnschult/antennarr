@@ -221,6 +221,95 @@ describe('changing several at once', () => {
   })
 })
 
+describe('filtering by quality, category and language', () => {
+  const guided = () =>
+    doc({
+      channels: [
+        ch('2.1', 'WSB-HD', { hd: true, about: { network: 'ABC', languages: ['en'], categories: ['News', 'Talk'] } }),
+        ch('2.2', 'Laff', { about: { languages: ['en'], categories: ['Sitcom', 'Comedy'] } }),
+        ch('26.1', 'Estrella', { hd: true, about: { languages: ['es'], categories: ['Shop', 'Shopping'] } }),
+        ch('9.1', 'Mystery Box'),
+      ],
+    })
+  const names = () => screen.queryAllByTestId('channel').map((r) => within(r).getByText(/WSB-HD|Laff|Estrella|Mystery Box/).textContent)
+  const panel = async () => {
+    await screen.findAllByTestId('channel')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Filters' }))
+    return { user, filters: within(await screen.findByTestId('filters')) }
+  }
+
+  it('has a Filters button that opens a panel of quality, categories with a picture and a count each, and languages with a flag', async () => {
+    show(guided())
+    const { filters } = await panel()
+    expect(filters.getByRole('button', { name: /HD only/ })).toHaveAttribute('aria-pressed', 'false')
+    const cats = filters.getByRole('region', { name: 'Categories' })
+    expect(within(cats).getAllByRole('button').map((b) => b.textContent)).toEqual(['Comedy1', 'News1', 'Shopping1', 'Talk1'])
+    for (const b of within(cats).getAllByRole('button')) expect(b.querySelector('svg')).not.toBeNull()
+    const langs = within(filters.getByRole('region', { name: 'Language' }))
+    expect(langs.getByRole('button', { name: /English/ }).querySelector('svg')).not.toBeNull()
+    expect(langs.getByRole('button', { name: /Spanish/ })).toHaveTextContent('1')
+  })
+
+  it('filters on HD, shows it as a chip you can take off, and counts what is on in the button', async () => {
+    show(guided())
+    const { user, filters } = await panel()
+    await user.click(filters.getByRole('button', { name: /HD only/ }))
+    expect(names()).toEqual(['WSB-HD', 'Estrella'])
+    expect(screen.getByRole('button', { name: 'Filters, 1 on' })).toBeInTheDocument()
+    const active = within(screen.getByRole('list', { name: 'Active filters' }))
+    await user.click(active.getByRole('button', { name: 'Remove filter HD only' }))
+    expect(names()).toHaveLength(4)
+    expect(screen.queryByRole('list', { name: 'Active filters' })).not.toBeInTheDocument()
+  })
+
+  it('filters on a category, and on a language, and needs both when both are chosen', async () => {
+    show(guided())
+    const { user, filters } = await panel()
+    await user.click(within(filters.getByRole('region', { name: 'Categories' })).getByRole('button', { name: /Comedy/ }))
+    expect(names()).toEqual(['Laff'])
+    await user.click(within(filters.getByRole('region', { name: 'Language' })).getByRole('button', { name: /Spanish/ }))
+    expect(screen.queryAllByTestId('channel')).toHaveLength(0) // Laff is not in Spanish
+    expect(screen.getByText('No channel matches.')).toBeInTheDocument()
+    await user.click(within(filters.getByRole('region', { name: 'Categories' })).getByRole('button', { name: /Comedy/ }))
+    expect(names()).toEqual(['Estrella'])
+  })
+
+  it('works along with the state buttons and the search, and Clear all puts everything back', async () => {
+    show(guided())
+    const { user, filters } = await panel()
+    await user.click(filters.getByRole('button', { name: /HD only/ }))
+    await user.type(screen.getByRole('textbox', { name: 'Search channels' }), 'estrella')
+    expect(names()).toEqual(['Estrella'])
+    await user.click(within(screen.getByRole('list', { name: 'Active filters' })).getByRole('button', { name: 'Clear all' }))
+    expect(names()).toEqual(['Estrella']) // the search is not a filter of this kind
+    expect(screen.queryByRole('list', { name: 'Active filters' })).not.toBeInTheDocument()
+  })
+
+  it('selects only what the filters show', async () => {
+    show(guided())
+    const { user, filters } = await panel()
+    await user.click(filters.getByRole('button', { name: /HD only/ }))
+    await user.keyboard('{Escape}')
+    await user.click(within(screen.getByTestId('bulk')).getByRole('checkbox'))
+    expect(within(screen.getByTestId('bulk')).getByText('2 selected')).toBeInTheDocument()
+  })
+
+  it('says so when the guide has nothing on the channels, leaving only quality', async () => {
+    show(doc())
+    const { filters } = await panel()
+    expect(filters.queryByRole('region', { name: 'Categories' })).not.toBeInTheDocument()
+    expect(filters.queryByRole('region', { name: 'Language' })).not.toBeInTheDocument()
+    expect(filters.getByText(/only quality to filter on/)).toBeInTheDocument()
+  })
+
+  it('says how many channels the guide leaves out of a category or language filter', async () => {
+    show(guided())
+    const { filters } = await panel()
+    expect(filters.getByText(/1 channel isn’t in it/)).toBeInTheDocument()
+  })
+})
+
 describe('about a channel', () => {
   const withAbout = (about: TunerChannel['about'], number = '2.2') => doc({ channels: channels.map((c) => (c.number === number ? { ...c, about } : c)) })
   const open = async (name: string) => {
