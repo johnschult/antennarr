@@ -317,6 +317,24 @@ describe('TunerTile', () => {
       expect(within(screen.getByTestId('tile-signal-trend')).getByText('10%')).toHaveClass('text-red-700')
     })
 
+    it.each([
+      [100, 'lucide-signal'],
+      [80, 'lucide-signal'],
+      [79, 'lucide-signal-high'],
+      [60, 'lucide-signal-high'],
+      [59, 'lucide-signal-medium'],
+      [40, 'lucide-signal-medium'],
+      [39, 'lucide-signal-low'],
+      [20, 'lucide-signal-low'],
+      [19, 'lucide-signal-zero'],
+      [0, 'lucide-signal-zero'],
+    ])('draws a strength of %i with the %s icon', (strength, cls) => {
+      render(<TunerTile tile={withSignal(strength, 90)} />)
+      const icon = screen.getByTestId('tile-signal').querySelector('svg')!
+      expect(icon).toHaveClass(cls)
+      expect(icon.getAttribute('class')?.split(' ').filter((c) => c.startsWith('lucide-signal'))).toEqual([cls])
+    })
+
     it('shows only strength when the tuner gives no quality', () => {
       render(<TunerTile tile={withSignal(70, undefined)} />)
       expect(screen.getByTestId('tile-signal')).toHaveTextContent('Signal strength 70%')

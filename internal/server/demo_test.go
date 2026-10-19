@@ -142,6 +142,16 @@ func quality(phase float64) int {
 	return int(math.Max(5, math.Min(100, q)))
 }
 
+// strength is the signal strength the demo reports: steady at 100, or, with DEMO_SIGNAL set, sweeping
+// slowly from strong to nothing and back so every signal icon shows up.
+func strength(phase float64) int {
+	if os.Getenv("DEMO_SIGNAL") == "" {
+		return 100
+	}
+	t := float64(time.Now().UnixNano()) / 1e9
+	return int(math.Round(50 + 50*math.Sin(t/9+phase*2)))
+}
+
 func TestDemo(t *testing.T) {
 	dir := os.Getenv("DEMO_DIR")
 	if dir == "" {
@@ -253,7 +263,7 @@ func TestDemo(t *testing.T) {
 			rm := remote
 			mu.Unlock()
 			busy := func(tuner int, c demoChannel, freq int, ip string, rate float64, phase float64) string {
-				return fmt.Sprintf(`{"Resource":"tuner%d","VctNumber":%q,"VctName":%q,"Frequency":%d,"SignalStrengthPercent":100,"SignalQualityPercent":%d,"SymbolQualityPercent":100,"NetworkRate":%d,"TargetIP":%q}`, tuner, c.Number, c.Name, freq, quality(phase), wobble(rate, phase), ip)
+				return fmt.Sprintf(`{"Resource":"tuner%d","VctNumber":%q,"VctName":%q,"Frequency":%d,"SignalStrengthPercent":%d,"SignalQualityPercent":%d,"SymbolQualityPercent":100,"NetworkRate":%d,"TargetIP":%q}`, tuner, c.Number, c.Name, freq, strength(phase), quality(phase), wobble(rate, phase), ip)
 			}
 			slots := []string{`{"Resource":"tuner0"}`, `{"Resource":"tuner1"}`, `{"Resource":"tuner2"}`, `{"Resource":"tuner3"}`}
 			if rm {
