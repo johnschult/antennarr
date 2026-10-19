@@ -120,23 +120,10 @@ export function Shell() {
       <header className="sticky top-0 z-10 border-b border-border/60 bg-background/70 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 md:gap-8">
           {/* The text lines up with the TV's body, not the antenna ears above it. */}
-          <div className="relative">
-            <Link to="/" title="Live" className="flex items-end gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <Logo size={42} />
-              <span className="font-wordmark pb-1 text-4xl leading-none font-bold tracking-[0.02em]">Yagi</span>
-            </Link>
-            {/* Under the wordmark, at its right edge: small and quiet, but there when someone asks which version this is. */}
-            <a
-              href={state.versionUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-testid="version"
-              title="Release notes for this version"
-              className="absolute -bottom-1 right-0 font-mono text-[10px] leading-none text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline"
-            >
-              {state.version}
-            </a>
-          </div>
+          <Link to="/" title="Live" className="flex items-end gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Logo size={42} />
+            <span className="font-wordmark pb-1 text-4xl leading-none font-bold tracking-[0.02em]">Yagi</span>
+          </Link>
           <nav aria-label="Main" className="hidden gap-1 md:flex">
             {pages.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} className={linkClass}>
@@ -191,6 +178,17 @@ export function Shell() {
       <WhatsNewDialog open={whatsNew.open} onClose={whatsNew.dismiss} version={whatsNew.current} releases={whatsNew.releases} updated={whatsNew.byItself} />
       <footer className="mx-auto flex w-full max-w-7xl items-center justify-center px-4 pb-8 text-xs text-muted-foreground sm:px-6">
         <div className="flex items-center gap-1">
+          {/* The version is here, not under the wordmark, which is big enough now to cover it. */}
+          <a
+            href={state.versionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="version"
+            title="Release notes for this version"
+            className="rounded-md px-2 py-1 font-mono underline-offset-2 hover:bg-muted hover:text-foreground"
+          >
+            {state.version}
+          </a>
           {whatsNew.canShow && (
             <button type="button" onClick={whatsNew.show} className="rounded-md px-2 py-1 underline-offset-2 hover:bg-muted hover:text-foreground">
               What's new

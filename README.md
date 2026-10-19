@@ -70,7 +70,7 @@ go build -o yagi ./cmd/yagi
 
 Then open the **setup link** it writes to its log (or `http://localhost:5004/yagi/` on the machine itself) to become the admin, and add a viewer from the web page. A viewer adds the tuner to their media server as `<this machine>:5004`. [Getting started](docs/getting-started.md) walks through every step, with the settings file, Docker and updating.
 
-Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with that number as well as `latest`; the app shows its version in the top bar, under its name, linked to the release notes.
+Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with that number as well as `latest`; the app shows its version in the footer, linked to the release notes.
 
 ## Documentation
 
