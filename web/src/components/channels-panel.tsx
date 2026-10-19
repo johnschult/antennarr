@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, EyeOff, Gauge, ListChecks, Loader2, Radar, Sigma, Square, Star } from 'lucide-react'
+import { Check, EyeOff, Gauge, ListChecks, Loader2, Radar, Sigma, Square, Star, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ChannelAbout } from '@/components/channel-about'
@@ -295,7 +295,20 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <Input aria-label="Search channels" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 min-w-0 flex-1 sm:w-40 sm:flex-none" />
+                <div className="relative min-w-0 flex-1 sm:w-44 sm:flex-none">
+                  <Input aria-label="Search channels" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 w-full pr-8" />
+                  {search !== '' && (
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      title="Clear search"
+                      onClick={() => setSearch('')}
+                      className="absolute top-1/2 right-1.5 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <X aria-hidden className="size-3.5" />
+                    </button>
+                  )}
+                </div>
                 <ChannelFilters channels={channels} facets={facets} onChange={setFacets} shown={shown.length} />
               </div>
             </div>

@@ -310,6 +310,22 @@ describe('filtering by quality, category and language', () => {
   })
 })
 
+describe('the search box', () => {
+  it('has a clear button only while there is something in it, which empties it and brings the channels back', async () => {
+    show(doc())
+    await screen.findAllByTestId('channel')
+    const user = userEvent.setup()
+    const box = screen.getByRole('textbox', { name: 'Search channels' })
+    expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument()
+    await user.type(box, 'laff')
+    expect(rows()).toHaveLength(1)
+    await user.click(screen.getByRole('button', { name: 'Clear search' }))
+    expect(box).toHaveValue('')
+    expect(rows()).toHaveLength(6)
+    expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument()
+  })
+})
+
 describe('about a channel', () => {
   const withAbout = (about: TunerChannel['about'], number = '2.2') => doc({ channels: channels.map((c) => (c.number === number ? { ...c, about } : c)) })
   const open = async (name: string) => {
