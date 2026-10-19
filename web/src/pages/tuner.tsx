@@ -57,7 +57,7 @@ function ChannelCell({ s, device }: { s: Slot; device: DeviceState }) {
   return (
     <span className="flex items-center gap-2">
       {s.channel && device.guide[s.channel]?.icon && (
-        <ChannelLogo key={s.channel} src={channelIconUrl(device.name, s.channel)} name={s.channelName ?? device.guide[s.channel].name ?? 'Channel'} className="h-6 max-w-12" />
+        <ChannelLogo key={s.channel} size="sm" src={channelIconUrl(device.name, s.channel)} name={s.channelName ?? device.guide[s.channel].name ?? 'Channel'} />
       )}
       {`${s.channel ?? '—'} ${s.channelName ?? ''}`}
     </span>
