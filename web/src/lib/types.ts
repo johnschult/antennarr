@@ -405,3 +405,15 @@ export interface ChannelsDoc {
   channels: TunerChannel[]
   scan: ChannelScan
 }
+
+/** What a tuner reported while tuned to a channel for a test. */
+export interface SignalTestResult {
+  tuner: number
+  channel: string
+  /** Whether the tuner got a lock on it. */
+  locked: boolean
+  lock?: string
+  strength: number
+  quality: number
+  symbol: number
+}

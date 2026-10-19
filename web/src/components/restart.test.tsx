@@ -36,7 +36,7 @@ function withDevice(over: Partial<DeviceState> & { inUse?: number } = {}): State
 }
 
 const sec = () => screen.getByRole('region', { name: 'Device' })
-const show = (s: State) => renderWithApp(<DevicePanel device={s.devices[0]} showName={false} />, s)
+const show = (s: State) => renderWithApp(<DevicePanel device={s.devices[0]} />, s)
 const running: RestartStatus = { phase: 'restarting', started: '2026-10-18T10:00:00Z' }
 
 describe('Restart', () => {

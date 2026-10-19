@@ -3,16 +3,20 @@ import type { ReactNode } from 'react'
 import { Label } from '@/components/ui/label'
 
 /** A group of related settings: a heading, then one bordered list of rows. */
-export function Section({ title, description, icon: Icon, children }: { title: string; description?: string; icon?: LucideIcon; children: ReactNode }) {
+export function Section({ title, description, icon: Icon, bare = false, children }: { title: string; description?: string; icon?: LucideIcon; /** On a page that already says what it is, such as a tab: no heading, only the description. */ bare?: boolean; children: ReactNode }) {
   return (
     <section aria-label={title} className="space-y-2">
-      <div className="px-1">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
-          {title}
-        </h2>
-        {description && <p className={`mt-0.5 text-xs text-muted-foreground${Icon ? ' pl-6' : ''}`}>{description}</p>}
-      </div>
+      {(!bare || description) && (
+        <div className="px-1">
+          {!bare && (
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+              {title}
+            </h2>
+          )}
+          {description && <p className={`text-xs text-muted-foreground${bare ? '' : ` mt-0.5${Icon ? ' pl-6' : ''}`}`}>{description}</p>}
+        </div>
+      )}
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card/70">{children}</div>
     </section>
   )

@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FirmwareStatus } from '@/lib/types'
-import { makeDevice, makeState, makeTwoDeviceState, updateAvailable, upToDate } from '@/test/fixtures'
+import { makeDevice, makeState, updateAvailable, upToDate } from '@/test/fixtures'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { CHANGELOG_URL, FirmwareBadge, FirmwareSection } from './firmware'
 
@@ -183,17 +183,4 @@ describe('FirmwareSection', () => {
     })
   })
 
-  it('names the tuner in its title when there are several', () => {
-    const s = makeTwoDeviceState()
-    s.devices[1].label = 'Cable box'
-    renderWithApp(
-      <>
-        <FirmwareSection device={s.devices[0]} showName />
-        <FirmwareSection device={s.devices[1]} showName />
-      </>,
-      s,
-    )
-    expect(section('Firmware — Steve FLEX 4K')).toBeInTheDocument()
-    expect(section('Firmware — Cable box')).toBeInTheDocument()
-  })
 })

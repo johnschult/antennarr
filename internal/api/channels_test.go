@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/johnschult/antennarr/internal/hdhr"
+	"github.com/johnschult/antennarr/internal/hdhr/hdhrtest"
 	"github.com/johnschult/antennarr/internal/lineup"
 	"github.com/johnschult/antennarr/internal/lineup/linetest"
 )
@@ -230,5 +232,173 @@ func TestScanRefusals(t *testing.T) {
 	}
 	if posts(srv) != 0 {
 		t.Errorf("a refused scan was sent: %v", srv.Requests())
+	}
+}
+
+// ---- testing a signal ----
+
+func testEnv(t *testing.T, tunerStatus string, o hdhrtest.Options) (*env, *linetest.Server, *hdhrtest.Server) {
+	t.Helper()
+	e, lt := channelsEnv(t, tunerStatus)
+	ctrl, err := hdhrtest.New("127.0.0.1:0", o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(ctrl.Close)
+	e.api.Control = func(ctx context.Context, _ string) (*hdhr.Conn, error) { return hdhr.Dial(ctx, ctrl.Addr()) }
+	e.api.SignalTest = hdhr.TestOptions{Wait: 500 * time.Millisecond, Settle: 10 * time.Millisecond, Poll: 20 * time.Millisecond}
+	return e, lt, ctrl
+}
+
+func testPath(number string) string { return chanPath + "/" + number + "/test" }
+
+// threeBusy is a status with tuners 0, 1 and 2 in use and tuner 3 free.
+const threeBusy = `[{"Resource":"tuner0","VctNumber":"2.1","TargetIP":"192.168.1.9"},{"Resource":"tuner1","VctNumber":"5.1","TargetIP":"192.168.1.9"},{"Resource":"tuner2","VctNumber":"7.1","TargetIP":"192.168.1.9"},{"Resource":"tuner3"}]`
+const allBusy = `[{"Resource":"tuner0","VctNumber":"2.1","TargetIP":"192.168.1.9"},{"Resource":"tuner1","VctNumber":"5.1","TargetIP":"192.168.1.9"},{"Resource":"tuner2","VctNumber":"7.1","TargetIP":"192.168.1.9"},{"Resource":"tuner3","VctNumber":"9.1","TargetIP":"192.168.1.9"}]`
+
+func TestASignalIsTestedOnTheHighestFreeTunerAndGivenBack(t *testing.T) {
+	e, _, ctrl := testEnv(t, idleTuner, hdhrtest.Options{Signals: map[string]hdhrtest.Signal{"2.1": {Lock: "atsc3", Strength: 88, Quality: 96, Symbol: 100}}})
+	code, v := e.call(t, "POST", testPath("2.1"), "")
+	m := obj(t, v)
+	if code != 200 || m["locked"] != true || m["strength"] != float64(88) || m["quality"] != float64(96) || m["symbol"] != float64(100) || m["tuner"] != float64(3) || m["channel"] != "2.1" {
+		t.Fatalf("%d %v", code, v)
+	}
+	if tunes := ctrl.Tunes(); len(tunes) != 1 || tunes[0] != "tuner3 2.1" {
+		t.Errorf("tunes = %v: a new stream takes the lowest free tuner, so the test should take the highest", tunes)
+	}
+	if ctrl.Held(3) {
+		t.Error("the tuner was left held")
+	}
+}
+
+func TestATunerThatHasNoSignalIsAnAnswer(t *testing.T) {
+	e, _, ctrl := testEnv(t, idleTuner, hdhrtest.Options{Signals: map[string]hdhrtest.Signal{"2.1": {Strength: 9}}})
+	code, v := e.call(t, "POST", testPath("2.1"), "")
+	if m := obj(t, v); code != 200 || m["locked"] != false || m["strength"] != float64(9) {
+		t.Fatalf("%d %v", code, v)
+	}
+	if ctrl.Held(3) {
+		t.Error("the tuner was left held")
+	}
+}
+
+func TestTheTestSkipsATunerThatIsBusyAtTheTuner(t *testing.T) {
+	// the page's status says 3 is free; the tuner itself says somebody has it
+	e, _, ctrl := testEnv(t, idleTuner, hdhrtest.Options{Busy: map[int]string{3: "locked"}})
+	code, v := e.call(t, "POST", testPath("2.1"), "")
+	if code != 200 || obj(t, v)["tuner"] != float64(2) {
+		t.Fatalf("%d %v", code, v)
+	}
+	if tunes := ctrl.Tunes(); len(tunes) != 1 || tunes[0] != "tuner2 2.1" {
+		t.Errorf("tunes = %v", tunes)
+	}
+}
+
+func TestATestNeedsAFreeTunerAndNeverInterruptsAnything(t *testing.T) {
+	e, _, ctrl := testEnv(t, allBusy, hdhrtest.Options{})
+	code, v := e.call(t, "POST", testPath("2.1"), "")
+	if code != 409 || !strings.Contains(errText(v), "never interrupts") {
+		t.Fatalf("%d %v", code, v)
+	}
+	if len(ctrl.Frames()) != 0 {
+		t.Errorf("the tuner was written to: %d frames", len(ctrl.Frames()))
+	}
+	// and with only one free, only that one is used
+	e2, _, ctrl2 := testEnv(t, threeBusy, hdhrtest.Options{})
+	if code, _ := e2.call(t, "POST", testPath("2.1"), ""); code != 200 {
+		t.Fatalf("one free: %d", code)
+	}
+	if tunes := ctrl2.Tunes(); len(tunes) != 1 || tunes[0] != "tuner3 2.1" {
+		t.Errorf("tunes = %v", tunes)
+	}
+}
+
+func TestEveryTunerTurningOutBusyIsSaid(t *testing.T) {
+	e, _, ctrl := testEnv(t, idleTuner, hdhrtest.Options{Busy: map[int]string{0: "tuned", 1: "locked", 2: "streaming", 3: "locked"}})
+	code, v := e.call(t, "POST", testPath("2.1"), "")
+	if code != 409 || !strings.Contains(errText(v), "turned out to be in use") {
+		t.Fatalf("%d %v", code, v)
+	}
+	if len(ctrl.Tunes()) != 0 {
+		t.Errorf("a busy tuner was tuned: %v", ctrl.Tunes())
+	}
+}
+
+func TestSignalTestRefusalsTouchNothing(t *testing.T) {
+	e, lt, ctrl := testEnv(t, idleTuner, hdhrtest.Options{})
+	for name, c := range map[string]struct {
+		number string
+		want   int
+	}{
+		"not a number":              {"2.1&x=1", 400},
+		"a channel the tuner lacks": {"99.9", 404},
+		"a channel it can't play":   {"703", 409},
+	} {
+		lt.Forget()
+		code, v := e.call(t, "POST", testPath(url.PathEscape(c.number)), "")
+		if code != c.want {
+			t.Errorf("%s: %d %v, want %d", name, code, v, c.want)
+		}
+		if len(ctrl.Frames()) != 0 {
+			t.Errorf("%s: the tuner was written to", name)
+		}
+	}
+	// while it scans
+	lt.Forget()
+	e.call(t, "POST", scanPath, `{}`)
+	if code, v := e.call(t, "POST", testPath("2.1"), ""); code != 409 || !strings.Contains(errText(v), "scanning") {
+		t.Errorf("while scanning: %d %v", code, v)
+	}
+	if len(ctrl.Frames()) != 0 {
+		t.Error("the tuner was written to while it scanned")
+	}
+}
+
+func TestOnlyOneSignalTestRunsAtATime(t *testing.T) {
+	e, _, ctrl := testEnv(t, idleTuner, hdhrtest.Options{LockAfter: 400 * time.Millisecond})
+	done := make(chan int, 1)
+	go func() { code, _ := e.call(t, "POST", testPath("2.1"), ""); done <- code }()
+	deadline := time.Now().Add(3 * time.Second)
+	for len(ctrl.Tunes()) == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	code, v := e.call(t, "POST", testPath("2.2"), "")
+	if code != 409 || !strings.Contains(errText(v), "already running") {
+		t.Errorf("a second: %d %v", code, v)
+	}
+	if first := <-done; first != 200 {
+		t.Errorf("the first: %d", first)
+	}
+	if code, _ := e.call(t, "POST", testPath("2.2"), ""); code != 200 {
+		t.Errorf("after the first finished: %d", code)
+	}
+}
+
+func TestNoSignalTestsWhileTheTunerRestartsOrIsOffline(t *testing.T) {
+	e, _, ctrl := testEnv(t, idleTuner, hdhrtest.Options{})
+	e.tun.Close()
+	for i := 0; i < 4; i++ {
+		e.mon.Poll(context.Background())
+	}
+	if code, v := e.call(t, "POST", testPath("2.1"), ""); code != 409 || !strings.Contains(errText(v), "offline") {
+		t.Errorf("%d %v", code, v)
+	}
+	if len(ctrl.Frames()) != 0 {
+		t.Error("an offline tuner was written to")
+	}
+}
+
+func TestSignalTestIsForAdminsOnlyAndNeedsAControlPort(t *testing.T) {
+	e, _, ctrl := testEnv(t, idleTuner, hdhrtest.Options{})
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", testPath("2.1"), nil)
+	req.RemoteAddr = "100.67.117.32:1" // John is a viewer, not an admin
+	e.pol.AdminOnly(e.api.Handler()).ServeHTTP(rec, req)
+	if rec.Code != 403 || len(ctrl.Frames()) != 0 {
+		t.Errorf("a viewer: %d, %d frames", rec.Code, len(ctrl.Frames()))
+	}
+	e.api.Control = nil
+	if code, _ := e.call(t, "POST", testPath("2.1"), ""); code != 409 {
+		t.Errorf("unavailable: %d", code)
 	}
 }

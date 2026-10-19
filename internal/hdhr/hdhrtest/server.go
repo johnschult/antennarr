@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -53,8 +56,23 @@ type Options struct {
 	// instead of answering the set, as a tuner might that restarts at once.
 	RestartFor     time.Duration
 	RestartNoReply bool
+	// Signals is what a tuned tuner reports for a channel (by the channel number it was tuned to); a channel
+	// not listed gets a good signal. LockAfter is how long after tuning the lock takes to appear.
+	Signals   map[string]Signal
+	LockAfter time.Duration
+	// Busy says which tuners are in use at the start: "locked" (somebody holds its lock), "tuned" (a channel is
+	// on it) or "streaming" (it has a target).
+	Busy map[int]string
+	// RefuseTune answers a tune request with an error, as a tuner that wouldn't tune to that channel.
+	RefuseTune bool
 	// Unknown is a value name the tuner answers with an error for, besides the ones it doesn't have.
 	Unknown map[string]bool
+}
+
+// Signal is what a fake tuner reports while tuned: what it locked on to (empty is no lock) and how well.
+type Signal struct {
+	Lock                      string
+	Strength, Quality, Symbol int
 }
 
 // Server is the fake tuner.
@@ -73,6 +91,8 @@ type Server struct {
 	closed   bool
 	downTill time.Time // the tuner is restarting until then
 	restarts int
+	tunedAt  map[int]time.Time
+	tunes    []string
 }
 
 // New starts a fake tuner on addr ("127.0.0.1:0" for any free port; the official tool needs 65001). It
@@ -103,9 +123,19 @@ func New(addr string, o Options) (*Server, error) {
 		"/sys/restart": "", "/sys/version": o.Version, "/sys/model": "hdhomerun_dvr_atsc3", "/sys/hwmodel": o.Model,
 		"/sys/features": "channelmap: us-bcast us-cable us-hrc us-irc kr-bcast kr-cable\nmodulation: atsc3 8vsb qam256 qam64\nauto-modulation: auto auto6t auto6c qam\n",
 	}}
+	s.tunedAt = map[int]time.Time{}
 	for i := 0; i < o.Tuners; i++ {
-		s.values[fmt.Sprintf("/tuner%d/channel", i)] = "none"
-		s.values[fmt.Sprintf("/tuner%d/lockkey", i)] = "none"
+		for _, v := range []string{"channel", "lockkey", "vchannel", "target"} {
+			s.values[fmt.Sprintf("/tuner%d/%s", i, v)] = "none"
+		}
+		switch o.Busy[i] {
+		case "locked":
+			s.values[fmt.Sprintf("/tuner%d/lockkey", i)] = "1234567"
+		case "tuned":
+			s.values[fmt.Sprintf("/tuner%d/channel", i)] = "auto:5.1"
+		case "streaming":
+			s.values[fmt.Sprintf("/tuner%d/target", i)] = "udp://192.168.1.9:5000"
+		}
 	}
 	s.wg.Add(2)
 	go s.serveTCP()
@@ -307,6 +337,7 @@ func (s *Server) getSet(payload []byte) []byte {
 	}
 	var name string
 	var value *string
+	var key string
 	for _, t := range tlvs {
 		switch t.Tag {
 		case hdhr.TagGetSetName:
@@ -314,16 +345,43 @@ func (s *Server) getSet(payload []byte) []byte {
 		case hdhr.TagGetSetValue:
 			v := string(bytes.TrimRight(t.Value, "\x00"))
 			value = &v
+		case hdhr.TagLockKey:
+			if len(t.Value) == 4 {
+				key = strconv.FormatUint(uint64(binary.BigEndian.Uint32(t.Value)), 10)
+			}
 		}
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if v, ok := s.status(name); ok {
+		return hdhr.AppendTLV(nil, hdhr.TagGetSetValue, append([]byte(v), 0))
+	}
 	cur, known := s.values[name]
 	if !known || s.opts.Unknown[name] {
 		return hdhr.AppendTLV(nil, hdhr.TagError, []byte("ERROR: invalid get/set\x00"))
 	}
 	if value != nil {
+		if err := s.lockCheck(name, *value, key); err != "" {
+			return hdhr.AppendTLV(nil, hdhr.TagError, append([]byte(err), 0))
+		}
+		if m := tuneRe.FindStringSubmatch(name); m != nil && m[2] == "vchannel" {
+			if s.opts.RefuseTune {
+				return hdhr.AppendTLV(nil, hdhr.TagError, []byte("ERROR: invalid channel\x00"))
+			}
+			n, _ := strconv.Atoi(m[1])
+			s.tunedAt[n] = time.Now()
+			s.tunes = append(s.tunes, fmt.Sprintf("tuner%d %s", n, *value))
+			s.values[fmt.Sprintf("/tuner%d/channel", n)] = "auto:" + *value
+		}
+		if *value == "force" && strings.HasSuffix(name, "/lockkey") {
+			*value = "none"
+		}
 		s.values[name] = *value
+		if m := tuneRe.FindStringSubmatch(name); m != nil && m[2] == "channel" && *value == "none" {
+			n, _ := strconv.Atoi(m[1])
+			s.values[fmt.Sprintf("/tuner%d/vchannel", n)] = "none"
+			delete(s.tunedAt, n)
+		}
 		cur = *value
 	}
 	return hdhr.AppendTLV(nil, hdhr.TagGetSetValue, append([]byte(cur), 0))
@@ -363,4 +421,67 @@ func (s *Server) Restarts() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.restarts
+}
+
+var tuneRe = regexp.MustCompile(`^/tuner([0-9]+)/([a-z]+)$`)
+
+// lockCheck is a tuner's lock: what it says to a change to one of its values, or "" if the change is allowed.
+// A locked tuner only takes changes that carry its key; the lock itself can be taken when free, given back
+// with its key, or forced.
+func (s *Server) lockCheck(name, value, key string) string {
+	m := tuneRe.FindStringSubmatch(name)
+	if m == nil {
+		return ""
+	}
+	held := s.values[fmt.Sprintf("/tuner%s/lockkey", m[1])]
+	if m[2] == "lockkey" {
+		if value == "force" || held == "none" || key == held {
+			return ""
+		}
+		return "ERROR: resource locked by 192.168.1.9"
+	}
+	if held != "none" && key != held {
+		return "ERROR: resource locked by 192.168.1.9"
+	}
+	return ""
+}
+
+// status is a tuner's status line: nothing while it has no channel, and while tuned what the options say
+// (after LockAfter, the lock).
+func (s *Server) status(name string) (string, bool) {
+	m := tuneRe.FindStringSubmatch(name)
+	if m == nil || m[2] != "status" {
+		return "", false
+	}
+	n, _ := strconv.Atoi(m[1])
+	if s.values[fmt.Sprintf("/tuner%d/channel", n)] == "none" {
+		return "ch=none lock=none ss=0 snq=0 seq=0 bps=0 pps=0", true
+	}
+	vch := s.values[fmt.Sprintf("/tuner%d/vchannel", n)]
+	sig, ok := s.opts.Signals[vch]
+	if !ok {
+		sig = Signal{Lock: "atsc3", Strength: 80, Quality: 90, Symbol: 100}
+	}
+	if at, tuned := s.tunedAt[n]; tuned && time.Since(at) < s.opts.LockAfter {
+		return fmt.Sprintf("ch=atsc3:575000000 lock=none ss=%d snq=0 seq=0 bps=0 pps=0", sig.Strength/2), true
+	}
+	lock := sig.Lock
+	if lock == "" {
+		lock = "none"
+	}
+	return fmt.Sprintf("ch=atsc3:575000000 lock=%s ss=%d snq=%d seq=%d bps=0 pps=0", lock, sig.Strength, sig.Quality, sig.Symbol), true
+}
+
+// Tunes is "tunerN channel" for every tune request accepted, in order.
+func (s *Server) Tunes() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.tunes...)
+}
+
+// Held says whether a tuner still has a channel or a lock on it.
+func (s *Server) Held(tuner int) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.values[fmt.Sprintf("/tuner%d/channel", tuner)] != "none" || s.values[fmt.Sprintf("/tuner%d/lockkey", tuner)] != "none"
 }

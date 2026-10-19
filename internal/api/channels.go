@@ -2,12 +2,18 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/johnschult/antennarr/internal/hdhr"
 	"github.com/johnschult/antennarr/internal/lineup"
+	"github.com/johnschult/antennarr/internal/tuner"
 )
 
 // channelsDoc is a tuner's channels and its scan, as the tuner says them.
@@ -205,4 +211,112 @@ func (a *API) stopScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// freeTuners are the numbers of the tuner's tuners with nothing on them, highest first: a new stream is
+// given the lowest free one, so a test keeps out of its way by taking the highest.
+func freeTuners(slots []tuner.Slot) []int {
+	var out []int
+	for _, sl := range slots {
+		n, err := strconv.Atoi(strings.TrimPrefix(sl.Resource, "tuner"))
+		if err == nil && !sl.InUse && strings.HasPrefix(sl.Resource, "tuner") {
+			out = append(out, n)
+		}
+	}
+	slices.SortFunc(out, func(a, b int) int { return b - a })
+	return out
+}
+
+// testSignal tunes a free tuner to a channel for a few seconds and says how well it is received. It never
+// interrupts anything: it needs a tuner with nothing on it (and checks that again at the tuner, which locks
+// it with a key of its own for the test), and it gives the tuner back however it ends. One test at a time
+// runs on a tuner, and none while it scans, restarts or installs.
+func (a *API) testSignal(w http.ResponseWriter, r *http.Request) {
+	number := r.PathValue("number")
+	if !lineup.NumberRe.MatchString(number) {
+		writeErr(w, http.StatusBadRequest, "that isn't a channel number")
+		return
+	}
+	d, base, ok := a.tuner(w, r)
+	if !ok {
+		return
+	}
+	if a.Control == nil {
+		writeErr(w, http.StatusConflict, "testing a signal is not available")
+		return
+	}
+	if a.Restart != nil && a.Restart.Active(d.Name) {
+		writeErr(w, http.StatusConflict, "the tuner is restarting: wait for that to finish")
+		return
+	}
+	if a.Upgrade != nil && a.Upgrade.Active(d.Name) {
+		writeErr(w, http.StatusConflict, "the tuner is being updated: wait for that to finish")
+		return
+	}
+	u, err := url.Parse(base)
+	if err != nil || u.Hostname() == "" {
+		writeErr(w, http.StatusConflict, "Antennarr doesn't know where the tuner is")
+		return
+	}
+	if _, running := a.testing.LoadOrStore(d.Name, true); running {
+		writeErr(w, http.StatusConflict, "a signal test is already running on this tuner")
+		return
+	}
+	defer a.testing.Delete(d.Name)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	scan, err := a.Lineup.Scan(ctx, base)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	if scan.InProgress {
+		writeErr(w, http.StatusConflict, "the tuner is scanning for channels: wait for that to finish")
+		return
+	}
+	chans, err := a.Lineup.Found(ctx, base)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	i := slices.IndexFunc(chans, func(c lineup.Channel) bool { return c.Number == number })
+	if i < 0 {
+		writeErr(w, http.StatusNotFound, fmt.Sprintf("the tuner has no channel %s", number))
+		return
+	}
+	if !chans[i].Subscribed {
+		writeErr(w, http.StatusConflict, fmt.Sprintf("channel %s can't be tested: the tuner has it but isn't able to play it", number))
+		return
+	}
+	free := freeTuners(d.Mon.Snapshot().Slots)
+	if len(free) == 0 {
+		writeErr(w, http.StatusConflict, "all of the tuner's tuners are in use: a test needs a free one, and never interrupts anything")
+		return
+	}
+
+	dctx, dcancel := context.WithTimeout(ctx, hdhr.DialTimeout*2)
+	conn, err := a.Control(dctx, u.Hostname())
+	dcancel()
+	if err != nil {
+		a.Log.Warn("couldn't reach the tuner to test a signal", "device", d.Name, "err", err)
+		writeErr(w, http.StatusBadGateway, "couldn't reach the tuner's control port")
+		return
+	}
+	defer conn.Close()
+	for _, n := range free {
+		sig, err := conn.TestSignal(ctx, n, number, a.SignalTest)
+		switch {
+		case errors.Is(err, hdhr.ErrTunerBusy):
+			continue // it turned out not to be free: try the next
+		case err != nil:
+			a.Log.Warn("couldn't test a signal", "device", d.Name, "channel", number, "err", err)
+			writeErr(w, http.StatusBadGateway, err.Error())
+			return
+		}
+		a.Log.Info("signal tested", "device", d.Name, "channel", number, "tuner", n, "locked", sig.Locked, "strength", sig.Strength, "quality", sig.Quality)
+		writeJSON(w, http.StatusOK, sig)
+		return
+	}
+	writeErr(w, http.StatusConflict, "every tuner that looked free turned out to be in use: try again in a moment")
 }

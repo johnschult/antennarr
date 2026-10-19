@@ -23,7 +23,7 @@ const info: DeviceInfo = {
 }
 
 const path = 'GET /devices/antenna/info'
-const show = (device = makeDevice()) => renderWithApp(<DevicePanel device={device} showName={false} />, makeState({ devices: [device] }))
+const show = (device = makeDevice()) => renderWithApp(<DevicePanel device={device} />, makeState({ devices: [device] }))
 const panel = () => screen.getByRole('region', { name: 'Device' })
 
 describe('Device panel', () => {
@@ -73,10 +73,4 @@ describe('Device panel', () => {
     expect(calls.filter((c) => c.url.includes('refresh=1'))).toHaveLength(1)
   })
 
-  it('names the tuner when there are several', async () => {
-    vi.stubGlobal('fetch', stubFetch({ [path]: () => ({ body: info }) }).fn)
-    const device = makeDevice()
-    renderWithApp(<DevicePanel device={device} showName />, makeState({ devices: [device] }))
-    expect(await screen.findByRole('region', { name: /^Device — / })).toBeInTheDocument()
-  })
 })

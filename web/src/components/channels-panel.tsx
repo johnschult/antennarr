@@ -1,17 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, EyeOff, ListChecks, Loader2, Radar, Square, Star } from 'lucide-react'
+import { Check, EyeOff, Gauge, Info, ListChecks, Loader2, Radar, Sigma, Square, Star } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ScanDialog } from '@/components/scan-dialog'
 import { Section } from '@/components/settings/section'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useApp } from '@/hooks/app-context'
 import { receptionByChannel } from '@/lib/activity'
-import { getChannels, getHistory, setChannelState, startChannelScan, stopChannelScan } from '@/lib/api'
+import { getChannels, getHistory, setChannelState, startChannelScan, stopChannelScan, testChannelSignal } from '@/lib/api'
 import { signalTone, toneText } from '@/lib/signal'
-import type { ChannelsDoc, ChannelState, DeviceState, TunerChannel } from '@/lib/types'
+import type { ChannelsDoc, ChannelState, DeviceState, SignalTestResult, TunerChannel } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 type Filter = 'all' | ChannelState
@@ -62,6 +63,38 @@ function StatePicker({ channel, onPick }: { channel: TunerChannel; onPick: (stat
         )
       })}
     </div>
+  )
+}
+
+/** What a test found, as a chip: strength and quality, colored by the worse of the two, or "no signal". */
+function TestResult({ result }: { result: SignalTestResult | undefined }) {
+  if (!result) return null
+  const worst = Math.min(result.strength, result.quality)
+  return (
+    <span
+      data-testid="test-result"
+      title={`Tuner ${result.tuner + 1}: signal strength ${result.strength}%, quality ${result.quality}%, symbol quality ${result.symbol}%${result.lock ? `, locked on ${result.lock}` : ''}`}
+      className={cn('shrink-0 rounded-md border border-border px-1.5 py-0.5 text-xs tabular-nums', result.locked ? toneText[signalTone(worst)] : 'text-red-700 dark:text-red-300')}
+    >
+      {result.locked ? `${result.strength}% · ${result.quality}%` : 'No signal'}
+    </span>
+  )
+}
+
+/** Tunes a free tuner to the channel for a few seconds and reads its signal. */
+function TestButton({ channel, testing, blocked, onTest }: { channel: TunerChannel; testing: boolean; blocked: string | undefined; onTest: () => void }) {
+  const unavailable = !channel.subscribed ? "The tuner can't play this channel" : blocked
+  return (
+    <Button
+      size="icon-sm"
+      variant="ghost"
+      aria-label={`Test the signal of ${channel.number} ${channel.name}`}
+      title={unavailable ?? 'Test the signal: tunes a free tuner to it for a few seconds'}
+      disabled={testing || unavailable !== undefined}
+      onClick={onTest}
+    >
+      {testing ? <Loader2 aria-hidden className="animate-spin" /> : <Gauge aria-hidden />}
+    </Button>
   )
 }
 
@@ -123,6 +156,24 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [scanning, setScanning] = useState(false)
+  const [info, setInfo] = useState<TunerChannel | null>(null)
+
+  // Testing a channel's signal: tune a free tuner to it for a few seconds. One at a time, and what each told us is
+  // kept until the page is left.
+  const [results, setResults] = useState<Record<string, SignalTestResult>>({})
+  const [testing, setTesting] = useState<string | null>(null)
+  const runTest = async (number: string) => {
+    setTesting(number)
+    try {
+      const r = await testChannelSignal(device.name, number)
+      setResults((all) => ({ ...all, [number]: r }))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not test the signal')
+    } finally {
+      setTesting(null)
+    }
+  }
+  const freeTuner = device.tuner.slots.some((s) => !s.inUse)
 
   const change = useMutation({
     mutationFn: ({ number, state }: { number: string; state: ChannelState }) => setChannelState(device.name, number, state),
@@ -137,6 +188,34 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
       toast.error(err instanceof Error ? err.message : 'Could not change the channel')
     },
   })
+  // Several at once: the choice is made on a set of channels and sent to the tuner one at a time, as the tuner takes one change
+  // per request. Each is shown as it lands, and it stops at the first the tuner refuses.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null)
+  const applyMany = async (state: ChannelState) => {
+    const targets = channels.filter((c) => selected.has(c.number) && c.subscribed && c.state !== state)
+    if (targets.length === 0) {
+      setSelected(new Set())
+      return
+    }
+    setBulk({ done: 0, total: targets.length })
+    let done = 0
+    try {
+      for (const c of targets) {
+        await setChannelState(device.name, c.number, state)
+        done++
+        setBulk({ done, total: targets.length })
+        qc.setQueryData<ChannelsDoc>(key, (before) => before && { ...before, channels: before.channels.map((x) => (x.number === c.number ? { ...x, state } : x)) })
+      }
+      setSelected(new Set())
+      toast.success(`${done} ${done === 1 ? 'channel' : 'channels'} set to ${state}`)
+    } catch (err) {
+      toast.error(`${err instanceof Error ? err.message : 'Could not change the channel'}${done > 0 ? ` (${done} of ${targets.length} done)` : ''}`)
+      void qc.invalidateQueries({ queryKey: key })
+    } finally {
+      setBulk(null)
+    }
+  }
   const stop = useMutation({
     mutationFn: () => stopChannelScan(device.name),
     onSuccess: () => void qc.invalidateQueries({ queryKey: key }),
@@ -175,8 +254,18 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
     return channels.filter((c) => (filter === 'all' || c.state === filter) && (term === '' || c.number.toLowerCase().includes(term) || c.name.toLowerCase().includes(term)))
   }, [channels, filter, search])
 
+  const pickable = shown.filter((c) => c.subscribed)
+  const picked = pickable.filter((c) => selected.has(c.number)).length
+  const allPicked = pickable.length > 0 && picked === pickable.length
+  const toggle = (number: string) =>
+    setSelected((cur) => {
+      const next = new Set(cur)
+      if (!next.delete(number)) next.add(number)
+      return next
+    })
+
   return (
-    <Section icon={ListChecks} title="Channels" description="Which channels viewers and media servers get. A disabled channel is left out of the lineup, and a favorite is starred. Where a channel has been watched, its average signal quality over the last 30 days is shown.">
+    <Section bare icon={ListChecks} title="Channels" description="Which channels viewers and media servers get. A disabled channel is left out of the lineup, and a favorite is starred. Where a channel has been watched, its average signal quality over the last 30 days is shown.">
       <div className="space-y-4 p-4">
         {!online ? (
           <p className="text-sm text-muted-foreground">The tuner is offline, so there is nothing to read.</p>
@@ -214,24 +303,97 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
               </p>
             ) : (
               <>
+                <div className="flex flex-wrap items-center gap-3 text-sm" data-testid="bulk">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-primary"
+                      checked={allPicked}
+                      ref={(el) => {
+                        if (el) el.indeterminate = picked > 0 && !allPicked
+                      }}
+                      disabled={pickable.length === 0 || bulk !== null}
+                      onChange={() => setSelected(allPicked ? new Set() : new Set(pickable.map((c) => c.number)))}
+                    />
+                    {picked > 0 ? `${picked} selected` : `Select all ${pickable.length} shown`}
+                  </label>
+                  {selected.size > 0 && (
+                    <div role="group" aria-label="Change the selected channels" className="flex flex-wrap items-center gap-2">
+                      {STATES.map((st) => (
+                        <Button key={st.id} size="sm" variant="outline" disabled={bulk !== null} onClick={() => void applyMany(st.id)}>
+                          <st.icon aria-hidden /> {st.label}
+                        </Button>
+                      ))}
+                      <Button size="sm" variant="ghost" disabled={bulk !== null} onClick={() => setSelected(new Set())}>
+                        Clear
+                      </Button>
+                      {bulk && (
+                        <span role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Loader2 aria-hidden className="size-3.5 animate-spin" /> {bulk.done} of {bulk.total}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <ul aria-label="Channels" className="divide-y divide-border overflow-hidden rounded-xl border border-border">
                   {shown.slice(0, SHOWN).map((c) => (
                     <li key={c.number} data-testid="channel" data-state={c.state} className="flex items-center gap-3 px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="size-4 shrink-0 accent-primary"
+                        aria-label={`Select ${c.number} ${c.name}`}
+                        checked={selected.has(c.number)}
+                        disabled={!c.subscribed || bulk !== null}
+                        onChange={() => toggle(c.number)}
+                      />
                       <span className="w-14 shrink-0 font-mono text-xs tabular-nums text-muted-foreground">{c.number}</span>
+                      <button
+                        type="button"
+                        aria-label={`About ${c.number} ${c.name}`}
+                        title="About this channel"
+                        onClick={() => setInfo(c)}
+                        className="-mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Info aria-hidden className="size-4" />
+                      </button>
                       <span className={cn('min-w-0 flex-1 truncate', c.state === 'disabled' && 'text-muted-foreground line-through', !c.subscribed && 'text-muted-foreground')}>{c.name || '—'}</span>
                       {!c.subscribed && <span className="shrink-0 text-xs text-muted-foreground">not available to this tuner</span>}
                       {c.hd && <Badge variant="secondary">HD</Badge>}
                       {c.drm && <Badge variant="secondary">DRM</Badge>}
                       {c.video && <span className="hidden w-14 shrink-0 text-xs text-muted-foreground sm:block">{c.video}</span>}
                       {state.settings.history && (
-                        <span className="hidden w-16 shrink-0 text-right text-xs tabular-nums sm:block" data-testid="reception">
+                        <span className="hidden w-16 shrink-0 justify-end text-xs tabular-nums sm:flex" data-testid="reception">
                           {reception.has(c.number) ? (
-                            <span className={toneText[signalTone(reception.get(c.number)!)]} title="The average signal quality while it was watched, over the last 30 days">
+                            <span
+                              className={cn('inline-flex items-center gap-1', toneText[signalTone(reception.get(c.number)!)])}
+                              title="The average signal quality while it was watched, over the last 30 days"
+                            >
+                              <Sigma aria-hidden className="size-3 opacity-70" />
+                              <span className="sr-only">Average signal quality </span>
                               {reception.get(c.number)}%
                             </span>
                           ) : null}
                         </span>
                       )}
+                      <span className="flex shrink-0 items-center gap-1">
+                        <TestButton
+                          channel={c}
+                          testing={testing === c.number}
+                          blocked={
+                            testing !== null && testing !== c.number
+                              ? 'Another test is running'
+                              : !freeTuner
+                                ? "All of the tuner's tuners are in use: a test needs a free one"
+                                : inProgress
+                                  ? 'The tuner is scanning'
+                                  : device.tuner.updating || device.tuner.restarting
+                                    ? 'The tuner is busy restarting or updating'
+                                    : undefined
+                          }
+                          onTest={() => void runTest(c.number)}
+                        />
+                        <TestResult result={results[c.number]} />
+                      </span>
                       <StatePicker channel={c} onPick={(state) => change.mutate({ number: c.number, state })} />
                     </li>
                   ))}
@@ -246,6 +408,14 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
           </>
         )}
       </div>
+      <Dialog open={info !== null} onOpenChange={(o) => !o && setInfo(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{info?.name || 'Unnamed channel'}</DialogTitle>
+            <DialogDescription>Channel {info?.number}</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
       <ScanDialog device={scanning ? device : null} scan={q.data?.scan} onClose={() => setScanning(false)} onStart={startScan} />
     </Section>
   )

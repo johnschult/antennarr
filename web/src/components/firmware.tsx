@@ -7,7 +7,6 @@ import { UpgradeDialog } from '@/components/upgrade-dialog'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
-import { deviceTitle } from '@/lib/device'
 import { firmwareDate, isNever, timeAgo } from '@/lib/format'
 import type { DeviceState, FirmwareStatus, UpgradeStatus } from '@/lib/types'
 
@@ -60,7 +59,7 @@ function StatusBadge({ s }: { s: FirmwareStatus }) {
 }
 
 /** One tuner's firmware: where it stands, when SiliconDust's changelog was last read, and what's new. */
-export function FirmwareSection({ device, showName = false }: { device: DeviceState; showName?: boolean }) {
+export function FirmwareSection({ device }: { device: DeviceState }) {
   const { state } = useApp()
   const { firmware: s, tuner } = device
   const { firmware: check, dismiss } = useEdits()
@@ -74,7 +73,7 @@ export function FirmwareSection({ device, showName = false }: { device: DeviceSt
   const canInstall = s.state === 'update-available' && tuner.online && !tuner.updating && !running
 
   return (
-    <Section icon={Cpu} title={showName ? `Firmware — ${deviceTitle(device)}` : 'Firmware'}>
+    <Section bare icon={Cpu} title="Firmware" description="The firmware the tuner is running, and installing a newer one.">
       <Row
         title="Version"
         description={`${tuner.firmware.name ?? tuner.model ?? 'Tuner'} · ${s.current || tuner.firmware.version || 'unknown'}`}
