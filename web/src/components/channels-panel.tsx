@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, EyeOff, Gauge, ListChecks, Loader2, Radar, Sigma, Square, Star, X } from 'lucide-react'
+import { Check, EyeOff, Gauge, Loader2, Radar, Sigma, Square, Star, Tv, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ChannelAbout } from '@/components/channel-about'
@@ -267,7 +267,7 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
     })
 
   return (
-    <Section bare icon={ListChecks} title="Channels" description="Which channels viewers and media servers get. A disabled channel is left out of the lineup, and a favorite is starred. Where a channel has been watched, its average signal quality over the last 30 days is shown.">
+    <Section bare icon={Tv} title="Channels" description="Which channels viewers and media servers get. A disabled channel is left out of the lineup, and a favorite is starred. Where a channel has been watched, its average signal quality over the last 30 days is shown.">
       <div className="space-y-4 p-4">
         {!online ? (
           <p className="text-sm text-muted-foreground">The tuner is offline, so there is nothing to read.</p>

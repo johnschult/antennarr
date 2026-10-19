@@ -1,10 +1,10 @@
-import { Cpu, Gauge, ListChecks, Server, SlidersHorizontal, type LucideIcon } from 'lucide-react'
+import { Cpu, Gauge, Server, SlidersHorizontal, Tv, type LucideIcon } from 'lucide-react'
 
 export type TunerTab = 'overview' | 'channels' | 'device' | 'firmware' | 'settings'
 
 export const TUNER_TABS: { id: TunerTab; label: string; icon: LucideIcon }[] = [
   { id: 'overview', label: 'Overview', icon: Gauge },
-  { id: 'channels', label: 'Channels', icon: ListChecks },
+  { id: 'channels', label: 'Channels', icon: Tv },
   { id: 'device', label: 'Device', icon: Server },
   { id: 'firmware', label: 'Firmware', icon: Cpu },
   { id: 'settings', label: 'Settings', icon: SlidersHorizontal },
