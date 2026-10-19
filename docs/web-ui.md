@@ -2,6 +2,7 @@
 
 Open it at `http://<antennarr address>:5004/antennarr/` (see [Getting started](getting-started.md#3-open-the-web-page)).
 It has light and dark themes, and follows your computer's unless you choose one with the buttons at the top right.
+Besides sharing the tuner, it is a web UI for the tuner itself: it does what you would normally open the HDHomeRun's own web page for (channels, scanning, device details, restarting, firmware), more clearly and with more on top (what is on, who is watching, signal tests, filtering, history, logs). The tuner's own page is still one link away on a tuner's *Device* tab for anything it doesn't cover.
 These pictures are of a demo with a made-up tuner, guide and viewers.
 
 ## Live
