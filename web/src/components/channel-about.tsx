@@ -75,7 +75,7 @@ export function ChannelAbout({ channel }: { channel: TunerChannel }) {
           )}
           {looks.length > 0 && (
             <div>
-              <div className="mb-1.5 text-[11px] tracking-wide text-muted-foreground uppercase">Mostly shows</div>
+              <div className="mb-1.5 text-[11px] tracking-wide text-muted-foreground uppercase">Categories</div>
               <ul aria-label="Categories" className="flex flex-wrap gap-1.5">
                 {looks.map((l) => (
                   <li key={l.label} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 py-1 pr-2.5 pl-2 text-xs">
