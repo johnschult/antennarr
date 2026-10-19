@@ -180,6 +180,16 @@ func TestAddingATunerTakesOverTheAdminPort(t *testing.T) {
 		t.Errorf("listen = %q, want the port the admin page is on (%s)", added.Listen, f.base)
 	}
 
+	// The admin-only listener has let the port go, whichever system this is: binding ":port" while
+	// "127.0.0.1:port" is held fails on Linux and succeeds on macOS, and either way the tuner has to be
+	// what answers there.
+	f.srv.fleetMu.Lock()
+	holding := f.srv.bare != nil
+	f.srv.fleetMu.Unlock()
+	if holding {
+		t.Error("the admin-only listener still holds the port the tuner was added on")
+	}
+
 	// The same address now serves the tuner and still the admin pages.
 	f.waitUp(t)
 	st := f.state(t)

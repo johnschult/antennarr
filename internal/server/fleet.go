@@ -344,11 +344,13 @@ func (s *Server) nextListen() string {
 
 // listen binds a device's port. If the admin-only listener has it, that is let
 // go first: the device serves the admin pages too. swapped says that happened.
+//
+// The admin-only listener is let go before the port is tried, not after it fails: whether binding
+// ":5004" fails while "127.0.0.1:5004" is held depends on the system (it does on Linux and does not on
+// macOS), and where it doesn't, the old listener would be left serving the port, and answering what the
+// device should with a 404.
 func (s *Server) listen(d access.Device) (ln net.Listener, swapped bool, err error) {
 	if ln, ok := s.cfg.Listeners[d.Name]; ok {
-		return ln, false, nil
-	}
-	if ln, err = net.Listen("tcp", d.Listen); err == nil {
 		return ln, false, nil
 	}
 	if s.bare != nil && samePort(s.bare.ln.Addr().String(), d.Listen) {
@@ -357,8 +359,10 @@ func (s *Server) listen(d access.Device) (ln net.Listener, swapped bool, err err
 			return ln, true, nil
 		}
 		s.openBare()
+		return nil, false, err
 	}
-	return nil, false, err
+	ln, err = net.Listen("tcp", d.Listen)
+	return ln, false, err
 }
 
 func samePort(a, b string) bool {
