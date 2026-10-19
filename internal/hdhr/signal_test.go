@@ -207,3 +207,42 @@ func TestParseStatus(t *testing.T) {
 		}
 	}
 }
+
+// A real tuner answers a lock with the address that holds it, not the key that was set, and gives the lock back
+// only for that key. The test has to work against that: it once called a free tuner busy, and left it locked.
+func TestATunerThatShowsWhoHoldsTheLockInsteadOfTheKeyIsTestedAndGivenBack(t *testing.T) {
+	c, srv := dial(t, hdhrtest.Options{LockShowsOwner: "192.168.1.5"})
+	sig, err := c.TestSignal(context.Background(), 3, "2.1", fast)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if !sig.Locked || sig.Channel != "2.1" || sig.Tuner != 3 {
+		t.Errorf("sig = %+v", sig)
+	}
+	if srv.Held(3) {
+		t.Error("the tuner is still held: the lock was not given back with its key")
+	}
+}
+
+func TestATunerThatShowsItsOwnerAndIsLockedBySomeoneElseIsLeftAlone(t *testing.T) {
+	c, srv := dial(t, hdhrtest.Options{LockShowsOwner: "192.168.1.5", Busy: map[int]string{3: "locked"}})
+	if _, err := c.TestSignal(context.Background(), 3, "2.1", fast); !errors.Is(err, hdhr.ErrTunerBusy) {
+		t.Fatalf("err = %v, want busy", err)
+	}
+	if !srv.Held(3) {
+		t.Error("somebody else's lock was taken away")
+	}
+	if len(srv.Tunes()) != 0 {
+		t.Errorf("tuned a tuner that was not ours: %v", srv.Tunes())
+	}
+}
+
+func TestAnErrorAfterTakingTheLockStillGivesItBack(t *testing.T) {
+	c, srv := dial(t, hdhrtest.Options{LockShowsOwner: "192.168.1.5", RefuseTune: true})
+	if _, err := c.TestSignal(context.Background(), 3, "2.1", fast); err == nil {
+		t.Fatal("no error")
+	}
+	if srv.Held(3) {
+		t.Error("held after a failed tune")
+	}
+}

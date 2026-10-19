@@ -63,6 +63,10 @@ type Options struct {
 	// Busy says which tuners are in use at the start: "locked" (somebody holds its lock), "tuned" (a channel is
 	// on it) or "streaming" (it has a target).
 	Busy map[int]string
+	// LockShowsOwner is how a real tuner shows a lock taken over the control connection: the address that holds
+	// it (this one), not the key it was taken with, which it keeps to itself and only accepts back. Empty is a
+	// tuner that shows the key.
+	LockShowsOwner string
 	// RefuseTune answers a tune request with an error, as a tuner that wouldn't tune to that channel.
 	RefuseTune bool
 	// Unknown is a value name the tuner answers with an error for, besides the ones it doesn't have.
@@ -92,6 +96,7 @@ type Server struct {
 	downTill time.Time // the tuner is restarting until then
 	restarts int
 	tunedAt  map[int]time.Time
+	keys     map[string]string // the key each lock was taken with, when the tuner shows its owner instead
 	tunes    []string
 }
 
@@ -124,6 +129,7 @@ func New(addr string, o Options) (*Server, error) {
 		"/sys/features": "channelmap: us-bcast us-cable us-hrc us-irc kr-bcast kr-cable\nmodulation: atsc3 8vsb qam256 qam64\nauto-modulation: auto auto6t auto6c qam\n",
 	}}
 	s.tunedAt = map[int]time.Time{}
+	s.keys = map[string]string{}
 	for i := 0; i < o.Tuners; i++ {
 		for _, v := range []string{"channel", "lockkey", "vchannel", "target"} {
 			s.values[fmt.Sprintf("/tuner%d/%s", i, v)] = "none"
@@ -376,6 +382,15 @@ func (s *Server) getSet(payload []byte) []byte {
 		if *value == "force" && strings.HasSuffix(name, "/lockkey") {
 			*value = "none"
 		}
+		if strings.HasSuffix(name, "/lockkey") && s.opts.LockShowsOwner != "" {
+			n := strings.TrimSuffix(strings.TrimPrefix(name, "/tuner"), "/lockkey")
+			if *value == "none" {
+				delete(s.keys, n)
+			} else {
+				s.keys[n] = *value
+				*value = s.opts.LockShowsOwner
+			}
+		}
 		s.values[name] = *value
 		if m := tuneRe.FindStringSubmatch(name); m != nil && m[2] == "channel" && *value == "none" {
 			n, _ := strconv.Atoi(m[1])
@@ -434,6 +449,9 @@ func (s *Server) lockCheck(name, value, key string) string {
 		return ""
 	}
 	held := s.values[fmt.Sprintf("/tuner%s/lockkey", m[1])]
+	if k, ok := s.keys[m[1]]; ok && held != "none" {
+		held = k // what it was taken with, whatever it shows
+	}
 	if m[2] == "lockkey" {
 		if value == "force" || held == "none" || key == held {
 			return ""

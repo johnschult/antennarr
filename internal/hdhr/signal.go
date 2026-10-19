@@ -105,18 +105,16 @@ func (c *Conn) TestSignal(ctx context.Context, tuner int, vchannel string, o Tes
 		}
 	}
 
-	// Take it with a key of our own, and make sure it is ours.
+	// Take it with a key of our own. A tuner that is locked by someone else refuses with an error; one that takes
+	// the lock says nothing more than yes (a real one answers with the address that holds the lock, not the key
+	// that was set, so the answer is not compared with the key). It is ours from here, whatever else goes wrong.
 	key := o.Key()
-	got, err := c.Set(ctx, name("lockkey"), strconv.FormatUint(uint64(key), 10))
 	var refused *Error
-	if errors.As(err, &refused) {
-		return Signal{}, ErrTunerBusy
-	}
-	if err != nil {
+	if _, err := c.Set(ctx, name("lockkey"), strconv.FormatUint(uint64(key), 10)); err != nil {
+		if errors.As(err, &refused) {
+			return Signal{}, ErrTunerBusy
+		}
 		return Signal{}, fmt.Errorf("couldn't take the tuner: %w", err)
-	}
-	if got != strconv.FormatUint(uint64(key), 10) {
-		return Signal{}, ErrTunerBusy
 	}
 	// Whatever happens next, give it back: the channel first, then the lock.
 	defer func() {
