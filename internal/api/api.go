@@ -204,15 +204,16 @@ type Summary struct {
 // SettingsDoc is the part of the settings that isn't per device or per viewer.
 // OwnerReserve and SharedCap are the defaults devices fall back to.
 type SettingsDoc struct {
-	Mode          string   `json:"mode"` // "no-viewers" or "enforced"
-	SharedCap     int      `json:"sharedCap"`
-	OwnerReserve  int      `json:"ownerReserve"`
-	Admin         []string `json:"admin"`
-	FirmwareCheck bool     `json:"firmwareCheck"`
-	Guide         bool     `json:"guide"`
-	History       bool     `json:"history"`
-	LogLevel      string   `json:"logLevel"`
-	Plex          PlexDoc  `json:"plex"`
+	Mode          string       `json:"mode"` // "no-viewers" or "enforced"
+	SharedCap     int          `json:"sharedCap"`
+	OwnerReserve  int          `json:"ownerReserve"`
+	Admin         []string     `json:"admin"`
+	FirmwareCheck bool         `json:"firmwareCheck"`
+	Guide         bool         `json:"guide"`
+	History       bool         `json:"history"`
+	LogLevel      string       `json:"logLevel"`
+	Plex          PlexDoc      `json:"plex"`
+	Tailscale     TailscaleDoc `json:"tailscale"`
 	// Notifications is where messages go and which events send them, without
 	// the secrets in the channels.
 	Notifications NotificationsDoc `json:"notifications"`
@@ -223,6 +224,12 @@ type SettingsDoc struct {
 type PlexDoc struct {
 	Enabled bool                 `json:"enabled"`
 	Admins  []access.PlexAccount `json:"admins"`
+}
+
+// TailscaleDoc is the settings for the built-in Tailscale node. Where the node is now is State.Tailscale.
+type TailscaleDoc struct {
+	Enabled  bool   `json:"enabled"`
+	Hostname string `json:"hostname"`
 }
 
 // DeviceDoc is one tuner as the dashboard shows it. OwnerReserve and
@@ -333,6 +340,7 @@ func (a *API) state() State {
 			History:       set.HistoryEnabled(),
 			LogLevel:      set.LogLevelName(),
 			Plex:          plexDoc(set),
+			Tailscale:     TailscaleDoc{Enabled: set.TailscaleEnabled(), Hostname: set.TailscaleHostname()},
 			Notifications: notificationsDoc(set),
 		},
 		Editable:      a.Store.Editable(),
