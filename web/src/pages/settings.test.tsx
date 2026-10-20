@@ -430,6 +430,19 @@ describe('Tailscale settings', () => {
     expect(within(access()).getByText(/include Tailscale/)).toBeInTheDocument()
   })
 
+  it('says which ports it answers on once connected, and nothing about ports before that', () => {
+    const { unmount } = renderSettings(withTailscale({ state: 'running', dnsName: 'attic.example.ts.net', addresses: ['100.64.0.7'], serving: ['5004', '5005'] }), 'access')
+    expect(within(access()).getByText(/answering on ports 5004, 5005/)).toBeInTheDocument()
+    unmount()
+    const one = withTailscale({ state: 'running', dnsName: 'attic.example.ts.net', addresses: ['100.64.0.7'], serving: ['5004'] })
+    const { unmount: u2 } = renderSettings(one, 'access')
+    expect(within(access()).getByText(/answering on port 5004\./)).toBeInTheDocument()
+    u2()
+    renderSettings(withTailscale({ state: 'running', dnsName: 'attic.example.ts.net', addresses: ['100.64.0.7'] }), 'access')
+    expect(within(access()).queryByText(/answering on/)).not.toBeInTheDocument()
+    expect(within(access()).getByText(/^Connected\. Share this device/)).toBeInTheDocument()
+  })
+
   it('has the Tailscale logo on its row, as a decorative picture, with or without the node', () => {
     const { unmount } = renderSettings(withTailscale({ enabled: false }), 'access')
     const logo = access().querySelector('img[src$="tailscale-icon.svg"]')

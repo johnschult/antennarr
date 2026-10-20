@@ -111,7 +111,9 @@ function describe(s: TailscaleStatus): string {
     case 'needs-login':
       return s.loginUrl ? 'Not signed in yet. Sign in with the link, then approve the new device if your tailnet asks.' : 'Waiting for a sign-in link…'
     case 'running':
-      return 'Connected. Share this device with the people who should reach it, from the Tailscale admin console.'
+      return s.serving?.length
+        ? `Connected, and answering on ${s.serving.length === 1 ? 'port' : 'ports'} ${s.serving.join(', ')}. Share this device with the people who should reach it, from the Tailscale admin console.`
+        : 'Connected. Share this device with the people who should reach it, from the Tailscale admin console.'
     case 'no-store':
       return 'Yagi was started without a settings file, so there is nowhere to keep this device’s identity. Start it with -config.'
     case 'error':

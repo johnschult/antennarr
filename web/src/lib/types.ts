@@ -234,6 +234,8 @@ export interface TailscaleStatus {
   error?: string
   /** TS_AUTHKEY is set, so signing in needs no link. */
   authKeyInEnv?: boolean
+  /** The ports Yagi answers on at the node's addresses: the tuners' ports, and the admin port when it has its own. */
+  serving?: string[]
 }
 
 export interface Summary {
