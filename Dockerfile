@@ -23,7 +23,16 @@ COPY go.mod go.sum ./
 COPY cmd ./cmd
 COPY internal ./internal
 COPY --from=web /src/internal/ui/dist ./internal/ui/dist
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -tags "${TAGS}" -ldflags="-s -w -X github.com/johnschult/yagi/internal/version.Version=${VERSION}" -o /out/yagi ./cmd/yagi
+# The Tailscale build also says which version it is. Without this the library reports "-ERR-BuildInfo" in the
+# Tailscale admin console (there is no .git here to stamp it from), so it is given the library's own version, and
+# this release after it, the way Tailscale's build script stamps its own.
+RUN set -eu; \
+    ldflags="-s -w -X github.com/johnschult/yagi/internal/version.Version=${VERSION}"; \
+    case ",${TAGS}," in *,tsnet,*) \
+        ts=$(go list -m -f '{{.Version}}' tailscale.com); ts=${ts#v}; \
+        ldflags="$ldflags -X tailscale.com/version.shortStamp=${ts} -X tailscale.com/version.longStamp=${ts}-yagi${VERSION}";; \
+    esac; \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -tags "${TAGS}" -ldflags="$ldflags" -o /out/yagi ./cmd/yagi
 
 # 3. A small image to run it.
 FROM alpine:3
