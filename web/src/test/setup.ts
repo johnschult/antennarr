@@ -19,3 +19,9 @@ afterEach(() => {
   document.documentElement.className = ''
   document.documentElement.style.colorScheme = ''
 })
+
+// jsdom has no pointer capture, which Vaul's drag handle calls when a sheet is pressed.
+for (const m of ['setPointerCapture', 'releasePointerCapture'] as const) {
+  if (!(m in Element.prototype)) Object.defineProperty(Element.prototype, m, { value: () => {}, configurable: true })
+}
+if (!('hasPointerCapture' in Element.prototype)) Object.defineProperty(Element.prototype, 'hasPointerCapture', { value: () => false, configurable: true })
