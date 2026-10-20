@@ -72,7 +72,7 @@ Yagi's own log. Open it from the *Logs* tab of *Settings*, the **Logs** link in 
 <p>
   <img src="screenshots/phone-live.jpg" alt="The Live page on a phone" width="220">
   &nbsp;
-  <img src="screenshots/phone-menu.jpg" alt="The navigation menu on a phone" width="220">
+  <img src="screenshots/phone-viewers.jpg" alt="The Viewers page on a phone, with the tab bar along the bottom" width="220">
 </p>
 
-The same pages, with a menu and cards instead of wide tables.
+The same pages, with a tab bar along the bottom like a phone app, cards instead of wide tables, and dialogs that slide up from the bottom as sheets. The connection status and sign-out move to the footer.

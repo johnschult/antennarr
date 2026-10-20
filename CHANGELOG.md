@@ -5,6 +5,16 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/yagi/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## Unreleased
+
+### Changed
+
+- **A tab bar along the bottom on phones**, like an iPhone app, instead of the menu button. The connection status and sign-out are in the footer on a phone.
+- **Dialogs are bottom sheets on phones** (using [Vaul](https://vaul.emilkowal.ski/)), and so is a channel's info button. Wide screens keep dialogs and the popover.
+- **The *Tuners* link always shows the list of tuners**, even with just one, so another can be added from there. It used to jump to the tuner's page.
+- The version in the footer starts with a **v**, like the release it links to.
+- The Home Screen icon has more room around the logo, so iOS rounding no longer crowds it.
+
 ## 2026.10.11 (2026-10-19)
 
 ### Changed
