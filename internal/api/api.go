@@ -618,7 +618,7 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 			s.Plex.Enabled = *in.PlexEnabled
 		}
 		if in.TailnetOnly != nil {
-			if *in.TailnetOnly && !(s.TailscaleEnabled() && a.tailscale().State == tailnet.Running) {
+			if *in.TailnetOnly && (!s.TailscaleEnabled() || a.tailscale().State != tailnet.Running) {
 				return &httpErr{http.StatusConflict, "Yagi's own Tailscale has to be on and connected first, so there is a way in once the LAN is closed"}
 			}
 			if s.Tailscale == nil {
