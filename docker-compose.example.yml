@@ -18,5 +18,9 @@ services:
     # Run as a user that owns ./config, so the settings and sign-ins can be saved.
     user: "1000:1000"
     command: ["-config", "/config/yagi.json"]
+    # To keep the admin pages on a port of their own, away from the tuner ports your
+    # viewers use, uncomment this (see docs/configuration.md):
+    # environment:
+    #   YAGI_ADMIN_LISTEN: ":5000"
     volumes:
       - ./config:/config

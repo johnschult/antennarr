@@ -214,7 +214,7 @@ function Settings({ device, onRemove }: { device: DeviceState; onRemove: () => v
         onSave={async (text) => {
           const host = device.listen.slice(0, device.listen.lastIndexOf(':'))
           await edit.mutateAsync({ name: device.name, patch: { listen: `${host}:${Number(text)}` } })
-          moveToPort(Number(text))
+          if (!state.adminSeparate) moveToPort(Number(text)) // the page was served from the old port, unless it has one of its own
         }}
       />
       <Row title="Remove this tuner" description="Stops sharing it and cuts its streams. The tuner itself is untouched.">

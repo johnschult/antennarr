@@ -5,6 +5,12 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/yagi/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## Unreleased
+
+### Added
+
+- **The admin pages can have a port of their own.** Start Yagi with `-admin-listen :5000` (or set `YAGI_ADMIN_LISTEN`, which is easiest in Docker) and the web page, its API, sign-in and the first-run setup link are on that port only. The tuner ports then carry nothing but the tuners, so you can open them to your viewers and keep the admin port to yourself. Adding or removing a tuner never moves the page, and a tuner can't be given the admin port. Nothing changes unless you set it: see [Configuration](https://github.com/johnschult/yagi/blob/main/docs/configuration.md#giving-the-admin-pages-their-own-port).
+
 ## 2026.10.12 (2026-10-20)
 
 ### Changed

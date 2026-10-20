@@ -270,6 +270,8 @@ export interface AppState {
   viewers: Viewer[]
   settings: Settings
   editable: boolean
+  /** The admin pages have a port of their own, so moving a tuner to another port doesn't move the page. */
+  adminSeparate?: boolean
   /** This build's version ("2026.10.0", or "dev") and its page on GitHub. */
   version: string
   versionUrl: string

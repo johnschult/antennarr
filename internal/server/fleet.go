@@ -234,6 +234,9 @@ func (s *Server) SetListen(name, listen string) (access.Device, error) {
 		return dev.cfg, api.NewError(http.StatusBadRequest, err.Error())
 	}
 
+	if err := s.adminPortTaken(cfg); err != nil {
+		return dev.cfg, api.NewError(http.StatusConflict, err.Error())
+	}
 	ln, err := net.Listen("tcp", listen)
 	if err != nil {
 		return dev.cfg, api.NewError(http.StatusConflict, fmt.Sprintf("can't listen on %s: %v", listen, err))
@@ -320,6 +323,22 @@ func (s *Server) freeName(id string) string {
 // the admin pages are on, so the page stays where it is; later ones go one past
 // the highest in use.
 func (s *Server) nextListen() string {
+	if s.cfg.AdminSeparate {
+		// The admin pages keep their own port, so a tuner never takes it over: start at 5004, and go
+		// one past the highest in use, stepping over the admin port.
+		port := 5004
+		for _, d := range s.deviceList() {
+			if _, p, err := net.SplitHostPort(d.cfg.Listen); err == nil {
+				if n, err := strconv.Atoi(p); err == nil && n >= port {
+					port = n + 1
+				}
+			}
+		}
+		for samePort(s.cfg.AdminListen, ":"+strconv.Itoa(port)) {
+			port++
+		}
+		return ":" + strconv.Itoa(port)
+	}
 	if s.bare != nil {
 		if _, port, err := net.SplitHostPort(s.bare.ln.Addr().String()); err == nil {
 			return ":" + port
@@ -353,7 +372,10 @@ func (s *Server) listen(d access.Device) (ln net.Listener, swapped bool, err err
 	if ln, ok := s.cfg.Listeners[d.Name]; ok {
 		return ln, false, nil
 	}
-	if s.bare != nil && samePort(s.bare.ln.Addr().String(), d.Listen) {
+	if err := s.adminPortTaken(d); err != nil {
+		return nil, false, err
+	}
+	if !s.cfg.AdminSeparate && s.bare != nil && samePort(s.bare.ln.Addr().String(), d.Listen) {
 		s.stopBare()
 		if ln, err = net.Listen("tcp", d.Listen); err == nil {
 			return ln, true, nil
@@ -363,6 +385,15 @@ func (s *Server) listen(d access.Device) (ln net.Listener, swapped bool, err err
 	}
 	ln, err = net.Listen("tcp", d.Listen)
 	return ln, false, err
+}
+
+// adminPortTaken says why a tuner can't use its port, when the admin pages have a port of their own and
+// it is that one. It is nil otherwise.
+func (s *Server) adminPortTaken(d access.Device) error {
+	if s.cfg.AdminSeparate && samePort(s.cfg.AdminListen, d.Listen) {
+		return fmt.Errorf("%s is the port of the admin pages (-admin-listen): give the tuner another", d.Listen)
+	}
+	return nil
 }
 
 func samePort(a, b string) bool {

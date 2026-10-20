@@ -81,3 +81,7 @@ curl -i http://<yagi address>:5004/discover.json
 - `403` with `X-Yagi-Reason: not-allowed` means it arrived and Yagi doesn't recognize the sender's address. The log shows the address it saw. Add that.
 - `502 tuner unreachable` means it got through and the tuner is offline.
 - `200` with your tuner's name and Yagi's address means it works.
+
+## Keeping the admin pages off the tuner ports
+
+If viewers can reach your tuner ports, they can also reach the admin sign-in page there, which only lets an admin in but is still more than they need to see. Give the pages a port of their own with `-admin-listen` (or `YAGI_ADMIN_LISTEN`, see [Configuration](configuration.md#giving-the-admin-pages-their-own-port)), then allow your viewers to the tuner ports only and yourself to the admin port.

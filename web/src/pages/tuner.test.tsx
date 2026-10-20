@@ -290,6 +290,21 @@ describe('the port', () => {
     await waitFor(() => expect(moveToPort).toHaveBeenCalledWith(5010))
   })
 
+  it('saves a new port but leaves the page where it is when the admin pages have a port of their own', async () => {
+    const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    const s = makeState()
+    s.adminSeparate = true
+    const user = userEvent.setup()
+    settings(s)
+    const box = screen.getByLabelText('Port')
+    await user.clear(box)
+    await user.type(box, '5010')
+    await user.click(saveButton(section('Settings'))!)
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ listen: ':5010' }))
+    expect(moveToPort).not.toHaveBeenCalled() // the page isn't served from the tuner's port
+  })
+
   it('keeps the address part of where it listens', async () => {
     const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
     vi.stubGlobal('fetch', fn)
