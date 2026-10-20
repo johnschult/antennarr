@@ -125,7 +125,7 @@ Example, with a 4-tuner device, `ownerReserve: 1` and one of *your* TVs watching
 | Flag | Meaning |
 |---|---|
 | `-config PATH` | The settings file, `yagi.json` in the current directory by default (`/config/yagi.json` in the Docker image). If it doesn't exist it is created with the defaults at start-up. If the default one can't be created, Yagi runs without saving; a `-config` you name that can't be created is an error. |
-| `-tuner HOST` | A tuner's address, to run one device without a settings file. |
+| `-tuner HOST` | A tuner's address, to run one device without a settings file. Also read from the `YAGI_TUNER` environment variable. It is used only while the settings file has no `devices`. |
 | `-tuner-id ID` | A tuner's DeviceID to search for if its address changes. |
 | `-listen ADDR` | Where to listen (default `:5004`). |
 | `-admin-listen ADDR` | Serve the admin pages on their own port, and only there (`:5000`, or `127.0.0.1:5000`). Also read from the `YAGI_ADMIN_LISTEN` environment variable. See [Giving the admin pages their own port](#giving-the-admin-pages-their-own-port). |

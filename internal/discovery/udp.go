@@ -22,6 +22,8 @@ type Device struct {
 	ID         string // 8 hex digits, upper case
 	BaseURL    string // e.g. http://192.168.1.132
 	TunerCount int
+
+	FriendlyName string // what the tuner calls itself, such as "HDHomeRun FLEX 4K"; only known when it was asked over HTTP
 }
 
 const (

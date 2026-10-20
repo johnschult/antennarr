@@ -103,7 +103,7 @@ The message says why. The common ones:
 
 - **An unknown key**: the settings file is strict, so a typo is an error: `json: unknown field "viewrs"`.
 - **A bad value**: a device name with a space, a `listen` without a port, an `id` that isn't 8 hex digits, a viewer with no addresses, the same address listed for two viewers, two devices on one port.
-- **"no tuner found, so starting without one"** is not an error: Yagi is running with only the web page. Open it and add a tuner (*Find tuners*, or by address).
+- **"no tuner is set up yet"** is not an error: Yagi is running with only the web page. Open it and add a tuner from the list it finds, or by address.
 - **"… can't be combined with devices declared in the settings file"**: you passed `-tuner`/`-listen`/… and also have `devices` in the file. Choose one.
 - **"address already in use"**: something else has that port. Pick another `listen`.
 

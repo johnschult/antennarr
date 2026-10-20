@@ -33,8 +33,8 @@ export function tunerSubtitle(device: DeviceState): string {
 function TunerRow({ device }: { device: DeviceState }) {
   const busy = device.tuner.slots.filter((s) => s.inUse).length
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-card/70 px-4 py-3">
-      <Link to={tunerPath(device.name)} className="group flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <li className="relative flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-card/70 px-4 py-3 transition-colors focus-within:bg-card has-[a.row-link:hover]:bg-card">
+      <Link to={tunerPath(device.name)} className="row-link group flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
         <StatusDot device={device} />
         <img src={asset('hdhomerun-icon.svg')} alt="" aria-hidden="true" className="size-8 shrink-0 rounded-md" draggable={false} />
         <span className="min-w-0">
@@ -45,7 +45,9 @@ function TunerRow({ device }: { device: DeviceState }) {
       <span className="text-sm tabular-nums text-muted-foreground">
         {busy} of {device.tuner.tunerCount} in use
       </span>
-      <FirmwareBadge status={device.firmware} to={tunerPath(device.name, 'firmware')} />
+      <span className="relative z-10">
+        <FirmwareBadge status={device.firmware} to={tunerPath(device.name, 'firmware')} />
+      </span>
       <ChevronRight aria-hidden className="size-4 text-muted-foreground" />
     </li>
   )

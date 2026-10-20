@@ -1,6 +1,7 @@
-import { Plus, RefreshCw } from 'lucide-react'
+import { Loader2, Plus, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { FoundTuners } from '@/components/found-tuners'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -23,8 +24,6 @@ export function AddTunerDialog({ open, onOpenChange }: Props) {
   )
 }
 
-const hostOf = (address: string) => address.replace(/^https?:\/\//, '')
-
 function AddTunerForm({ onDone }: { onDone: () => void }) {
   const { addTuner } = useEdits()
   const search = useMutation({ mutationFn: discoverTuners })
@@ -39,10 +38,10 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
     search.mutate()
   }, [search])
 
-  async function add(input: DeviceInput) {
+  async function add(...inputs: DeviceInput[]) {
     setError(null)
     try {
-      await addTuner.mutateAsync(input)
+      for (const input of inputs) await addTuner.mutateAsync(input)
       onDone()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.')
@@ -73,7 +72,11 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
             <RefreshCw data-icon="inline-start" /> Search again
           </Button>
         </div>
-        {search.isPending && <p className="text-sm text-muted-foreground">Looking for tuners…</p>}
+        {search.isPending && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+            <Loader2 aria-hidden className="size-4 animate-spin" /> Looking for tuners…
+          </p>
+        )}
         {search.isError && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {search.error instanceof Error ? search.error.message : 'The search failed.'}
@@ -85,25 +88,7 @@ function AddTunerForm({ onDone }: { onDone: () => void }) {
           </p>
         )}
         {found.length > 0 && (
-          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
-            {found.map((f) => (
-              <li key={f.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-                <div className="min-w-0">
-                  <div className="font-mono text-sm">{f.id}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {hostOf(f.address)} · {f.tuners} {f.tuners === 1 ? 'tuner' : 'tuners'}
-                  </div>
-                </div>
-                {f.added ? (
-                  <span className="shrink-0 text-xs text-muted-foreground">Already added as {f.added}</span>
-                ) : (
-                  <Button type="button" size="sm" disabled={busy} aria-label={`Add ${f.id}`} onClick={() => void add({ tuner: f.address, id: f.id })}>
-                    <Plus data-icon="inline-start" /> Add
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
+          <FoundTuners tuners={found} busy={busy} onAdd={(inputs) => void add(...inputs)} />
         )}
       </section>
 

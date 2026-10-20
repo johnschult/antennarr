@@ -121,6 +121,12 @@ func TestDiscoverListsTunersAndMarksTheOnesAlreadyAdded(t *testing.T) {
 			{ID: "10AAAA01", BaseURL: "http://192.168.1.51", TunerCount: 2},
 		}, nil
 	}
+	e.api.Describe = func(_ context.Context, address string) string {
+		if address == "http://192.168.1.50" {
+			return "HDHomeRun FLEX 4K"
+		}
+		return ""
+	}
 	code, v := e.call(t, "POST", "/api/discover", "")
 	if code != http.StatusOK {
 		t.Fatalf("= %d %v", code, v)
@@ -135,6 +141,12 @@ func TestDiscoverListsTunersAndMarksTheOnesAlreadyAdded(t *testing.T) {
 	}
 	if second["id"] != "10ABCC87" || second["added"] != "antenna" || second["address"] != "http://192.168.1.50" {
 		t.Errorf("second = %v, want the tuner Yagi already fronts marked with its name", second)
+	}
+	if second["label"] != "HDHomeRun FLEX 4K" || second["name"] != "flex-4k-87" {
+		t.Errorf("second = %v, want the name it calls itself and a device name made from it", second)
+	}
+	if first["label"] != "" || first["name"] != "tuner-01" {
+		t.Errorf("first = %v, want a plain name when the tuner can't be asked", first)
 	}
 }
 
@@ -191,5 +203,17 @@ func TestChangingThePortNeedsAFleet(t *testing.T) {
 	e := newEnv(t, access.DefaultSettings(), true)
 	if code, _ := e.call(t, "PATCH", "/api/devices/antenna", `{"listen":":5010"}`); code != http.StatusConflict {
 		t.Errorf("without a fleet = %d, want 409", code)
+	}
+}
+
+func TestAddingATunerWithADisplayNameSavesTheLabel(t *testing.T) {
+	e := newEnv(t, access.DefaultSettings(), true)
+	f := withFleet(t, e)
+	e.call(t, "POST", "/api/devices", `{"tuner":"192.168.1.50","name":"antenna","label":" Roof antenna "}`)
+	if len(f.added) != 1 || f.added[0].Name != "antenna" {
+		t.Fatalf("added %+v", f.added)
+	}
+	if got := fileSettings(t, e).Labels["antenna"]; got != "Roof antenna" {
+		t.Errorf("label = %q, want it saved trimmed", got)
 	}
 }

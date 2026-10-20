@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { LOOK_EVERY_MS, LOOK_FOR_MS } from '@/hooks/use-find-tuners'
 import { LivePage } from '@/pages/live'
 import { makeCableDevice, makeDevice, makeState } from '@/test/fixtures'
 import { renderTunerRoutes, renderWithApp, stubFetch } from '@/test/render'
@@ -9,58 +10,91 @@ afterEach(() => vi.unstubAllGlobals())
 
 const none = () => makeState({ devices: [], viewers: [] })
 const found = [
-  { id: '10ABCC87', address: 'http://192.168.1.50', tuners: 4, added: '' },
-  { id: '1111AAA2', address: 'http://192.168.1.51', tuners: 2, added: 'cable' },
+  { id: '10ABCC87', address: 'http://192.168.1.50', tuners: 4, added: '', label: 'HDHomeRun FLEX 4K', name: 'flex-4k-87' },
+  { id: '1111AAA2', address: 'http://192.168.1.51', tuners: 2, added: 'cable', label: 'HDHomeRun CONNECT', name: 'connect-a2' },
 ]
 const okState = { 'GET /state': () => ({ body: makeState() }) }
 
 describe('with no tuner yet', () => {
-  it('the live page says so and offers to find one, instead of showing 0 of 0', () => {
+  const look = (tuners: unknown[] = []) => stubFetch({ 'POST /discover': () => ({ body: { tuners } }), ...okState })
+
+  it('the live page says so and looks for tuners by itself, instead of showing 0 of 0', async () => {
+    const { fn, calls } = look()
+    vi.stubGlobal('fetch', fn)
     renderWithApp(<LivePage />, none())
     expect(screen.getByRole('heading', { name: 'No tuners yet' })).toBeInTheDocument()
     expect(screen.getByText('No tuner yet')).toBeInTheDocument()
     expect(screen.queryByText(/of 0 tuners live/)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Find tuners' })).toBeEnabled()
+    expect(screen.getByText(/Looking for HDHomeRun tuners/)).toBeInTheDocument()
+    await waitFor(() => expect(calls.some((c) => c.url.endsWith('/discover'))).toBe(true)) // no click needed
+    expect(screen.getByRole('button', { name: 'Add by address' })).toBeEnabled()
   })
 
   it('cannot add one when there is nowhere to save it, and says why', () => {
+    vi.stubGlobal('fetch', look().fn)
     renderWithApp(<LivePage />, { ...none(), editable: false })
-    expect(screen.getByRole('button', { name: 'Find tuners' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add by address' })).toBeDisabled()
     expect(screen.getByText(/no settings file/)).toBeInTheDocument()
   })
 
-  it('searches when the dialog opens, lists what answered, and adds the one chosen', async () => {
-    const { fn, calls } = stubFetch({
-      'POST /discover': () => ({ body: { tuners: found } }),
-      'POST /devices': () => ({ status: 201, body: makeDevice() }),
-      ...okState,
-    })
+  it('shows what it found with a name filled in, and adds nothing until Add is pressed', async () => {
+    const { fn, calls } = look(found)
     vi.stubGlobal('fetch', fn)
     renderWithApp(<LivePage />, none())
-    await userEvent.click(screen.getByRole('button', { name: 'Find tuners' }))
+    expect(await screen.findByText('Tuners Yagi can see')).toBeInTheDocument()
+    expect(screen.getByLabelText('Name for 10ABCC87')).toHaveValue('HDHomeRun FLEX 4K')
+    expect(screen.getByLabelText('Address name for 10ABCC87')).toHaveValue('flex-4k-87')
+    expect(screen.getByText('Already added as cable')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add 1111AAA2' })).not.toBeInTheDocument()
+    expect(calls.some((c) => c.url.endsWith('/devices'))).toBe(false)
 
-    const dialog = await screen.findByRole('dialog')
-    expect(await within(dialog).findByText('10ABCC87')).toBeInTheDocument()
-    expect(within(dialog).getByText('192.168.1.50 · 4 tuners')).toBeInTheDocument()
-    // One already added is shown as such and has no Add button.
-    expect(within(dialog).getByText('Already added as cable')).toBeInTheDocument()
-    expect(within(dialog).queryByRole('button', { name: 'Add 1111AAA2' })).not.toBeInTheDocument()
-
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Add 10ABCC87' }))
+    const name = screen.getByLabelText('Name for 10ABCC87')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Roof antenna')
+    await userEvent.click(screen.getByRole('button', { name: 'Add 10ABCC87' }))
     await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/devices'))).toBe(true))
-    expect(calls.find((c) => c.url.endsWith('/devices'))?.body).toEqual({ tuner: 'http://192.168.1.50', id: '10ABCC87' })
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(calls.filter((c) => c.url.endsWith('/discover'))).toHaveLength(1) // searched once, not again
+    expect(calls.find((c) => c.url.endsWith('/devices'))?.body).toEqual({ tuner: 'http://192.168.1.50', id: '10ABCC87', name: 'flex-4k-87', label: 'Roof antenna' })
   })
 
-  it('adds by address when nothing is found, and shows a refusal in place', async () => {
+  it('adds every tuner found with Add all, each with its own name', async () => {
+    const two = [found[0]!, { ...found[1]!, added: '' }]
+    const { fn, calls } = stubFetch({ 'POST /discover': () => ({ body: { tuners: two } }), 'POST /devices': () => ({ status: 201, body: makeDevice() }), ...okState })
+    vi.stubGlobal('fetch', fn)
+    renderWithApp(<LivePage />, none())
+    await userEvent.click(await screen.findByRole('button', { name: 'Add all 2' }))
+    await waitFor(() => expect(calls.filter((c) => c.method === 'POST' && c.url.endsWith('/devices'))).toHaveLength(2))
+    expect(calls.filter((c) => c.url.endsWith('/devices')).map((c) => (c.body as { name: string }).name)).toEqual(['flex-4k-87', 'connect-a2'])
+  })
+
+  it('stops looking after a few minutes, says so, explains Docker, and looks again when asked', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const { fn, calls } = look()
+      vi.stubGlobal('fetch', fn)
+      renderWithApp(<LivePage />, none())
+      await screen.findByText(/Looking for HDHomeRun tuners/)
+      await vi.advanceTimersByTimeAsync(LOOK_FOR_MS + LOOK_EVERY_MS)
+      expect(await screen.findByText(/looked for a few minutes and no tuner answered/)).toBeInTheDocument()
+      expect(screen.getByText(/host networking/)).toBeInTheDocument()
+      const before = calls.length
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(calls.length).toBe(before) // stopped
+
+      await userEvent.click(screen.getByRole('button', { name: 'Look again' }))
+      await waitFor(() => expect(calls.length).toBeGreaterThan(before))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('adds by address, and shows a refusal in place', async () => {
     const { fn, calls } = stubFetch({
       'POST /discover': () => ({ body: { tuners: [] } }),
       'POST /devices': () => ({ status: 422, body: { error: "couldn't reach an HDHomeRun at 10.0.0.9" } }),
     })
     vi.stubGlobal('fetch', fn)
     renderWithApp(<LivePage />, none())
-    await userEvent.click(screen.getByRole('button', { name: 'Find tuners' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add by address' }))
     const dialog = await screen.findByRole('dialog')
     expect(await within(dialog).findByText(/No tuner answered/)).toBeInTheDocument()
 
@@ -78,11 +112,11 @@ describe('with no tuner yet', () => {
   it('shows a failed search and lets it be run again', async () => {
     let n = 0
     const { fn } = stubFetch({
-      'POST /discover': () => (++n === 1 ? { status: 502, body: { error: "couldn't search the network for tuners" } } : { body: { tuners: found.slice(0, 1) } }),
+      'POST /discover': () => (++n === 2 ? { status: 502, body: { error: "couldn't search the network for tuners" } } : { body: { tuners: found.slice(0, 1) } }),
     })
     vi.stubGlobal('fetch', fn)
     renderWithApp(<LivePage />, none())
-    await userEvent.click(screen.getByRole('button', { name: 'Find tuners' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add by address' }))
     const dialog = await screen.findByRole('dialog')
     expect(await within(dialog).findByText("couldn't search the network for tuners")).toBeInTheDocument()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Search again' }))

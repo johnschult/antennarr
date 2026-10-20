@@ -28,8 +28,9 @@ func Probe(ctx context.Context, client *http.Client, baseURL string) (Device, er
 		return Device{}, fmt.Errorf("%s: %s", baseURL, resp.Status)
 	}
 	var d struct {
-		DeviceID   string
-		TunerCount int
+		DeviceID     string
+		TunerCount   int
+		FriendlyName string
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
 		return Device{}, fmt.Errorf("%s: not an HDHomeRun: %w", baseURL, err)
@@ -37,7 +38,7 @@ func Probe(ctx context.Context, client *http.Client, baseURL string) (Device, er
 	if d.DeviceID == "" {
 		return Device{}, fmt.Errorf("%s: no DeviceID in discover.json", baseURL)
 	}
-	return Device{ID: strings.ToUpper(d.DeviceID), BaseURL: NormalizeBase(baseURL), TunerCount: d.TunerCount}, nil
+	return Device{ID: strings.ToUpper(d.DeviceID), BaseURL: NormalizeBase(baseURL), TunerCount: d.TunerCount, FriendlyName: d.FriendlyName}, nil
 }
 
 // ScanHosts probes every host (host or host:port) over HTTP, 64 at a time, and
