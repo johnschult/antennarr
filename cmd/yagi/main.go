@@ -124,7 +124,7 @@ func main() {
 		}
 	}
 	srv, err := server.New(ctx, server.Config{
-		Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: admin, AdminSeparate: *adminListen != "", Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
+		Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: admin, AdminSeparate: *adminListen != "", TailscaleAuthKey: os.Getenv("TS_AUTHKEY"), Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
 	})
 	if err != nil {
 		fail(err)

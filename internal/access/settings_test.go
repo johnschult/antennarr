@@ -169,3 +169,28 @@ func TestWarnsWhenAViewerIsInsideAnAdminRange(t *testing.T) {
 		t.Errorf("no admin range warned: %q", w)
 	}
 }
+
+func TestTailscaleHostname(t *testing.T) {
+	for _, ok := range []string{"yagi", "attic-2", "a", "x1"} {
+		if err := ValidateTailscaleHostname(ok); err != nil {
+			t.Errorf("%q: %v, want it accepted", ok, err)
+		}
+	}
+	for _, bad := range []string{"", "Yagi", "-yagi", "yagi-", "my yagi", "yagi.example", strings.Repeat("a", 64)} {
+		if err := ValidateTailscaleHostname(bad); err == nil {
+			t.Errorf("%q accepted, want a refusal", bad)
+		}
+	}
+	s := DefaultSettings()
+	if s.TailscaleEnabled() || s.TailscaleHostname() != "yagi" {
+		t.Errorf("defaults: enabled=%v hostname=%q, want off and yagi", s.TailscaleEnabled(), s.TailscaleHostname())
+	}
+	s.Tailscale = &TailscaleSettings{Enabled: true, Hostname: "Bad Name"}
+	if err := s.Validate(); err == nil {
+		t.Error("a bad hostname in the settings file was accepted")
+	}
+	s.Tailscale.Hostname = "attic"
+	if err := s.Validate(); err != nil || s.TailscaleHostname() != "attic" || !s.TailscaleEnabled() {
+		t.Errorf("err=%v hostname=%q enabled=%v", err, s.TailscaleHostname(), s.TailscaleEnabled())
+	}
+}
