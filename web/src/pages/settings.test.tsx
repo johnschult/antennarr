@@ -430,6 +430,20 @@ describe('Tailscale settings', () => {
     expect(within(access()).getByText(/include Tailscale/)).toBeInTheDocument()
   })
 
+  it('has the Tailscale logo on its row, as a decorative picture, with or without the node', () => {
+    const { unmount } = renderSettings(withTailscale({ enabled: false }), 'access')
+    const logo = access().querySelector('img[src$="tailscale-icon.svg"]')
+    expect(logo).not.toBeNull()
+    expect(logo).toHaveAttribute('aria-hidden', 'true')
+    expect(logo).toHaveAttribute('alt', '')
+    expect(logo!.className).toContain('dark:invert') // black on the light theme, white on the dark one
+    unmount()
+    const s = state()
+    s.tailscale = { built: false, state: 'unavailable', hostname: 'yagi' }
+    renderSettings(s, 'access')
+    expect(access().querySelector('img[src$="tailscale-icon.svg"]')).not.toBeNull()
+  })
+
   it('turns on with the switch, and shows nothing more while it is off', async () => {
     const { fn, calls } = patched()
     vi.stubGlobal('fetch', fn)

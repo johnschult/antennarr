@@ -1,6 +1,7 @@
-import { ExternalLink, Network } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { TailscaleIcon } from '@/components/tailscale-icon'
 import { buttonVariants } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
@@ -33,7 +34,7 @@ export function TailscaleRows() {
     return (
       <Row
         title="Join your Tailscale network"
-        icon={<Network className="size-5 text-muted-foreground" aria-hidden />}
+        icon={<TailscaleIcon />}
         description={
           <>
             This build of Yagi doesn&apos;t include Tailscale. The <code>-tailscale</code> image does: change the image tag in your compose file.{' '}
@@ -53,7 +54,7 @@ export function TailscaleRows() {
       <SwitchRow
         id="setting-tailscale"
         title="Join your Tailscale network"
-        icon={<Network className="size-5 text-muted-foreground" aria-hidden />}
+        icon={<TailscaleIcon />}
         description="Yagi becomes its own device on your tailnet (it doesn't need Tailscale installed on this machine), so people you share it with can reach the admin page and tuners by name, without opening ports."
         checked={set.enabled}
         disabled={!editable}
