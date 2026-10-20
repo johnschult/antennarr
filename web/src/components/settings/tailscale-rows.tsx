@@ -2,7 +2,6 @@ import { ExternalLink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TailnetOnlyDialog } from '@/components/tailnet-only-dialog'
-import { TailscaleIcon } from '@/components/tailscale-icon'
 import { buttonVariants } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
@@ -36,7 +35,6 @@ export function TailscaleRows() {
     return (
       <Row
         title="Join your Tailscale network"
-        icon={<TailscaleIcon />}
         description={
           <>
             This build of Yagi doesn&apos;t include Tailscale. The <code>-tailscale</code> image does: change the image tag in your compose file.{' '}
@@ -56,27 +54,13 @@ export function TailscaleRows() {
       <SwitchRow
         id="setting-tailscale"
         title="Join your Tailscale network"
-        icon={<TailscaleIcon />}
-        description="Yagi becomes its own device on your tailnet (it doesn't need Tailscale installed on this machine), so people you share it with can reach the admin page and tuners by name, without opening ports."
+        description="Yagi becomes its own device on your tailnet. It doesn't need Tailscale installed on this machine."
         checked={set.enabled}
         disabled={!editable}
         onChange={(next) => update.mutateAsync({ tailscaleEnabled: next })}
       />
       {set.enabled && (
         <>
-          <EditRow
-            key={`ts-host-${set.hostname}`}
-            kind="text"
-            maxLength={63}
-            id="setting-tailscaleHostname"
-            title="Name on the tailnet"
-            description="Lowercase letters, numbers and hyphens. Changing it restarts the connection."
-            initial={set.hostname}
-            validate={(t) => (/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i.test(t.trim()) ? null : 'Use letters, numbers and hyphens, not starting or ending with a hyphen.')}
-            disabled={!editable}
-            onSave={(text) => update.mutateAsync({ tailscaleHostname: text.trim() })}
-          />
-          <TailscaleStatusRow status={status} />
           {(status.state === 'running' || set.tailnetOnly) && (
             <SwitchRow
               id="setting-tailnetOnly"
@@ -96,6 +80,19 @@ export function TailscaleRows() {
               }}
             />
           )}
+          <EditRow
+            key={`ts-host-${set.hostname}`}
+            kind="text"
+            maxLength={63}
+            id="setting-tailscaleHostname"
+            title="Name on the tailnet"
+            description="Lowercase letters, numbers and hyphens. Changing it restarts the connection."
+            initial={set.hostname}
+            validate={(t) => (/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/i.test(t.trim()) ? null : 'Use letters, numbers and hyphens, not starting or ending with a hyphen.')}
+            disabled={!editable}
+            onSave={(text) => update.mutateAsync({ tailscaleHostname: text.trim() })}
+          />
+          <TailscaleStatusRow status={status} />
           <TailnetOnlyDialog open={closing} onClose={() => setClosing(false)} status={status} />
         </>
       )}

@@ -1,10 +1,9 @@
-import type { LucideIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 /** A group of related settings: a heading, then one bordered list of rows. */
-export function Section({ title, description, icon: Icon, bare = false, children }: { title: string; description?: string; icon?: LucideIcon; /** On a page that already says what it is, such as a tab: no heading, only the description. */ bare?: boolean; children: ReactNode }) {
+export function Section({ title, description, icon: Icon, bare = false, children }: { title: string; description?: string; icon?: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>; /** On a page that already says what it is, such as a tab: no heading, only the description. */ bare?: boolean; children: ReactNode }) {
   return (
     <section aria-label={title} className="space-y-2">
       {(!bare || description) && (

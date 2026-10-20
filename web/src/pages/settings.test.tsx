@@ -25,7 +25,7 @@ const okState = { 'GET /state': () => ({ body: makeState() }) }
 describe('SettingsPage', () => {
   it('groups settings into sections of rows, not a card each', () => {
     renderSettings(state(), 'access')
-    for (const name of ['Limits', 'Admins and viewers']) expect(section(name)).toBeInTheDocument()
+    for (const name of ['Limits', 'Viewers', 'Admin access', 'Tailscale']) expect(section(name)).toBeInTheDocument()
     expect(screen.queryByText(/^Save$/)).not.toBeInTheDocument() // nothing to save until something changes
     expect(document.querySelector('[data-slot="card"]')).toBeNull()
   })
@@ -74,14 +74,14 @@ describe('SettingsPage', () => {
     expect(within(tuner).getByLabelText('Max tuners for viewers')).toHaveValue(2)
     expect(within(tuner).getByText(/4 tuners/)).toBeInTheDocument()
     expect(screen.getByLabelText('Admin addresses')).toHaveValue('100.64.0.0/10')
-    expect(within(section('Admins and viewers')).getByRole('link', { name: 'Viewers only' })).toHaveAttribute('href', '/viewers')
+    expect(within(section('Viewers')).getByRole('link', { name: 'Viewers only' })).toHaveAttribute('href', '/viewers')
   })
 
   it('says when there are no viewers yet', () => {
     const s = state()
     s.settings.mode = 'no-viewers'
     renderSettings(s, 'access')
-    expect(within(section('Admins and viewers')).getByText('No viewers yet')).toBeInTheDocument()
+    expect(within(section('Viewers')).getByText('No viewers yet')).toBeInTheDocument()
   })
 
   describe('numbers', () => {
@@ -155,7 +155,7 @@ describe('SettingsPage', () => {
       const box = screen.getByLabelText('Admin addresses')
       await user.clear(box)
       await user.type(box, '192.168.1.5{Enter}10.0.0.0/8') // Enter makes a new line in a multi-line box
-      await user.click(saveButton(section('Admins and viewers'))!)
+      await user.click(saveButton(section('Admin access'))!)
       await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ admin: ['192.168.1.5', '10.0.0.0/8'] }))
     })
 
@@ -165,7 +165,7 @@ describe('SettingsPage', () => {
       const user = userEvent.setup()
       renderSettings(state(), 'access')
       await user.clear(screen.getByLabelText('Admin addresses'))
-      await user.click(saveButton(section('Admins and viewers'))!)
+      await user.click(saveButton(section('Admin access'))!)
       await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ admin: [] }))
     })
 
@@ -176,8 +176,8 @@ describe('SettingsPage', () => {
       renderSettings(state(), 'access')
       await user.clear(screen.getByLabelText('Admin addresses'))
       await user.type(screen.getByLabelText('Admin addresses'), 'nope')
-      await user.click(saveButton(section('Admins and viewers'))!)
-      expect(await within(section('Admins and viewers')).findByRole('alert')).toHaveTextContent('admin: bad address "nope"')
+      await user.click(saveButton(section('Admin access'))!)
+      expect(await within(section('Admin access')).findByRole('alert')).toHaveTextContent('admin: bad address "nope"')
     })
   })
 
@@ -345,7 +345,7 @@ describe('Plex sign-in settings', () => {
     s.settings.plex = { enabled, admins }
     return s
   }
-  const access = () => section('Admins and viewers')
+  const access = () => section('Admin access')
 
   it('is off by default and shows no accounts list', () => {
     renderSettings(withPlex([], false), 'access')
@@ -436,7 +436,7 @@ describe('reachedAnotherWay', () => {
 })
 
 describe('Tailscale settings', () => {
-  const access = () => section('Admins and viewers')
+  const access = () => section('Tailscale')
   const withTailscale = (over: Partial<NonNullable<ReturnType<typeof state>['tailscale']>> & { enabled?: boolean; hostname?: string; tailnetOnly?: boolean }) => {
     const s = state()
     const { enabled = true, hostname = 'yagi', tailnetOnly: tailnetOnlyOn = false, ...status } = over
@@ -467,7 +467,7 @@ describe('Tailscale settings', () => {
     expect(within(access()).getByText(/^Connected\. Share this device/)).toBeInTheDocument()
   })
 
-  it('has the Tailscale logo on its row, as a decorative picture, with or without the node', () => {
+  it('has its own section, headed by the Tailscale logo as a decorative picture, with or without the node', () => {
     const { unmount } = renderSettings(withTailscale({ enabled: false }), 'access')
     const logo = access().querySelector('img[src$="tailscale-icon.svg"]')
     expect(logo).not.toBeNull()
@@ -558,7 +558,7 @@ describe('Tailscale settings', () => {
 
   it('tells the admin addresses row that LAN addresses no longer matter while the LAN is closed', () => {
     renderSettings(withTailscale({ state: 'running', tailnetOnly: true, lanClosed: true }), 'access')
-    expect(within(access()).getByText(/addresses on your LAN can’t connect at all/)).toBeInTheDocument()
+    expect(within(section('Admin access')).getByText(/addresses on your LAN can’t connect at all/)).toBeInTheDocument()
   })
 
   it('says when the LAN is closed', () => {

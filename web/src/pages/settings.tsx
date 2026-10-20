@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { EditRow } from '@/components/settings/edit-row'
 import { NotificationRows } from '@/components/settings/notification-rows'
 import { PlexRows } from '@/components/settings/plex-rows'
+import { TailscaleIcon } from '@/components/tailscale-icon'
 import { TailscaleRows } from '@/components/settings/tailscale-rows'
 import { Row, Section } from '@/components/settings/section'
 import { SwitchRow } from '@/components/settings/switch-row'
@@ -21,6 +22,8 @@ import { LogsPanel } from '@/pages/logs'
 
 const wholeNumber = (text: string) =>
   text.trim() === '' || !Number.isInteger(Number(text)) || Number(text) < 0 ? 'Enter a whole number, 0 or more.' : null
+
+const TailscaleSectionIcon = ({ className }: { className?: string }) => <TailscaleIcon className={className} />
 
 export function SettingsPage() {
   const { state } = useApp()
@@ -83,7 +86,15 @@ export function SettingsPage() {
           ))}
 
 
-          <Section title="Admins and viewers" icon={Users}>
+          <Section title="Viewers" icon={Users}>
+            <Row title="Who can use your tuners" description="Only the addresses of the viewers you add. With no viewers, nobody can.">
+              <Link to="/viewers" className="text-sm font-medium underline underline-offset-2 hover:text-foreground">
+                {settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}
+              </Link>
+            </Row>
+          </Section>
+
+          <Section title="Admin access" icon={ShieldCheck} description="Who can open this page and change settings.">
             <EditRow
               key={`admin-${settings.admin.join(',')}`}
               kind="lines"
@@ -96,12 +107,9 @@ export function SettingsPage() {
               onSave={(text) => update.mutateAsync({ admin: parseAddresses(text) })}
             />
             <PlexRows />
+          </Section>
+          <Section title="Tailscale" icon={TailscaleSectionIcon} description="Yagi can join your tailnet by itself, with no Tailscale on this machine, so the people you share it with reach the admin page and tuners by name, without opening ports.">
             <TailscaleRows />
-            <Row title="Who can use your tuners" description="Only the addresses of the viewers you add. With no viewers, nobody can.">
-              <Link to="/viewers" className="text-sm font-medium underline underline-offset-2 hover:text-foreground">
-                {settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}
-              </Link>
-            </Row>
           </Section>
             </>
           )}
