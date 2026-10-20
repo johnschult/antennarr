@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -44,6 +45,10 @@ func (n *stubNode) at(addr string) string {
 		return ln.Addr().String()
 	}
 	return ""
+}
+
+func (n *stubNode) WhoIs(context.Context, string) (tailnet.Who, error) {
+	return tailnet.Who{Login: "alice@example.com", Node: "laptop.tail1.ts.net"}, nil
 }
 
 func (n *stubNode) Status() tailnet.NodeStatus {
@@ -339,3 +344,34 @@ type fakeConn struct {
 
 func (c *fakeConn) RemoteAddr() net.Addr { return c.from }
 func (c *fakeConn) Close() error         { c.l.closedConns++; return nil }
+
+func TestAViewerOnTheTailnetIsRecognisedByLoginAndALanClientIsNot(t *testing.T) {
+	a := newFakeTuner(t, "10ABCC87", "antenna-box")
+	devs := []access.Device{{Name: "antenna", Listen: ":5004", Tuner: a.name, StreamPort: a.streamPort}}
+	s := access.DefaultSettings()
+	s.Tailscale = &access.TailscaleSettings{Enabled: true, Hostname: "attic"}
+	s.Viewers = []access.Viewer{{Name: "Alice", Addresses: []string{"tailscale:alice@example.com"}, Limit: 1}}
+	cfgPath := filepath.Join(t.TempDir(), "yagi.json")
+	if err := access.SaveSettings(cfgPath, s); err != nil {
+		t.Fatal(err)
+	}
+	node := &stubNode{} // WhoIs says alice@example.com
+	r := startConfigured(t, s, devs, "", "", func(c *Config) {
+		c.ConfigPath = cfgPath
+		c.TailscaleStart = func(tailnet.Config) tailnet.Node { return node }
+	}, a)
+	waitFor(t, "the tailnet listener", func() bool { return node.at(":5004") != "" })
+
+	resp, err := http.Get("http://" + node.at(":5004") + "/discover.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("over the tailnet as alice: %d, want 200", resp.StatusCode)
+	}
+	// the very same address on the LAN side has no identity, and nothing else lists it
+	if code, _ := r.get(t, "antenna", "/discover.json"); code != 403 {
+		t.Errorf("over the LAN: %d, want 403 (an identity only counts when the node said it)", code)
+	}
+}

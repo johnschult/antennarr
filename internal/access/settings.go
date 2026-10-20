@@ -272,12 +272,14 @@ type parsed struct {
 	Settings
 	viewers []parsedViewer
 	admin   []netip.Prefix
+	adminID []string // Tailscale identities (lower-cased) that are admins
 	devices map[string]Device
 }
 
 type parsedViewer struct {
 	Viewer
 	prefixes []netip.Prefix
+	idents   []string // Tailscale identities (lower-cased) that are this viewer
 }
 
 // reserveFor and capFor give the values in force for a device: its own
@@ -430,6 +432,13 @@ func (s Settings) parse() (parsed, error) {
 		return out, fmt.Errorf("logLevel must be one of %s", strings.Join(LogLevels, ", "))
 	}
 	for _, a := range s.Admin {
+		if id, ok, err := parseIdentity(a); ok {
+			if err != nil {
+				return out, fmt.Errorf("admin: %w", err)
+			}
+			out.adminID = append(out.adminID, id)
+			continue
+		}
 		p, err := parsePrefix(a)
 		if err != nil {
 			return out, fmt.Errorf("admin: %w", err)
@@ -479,6 +488,7 @@ func (s Settings) parse() (parsed, error) {
 
 	names := map[string]bool{}
 	owner := map[netip.Prefix]string{}
+	identOwner := map[string]string{}
 	for _, v := range s.Viewers {
 		name := strings.TrimSpace(v.Name)
 		if name == "" {
@@ -509,6 +519,17 @@ func (s Settings) parse() (parsed, error) {
 		pv := parsedViewer{Viewer: v}
 		pv.Name = name
 		for _, a := range v.Addresses {
+			if id, ok, err := parseIdentity(a); ok {
+				if err != nil {
+					return out, fmt.Errorf("viewer %q: %w", name, err)
+				}
+				if other, dup := identOwner[id]; dup {
+					return out, fmt.Errorf("%s%s is listed for both %q and %q", IdentityPrefix, id, other, name)
+				}
+				identOwner[id] = name
+				pv.idents = append(pv.idents, id)
+				continue
+			}
 			p, err := parsePrefix(a)
 			if err != nil {
 				return out, fmt.Errorf("viewer %q: %w", name, err)
@@ -525,7 +546,7 @@ func (s Settings) parse() (parsed, error) {
 }
 
 // AdminReaches reports whether somebody other than this machine itself could open the admin pages when they
-// arrive from one of the node's neighbours on the tailnet: Plex sign-in has an account, or an admin range (not a single
+// arrive from one of the node's neighbours on the tailnet: Plex sign-in has an account, an admin is a tailnet login or device, or an admin range (not a single
 // address, which only one client could have) covers the given addresses. addrs are the tailnet addresses of Yagi's own
 // node, and stand for the tailnet's address range.
 func (s Settings) AdminReaches(addrs []string) bool {
@@ -533,8 +554,8 @@ func (s Settings) AdminReaches(addrs []string) bool {
 	if err != nil {
 		return false
 	}
-	if c.PlexEnabled() && len(c.Plex.Admins) > 0 {
-		return true
+	if (c.PlexEnabled() && len(c.Plex.Admins) > 0) || len(c.adminID) > 0 {
+		return true // a listed tailnet login or device arrives over the tailnet by definition
 	}
 	for _, a := range addrs {
 		ip, err := netip.ParseAddr(a)

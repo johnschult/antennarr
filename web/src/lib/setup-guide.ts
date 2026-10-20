@@ -155,7 +155,7 @@ export function transportSteps(t: Transport, tailscaleIP?: string, node?: YagiNo
       const name = node.dnsName ?? node.addresses?.[0] ?? 'this device'
       const steps = [
         `Yagi is on your tailnet as ${name}${node.addresses?.[0] && node.dnsName ? ` (${node.addresses[0]})` : ''}, so nothing needs installing or opening on this machine. The viewer\u2019s media server needs Tailscale too, signed in to the same tailnet, or share Yagi\u2019s device with their tailnet (Tailscale admin console → Machines → ${node.dnsName?.split('.')[0] ?? 'yagi'} → Share).`,
-        'Make sure the viewer\u2019s Tailscale address (100.x.y.z) is one of their addresses in Yagi (Viewers → Edit).',
+        'Make sure they are one of the viewer\u2019s addresses in Yagi (Viewers → Edit): their Tailscale address (100.x.y.z), or better, their Tailscale login as tailscale:name@example.com, which keeps working when the address changes.',
       ]
       if (!node.serving?.includes(node.port)) steps.push(`Yagi isn\u2019t answering on port ${node.port} on the tailnet yet. It takes a couple of seconds after a port is added or changed.`)
       return steps

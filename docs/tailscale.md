@@ -2,7 +2,7 @@
 
 Yagi can join your Tailscale network by itself, as its own device, with no Tailscale installed on the machine it runs on. The idea is that you share that one device with the people who need it, and nothing is opened on your router.
 
-> **Where this is.** Yagi can join a tailnet, keep its sign-in, show you where it is, and **answer on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. Still to come, see [the plan](DESIGN.md#built-in-tailscale-plan): recognising viewers by their Tailscale identity, and HTTPS.
+> **Where this is.** Yagi can join a tailnet, keep its sign-in, show you where it is, and **answer on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. Still to come, see [the plan](DESIGN.md#built-in-tailscale-plan): HTTPS.
 
 ## Which image
 
@@ -33,8 +33,8 @@ Yagi keeps the device's identity in a `tailscale` folder beside the settings fil
 Once the status row says *Connected, and answering on port …*, a viewer on the tailnet adds the tuner in their media server at the device's name and the tuner's port, such as `yagi:5004`, like any other HDHomeRun (see [Media servers](media-servers.md)). The tuner ports answer exactly as they do on the LAN: the same limits, the same allowlist, the same log.
 
 - **The viewer's setup steps know about it.** In *Viewers → Connection steps* (and when adding a viewer), **Yagi's own Tailscale** is its own choice, first, with the device's tailnet name as the address to give them, and it is kept apart from **Tailscale on this machine** (the Tailscale the host runs, if it runs one): they are two devices with two addresses, and each choice shows only its own. For Yagi's own there is no firewall step, because its traffic doesn't come through the machine's network.
-- **The viewer is still matched by address.** On the tailnet that is their Tailscale address (`100.x.y.z`), so list that in the viewer's addresses. Recognising them by their Tailscale login instead is a later part.
-- **The admin page is on the tuner's port too**, and is still only for an admin: an address in *Settings → Access → Admin addresses* (add `100.64.0.0/10` to allow your whole tailnet, but only if none of your viewers is on it), or a Plex account.
+- **A viewer can be matched by who they are** (see [Who is on the other end](#who-is-on-the-other-end)), or by address: their Tailscale address (`100.x.y.z`), which changes if they re-register the device.
+- **The admin page is on the tuner's port too**, and is still only for an admin: an address in *Settings → Access → Admin addresses* (add `100.64.0.0/10` to allow your whole tailnet, but only if none of your viewers is on it), a Plex account, or a tailnet login (`tailscale:you@example.com`).
 - **The LAN ports stay open unless you close them.** Yagi still answers on the machine's own address as before. See [Only on the tailnet](#only-on-the-tailnet) to turn that off.
 - If a port is changed, or a tuner added or removed, the tailnet follows within a couple of seconds.
 
@@ -48,6 +48,21 @@ Once the node is connected, *Settings → Access → Only on the tailnet* closes
 - **Docker:** a browser on the Docker host reaches a published port from the bridge address, not from loopback, so with the switch on it is refused too. Use the tailnet name from that machine as well.
 - **Getting back in.** Switch it off from the page over the tailnet, or start Yagi with `-allow-lan` (`YAGI_ALLOW_LAN=1`), which keeps the LAN open whatever the setting says.
 - Tailscale running on the machine itself (not Yagi's node) connects from a `100.x` address on the machine's own network interface, so it is refused too. Use Yagi's own node with this switch.
+
+## Who is on the other end
+
+A connection that comes in over Yagi's own Tailscale arrives with a name, not only an address: the node knows which login and which device it came from. So a viewer's address list (Viewers → Edit) and the admin addresses can name them directly:
+
+- `tailscale:alice@example.com` is anyone signed in to the tailnet as that login, on any of their devices, at whatever address. Use it for a person.
+- `tailscale:laptop.tail1234.ts.net` is that one device (its full tailnet name; the *Machines* page of the Tailscale admin console shows it). Use it for a tagged server, or one device.
+
+The rules:
+
+- **It only counts when the node says so.** Yagi asks its own Tailscale node who is on the other end of each connection that came in over the tailnet. A connection from the LAN, or a request header that claims a login, is never taken as one.
+- **A login is not a device, and a tagged device has no login.** Name a tagged device by its tailnet name.
+- **It beats the address.** If a connection matches a name, that viewer is used; otherwise the address decides, as before. The same name can't be listed for two viewers.
+- **Shared devices work the same way.** Someone on another tailnet who is given access to Yagi's device by sharing arrives with their own login.
+- **It is checked against what Tailscale reports now**, so removing someone from the tailnet, or their login changing, takes effect for their next connection.
 
 ## Good to know
 

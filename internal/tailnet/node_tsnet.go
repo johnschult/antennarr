@@ -109,6 +109,25 @@ func (n *tsnetNode) Status() NodeStatus {
 
 func (n *tsnetNode) Listen(addr string) (net.Listener, error) { return n.srv.Listen("tcp", addr) }
 
+func (n *tsnetNode) WhoIs(ctx context.Context, remote string) (Who, error) {
+	lc, err := n.srv.LocalClient()
+	if err != nil {
+		return Who{}, err
+	}
+	r, err := lc.WhoIs(ctx, remote)
+	if err != nil {
+		return Who{}, err
+	}
+	var w Who
+	if r.Node != nil {
+		w.Node = strings.TrimSuffix(r.Node.Name, ".")
+		if !r.Node.IsTagged() && r.UserProfile != nil {
+			w.Login = r.UserProfile.LoginName // a tagged device has no person behind it
+		}
+	}
+	return w, nil
+}
+
 func (n *tsnetNode) Close() error {
 	n.cancel()
 	<-n.done
