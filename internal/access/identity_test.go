@@ -95,3 +95,12 @@ func TestBadIdentitiesAreRefusedWhenTheSettingsAreChecked(t *testing.T) {
 		t.Errorf("one login for two viewers: %v", err)
 	}
 }
+
+func TestADeviceEntryWithTheRootDotMeansTheSame(t *testing.T) {
+	s := DefaultSettings()
+	s.Viewers = []Viewer{{Name: "Phone", Addresses: []string{"tailscale:Phone.tail1.ts.net."}, Limit: 1}}
+	p, _ := newPolicy(t, s, &fakeMon{})
+	if err := p.Authorize(fromTailnet("100.64.9.8:1", Identity{Node: "phone.tail1.ts.net."})); err != nil {
+		t.Errorf("an entry with the root dot never matched: %v", err)
+	}
+}

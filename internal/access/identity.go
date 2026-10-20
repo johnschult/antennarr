@@ -48,7 +48,8 @@ func parseIdentity(s string) (entry string, ok bool, err error) {
 	if !strings.HasPrefix(strings.ToLower(s), IdentityPrefix) {
 		return "", false, nil
 	}
-	v := strings.ToLower(strings.TrimSpace(s[len(IdentityPrefix):]))
+	// A device is reported without the root dot, so an entry written with one means the same.
+	v := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(s[len(IdentityPrefix):])), ".")
 	switch {
 	case v == "":
 		return "", true, fmt.Errorf("%q: say who, such as tailscale:alice@example.com", s)

@@ -536,6 +536,10 @@ func TestDemo(t *testing.T) {
 // demoNode is a Tailscale node that is up, with a made-up name and address, so the demo can show what the pages do with one.
 type demoNode struct{}
 
+func (demoNode) WhoIs(context.Context, string) (tailnet.Who, error) {
+	return tailnet.Who{Login: "alex@example.com", Node: "alex-laptop.tail-demo.ts.net"}, nil
+}
+
 func (demoNode) Status() tailnet.NodeStatus {
 	return tailnet.NodeStatus{State: tailnet.Running, DNSName: "yagi.tail-demo.ts.net", Addresses: []string{"100.101.102.103"}}
 }
