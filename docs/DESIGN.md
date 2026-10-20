@@ -15,7 +15,7 @@ The setup it replaces is a friend's HDHomeRun shared with the user's Plex. It's 
 
 ## Name
 
-**Yagi**: over-the-air TV plus the -arr family. It's deliberately not "Tunarr", which is an existing, popular project that also emulates an HDHomeRun. A quick search found no other "Yagi"; check GitHub, Docker Hub and Unraid Community Apps before committing.
+**Yagi**, after the Yagi–Uda antenna: the rooftop TV antenna, a boom with a row of rods across it, named for Hidetsugu Yagi and Shintaro Uda, who developed it in the 1920s. The program does something similar for a tuner: it takes a signal that only reaches one place and points it at the people you choose. It was called Antennarr until October 2026; [the FAQ](faq.md#why-is-it-called-yagi) tells the story and how to say it.
 
 Logo: Lucide's `antenna` icon (ISC licence) in teal on a dark tile; the SVG and PNGs are in `docs/brand/`. It replaced an earlier retro-TV-with-rabbit-ears mark.
 
@@ -227,10 +227,35 @@ Not built yet: rescanning channels from the UI, filtering and exporting the acti
 Next, roughly in this order. Each is a real piece of work, not a tweak:
 
 1. **Plex-verified viewer enrollment** (later): an invite link leads to a Plex sign-in, and the viewer's server addresses are read from plex.tv and allowlisted.
-2. **Tailscale, set up from the web UI.** An optional built-in tailnet node (tsnet): enable it, sign in with a link or an auth key, see the node's name and address, and have viewers identified by their tailnet identity instead of an IP. Needs no firewall rules on the host.
+2. **Tailscale, set up from the web UI.** An optional built-in tailnet node (tsnet). The plan is in [Built-in Tailscale](#built-in-tailscale-plan) below.
 3. **Manage tuners from the UI.** Renaming, adding, removing and changing the port are done, live. Still to do: changing a tuner's address or DeviceID.
 4. **The setup guide generator** (above): per-viewer commands for firewall, routing and the media server, with verify and rollback steps, replacing the placeholder Setup page.
 5. **Cutover:** replace the socat relay and the viewer-side DNAT that serve a friend's tuner today.
+
+## Built-in Tailscale (plan)
+
+An optional node inside Yagi (Tailscale's `tsnet` package), so the machine needs no Tailscale install and no host firewall rules, the sharer can share just that node, and viewers can be recognised by their tailnet identity.
+
+**Decisions made**
+
+- **Two images, chosen in compose.** The Tailscale code sits behind a Go build tag (`tsnet`), so the normal binary and image stay free of third-party dependencies. The release builds `ghcr.io/johnschult/yagi:<version>` as now and `…:<version>-tailscale`, plus a rolling `:tailscale`. Each has its own CI build and vulnerability scan.
+- **Signing in.** Settings shows the Tailscale sign-in link while the node isn't enrolled, and a `TS_AUTHKEY` (ideally tagged) also works for unattended setups. State is kept in `/config/tailscale`.
+- **LAN ports.** The tailnet listeners are added beside the LAN ones. A *tailnet only* switch turns the LAN ones off, leaving loopback so the machine's own browser still reaches the admin page.
+
+**Phases**
+
+1. **Spike.** Add the dependency behind the build tag. Measure the binary size, the vulnerability scan and the Go version it needs, and decide whether to go on.
+2. **The node.** Settings (on/off, hostname, default `yagi`, optional tag), starting and stopping it, the sign-in link, and its name and addresses in the state.
+3. **Listeners.** The admin port and each tuner port are also served on the tailnet, which means a device's HTTP server takes more than one listener. The *tailnet only* switch. The separate admin port lets the admin pages be tailnet-only while the tuner ports are shared.
+4. **Identity.** Ask Tailscale who a caller is (their login and device) and let a viewer be matched by tailnet user or device as well as by address. An admin can be a listed tailnet user.
+5. **TLS.** HTTPS for the admin page when the tailnet has HTTPS certificates enabled; opt-in, because the machine name then appears in a public certificate log. Tuner ports stay HTTP: Plex expects it, and the tailnet already encrypts the traffic.
+6. **Docs.** Setup, sharing the node with a viewer's tailnet, turning off key expiry for the node, tags and access controls, a compose example for the `-tailscale` image.
+
+**Risks**
+
+- Whether a viewer on another tailnet can use the HTTPS name of a shared node is not covered by Tailscale's documentation. Test it in the spike.
+- Our tests use a fake listener provider, not a tailnet. Real behaviour needs a manual test with a real viewer.
+- A large dependency tree means a vulnerability in it becomes ours to update. Only the Tailscale build carries it.
 
 ## Notes
 
