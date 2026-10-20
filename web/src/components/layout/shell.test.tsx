@@ -71,12 +71,13 @@ describe('Shell bottom bar on a phone', () => {
     expect(screen.getByRole('navigation', { name: 'Main' }).className).toContain('pb-[env(safe-area-inset-bottom)]')
   })
 
-  it('moves the connection and sign-out, which the phone header has no room for, to the footer', async () => {
+  it('keeps the connection status in the header, and moves sign-out, which the phone header has no room for, to the footer', async () => {
     mount()
     const footer = within(screen.getByRole('contentinfo'))
-    expect(footer.getByTestId('connection')).toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).getByTestId('connection')).toBeInTheDocument()
+    expect(footer.queryByTestId('connection')).not.toBeInTheDocument()
     expect(await footer.findByRole('button', { name: /john/ })).toBeInTheDocument()
-    expect(within(screen.getByRole('banner')).queryByTestId('connection')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).queryByRole('button', { name: /john/ })).not.toBeInTheDocument()
   })
 
   it('goes to a page when you tap it', async () => {

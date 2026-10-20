@@ -9,7 +9,7 @@ Each release's notes on GitHub are its section of this file.
 
 ### Changed
 
-- **A tab bar along the bottom on phones**, like an iPhone app, instead of the menu button. The connection status and sign-out are in the footer on a phone.
+- **A tab bar along the bottom on phones**, like an iPhone app, instead of the menu button. Sign-out is in the footer on a phone; the connection status stays in the header.
 - **Dialogs are bottom sheets on phones** (using [Vaul](https://vaul.emilkowal.ski/)), and so is a channel's info button. Wide screens keep dialogs and the popover.
 - **The *Tuners* link always shows the list of tuners**, even with just one, so another can be added from there. It used to jump to the tuner's page.
 - The version in the footer starts with a **v**, like the release it links to.

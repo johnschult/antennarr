@@ -150,13 +150,9 @@ export function Shell() {
               ))}
             </nav>
           )}
-          <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-            {!phone && (
-              <>
-                <ConnectionStatus />
-                <SignedIn />
-              </>
-            )}
+          <div className="ml-auto flex items-center gap-2 text-xs md:gap-3 text-muted-foreground">
+            <ConnectionStatus />
+            {!phone && <SignedIn />}
             <ThemeToggle />
           </div>
         </div>
@@ -171,8 +167,7 @@ export function Shell() {
           Point your antenna <strong className="font-semibold text-foreground">anywhere</strong>.
         </p>
         {phone && (
-          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 py-1">
-            <ConnectionStatus />
+          <div className="flex justify-center py-1">
             <SignedIn />
           </div>
         )}
