@@ -6,8 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -39,6 +41,7 @@ func main() {
 	flag.StringVar(&f.streamPort, "stream-port", "5004", "tuner's streaming port")
 	flag.StringVar(&f.advertise, "advertise", "", "base URL to hand to clients (default: the host they connected with)")
 	flag.StringVar(&f.reportID, "report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
+	adminListen := flag.String("admin-listen", os.Getenv("YAGI_ADMIN_LISTEN"), "serve the admin pages on their own address, e.g. \":5000\", and only there; the tuner ports then carry nothing but the tuners (also set by YAGI_ADMIN_LISTEN)")
 	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuners")
 	firmwareURL := flag.String("firmware-url", "", "read the firmware changelog from here instead of SiliconDust's page (for a mirror, or testing)")
 	showVersion := flag.Bool("version", false, "print the version and exit")
@@ -109,8 +112,19 @@ func main() {
 		fail(err)
 	}
 
+	admin := f.listen
+	if *adminListen != "" {
+		if admin, err = adminAddress(*adminListen); err != nil {
+			fail(err)
+		}
+		if _, ap, _ := net.SplitHostPort(admin); ap != "" {
+			if _, lp, _ := net.SplitHostPort(f.listen); ap == lp {
+				fail(fmt.Errorf("-admin-listen and -listen are both port %s: -listen is where the tuners start, so the admin pages need another", ap))
+			}
+		}
+	}
 	srv, err := server.New(ctx, server.Config{
-		Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: f.listen, Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
+		Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: admin, AdminSeparate: *adminListen != "", Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
 	})
 	if err != nil {
 		fail(err)
@@ -121,6 +135,20 @@ func main() {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
+}
+
+// adminAddress reads -admin-listen: a port (":5000" or "5000") or an address ("127.0.0.1:5000").
+func adminAddress(v string) (string, error) {
+	v = strings.TrimSpace(v)
+	if v != "" && strings.Trim(v, "0123456789") == "" {
+		v = ":" + v
+	}
+	if _, port, err := net.SplitHostPort(v); err != nil {
+		return "", fmt.Errorf("-admin-listen %q must look like \":5000\" or \"127.0.0.1:5000\"", v)
+	} else if n, err := strconv.Atoi(port); err != nil || n < 1 || n > 65535 {
+		return "", fmt.Errorf("-admin-listen %q has a bad port", v)
+	}
+	return v, nil
 }
 
 // defaultConfigPath is where the settings live when -config isn't given: next

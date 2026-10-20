@@ -128,6 +128,7 @@ Example, with a 4-tuner device, `ownerReserve: 1` and one of *your* TVs watching
 | `-tuner HOST` | A tuner's address, to run one device without a settings file. |
 | `-tuner-id ID` | A tuner's DeviceID to search for if its address changes. |
 | `-listen ADDR` | Where to listen (default `:5004`). |
+| `-admin-listen ADDR` | Serve the admin pages on their own port, and only there (`:5000`, or `127.0.0.1:5000`). Also read from the `YAGI_ADMIN_LISTEN` environment variable. See [Giving the admin pages their own port](#giving-the-admin-pages-their-own-port). |
 | `-stream-port PORT` | The tuner's streaming port (default `5004`). |
 | `-advertise URL` | The base URL handed to clients (default: the host they connected with). |
 | `-report-id ID` | Report this DeviceID to clients instead of the tuner's own. |
@@ -136,6 +137,16 @@ Example, with a 4-tuner device, `ownerReserve: 1` and one of *your* TVs watching
 | `-version` | Print the version and exit. |
 
 `-tuner`, `-tuner-id`, `-listen`, `-stream-port`, `-advertise` and `-report-id` describe a device, so they can't be combined with `devices` in the settings file. Put those settings in the file.
+
+### Giving the admin pages their own port
+
+By default the admin pages are on every tuner's port, next to the tuner itself (`http://<this machine>:5004/yagi/`). That is simplest, and the first tuner you add takes over the port the page is on.
+
+With `-admin-listen :5000` (or `YAGI_ADMIN_LISTEN=:5000` in the environment, which is easiest in Docker) the admin pages, their API, the sign-in and the first-run setup link are on that port and **only** there. The tuner ports then answer nothing but what a media server asks of a tuner, so you can open them to your viewers and keep the admin port to your own network or Tailscale. A tuner can't be given the admin port, and adding or removing tuners never moves the page.
+
+- Each tuner still has its own port, which you can change on its page in the web UI (the *Settings* tab of the tuner's page).
+- The admin address is `http://<this machine>:5000/yagi/`; a bare `http://<this machine>:5000/` goes there.
+- `-listen` still says where the tuners start (`5004`, `5005`, …), so it can't be the same port as `-admin-listen`.
 
 `yagi discover [-wait 3s] [host …]` lists the HDHomeRun tuners it can find (a broadcast on your network, and a scan of the nearby subnet), one per line: DeviceID, address, number of tuners.
 Add host addresses to look at those instead.

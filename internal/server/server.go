@@ -53,10 +53,14 @@ type Config struct {
 	ConfigPath string // where edits are saved; empty means read-only
 	// AdminListen is where the admin pages are served while there are no tuners
 	// to put them on (default ":5004"). With tuners, the admin pages are on
-	// each tuner's port instead.
+	// each tuner's port instead, unless AdminSeparate is set.
 	AdminListen string
-	Poll        time.Duration
-	Log         *slog.Logger
+	// AdminSeparate gives the admin pages a port of their own, AdminListen, for good: they are served there, and
+	// only there, so the tuner ports carry nothing but what a media server asks of a tuner. No tuner can then
+	// use that port.
+	AdminSeparate bool
+	Poll          time.Duration
+	Log           *slog.Logger
 	// LogLevel is the level the logger filters at, which the log level setting moves; nil means the setting has
 	// no effect. Logs is where the Logs page reads the recent lines from; nil means there is no page to show.
 	LogLevel *slog.LevelVar
@@ -264,7 +268,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/yagi/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		AdminSeparate: cfg.AdminSeparate, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -273,6 +277,9 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	s.admin = admin
 
 	for _, d := range cfg.Devices {
+		if err := s.adminPortTaken(d); err != nil {
+			return nil, err
+		}
 		dev, err := s.build(ctx, d)
 		if err != nil {
 			return nil, err
@@ -305,21 +312,26 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 
 	name := d.Name
 	mux := http.NewServeMux()
-	mux.Handle("/yagi/", s.admin) // the admin pages are reachable on every device's port
-	// Signing in has to be reachable by someone who isn't signed in yet; each
-	// endpoint checks for itself what it will allow.
-	mux.Handle("/yagi/auth/", s.plex.Handler())
-	mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
-	mux.Handle(claim.Path, s.claim.Handler())
 	tunerAPI := proxy.New(proxy.Config{
 		Upstream: mon, Policy: s.policy.Device(name),
 		Advertise: d.Advertise, DeviceID: d.ReportID, Logger: log,
 	})
-	mux.Handle("/", tunerAPI)
-	// Someone who types the bare address into a browser wants the admin
-	// page, not the tuner's own front page. Everyone else (viewers, media
-	// servers) is handled as before.
-	mux.Handle("GET /{$}", s.policy.AdminHome("/yagi/", tunerAPI))
+	if s.cfg.AdminSeparate {
+		// The admin pages have a port of their own, so this one is only the tuner.
+		mux.Handle("/", tunerAPI)
+	} else {
+		mux.Handle("/yagi/", s.admin) // the admin pages are reachable on every device's port
+		// Signing in has to be reachable by someone who isn't signed in yet; each
+		// endpoint checks for itself what it will allow.
+		mux.Handle("/yagi/auth/", s.plex.Handler())
+		mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
+		mux.Handle(claim.Path, s.claim.Handler())
+		mux.Handle("/", tunerAPI)
+		// Someone who types the bare address into a browser wants the admin
+		// page, not the tuner's own front page. Everyone else (viewers, media
+		// servers) is handled as before.
+		mux.Handle("GET /{$}", s.policy.AdminHome("/yagi/", tunerAPI))
+	}
 
 	log.Debug("device built", "listen", d.Listen, "tuner", base)
 	return &device{cfg: d, mon: mon, handler: mux}, nil
@@ -358,7 +370,7 @@ func (s *Server) Run(ctx context.Context) error {
 		lns[i] = ln
 	}
 	var bareLn net.Listener
-	if len(devs) == 0 {
+	if len(devs) == 0 || s.cfg.AdminSeparate {
 		ln, ok := s.cfg.Listeners[bareName]
 		if !ok {
 			var err error
@@ -373,7 +385,11 @@ func (s *Server) Run(ctx context.Context) error {
 
 	s.runCtx = ctx
 	s.errc = make(chan error, 8)
-	s.logClaimLinks(lns)
+	if bareLn != nil && s.cfg.AdminSeparate {
+		s.logClaimLinks([]net.Listener{bareLn}) // the setup link is on the admin port, not a tuner's
+	} else {
+		s.logClaimLinks(lns)
+	}
 
 	go s.firmware.Run(ctx)
 	go s.guide.Run(ctx)
