@@ -383,15 +383,21 @@ func TestAViewerOnTheTailnetIsRecognisedByLoginAndALanClientIsNot(t *testing.T) 
 // httpsNode is a connected node whose HTTPS listener can be made to fail, as it does on a tailnet without certificates.
 type httpsNode struct {
 	stubNode
+	tlsMu   sync.Mutex
 	failTLS error
 }
+
+func (n *httpsNode) setFail(err error) { n.tlsMu.Lock(); n.failTLS = err; n.tlsMu.Unlock() }
 
 func (n *httpsNode) Status() tailnet.NodeStatus {
 	return tailnet.NodeStatus{State: tailnet.Running, DNSName: "attic.tail1.ts.net", Addresses: []string{"100.64.0.5"}}
 }
 func (n *httpsNode) ListenTLS(addr string) (net.Listener, error) {
-	if n.failTLS != nil {
-		return nil, n.failTLS
+	n.tlsMu.Lock()
+	fail := n.failTLS
+	n.tlsMu.Unlock()
+	if fail != nil {
+		return nil, fail
 	}
 	return n.stubNode.ListenTLS(addr)
 }
@@ -451,5 +457,16 @@ func TestWhyHTTPSCouldNotStartIsShown(t *testing.T) {
 	st := tc(r).Status()
 	if st.HTTPS != "" || !strings.Contains(st.HTTPSError, "HTTPS certificates") {
 		t.Errorf("status = %q %q, want no address and Tailscale's own reason", st.HTTPS, st.HTTPSError)
+	}
+}
+
+func TestOpenPagesAreToldWhenHTTPSComesUpOrFails(t *testing.T) {
+	base := tailnet.Status{State: tailnet.Running, DNSName: "attic.tail1.ts.net", Serving: []string{"5004"}}
+	up, failed := base, base
+	up.HTTPS = "https://attic.tail1.ts.net/"
+	failed.HTTPSError = "this tailnet does not have HTTPS certificates enabled"
+	keys := map[string]string{"base": tailStatusKey(base), "up": tailStatusKey(up), "failed": tailStatusKey(failed)}
+	if keys["base"] == keys["up"] || keys["base"] == keys["failed"] || keys["up"] == keys["failed"] {
+		t.Errorf("the watch can't tell these apart, so the open pages would not be told: %v", keys)
 	}
 }

@@ -245,6 +245,11 @@ func (s *Server) closeTailnetServing() {
 	t.dropHTTPS()
 }
 
+// tailStatusKey is everything about the node the settings page shows. When it changes, the open pages are told.
+func tailStatusKey(st tailnet.Status) string {
+	return fmt.Sprint(st.State, st.LANClosed, st.Serving, st.DNSName, st.HTTPS, st.HTTPSError)
+}
+
 // watchTailnet looks after the listeners as the node comes up, goes away or is replaced, and as tuners are added,
 // moved and removed. The node starts and stops on its own schedule, so this looks regularly instead of being told.
 func (s *Server) watchTailnet(ctx context.Context) {
@@ -256,7 +261,7 @@ func (s *Server) watchTailnet(ctx context.Context) {
 		// The page shows the node's state and whether the LAN is closed, which change on the node's schedule, so
 		// tell the open pages when either does.
 		st := tailnetControl{s}.Status()
-		if key := fmt.Sprint(st.State, st.LANClosed, st.Serving, st.DNSName); key != last {
+		if key := tailStatusKey(st); key != last {
 			if last != "" {
 				s.hub.Notify()
 			}
