@@ -2,7 +2,7 @@
 
 Yagi can join your Tailscale network by itself, as its own device, with no Tailscale installed on the machine it runs on. The idea is that you share that one device with the people who need it, and nothing is opened on your router.
 
-> **Where this is.** Yagi can join a tailnet, keep its sign-in, show you where it is, and **answer on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. See [the plan](DESIGN.md#built-in-tailscale-plan) for how it was built.
+> **What it does.** Yagi joins your tailnet, keeps its sign-in, and **answers on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. On top of that: a switch that closes the LAN side ([Only on the tailnet](#only-on-the-tailnet)), viewers and admins matched by Tailscale login or device ([Who is on the other end](#who-is-on-the-other-end)), and the admin page over [HTTPS](#https-for-the-admin-page). It has been tried on a real tailnet with the tailnet's own devices; sharing the device with someone on *another* tailnet has not been tried here.
 
 ## Which image
 
@@ -13,11 +13,11 @@ image: ghcr.io/johnschult/yagi:tailscale        # the latest release, with Tails
 # image: ghcr.io/johnschult/yagi:2026.10.13-tailscale   # or pin a release
 ```
 
-`ghcr.io/johnschult/yagi:latest` and `:<version>` are the same program without it. In a build without it, **Settings → Access** says so and shows no switch. Building it yourself: `go build -tags tsnet ./cmd/yagi`, or `docker build --build-arg TAGS=tsnet .`
+`ghcr.io/johnschult/yagi:latest` and `:<version>` are the same program without it. In a build without it, **Settings → Access → Tailscale** says so and shows no switch. Building it yourself: `go build -tags tsnet ./cmd/yagi`, or `docker build --build-arg TAGS=tsnet .`
 
 ## Turning it on
 
-1. Open **Settings → Access** and switch on **Join your Tailscale network**. The name on the tailnet is `yagi` unless you change it (it must be unique among your devices).
+1. Open **Settings → Access**, find the **Tailscale** section and switch on **Join your Tailscale network**. The name on the tailnet is `yagi` unless you change it (it must be unique among your devices).
 2. Press **Sign in to Tailscale** and approve the new device. Or, for an unattended start, give the container a Tailscale [auth key](https://tailscale.com/kb/1085/auth-keys) and no link is needed:
 
    ```yaml
@@ -34,13 +34,13 @@ Once the status row says *Connected, and answering on port …*, a viewer on the
 
 - **The viewer's setup steps know about it.** In *Viewers → Connection steps* (and when adding a viewer), **Yagi's own Tailscale** is its own choice, first, with the device's tailnet name as the address to give them, and it is kept apart from **Tailscale on this machine** (the Tailscale the host runs, if it runs one): they are two devices with two addresses, and each choice shows only its own. For Yagi's own there is no firewall step, because its traffic doesn't come through the machine's network.
 - **A viewer can be matched by who they are** (see [Who is on the other end](#who-is-on-the-other-end)), or by address: their Tailscale address (`100.x.y.z`), which changes if they re-register the device.
-- **The admin page is on the tuner's port too**, and is still only for an admin: an address in *Settings → Access → Admin addresses* (add `100.64.0.0/10` to allow your whole tailnet, but only if none of your viewers is on it), a Plex account, or a tailnet login (`tailscale:you@example.com`).
+- **The admin page is on the tuner's port too**, and is still only for an admin: an address in *Settings → Access → Admin access → Admin addresses* (add `100.64.0.0/10` to allow your whole tailnet, but only if none of your viewers is on it), a Plex account, or a tailnet login (`tailscale:you@example.com`).
 - **The LAN ports stay open unless you close them.** Yagi still answers on the machine's own address as before. See [Only on the tailnet](#only-on-the-tailnet) to turn that off.
 - If a port is changed, or a tuner added or removed, the tailnet follows within a couple of seconds.
 
 ## Only on the tailnet
 
-Once the node is connected, *Settings → Access → Only on the tailnet* closes Yagi to everything that comes in over the machine's own network address. What is left is the tailnet and the machine itself (a browser on the same machine at `127.0.0.1`). Media servers and viewers on your LAN, and the admin page opened at the LAN address, are refused; the log says so, once a minute at most.
+Once the node is connected, *Settings → Access → Tailscale → Only on the tailnet* closes Yagi to everything that comes in over the machine's own network address. What is left is the tailnet and the machine itself (a browser on the same machine at `127.0.0.1`). Media servers and viewers on your LAN, and the admin page opened at the LAN address, are refused; the log says so, once a minute at most.
 
 - **It is a gate, not a closed port.** The ports stay bound (a tuner keeps its port, and switching the setting off is immediate), but a connection from anywhere but the machine itself is dropped as it arrives. A scan of the LAN still sees the port open. When you switch it on, connections already open from the LAN are closed within a couple of seconds, a stream in progress included.
 - **It can only be switched on while the node is connected**, so there is always a way in. Before it saves, the page tells you if you are using it at the LAN address, and where to open it afterwards (`<name>.<tailnet>.ts.net:<port>`).
@@ -66,7 +66,7 @@ The rules:
 
 ## HTTPS for the admin page
 
-*Settings → Tailscale → HTTPS for the admin page* also serves the admin pages (and only those) over HTTPS at the device's tailnet name, such as `https://yagi.tail1234.ts.net/`, with no port. Yagi's node gets and renews the certificate itself from Tailscale; nothing on the machine changes.
+*Settings → Access → Tailscale → HTTPS for the admin page* also serves the admin pages (and only those) over HTTPS at the device's tailnet name, such as `https://yagi.tail1234.ts.net/`, with no port. Yagi's node gets and renews the certificate itself from Tailscale; nothing on the machine changes.
 
 - **Your tailnet needs HTTPS certificates turned on** (Tailscale admin console → DNS: MagicDNS, then *Enable HTTPS*). Without it the switch shows Tailscale's own reason instead of an address.
 - **The name goes into a public certificate log.** Certificates are issued by Let's Encrypt, which publishes them, so the device name and your tailnet's name become public. That is why it is off until you turn it on.

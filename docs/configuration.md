@@ -24,6 +24,7 @@ Yagi is configured with a **settings file** (JSON), which you can edit by hand o
   "firmwareCheck": true,
   "guide": true,
   "plex": { "enabled": false, "admins": [] },
+  "tailscale": { "enabled": false, "hostname": "yagi" },
   "notifications": {
     "channels": [
       { "id": "c1a2b3c4d5", "name": "My phone", "type": "ntfy", "url": "https://ntfy.sh", "topic": "yagi-x7k2q9" }
@@ -57,7 +58,7 @@ Who you share with. **With no viewers, nobody can use the tuner**: a new install
 | Key | Meaning |
 |---|---|
 | `name` | Required, and unique. |
-| `addresses` | At least one. Single addresses or ranges: `100.64.0.7`, `10.8.0.0/24`, `fd7a:115c::/48`. The address their requests come from, as Yagi sees it. If ranges overlap, the most specific one wins. An address can't be listed for two viewers. |
+| `addresses` | At least one. Single addresses or ranges: `100.64.0.7`, `10.8.0.0/24`, `fd7a:115c::/48`. The address their requests come from, as Yagi sees it. If ranges overlap, the most specific one wins. An address can't be listed for two viewers. With Yagi's own Tailscale it can also be `tailscale:alice@example.com` (anyone signed in as that login) or `tailscale:laptop.tail1234.ts.net` (that device): see [Who is on the other end](tailscale.md#who-is-on-the-other-end). |
 | `limit` | How many tuners they may use at once, on each device. `0` pauses them. |
 | `limits` | Overrides `limit` for particular devices, by device name: `{ "antenna": 2 }`. Needs `devices` to be declared in the file. |
 
@@ -67,13 +68,14 @@ Who you share with. **With no viewers, nobody can use the tuner**: a new install
 |---|---|
 | `sharedCap` | The most tuners *all* viewers together may use on a device. `0` means no cap. |
 | `ownerReserve` | Tuners always kept free for your own devices (default `1`), **in addition to** any your own devices are using at the moment. |
-| `admin` | Extra addresses (single or ranges) allowed to open the admin pages. Loopback is always allowed once a viewer exists. Keep this narrow, and keep viewers' addresses out of it: a viewer inside an admin range is an admin too (Yagi logs a warning). |
+| `admin` | Extra addresses (single or ranges) allowed to open the admin pages. Loopback is always allowed once a viewer exists. Keep this narrow, and keep viewers' addresses out of it: a viewer inside an admin range is an admin too (Yagi logs a warning). Also takes `tailscale:` logins and devices, as for a viewer. |
 | `labels` | Display names, by device name: `{ "antenna": "Living room antenna" }`, up to 60 characters. It is for the web page only, and changes live. Media servers are always told the device (such as `HDHomeRun FLEX 4K`), so a name you give it here never reaches Plex: renaming doesn't change what Plex shows, and a media server can name its own DVR as it likes. |
 | `firmwareCheck` | Look at SiliconDust's firmware changelog every 12 hours (default `true`). |
 | `logLevel` | How much is logged, and shown on the Logs page: `debug`, `info`, `warn` or `error` (default `info`, and then it is not written). It takes effect at once, also when the file is reloaded. |
 | `history` | Keep who watched what for 30 days, for the Activity page (default `true`). Off stops recording and hides the page; what was kept stays until it is cleared (*Settings → Clear activity history*) or the history file is deleted. |
 | `guide` | Read SiliconDust's program guide so Live tiles can show the channel logo, what's on and its picture (default `true`). |
 | `notifications` | Messages to your phone or another service. `channels` is a list (at most 8); `events` switches kinds of event on or off. See [Notifications](#notifications) below. |
+| `tailscale` | The built-in Tailscale node, in the `-tailscale` image: `enabled`, `hostname` (its name on the tailnet, default `yagi`, not written when it is), `tailnetOnly` (refuse everything that arrives over the machine's own address while the node is connected) and `https` (also serve the admin pages over HTTPS at the node's name). Normally set from *Settings → Tailscale*. See [Built-in Tailscale](tailscale.md). |
 | `plex` | Sign in to the admin pages with a Plex account. `enabled`, the allowed `admins` (each with an `id` and a `name`, at most 50), and a `clientId` Yagi creates and keeps for you. See [Security](security.md). |
 
 ## Notifications

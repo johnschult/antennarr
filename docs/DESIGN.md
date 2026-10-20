@@ -218,19 +218,36 @@ Built and tested (Go, with the race detector; UI, with Vitest):
 - several devices, display names, firmware checking and installing, a Device panel, restarting a tuner;
 - the settings file (atomic saves, reload on SIGHUP), the JSON API and the live event stream;
 - the web UI: Live (with the program guide's pictures and details), Viewers, Tuners, Activity, Settings (grouped sections and rows), light and dark themes, the add-viewer wizard;
-- notifications, the What's new popup, and the activity history (below).
+- notifications, the What's new popup, and the activity history (below);
+- tuners that are found and shown, not added by themselves (below), and built-in Tailscale (the `-tailscale` image): the node, answering on the tailnet, *only on the tailnet*, login and device identity, and HTTPS for the admin page (the plan below, all built).
 
-Not built yet: rescanning channels from the UI, filtering and exporting the activity history, Plex-verified viewer enrollment, built-in Tailscale, and editing a tuner's address from the UI.
+Not built yet: filtering and exporting the activity history, Plex-verified viewer enrollment, and editing a tuner's address from the UI.
 
 - sign in with Plex (below).
 
 Next, roughly in this order. Each is a real piece of work, not a tweak:
 
 1. **Plex-verified viewer enrollment** (later): an invite link leads to a Plex sign-in, and the viewer's server addresses are read from plex.tv and allowlisted.
-2. **Tailscale, set up from the web UI.** An optional built-in tailnet node (tsnet). The plan is in [Built-in Tailscale](#built-in-tailscale-plan) below.
+2. **Tailscale, set up from the web UI.** Built: see [Built-in Tailscale](#built-in-tailscale-plan) below.
 3. **Manage tuners from the UI.** Renaming, adding, removing and changing the port are done, live. Still to do: changing a tuner's address or DeviceID.
 4. **The setup guide generator** (above): per-viewer commands for firewall, routing and the media server, with verify and rollback steps, replacing the placeholder Setup page.
 5. **Cutover:** replace the socat relay and the viewer-side DNAT that serve a friend's tuner today.
+
+## Tuners that are found, not set up (decided, built)
+
+The question was whether a tuner Yagi can see should have to be *added* by hand, and where in the page the person is asked.
+
+**Before:** a first start with no tuner named looked for ten seconds and saved whatever answered into `devices`, without asking, and then never looked again; the same person had to run a dialog by hand to add the next one, and the names it picked (`tuner`) showed in addresses and logs.
+
+**Decided and built**
+
+- **Found tuners are shown, and the person adds them. Nothing is added automatically**, the first start included: a tuner on a shared network may not be yours, and adding one puts it behind Yagi's ports.
+- **The page does the looking, not the server.** While there is no tuner, the open page asks the server to search every five seconds for three minutes (`useFindTuners`), then stops and says so, with **Look again**. A machine nobody opens a page on never broadcasts. With tuners added, **Add tuner** is the check.
+- **Each found tuner comes with a name filled in** from what it calls itself (`HDHomeRun FLEX 4K`) and an address name from its model and the end of its DeviceID (`flex-4k-87`), both editable, and one **Add**, or **Add all** (each still shown with its name first). Existing names are never changed.
+- **Docker without host networking** can't see the broadcast: the page says so, with the address field at hand, and `YAGI_TUNER` is read like `-tuner` for an install nobody opens a page on.
+- **Unattended starts are unchanged:** `-tuner`, `YAGI_TUNER` or `devices` in the settings file still use the tuner with no questions, and a settings file with tuners in it never looks.
+
+**Not done:** an *Ignore* for a tuner that keeps being found and is not yours, and leaving the name out of the page address when there is a single tuner (`/tuners/channels`).
 
 ## Built-in Tailscale (plan)
 

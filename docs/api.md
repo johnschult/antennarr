@@ -39,13 +39,13 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `PUT viewers/{name}` | Replace a viewer (the same body). |
 | `DELETE viewers/{name}` | Remove a viewer, `204`. Removing the last viewer leaves nobody able to use the tuner. The `mode` in the settings is then `no-viewers`. |
 | `GET settings` | The general settings. |
-| `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `history`, `logLevel` (`debug`, `info`, `warn` or `error`), `plexEnabled`, `notifyEvents` (`{"firmware": false, "unknown": true}`: any of `firmware`, `tuner`, `viewer`, `watching`, `unknown`; `firmware: true` is refused with `400` while `firmwareCheck` is off). Only the fields you send change. |
+| `PATCH settings` | Change any of `sharedCap`, `ownerReserve`, `admin` (a list), `firmwareCheck`, `guide`, `history`, `logLevel` (`debug`, `info`, `warn` or `error`), `plexEnabled`, `tailscaleEnabled`, `tailscaleHostname` (`""` is the default, `yagi`), `tailnetOnly` (refuse the LAN while the node is connected; `409` unless it is), `tailscaleHttps`, `notifyEvents` (`{"firmware": false, "unknown": true}`: any of `firmware`, `tuner`, `viewer`, `watching`, `unknown`; `firmware: true` is refused with `400` while `firmwareCheck` is off). Only the fields you send change. |
 | `POST notifications/channels` | Add a channel: `{"name", "type": "ntfy"\|"pushover"\|"webhook", "url", "topic", "token", "user"}`. Replies `201` with the channel, without its secrets. `400` with the reason if it isn't valid; `409` without a settings file. |
 | `PUT notifications/channels/{id}` | Change a channel. A `token`, `user` or (for a webhook) `url` left empty keeps the saved one; `"clearToken": true` removes the token. Secrets aren't carried to a different `type`. `404` if there is no such channel. |
 | `DELETE notifications/channels/{id}` | Remove a channel, `204`. |
 | `POST notifications/test` | Send one message to a channel and say whether it got through: `{"id": "…"}` for a saved one, `{"channel": {…}}` for one that isn't saved yet, or both (the saved channel with those changes, saving nothing). Replies `{"ok": true}`, or `502` with why not. `429` if that channel was tested a moment ago. |
-| `POST discover` | Search the network for HDHomeRun tuners (takes about 3 seconds). Replies `{"tuners": [{"id", "address", "tuners", "added"}]}`; `added` is the device a tuner already is, or `""`. `429` while another search is running. |
-| `POST devices` | Start sharing a tuner: `{"tuner": "192.168.1.50"}`, optionally with `"id"`, `"name"` and `"listen"`. The name (`tuner`, then `tuner-<id>`), the port and the DeviceID are chosen if left out. Replies `201` with the device. `422` if nothing answers at the address, `409` if that tuner is already added, the port can't be used, there is no settings file, or the tuner came from command-line flags. |
+| `POST discover` | Search the network for HDHomeRun tuners (takes about 3 seconds). Replies `{"tuners": [{"id", "address", "tuners", "added", "label", "name"}]}`; `added` is the device a tuner already is, or `""`, and `label` and `name` are a display name and a device name to offer for it (such as `HDHomeRun FLEX 4K` and `flex-4k-87`), made from what the tuner calls itself. `429` while another search is running. |
+| `POST devices` | Start sharing a tuner: `{"tuner": "192.168.1.50"}`, optionally with `"id"`, `"name"`, `"label"` (the display name, saved with it) and `"listen"`. The name (`tuner`, then `tuner-<id>`), the port and the DeviceID are chosen if left out. Replies `201` with the device. `422` if nothing answers at the address, `409` if that tuner is already added, the port can't be used, there is no settings file, or the tuner came from command-line flags. |
 | `DELETE devices/{name}` | Stop sharing a tuner, `204`. Streams on it are cut, its port is freed, and its label and any per-device viewer limits are removed from the settings. `409` in the same cases as adding. |
 | `PATCH devices/{name}` | Change a device's `label` (display name; `""` clears it), `listen` (move it to another port, e.g. `":5010"`; the new port is opened first, so one that is taken is refused with `409` and nothing changes; streams on the old port are cut and the page itself is no longer served there), `ownerReserve` or `sharedCap`. |
 | `GET devices/{name}/guide/{channel}/icon` | A channel's logo (a PNG), fetched by Yagi, `404` when there isn't one. |
@@ -73,14 +73,14 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
   "time": "2026-10-17T20:00:00Z",
   "devices": [ { "name": "antenna", "label": "…", "listen": ":5004", "tuner": { "online": true, "id": "10C03B06", "baseURL": "http://192.168.1.50", "tunerCount": 4, "slots": [ … ], "events": [ … ], "updating": false, "restarting": false }, "streams": [ … ], "summary": { … }, "firmware": { … }, "upgrade": { … }, "restart": { … }, "guide": { … } } ],
   "viewers": [ … ],
-  "settings": { "mode": "enforced", "sharedCap": 0, "ownerReserve": 1, "admin": [], "firmwareCheck": true, "guide": true, "history": true, "logLevel": "info", "plex": { "enabled": false, "admins": [] }, "notifications": { "channels": [ … ], "events": { "firmware": true, "tuner": true, "viewer": true, "watching": false, "unknown": false } } },
+  "settings": { "mode": "enforced", "sharedCap": 0, "ownerReserve": 1, "admin": [], "firmwareCheck": true, "guide": true, "history": true, "logLevel": "info", "plex": { "enabled": false, "admins": [] }, "tailscale": { "enabled": false, "hostname": "yagi", "tailnetOnly": false, "https": false }, "notifications": { "channels": [ … ], "events": { "firmware": true, "tuner": true, "viewer": true, "watching": false, "unknown": false } } },
   "editable": true,
   "version": "2026.10.0",
   "versionUrl": "https://github.com/johnschult/yagi/releases/tag/v2026.10.0"
 }
 ```
 
-`editable` is false when Yagi couldn't create its settings file. For the exact fields, see `internal/api/api.go` and the TypeScript types in `web/src/lib/types.ts`, which are kept in step with it.
+`editable` is false when Yagi couldn't create its settings file. `tailscale` (next to `settings`, which has the switches) is where the built-in Tailscale node is: `built`, `state` (`off`, `unavailable`, `no-store`, `starting`, `needs-login`, `running` or `error`), `hostname`, `dnsName`, `loginUrl`, `addresses`, the `serving` ports, `lanClosed` (the LAN is being refused), `adminReachable`, and, when HTTPS is on, `https` (its address) or `httpsError`. For the exact fields, see `internal/api/api.go` and the TypeScript types in `web/src/lib/types.ts`, which are kept in step with it.
 The tuner's guide key (`DeviceAuth`), the Plex client ID and the secrets in notification channels (tokens, user keys, and a webhook's address, of which only the host is shown) are never in the state document.
 
 ## Signing in
@@ -97,6 +97,6 @@ These are under `/auth/`, and are public, because you have to be able to sign in
 
 ## Reading the log
 
-Yagi logs one line per request to the tuner side and per refusal, as `key=value` text on standard error: for example
+Yagi logs a stream opening and closing, and every refusal, as `key=value` text on standard error: for example
 `msg=refused device=antenna path=/discover.json client=100.64.0.9:51234 why="this address is not allowed to use this tuner"`.
-It is meant for people, so don't build anything that depends on its wording.
+The routine requests a media server makes again and again (`discover.json`, `lineup.json` and the like) are logged at the `debug` level only: set the log level to *Debug* (*Settings → Logs*) to see them. The log is meant for people, so don't build anything that depends on its wording.

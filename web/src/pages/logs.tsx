@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Loader2, Trash2, X } from 'lucide-react'
+import { Download, Info, Loader2, Trash2, X } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -145,6 +145,20 @@ export function LogsPanel() {
             ))}
           </Select>
         </div>
+      </div>
+
+      <div role="note" data-testid="requests-note" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
+        <Info aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+        <p className="min-w-0 flex-1 text-muted-foreground">
+          {logLevel === 'debug'
+            ? 'Debug is on, so every request is recorded, including the discover.json and lineup.json a media server asks for over and over. That fills the log quickly.'
+            : 'The requests a media server makes over and over (GET discover.json, lineup.json and the like) are only recorded at the Debug level, because there are so many. Streams, refusals and warnings are always shown.'}
+        </p>
+        {editable && (
+          <Button type="button" variant="outline" size="sm" disabled={update.isPending} onClick={() => update.mutate({ logLevel: logLevel === 'debug' ? 'info' : 'debug' })}>
+            {logLevel === 'debug' ? 'Back to Info' : 'Record debug'}
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">

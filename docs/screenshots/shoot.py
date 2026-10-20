@@ -89,9 +89,9 @@ with sync_playwright() as p:
     shot(page, 'activity')
     ctx.close()
 
-    # A tuner's page, on its Overview (opened directly; /tuner is the list).
+    # A tuner's page, on its Overview (opened directly; /tuners is the list).
     ctx = context('dark', height=600)
-    page = open_page(ctx, '/tuner/antenna', '[data-testid="firmware-line"]')
+    page = open_page(ctx, '/tuners/antenna', '[data-testid="firmware-line"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
@@ -100,7 +100,7 @@ with sync_playwright() as p:
 
     # A tuner's Channels tab.
     ctx = context('dark', height=860)
-    page = open_page(ctx, '/tuner/antenna/channels', '[data-testid="channel"]')
+    page = open_page(ctx, '/tuners/antenna/channels', '[data-testid="channel"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     shot(page, 'channels')
@@ -108,7 +108,7 @@ with sync_playwright() as p:
 
     # What is known about a channel: the card the i opens, on a channel the guide has things to say about.
     ctx = context('dark', height=760)
-    page = open_page(ctx, '/tuner/antenna/channels', '[data-testid="channel"]')
+    page = open_page(ctx, '/tuners/antenna/channels', '[data-testid="channel"]')
     time.sleep(1)
     page.get_by_role('button', name=re.compile('^About .* Classic TV')).click()
     page.wait_for_selector('[data-testid="channel-about"]', timeout=15000)
@@ -119,7 +119,7 @@ with sync_playwright() as p:
 
     # Filtering the channels: the panel open, with a category chosen.
     ctx = context('dark', height=760)
-    page = open_page(ctx, '/tuner/antenna/channels', '[data-testid="channel"]')
+    page = open_page(ctx, '/tuners/antenna/channels', '[data-testid="channel"]')
     time.sleep(1)
     page.get_by_role('button', name='Filters').click()
     page.wait_for_selector('[data-testid="filters"]', timeout=15000)
@@ -132,6 +132,8 @@ with sync_playwright() as p:
 
     # Settings, on its Logs tab.
     ctx = context('dark', height=720)
+    # The demo records at debug; show the default, info, where the note about ordinary requests is the useful one.
+    ctx.request.patch(base + '/api/settings', data=json.dumps({'logLevel': 'info'}), headers={'Content-Type': 'application/json'})
     page = open_page(ctx, '/settings/logs', '[data-testid="log-line"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
@@ -144,6 +146,14 @@ with sync_playwright() as p:
     time.sleep(0.5)
     page.evaluate(SHOW_LAN_ADDRESS)
     shot(page, 'settings')
+    ctx.close()
+
+    # Settings, the Access tab: Tailscale in its own section (the demo's node is made up, and connected).
+    ctx = context('dark', height=1300)
+    page = open_page(ctx, '/settings/access', 'section[aria-label="Tailscale"]')
+    time.sleep(0.8)
+    page.evaluate(SHOW_LAN_ADDRESS)
+    page.locator('section[aria-label="Tailscale"]').screenshot(path=f'{out}/tailscale.jpg', type='jpeg', quality=90)
     ctx.close()
 
     ctx = context('dark', 390, 844, 2, phone=True)

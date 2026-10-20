@@ -26,7 +26,8 @@ The **Release** workflow then:
 1. checks the tag looks like `vYYYY.MM.PATCH` and that `CHANGELOG.md` has a section for it (otherwise it fails, so a typo or a forgotten entry can't publish);
 2. builds the image for `linux/amd64` and `linux/arm64`, with the version built in;
 3. pushes it to `ghcr.io/johnschult/yagi` as `2026.10.0` and `latest`;
-4. creates the GitHub release: the changelog section first, then the list of merged pull requests that GitHub generates.
+4. builds and pushes the same program with the built-in Tailscale node (`-tags tsnet`, with the Tailscale version stamped in) as `2026.10.0-tailscale` and `tailscale`;
+5. creates the GitHub release: the changelog section first, then the list of merged pull requests that GitHub generates.
 
 Pull requests that change the `Dockerfile` or the workflow build the image without pushing it.
 
@@ -36,7 +37,10 @@ Check that the image can be pulled without logging in, from a machine that isn't
 
 ```sh
 docker pull ghcr.io/johnschult/yagi:2026.10.0
+docker pull ghcr.io/johnschult/yagi:2026.10.0-tailscale
 ```
+
+The `-tailscale` image is a package version of the same package, so it is public with it.
 
 The first release (2026.10.0) was public straight away. If a package ever starts out private, open its settings
 (github.com/johnschult?tab=packages → *yagi* → *Package settings*) and change its visibility to **Public**.
