@@ -11,7 +11,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, notifications: noNotifications() }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi' }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -408,5 +408,79 @@ describe('Plex sign-in settings', () => {
     expect(screen.getByRole('button', { name: 'Remove john' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Add a Plex account' })).toBeDisabled()
     expect(within(access()).getByRole('switch', { name: 'Sign in with Plex' })).toHaveAttribute('aria-disabled', 'true')
+  })
+})
+
+describe('Tailscale settings', () => {
+  const access = () => section('Admins and viewers')
+  const withTailscale = (over: Partial<NonNullable<ReturnType<typeof state>['tailscale']>> & { enabled?: boolean; hostname?: string }) => {
+    const s = state()
+    const { enabled = true, hostname = 'yagi', ...status } = over
+    s.settings.tailscale = { enabled, hostname }
+    s.tailscale = { built: true, state: enabled ? 'starting' : 'off', hostname, ...status }
+    return s
+  }
+  const patched = () => stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
+
+  it('says so, and offers no switch, in a build without the node', () => {
+    const s = state()
+    s.tailscale = { built: false, state: 'unavailable', hostname: 'yagi' }
+    renderSettings(s, 'access')
+    expect(within(access()).queryByRole('switch', { name: 'Join your Tailscale network' })).not.toBeInTheDocument()
+    expect(within(access()).getByText(/include Tailscale/)).toBeInTheDocument()
+  })
+
+  it('has the Tailscale logo on its row, as a decorative picture, with or without the node', () => {
+    const { unmount } = renderSettings(withTailscale({ enabled: false }), 'access')
+    const logo = access().querySelector('img[src$="tailscale-icon.svg"]')
+    expect(logo).not.toBeNull()
+    expect(logo).toHaveAttribute('aria-hidden', 'true')
+    expect(logo).toHaveAttribute('alt', '')
+    expect(logo!.className).toContain('dark:invert') // black on the light theme, white on the dark one
+    unmount()
+    const s = state()
+    s.tailscale = { built: false, state: 'unavailable', hostname: 'yagi' }
+    renderSettings(s, 'access')
+    expect(access().querySelector('img[src$="tailscale-icon.svg"]')).not.toBeNull()
+  })
+
+  it('turns on with the switch, and shows nothing more while it is off', async () => {
+    const { fn, calls } = patched()
+    vi.stubGlobal('fetch', fn)
+    renderSettings(withTailscale({ enabled: false }), 'access')
+    expect(screen.queryByText('Name on the tailnet')).not.toBeInTheDocument()
+    await userEvent.setup().click(within(access()).getByRole('switch', { name: 'Join your Tailscale network' }))
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ tailscaleEnabled: true }))
+  })
+
+  it('offers the sign-in link while the node waits for one', () => {
+    renderSettings(withTailscale({ state: 'needs-login', loginUrl: 'https://login.tailscale.com/a/abc' }), 'access')
+    const link = within(access()).getByRole('link', { name: /Sign in to Tailscale/ })
+    expect(link).toHaveAttribute('href', 'https://login.tailscale.com/a/abc')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+  })
+
+  it('shows the name and address once connected, and saves a new hostname', async () => {
+    const { fn, calls } = patched()
+    vi.stubGlobal('fetch', fn)
+    renderSettings(withTailscale({ state: 'running', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.64.0.5'] }), 'access')
+    expect(within(access()).getByText('yagi.tail1234.ts.net')).toBeInTheDocument()
+    expect(within(access()).getByText('100.64.0.5')).toBeInTheDocument()
+    const user = userEvent.setup()
+    const box = within(access()).getByLabelText('Name on the tailnet')
+    await user.clear(box)
+    await user.type(box, 'attic')
+    await user.click(saveButton(access())!)
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ tailscaleHostname: 'attic' }))
+  })
+
+  it('refuses a bad hostname before sending it', async () => {
+    renderSettings(withTailscale({ state: 'running' }), 'access')
+    const user = userEvent.setup()
+    const box = within(access()).getByLabelText('Name on the tailnet')
+    await user.clear(box)
+    await user.type(box, 'my yagi')
+    await user.click(saveButton(access())!)
+    expect(await within(access()).findByText(/not starting or ending with a hyphen/i)).toBeInTheDocument()
   })
 })

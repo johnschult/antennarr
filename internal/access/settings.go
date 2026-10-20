@@ -120,6 +120,39 @@ type Settings struct {
 	// Notifications says where to send word of firmware, tuner and viewer events.
 	// Nothing is sent, or contacted, while it has no channels.
 	Notifications *Notifications `json:"notifications,omitempty"`
+	// Tailscale is the optional built-in Tailscale node, in builds that have it.
+	Tailscale *TailscaleSettings `json:"tailscale,omitempty"`
+}
+
+// TailscaleSettings is the built-in Tailscale node: whether it runs and what it is called on the tailnet.
+type TailscaleSettings struct {
+	Enabled bool `json:"enabled"`
+	// Hostname is the node's name on the tailnet. Empty means "yagi".
+	Hostname string `json:"hostname,omitempty"`
+}
+
+// DefaultTailscaleHostname is what the node is called until someone says otherwise.
+const DefaultTailscaleHostname = "yagi"
+
+var tailnetHostname = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// ValidateTailscaleHostname says whether name can be a machine name on a tailnet: a DNS label.
+func ValidateTailscaleHostname(name string) error {
+	if !tailnetHostname.MatchString(name) {
+		return errors.New("a Tailscale name is lower-case letters, digits and hyphens, up to 63 characters, and starts and ends with a letter or digit")
+	}
+	return nil
+}
+
+// TailscaleEnabled reports whether the built-in Tailscale node is switched on (off by default).
+func (s Settings) TailscaleEnabled() bool { return s.Tailscale != nil && s.Tailscale.Enabled }
+
+// TailscaleHostname is the node's name on the tailnet.
+func (s Settings) TailscaleHostname() string {
+	if s.Tailscale != nil && s.Tailscale.Hostname != "" {
+		return s.Tailscale.Hostname
+	}
+	return DefaultTailscaleHostname
 }
 
 // PlexEnabled reports whether signing in with Plex is switched on (off by default).
@@ -396,6 +429,11 @@ func (s Settings) parse() (parsed, error) {
 	}
 	if err := s.Notifications.validate(); err != nil {
 		return out, err
+	}
+	if s.Tailscale != nil && s.Tailscale.Hostname != "" {
+		if err := ValidateTailscaleHostname(s.Tailscale.Hostname); err != nil {
+			return out, fmt.Errorf("tailscale hostname: %w", err)
+		}
 	}
 	if len(s.Labels) > maxLabels {
 		return out, fmt.Errorf("at most %d device names", maxLabels)

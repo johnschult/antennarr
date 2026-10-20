@@ -30,6 +30,7 @@ import (
 	"github.com/johnschult/yagi/internal/logbuf"
 	"github.com/johnschult/yagi/internal/netinfo"
 	"github.com/johnschult/yagi/internal/restart"
+	"github.com/johnschult/yagi/internal/tailnet"
 	"github.com/johnschult/yagi/internal/tuner"
 	"github.com/johnschult/yagi/internal/tunerinfo"
 	"github.com/johnschult/yagi/internal/upgrade"
@@ -60,8 +61,16 @@ type Fleet interface {
 // NewError is an error that reaches the person as this status and message.
 func NewError(code int, msg string) error { return &httpErr{code: code, msg: msg} }
 
+// TailnetControl is the built-in Tailscale node: its status, and a nudge to match the settings after they change.
+type TailnetControl interface {
+	Reconcile()
+	Status() tailnet.Status
+}
+
 // API serves /api/*.
 type API struct {
+	// Tailnet is the built-in Tailscale node; nil means this server has none.
+	Tailnet TailnetControl
 	// AdminSeparate says the admin pages are on a port of their own, which the state tells the page.
 	AdminSeparate bool
 	// Devices is a fixed set of tuners, for when Fleet is nil.
@@ -195,15 +204,16 @@ type Summary struct {
 // SettingsDoc is the part of the settings that isn't per device or per viewer.
 // OwnerReserve and SharedCap are the defaults devices fall back to.
 type SettingsDoc struct {
-	Mode          string   `json:"mode"` // "no-viewers" or "enforced"
-	SharedCap     int      `json:"sharedCap"`
-	OwnerReserve  int      `json:"ownerReserve"`
-	Admin         []string `json:"admin"`
-	FirmwareCheck bool     `json:"firmwareCheck"`
-	Guide         bool     `json:"guide"`
-	History       bool     `json:"history"`
-	LogLevel      string   `json:"logLevel"`
-	Plex          PlexDoc  `json:"plex"`
+	Mode          string       `json:"mode"` // "no-viewers" or "enforced"
+	SharedCap     int          `json:"sharedCap"`
+	OwnerReserve  int          `json:"ownerReserve"`
+	Admin         []string     `json:"admin"`
+	FirmwareCheck bool         `json:"firmwareCheck"`
+	Guide         bool         `json:"guide"`
+	History       bool         `json:"history"`
+	LogLevel      string       `json:"logLevel"`
+	Plex          PlexDoc      `json:"plex"`
+	Tailscale     TailscaleDoc `json:"tailscale"`
 	// Notifications is where messages go and which events send them, without
 	// the secrets in the channels.
 	Notifications NotificationsDoc `json:"notifications"`
@@ -214,6 +224,12 @@ type SettingsDoc struct {
 type PlexDoc struct {
 	Enabled bool                 `json:"enabled"`
 	Admins  []access.PlexAccount `json:"admins"`
+}
+
+// TailscaleDoc is the settings for the built-in Tailscale node. Where the node is now is State.Tailscale.
+type TailscaleDoc struct {
+	Enabled  bool   `json:"enabled"`
+	Hostname string `json:"hostname"`
 }
 
 // DeviceDoc is one tuner as the dashboard shows it. OwnerReserve and
@@ -248,6 +264,8 @@ type State struct {
 	// AdminSeparate is true when the admin pages have a port of their own (-admin-listen), so moving a tuner to
 	// another port must not move the page with it.
 	AdminSeparate bool `json:"adminSeparate"`
+	// Tailscale is the built-in Tailscale node: whether this build has it, and where it is.
+	Tailscale tailnet.Status `json:"tailscale"`
 	// Version is this build's version, VersionURL its page on GitHub, and DocsURL
 	// the documentation as it was at that version.
 	Version    string `json:"version"`
@@ -322,10 +340,12 @@ func (a *API) state() State {
 			History:       set.HistoryEnabled(),
 			LogLevel:      set.LogLevelName(),
 			Plex:          plexDoc(set),
+			Tailscale:     TailscaleDoc{Enabled: set.TailscaleEnabled(), Hostname: set.TailscaleHostname()},
 			Notifications: notificationsDoc(set),
 		},
 		Editable:      a.Store.Editable(),
 		AdminSeparate: a.AdminSeparate,
+		Tailscale:     a.tailscale(),
 		Version:       version.Get(),
 		VersionURL:    version.URL(version.Get()),
 		DocsURL:       version.DocsURL(version.Get()),
@@ -519,6 +539,13 @@ func (a *API) deleteViewer(w http.ResponseWriter, r *http.Request) {
 
 // ---- settings ----
 
+func (a *API) tailscale() tailnet.Status {
+	if a.Tailnet == nil {
+		return tailnet.Status{State: tailnet.Unavailable, Hostname: access.DefaultTailscaleHostname}
+	}
+	return a.Tailnet.Status()
+}
+
 func (a *API) settingsDoc() SettingsDoc { return a.state().Settings }
 
 func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
@@ -535,6 +562,9 @@ type settingsPatch struct {
 	History       *bool     `json:"history"`
 	LogLevel      *string   `json:"logLevel"`
 	PlexEnabled   *bool     `json:"plexEnabled"`
+	// TailscaleEnabled turns the built-in Tailscale node on and off, and TailscaleHostname names it on the tailnet.
+	TailscaleEnabled  *bool   `json:"tailscaleEnabled"`
+	TailscaleHostname *string `json:"tailscaleHostname"`
 	// NotifyEvents switches kinds of event on and off for notifications.
 	NotifyEvents *notifyEventsPatch `json:"notifyEvents"`
 }
@@ -581,6 +611,26 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			s.Plex.Enabled = *in.PlexEnabled
 		}
+		if in.TailscaleEnabled != nil || in.TailscaleHostname != nil {
+			if s.Tailscale == nil {
+				s.Tailscale = &access.TailscaleSettings{}
+			}
+			if in.TailscaleEnabled != nil {
+				s.Tailscale.Enabled = *in.TailscaleEnabled
+			}
+			if in.TailscaleHostname != nil {
+				h := strings.ToLower(strings.TrimSpace(*in.TailscaleHostname))
+				if h == access.DefaultTailscaleHostname {
+					h = "" // the default is not written
+				}
+				if h != "" {
+					if err := access.ValidateTailscaleHostname(h); err != nil {
+						return &httpErr{http.StatusBadRequest, err.Error()}
+					}
+				}
+				s.Tailscale.Hostname = h
+			}
+		}
 		if in.NotifyEvents != nil {
 			// There is nothing to be told about while the firmware check is off. (Turning the check
 			// off later leaves the switch as it was, and it takes effect again when the check is on.)
@@ -603,6 +653,9 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Guide != nil && *in.Guide && a.Guide != nil {
 		a.Guide.Kick()
+	}
+	if (in.TailscaleEnabled != nil || in.TailscaleHostname != nil) && a.Tailnet != nil {
+		a.Tailnet.Reconcile()
 	}
 	writeJSON(w, http.StatusOK, a.settingsDoc())
 }

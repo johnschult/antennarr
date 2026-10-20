@@ -32,6 +32,7 @@ import (
 	"github.com/johnschult/yagi/internal/plexauth"
 	"github.com/johnschult/yagi/internal/proxy"
 	"github.com/johnschult/yagi/internal/restart"
+	"github.com/johnschult/yagi/internal/tailnet"
 	"github.com/johnschult/yagi/internal/tuner"
 	"github.com/johnschult/yagi/internal/tunerinfo"
 	"github.com/johnschult/yagi/internal/ui"
@@ -59,8 +60,13 @@ type Config struct {
 	// only there, so the tuner ports carry nothing but what a media server asks of a tuner. No tuner can then
 	// use that port.
 	AdminSeparate bool
-	Poll          time.Duration
-	Log           *slog.Logger
+	// TailscaleAuthKey signs the built-in Tailscale node in without a link (TS_AUTHKEY). It is never saved.
+	TailscaleAuthKey string
+	// TailscaleStart makes the built-in Tailscale node, for tests; nil means the real one (tailnet.NewNode), which
+	// is nil in a build without it.
+	TailscaleStart tailnet.Starter
+	Poll           time.Duration
+	Log            *slog.Logger
 	// LogLevel is the level the logger filters at, which the log level setting moves; nil means the setting has
 	// no effect. Logs is where the Logs page reads the recent lines from; nil means there is no page to show.
 	LogLevel *slog.LevelVar
@@ -127,6 +133,7 @@ type Server struct {
 	history   *history.Recorder
 	plex      *plexauth.Auth
 	claim     *claim.Claimer
+	tailnet   *tailnet.Manager
 	admin     http.Handler // the admin pages, shared by every listener
 	// fromFlags: the devices came from command-line flags, so there is no
 	// devices list in the settings file to add to or remove from.
@@ -265,10 +272,20 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	})
 	policy.SetSessionCheck(s.plex.IsSignedInAdmin)
 
+	start := cfg.TailscaleStart
+	if start == nil {
+		start = tailnet.NewNode
+	}
+	tsDir := "" // the node's identity is kept beside the settings file; with no file there is nowhere to keep it
+	if cfg.ConfigPath != "" {
+		tsDir = filepath.Join(filepath.Dir(cfg.ConfigPath), "tailscale")
+	}
+	s.tailnet = tailnet.NewManager(policy.Settings, tsDir, cfg.TailscaleAuthKey, cfg.Log, start)
+
 	admin := http.NewServeMux()
 	admin.Handle("/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		AdminSeparate: cfg.AdminSeparate, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		AdminSeparate: cfg.AdminSeparate, Tailnet: s.tailnet, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -399,6 +416,7 @@ func (s *Server) Run(ctx context.Context) error {
 		s.logClaimLinks(lns)
 	}
 
+	s.tailnet.Reconcile()
 	go s.firmware.Run(ctx)
 	go s.guide.Run(ctx)
 	go s.notify.Run(ctx)
@@ -419,6 +437,7 @@ func (s *Server) Run(ctx context.Context) error {
 	case first = <-errc:
 	}
 	cancel()
+	s.tailnet.Close()
 
 	s.fleetMu.Lock()
 	servers := []*http.Server{}

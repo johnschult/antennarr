@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { EditRow } from '@/components/settings/edit-row'
 import { NotificationRows } from '@/components/settings/notification-rows'
 import { PlexRows } from '@/components/settings/plex-rows'
+import { TailscaleRows } from '@/components/settings/tailscale-rows'
 import { Row, Section } from '@/components/settings/section'
 import { SwitchRow } from '@/components/settings/switch-row'
 import { useApp } from '@/hooks/app-context'
@@ -95,6 +96,7 @@ export function SettingsPage() {
               onSave={(text) => update.mutateAsync({ admin: parseAddresses(text) })}
             />
             <PlexRows />
+            <TailscaleRows />
             <Row title="Who can use your tuners" description="Only the addresses of the viewers you add. With no viewers, nobody can.">
               <Link to="/viewers" className="text-sm font-medium underline underline-offset-2 hover:text-foreground">
                 {settings.mode === 'no-viewers' ? 'No viewers yet' : 'Viewers only'}

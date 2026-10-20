@@ -10,6 +10,7 @@ If you haven't read the [project README](../README.md), start there for what it 
 | [Networking](networking.md) | You are deciding how a viewer's server will reach yours: Tailscale, a VPN, the same network, or (not recommended) the internet |
 | [Media servers](media-servers.md) | You are adding the tuner in Plex, Jellyfin or Emby |
 | [Configuration](configuration.md) | You want every setting, flag and file explained, and how the limits work |
+| [Built-in Tailscale](tailscale.md) | You want Yagi to join your tailnet by itself, with no Tailscale on the machine |
 | [Security](security.md) | You want to know who can do what, and what Yagi sends over the internet |
 | [Troubleshooting](troubleshooting.md) | Something doesn't work: a page that won't load, a tuner that is offline, a viewer that is refused |
 | [API](api.md) | You want to script against Yagi, or look at what the web page talks to |
