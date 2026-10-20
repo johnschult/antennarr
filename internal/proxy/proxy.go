@@ -138,7 +138,9 @@ func (p *Proxy) deny(w http.ResponseWriter, err error) {
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !isStream(r.URL.Path) {
-		p.log.Info("request", "method", r.Method, "path", r.URL.RequestURI(), "client", r.RemoteAddr, "ua", r.UserAgent())
+		// Media servers ask for discover.json and lineup.json over and over; that is detail for debugging, not news.
+		// What matters is logged above debug: a stream opening and closing, and anything refused.
+		p.log.Debug("request", "method", r.Method, "path", r.URL.RequestURI(), "client", r.RemoteAddr, "ua", r.UserAgent())
 	}
 	if p.cfg.Policy != nil {
 		if err := p.cfg.Policy.Authorize(r); err != nil {

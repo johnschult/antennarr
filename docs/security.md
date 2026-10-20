@@ -19,10 +19,19 @@ If a media server needs a tuner page that isn't on the list, Yagi logs `path not
 ## Keep it off the open internet
 
 Use Tailscale, a VPN or a private network ([Networking](networking.md)). If you must expose the port, list only the viewer's public address in Yagi *and* in your firewall.
-Yagi speaks plain HTTP: it has no TLS of its own, so anything sent to it can be read by anyone on the path. On Tailscale or a VPN the traffic is already encrypted.
+Yagi speaks plain HTTP: it has no TLS of its own, so anything sent to it can be read by anyone on the path. On Tailscale or a VPN the traffic is already encrypted. The one exception is the `-tailscale` image, which can also serve the admin pages over HTTPS at its tailnet name, with a certificate from Tailscale ([Built-in Tailscale](tailscale.md#https-for-the-admin-page)); that name then appears in a public certificate log.
 
 If you put Yagi **behind a reverse proxy**, every request looks like it came from the proxy's address, so the allowlist and admin-by-address can't tell people apart. Either don't proxy the tuner side, or make sure the proxy is the only thing that can reach it and handle access there.
 Set `X-Forwarded-Proto: https` on proxied requests so the sign-in cookie is marked `Secure`.
+
+## Built-in Tailscale
+
+In the `-tailscale` image, Yagi can join your tailnet as its own device ([Built-in Tailscale](tailscale.md)). What that changes for security:
+
+- **Who is on the other end is the node's word.** A viewer or admin listed as `tailscale:name@example.com` (or a device) is matched only when Yagi's own node says that is who a connection came from; a connection from the LAN, or a header that claims a login, never counts. Removing someone from your tailnet takes effect on their next connection.
+- **Only on the tailnet** refuses everything that arrives over the machine's own address except the machine itself, and closes the connections already open from the LAN when it goes on. It can only be switched on while the node is connected, and it is not in force while the node is down, so an outage doesn't lock you out; `-allow-lan` is the way back in. It is a gate in Yagi, not a firewall: the port is still open to a scan.
+- **A tagged device has no login**, so name it by its tailnet name. A tailnet-wide admin entry (`100.64.0.0/10`) makes every device on it an admin, so don't put your viewers on it.
+- The node's identity (the device's key) is kept in a `tailscale` folder beside the settings file. Treat it like the settings file: anyone who can read it can be that device.
 
 ## Sign in with Plex
 

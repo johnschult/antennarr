@@ -10,6 +10,8 @@ Two ideas to keep in mind:
 
 ## Tailscale (recommended)
 
+Yagi can also **join your tailnet by itself**, with no Tailscale on the machine, in the `-tailscale` image: see [Built-in Tailscale](tailscale.md). The steps below are for a Tailscale you run on the machine yourself.
+
 [Tailscale](https://tailscale.com) is the easiest way: nothing is opened to the internet, and the addresses don't change.
 
 1. Put Tailscale on the machine running Yagi and on the viewer's media server, signed in to the same tailnet. If they are on different tailnets, share the Yagi machine with the viewer's tailnet from the Tailscale admin console (*Machines → ⋯ → Share*).

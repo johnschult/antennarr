@@ -1,8 +1,10 @@
 # Copy this next to a yagi.json (see the README) and run: docker compose up -d
 #
 # Host networking is recommended. Yagi tells its own streams from your local
-# ones by address, and offers your Tailscale and LAN addresses on the Setup page,
-# and both need to see the machine's real network.
+# ones by address, and offers your Tailscale and LAN addresses when you add a viewer,
+# and both need to see the machine's real network. It also needs it to find your
+# tuner on the network; without host networking, name the tuner yourself with
+# environment: { YAGI_TUNER: 192.168.1.50 } (or add it by address on the web page).
 #
 # A new install is closed: nobody can use the tuner and only this machine can open the
 # web page. On first start the log (docker logs yagi) has a one-time setup link;

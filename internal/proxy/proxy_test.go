@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -183,5 +184,27 @@ func TestTunerDownIs502(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusBadGateway {
 		t.Errorf("status = %d, want 502", resp.StatusCode)
+	}
+}
+
+func TestRoutineRequestsAreLoggedAtDebugNotInfo(t *testing.T) {
+	f := newFakeTuner(t)
+	api, _ := url.Parse(f.api.URL)
+	stream, _ := url.Parse(f.stream.URL)
+	ask := func(level slog.Level) string {
+		var out strings.Builder
+		log := slog.New(slog.NewTextHandler(&out, &slog.HandlerOptions{Level: level}))
+		srv := httptest.NewServer(New(Config{API: api, Stream: stream, Logger: log}))
+		defer srv.Close()
+		var v any
+		getJSON(t, srv.URL+"/discover.json", &v)
+		getJSON(t, srv.URL+"/lineup.json", &v)
+		return out.String()
+	}
+	if got := ask(slog.LevelInfo); strings.Contains(got, "msg=request") {
+		t.Errorf("routine requests are logged at info:\n%s", got)
+	}
+	if got := ask(slog.LevelDebug); strings.Count(got, "msg=request") != 2 {
+		t.Errorf("debug should show both requests:\n%s", got)
 	}
 }

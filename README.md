@@ -39,7 +39,7 @@ media servers only ever talk to Yagi. It also decides who may use the tuner, and
 
 - **Rewriting proxy.** `discover.json`, `lineup.json`, `status.json` and the streams all go through Yagi. A viewer adds the
   tuner by `host:port` like any other HDHomeRun and needs no routing or NAT rules of their own.
-- **Follows the tuner.** Finds the tuner by DeviceID (UDP broadcast, with a subnet scan as a fallback), so a DHCP address change doesn't break anything.
+- **Follows the tuner.** Finds the tuner by DeviceID (UDP broadcast, with a subnet scan as a fallback), so a DHCP address change doesn't break anything. It also lists the tuners it can see when you add one, with a name filled in, but never adds one by itself.
 - **Limits.** An allowlist of viewer addresses, tuners per viewer, a cap on all viewers together, and tuners always kept free for you.
   Over the limit, a viewer gets the same HTTP 503 a busy tuner gives, so their software already knows what to do.
 - **Several tuners.** Each looks like its own HDHomeRun on its own port.
@@ -48,6 +48,7 @@ media servers only ever talk to Yagi. It also decides who may use the tuner, and
 - **Firmware news.** Tells you when SiliconDust releases firmware for your model, and installs it when you press Install on the tuner's Firmware tab: the latest release for that tuner only, never an older one, and never on its own.
 - **Notifications.** Optional messages to ntfy, Pushover or a webhook when there is new firmware, a tuner is offline for a couple of minutes (and when it's back), or a viewer is turned away. Each kind can be switched off, and each channel has a Test button.
 - **Any network.** Plain LAN, Tailscale, WireGuard, ZeroTier… Yagi just listens on a port. Getting the two servers to reach each other is up to you.
+- **Its own Tailscale** (the `-tailscale` image). Yagi can join your tailnet as its own device, with no Tailscale on the machine: share that one device and nothing is opened on your router. Viewers and admins can be matched by Tailscale login, the LAN can be closed (*only on the tailnet*), and the admin page can be served over HTTPS. See [Built-in Tailscale](docs/tailscale.md).
 
 > [!WARNING]
 > **Status: early.** It runs a real FLEX 4K and is tested with the Go race detector and a UI test suite, but it is young software.
@@ -84,6 +85,7 @@ Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with
 | [Getting started](docs/getting-started.md) | You are installing Yagi, or opening it for the first time |
 | [A tour of the web page](docs/web-ui.md) | You want to see what each page shows, with pictures |
 | [Networking](docs/networking.md) | You are deciding how a viewer's server will reach yours: Tailscale, a VPN, the same network, or (not recommended) the internet |
+| [Built-in Tailscale](docs/tailscale.md) | You want Yagi to join your tailnet by itself, with no Tailscale on the machine |
 | [Media servers](docs/media-servers.md) | You are adding the tuner in Plex, Jellyfin or Emby |
 | [Configuration](docs/configuration.md) | You want every setting, flag and file explained, and how the limits work |
 | [Security](docs/security.md) | You want to know who can do what, and what Yagi sends over the internet |
@@ -116,7 +118,7 @@ Everything is in the standard library on the Go side (no third-party Go dependen
 
 ## Roadmap
 
-Planned, roughly in this order: Plex-verified viewer enrollment, built-in Tailscale (set up from the UI), and editing a tuner's address from the UI. Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Planned, roughly in this order: Plex-verified viewer enrollment, and editing a tuner's address from the UI. Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

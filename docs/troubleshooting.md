@@ -1,7 +1,7 @@
 # Troubleshooting
 
-Start with the log, it usually says what is wrong. In Docker: `docker logs yagi`. Every request that reaches Yagi is logged with the address it came from, and every refusal says why.
-A request that never shows up in the log never arrived, which points at the network or a firewall, not at Yagi.
+Start with the log, it usually says what is wrong. In Docker: `docker logs yagi`. Every refusal says why, with the address it came from, and a stream opening and closing is logged too. An ordinary request (the `discover.json` and `lineup.json` a media server asks for over and over) is only logged at the *Debug* level, so it doesn't bury the rest: set the level to *Debug* in *Settings → Logs* when you need to see them.
+A request that never shows up in the log (at *Debug* for an ordinary one) never arrived, which points at the network or a firewall, not at Yagi.
 
 - [A page or the tuner address just hangs, then times out](#it-just-hangs-then-times-out)
 - ["This address can't open the admin page"](#this-address-cant-open-the-admin-page)
@@ -26,7 +26,7 @@ Nothing came back at all, not even a refusal. The connection is being dropped be
 3. **Tailscale access controls** may not allow that port between those two machines.
 4. **Safari or another browser changed the address**, for example to `https://`. Yagi speaks plain `http://`. Type it in full, with `:5004`.
 
-Check the log: if the request appears there, it arrived and this section isn't your problem.
+Check the log, with its level set to *Debug* so that ordinary requests show: if the request appears there, it arrived and this section isn't your problem.
 
 ## "This address can't open the admin page"
 
@@ -146,6 +146,13 @@ The message says why. The common ones:
 - **Can't write its settings**: the `./config` folder isn't owned by the user in `user:`.
 - **A build fails with a DNS error** (`dl-cdn.alpinelinux.org`): the default Docker network on some firewalld machines can't reach the internet during a build. Use the published image instead of building, or build with `docker build --network host`.
 - **The firewall's rules aren't visible from inside the container**, so the Add viewer steps don't detect it. That is expected.
+
+## Built-in Tailscale
+
+- **The status row says *Connecting…* or *Not signed in yet*.** Open the *Sign in to Tailscale* link on *Settings → Access → Tailscale*, and approve the device if your tailnet asks. Set `TS_AUTHKEY` for an unattended start.
+- **The HTTPS link doesn't answer.** The first visit waits while the certificate is issued (Yagi asks for it as soon as HTTPS is on, so this is usually over before you click). If the row shows a reason instead of a link, your tailnet probably has HTTPS certificates turned off: Tailscale admin console → DNS → *Enable HTTPS*. Also check that the device you browse from is on the tailnet.
+- **"This address can't open the admin page" over the tailnet.** Nobody on the tailnet is an admin yet: add `tailscale:you@example.com` (or `100.64.0.0/10`) under *Admin access → Admin addresses*, from the machine itself.
+- **Locked out after turning on *Only on the tailnet*.** From the machine itself, `http://127.0.0.1:<port>/` still works and the switch can be turned off there. In Docker the host's browser doesn't arrive as loopback, so start the container with `YAGI_ALLOW_LAN=1` (or `-allow-lan`), turn the switch off, and remove it.
 
 ## Asking for help
 
