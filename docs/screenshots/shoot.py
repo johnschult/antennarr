@@ -89,9 +89,9 @@ with sync_playwright() as p:
     shot(page, 'activity')
     ctx.close()
 
-    # A tuner's page, on its Overview (a single tuner opens its page from /tuner).
+    # A tuner's page, on its Overview (opened directly; /tuner is the list).
     ctx = context('dark', height=600)
-    page = open_page(ctx, '/yagi/tuner', '[data-testid="firmware-line"]')
+    page = open_page(ctx, '/yagi/tuner/antenna', '[data-testid="firmware-line"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
