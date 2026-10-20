@@ -44,7 +44,7 @@ type fwState struct {
 // firmware reads the first device's firmware status and event texts from the API.
 func (r *rig) firmware(t *testing.T) (fwState, []string) {
 	t.Helper()
-	_, body := r.get(t, "antenna", "/yagi/api/state")
+	_, body := r.get(t, "antenna", "/api/state")
 	var st struct {
 		Devices []struct {
 			Firmware fwState `json:"firmware"`
@@ -206,7 +206,7 @@ func TestAnUnreachableChangelogDoesNotAffectAnythingElse(t *testing.T) {
 	r := startWith(t, access.DefaultSettings(), oneDevice(a), broken.URL, a)
 
 	waitFor(t, "the failure to be reported", func() bool { st, _ := r.firmware(t); return st.State == "unknown" && strings.Contains(st.Error, "500") })
-	if code, _ := r.get(t, "antenna", "/yagi/api/state"); code != 200 {
+	if code, _ := r.get(t, "antenna", "/api/state"); code != 200 {
 		t.Errorf("state: %d", code)
 	}
 	if _, events := r.firmware(t); count(events, "Firmware") != 0 {

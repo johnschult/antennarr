@@ -29,7 +29,7 @@ import (
 )
 
 // Path is where the claim page lives.
-const Path = "/yagi/claim"
+const Path = "/claim"
 
 const (
 	maxFailures = 5                // wrong tries allowed from one address...
@@ -222,7 +222,7 @@ func (c *Claimer) confirm(w http.ResponseWriter, r *http.Request) {
 	}
 	c.token = ""
 	c.log.Info("claimed: this address is now an admin", "address", ip)
-	http.Redirect(w, r, "/yagi/", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func setPageHeaders(w http.ResponseWriter) {

@@ -11,7 +11,7 @@ import (
 	"github.com/johnschult/yagi/internal/logbuf"
 )
 
-const logsPath = "/yagi/api/logs"
+const logsPath = "/api/logs"
 
 // withLogs gives the API a log with some lines in it.
 func withLogs(t *testing.T) (*env, *logbuf.Buffer) {
@@ -121,26 +121,26 @@ func TestNoLogIsNotFound(t *testing.T) {
 
 func TestTheLogLevelIsASettingThatIsCheckedAndNotWrittenWhenInfo(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
-	_, v := e.call(t, "GET", "/yagi/api/settings", "")
+	_, v := e.call(t, "GET", "/api/settings", "")
 	if obj(t, v)["logLevel"] != "info" {
 		t.Errorf("default = %v", obj(t, v)["logLevel"])
 	}
-	if code, v := e.call(t, "PATCH", "/yagi/api/settings", `{"logLevel":"debug"}`); code != 200 || obj(t, v)["logLevel"] != "debug" {
+	if code, v := e.call(t, "PATCH", "/api/settings", `{"logLevel":"debug"}`); code != 200 || obj(t, v)["logLevel"] != "debug" {
 		t.Fatalf("%d %v", code, v)
 	}
 	if fileSettings(t, e).LogLevel != "debug" {
 		t.Error("not saved")
 	}
-	e.call(t, "PATCH", "/yagi/api/settings", `{"logLevel":"info"}`)
+	e.call(t, "PATCH", "/api/settings", `{"logLevel":"info"}`)
 	if fileSettings(t, e).LogLevel != "" {
 		t.Errorf("the default was written: %q", fileSettings(t, e).LogLevel)
 	}
-	if code, _ := e.call(t, "PATCH", "/yagi/api/settings", `{"logLevel":"trace"}`); code != 400 {
+	if code, _ := e.call(t, "PATCH", "/api/settings", `{"logLevel":"trace"}`); code != 400 {
 		t.Errorf("a bad level: %d", code)
 	}
-	e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":2}`)
-	e.call(t, "PATCH", "/yagi/api/settings", `{"logLevel":"warn"}`)
-	e.call(t, "PATCH", "/yagi/api/settings", `{"sharedCap":3}`)
+	e.call(t, "PATCH", "/api/settings", `{"sharedCap":2}`)
+	e.call(t, "PATCH", "/api/settings", `{"logLevel":"warn"}`)
+	e.call(t, "PATCH", "/api/settings", `{"sharedCap":3}`)
 	if fileSettings(t, e).LogLevel != "warn" {
 		t.Error("an unrelated patch changed the level")
 	}

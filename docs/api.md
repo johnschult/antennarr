@@ -3,7 +3,7 @@
 Yagi has two kinds of HTTP interface:
 
 - the **tuner side**, which looks like an HDHomeRun to media servers (and is what viewers use);
-- the **admin API**, a small JSON API under `/yagi/api/` that the web page uses. You can script against it too.
+- the **admin API**, a small JSON API under `/api/` that the web page uses. You can script against it too.
 
 The admin API is for Yagi's own web page first, so it can change between releases. The release notes mention anything that does.
 
@@ -24,7 +24,7 @@ Requests from an address that isn't a viewer get `403` with `X-Yagi-Reason: not-
 
 ## The admin API
 
-All paths are under `/yagi/api/` and need admin access (see [Security](security.md)). Without it they answer `403` with `{"error": "admin only"}`.
+All paths are under `/api/` and need admin access (see [Security](security.md)). Without it they answer `403` with `{"error": "admin only"}`.
 Replies are JSON and never cached. An error is `{"error": "a message safe to show a person"}` with a suitable status.
 
 **Writes** (`POST`, `PUT`, `PATCH`, `DELETE`) must send `Content-Type: application/json` when they have a body, and an `Origin` header, if sent, must be the host you are talking to.
@@ -85,7 +85,7 @@ The tuner's guide key (`DeviceAuth`), the Plex client ID and the secrets in noti
 
 ## Signing in
 
-These are under `/yagi/auth/`, and are public, because you have to be able to sign in before you are an admin.
+These are under `/auth/`, and are public, because you have to be able to sign in before you are an admin.
 
 | Request | What it does |
 |---|---|

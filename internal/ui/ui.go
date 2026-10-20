@@ -19,7 +19,7 @@ import (
 //go:embed all:dist
 var dist embed.FS
 
-// Handler serves the embedded UI at prefix (e.g. "/yagi/").
+// Handler serves the embedded UI at prefix (e.g. "/").
 func Handler(prefix string) http.Handler {
 	root, err := fs.Sub(dist, "dist")
 	if err != nil {
@@ -28,10 +28,30 @@ func Handler(prefix string) http.Handler {
 	return handler(prefix, root)
 }
 
+// pages are the first parts of the paths the web page's own router answers (see web/src/App.tsx). A port that is
+// also a tuner's has to send exactly these to the page and leave every other path to the tuner.
+var pages = []string{"/viewers", "/viewers/", "/tuner", "/tuner/", "/activity", "/settings", "/settings/", "/logs", "/setup", "/assets/"}
+
+// Routes lists the path patterns the page answers on a port shared with a tuner: its router's pages, its built
+// assets, and the files at the top of the build (the icons, the theme script, index.html).
+func Routes() []string {
+	routes := append([]string(nil), pages...)
+	if root, err := fs.Sub(dist, "dist"); err == nil {
+		if entries, err := fs.ReadDir(root, "."); err == nil {
+			for _, e := range entries {
+				if !e.IsDir() && e.Name() != ".gitkeep" {
+					routes = append(routes, "/"+e.Name())
+				}
+			}
+		}
+	}
+	return routes
+}
+
 const notBuilt = `The Yagi web UI has not been built into this binary.
 
 Build it with:   cd web && npm install && npm run build
-then rebuild Yagi. The JSON API under /yagi/api/ works without it.
+then rebuild Yagi. The JSON API under /api/ works without it.
 `
 
 // csp is strict because this page can change who may use the tuner: nothing

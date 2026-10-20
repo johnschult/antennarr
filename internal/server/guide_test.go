@@ -66,7 +66,7 @@ type guideEntry struct {
 
 func (r *rig) guideFor(t *testing.T) (map[string]guideEntry, string) {
 	t.Helper()
-	_, body := r.get(t, "antenna", "/yagi/api/state")
+	_, body := r.get(t, "antenna", "/api/state")
 	var st struct {
 		Devices []struct {
 			Guide map[string]guideEntry `json:"guide"`
@@ -95,14 +95,14 @@ func TestTilesGetTheLogoAndWhatIsOn(t *testing.T) {
 	}
 
 	// The logo comes through Yagi, so the browser never calls SiliconDust.
-	code, logo := r.get(t, "antenna", "/yagi/api/devices/antenna/guide/11.1/icon")
+	code, logo := r.get(t, "antenna", "/api/devices/antenna/guide/11.1/icon")
 	if code != 200 || !strings.HasPrefix(logo, "\x89PNG") {
 		t.Errorf("logo: %d %q", code, logo)
 	}
-	if code, _ := r.get(t, "antenna", "/yagi/api/devices/antenna/guide/8.1/icon"); code != 404 {
+	if code, _ := r.get(t, "antenna", "/api/devices/antenna/guide/8.1/icon"); code != 404 {
 		t.Errorf("a channel with a foreign logo address: %d, want 404", code)
 	}
-	if code, _ := r.get(t, "antenna", "/yagi/api/devices/antenna/guide/99.9/icon"); code != 404 {
+	if code, _ := r.get(t, "antenna", "/api/devices/antenna/guide/99.9/icon"); code != 404 {
 		t.Errorf("an unknown channel: %d, want 404", code)
 	}
 
@@ -125,11 +125,11 @@ func TestNoGuideIsFetchedWhileOffAndItCanBeSwitchedOn(t *testing.T) {
 	if len(g) != 0 || hits.Load() != 0 {
 		t.Fatalf("while off: guide=%v hits=%d", g, hits.Load())
 	}
-	if code, _ := r.get(t, "antenna", "/yagi/api/devices/antenna/guide/11.1/icon"); code != 404 {
+	if code, _ := r.get(t, "antenna", "/api/devices/antenna/guide/11.1/icon"); code != 404 {
 		t.Errorf("a logo while off: %d", code)
 	}
 
-	req, _ := http.NewRequest("PATCH", "http://"+r.addr["antenna"]+"/yagi/api/settings", strings.NewReader(`{"guide":true}`))
+	req, _ := http.NewRequest("PATCH", "http://"+r.addr["antenna"]+"/api/settings", strings.NewReader(`{"guide":true}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://"+r.addr["antenna"])
 	if resp, err := http.DefaultClient.Do(req); err != nil {

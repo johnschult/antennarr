@@ -23,8 +23,8 @@ func get(h http.Handler, method, target string) *httptest.ResponseRecorder {
 }
 
 func TestServesIndexAtTheRoot(t *testing.T) {
-	h := handler("/yagi/", built)
-	for _, target := range []string{"/yagi/", "/yagi/index.html"} {
+	h := handler("/", built)
+	for _, target := range []string{"/", "/index.html"} {
 		rec := get(h, "GET", target)
 		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `id="root"`) {
 			t.Errorf("%s: %d %q", target, rec.Code, rec.Body)
@@ -39,8 +39,8 @@ func TestServesIndexAtTheRoot(t *testing.T) {
 }
 
 func TestAppRoutesFallBackToIndex(t *testing.T) {
-	h := handler("/yagi/", built)
-	for _, target := range []string{"/yagi/viewers", "/yagi/settings", "/yagi/deep/link/here", "/yagi/assets/"} {
+	h := handler("/", built)
+	for _, target := range []string{"/viewers", "/settings", "/deep/link/here", "/assets/"} {
 		rec := get(h, "GET", target)
 		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `id="root"`) {
 			t.Errorf("%s: %d %q (the app must handle its own routes)", target, rec.Code, rec.Body)
@@ -49,11 +49,11 @@ func TestAppRoutesFallBackToIndex(t *testing.T) {
 }
 
 func TestAssetsAreTypedAndCachedForever(t *testing.T) {
-	h := handler("/yagi/", built)
+	h := handler("/", built)
 	cases := map[string]string{
-		"/yagi/assets/index-abc123.js":  "javascript",
-		"/yagi/assets/index-abc123.css": "text/css",
-		"/yagi/favicon.svg":             "image/svg+xml",
+		"/assets/index-abc123.js":  "javascript",
+		"/assets/index-abc123.css": "text/css",
+		"/favicon.svg":             "image/svg+xml",
 	}
 	for target, wantType := range cases {
 		rec := get(h, "GET", target)
@@ -61,17 +61,17 @@ func TestAssetsAreTypedAndCachedForever(t *testing.T) {
 			t.Errorf("%s: %d type %q, want %q", target, rec.Code, rec.Header().Get("Content-Type"), wantType)
 		}
 	}
-	if cc := get(h, "GET", "/yagi/assets/index-abc123.js").Header().Get("Cache-Control"); !strings.Contains(cc, "immutable") {
+	if cc := get(h, "GET", "/assets/index-abc123.js").Header().Get("Cache-Control"); !strings.Contains(cc, "immutable") {
 		t.Errorf("hashed assets should be cached forever, got %q", cc)
 	}
-	if cc := get(h, "GET", "/yagi/favicon.svg").Header().Get("Cache-Control"); cc != "no-cache" {
+	if cc := get(h, "GET", "/favicon.svg").Header().Get("Cache-Control"); cc != "no-cache" {
 		t.Errorf("unhashed files must be revalidated, got %q", cc)
 	}
 }
 
 func TestMissingAssetIs404NotHTML(t *testing.T) {
-	h := handler("/yagi/", built)
-	for _, target := range []string{"/yagi/assets/gone.js", "/yagi/nope.css", "/yagi/x.png"} {
+	h := handler("/", built)
+	for _, target := range []string{"/assets/gone.js", "/nope.css", "/x.png"} {
 		rec := get(h, "GET", target)
 		if rec.Code != 404 || strings.Contains(rec.Body.String(), "root") {
 			t.Errorf("%s: %d %q", target, rec.Code, rec.Body)
@@ -80,8 +80,8 @@ func TestMissingAssetIs404NotHTML(t *testing.T) {
 }
 
 func TestCannotEscapeTheUIDirectory(t *testing.T) {
-	h := handler("/yagi/", built)
-	for _, target := range []string{"/yagi/../etc/passwd", "/yagi/assets/../../secret.txt", "/yagi/..%2f..%2fsecret"} {
+	h := handler("/", built)
+	for _, target := range []string{"/../etc/passwd", "/assets/../../secret.txt", "/..%2f..%2fsecret"} {
 		rec := get(h, "GET", target)
 		if strings.Contains(rec.Body.String(), "secret") || rec.Code == 500 {
 			t.Errorf("%s: %d %q", target, rec.Code, rec.Body)
@@ -90,12 +90,12 @@ func TestCannotEscapeTheUIDirectory(t *testing.T) {
 }
 
 func TestOnlyReadsAreAllowed(t *testing.T) {
-	h := handler("/yagi/", built)
-	if rec := get(h, "HEAD", "/yagi/"); rec.Code != 200 || rec.Body.Len() != 0 {
+	h := handler("/", built)
+	if rec := get(h, "HEAD", "/"); rec.Code != 200 || rec.Body.Len() != 0 {
 		t.Errorf("HEAD: %d with %d body bytes", rec.Code, rec.Body.Len())
 	}
 	for _, m := range []string{"POST", "PUT", "DELETE", "PATCH"} {
-		rec := get(h, m, "/yagi/")
+		rec := get(h, m, "/")
 		if rec.Code != 405 || rec.Header().Get("Allow") != "GET, HEAD" {
 			t.Errorf("%s: %d Allow=%q", m, rec.Code, rec.Header().Get("Allow"))
 		}
@@ -103,8 +103,8 @@ func TestOnlyReadsAreAllowed(t *testing.T) {
 }
 
 func TestSecurityHeadersAreOnEverything(t *testing.T) {
-	h := handler("/yagi/", built)
-	for _, target := range []string{"/yagi/", "/yagi/assets/index-abc123.js", "/yagi/missing.js", "/yagi/viewers"} {
+	h := handler("/", built)
+	for _, target := range []string{"/", "/assets/index-abc123.js", "/missing.js", "/viewers"} {
 		hdr := get(h, "GET", target).Header()
 		csp := hdr.Get("Content-Security-Policy")
 		for _, want := range []string{"default-src 'self'", "frame-ancestors 'none'", "connect-src 'self'", "base-uri 'none'"} {
@@ -120,15 +120,15 @@ func TestSecurityHeadersAreOnEverything(t *testing.T) {
 
 func TestExplainsWhenTheUIWasNotBuilt(t *testing.T) {
 	empty := fstest.MapFS{".gitkeep": {}}
-	h := handler("/yagi/", empty)
-	for _, target := range []string{"/yagi/", "/yagi/viewers"} {
+	h := handler("/", empty)
+	for _, target := range []string{"/", "/viewers"} {
 		rec := get(h, "GET", target)
 		body, _ := io.ReadAll(rec.Body)
-		if rec.Code != 503 || !strings.Contains(string(body), "npm run build") || !strings.Contains(string(body), "/yagi/api/") {
+		if rec.Code != 503 || !strings.Contains(string(body), "npm run build") || !strings.Contains(string(body), "/api/") {
 			t.Errorf("%s: %d %q", target, rec.Code, body)
 		}
 	}
-	if rec := get(h, "GET", "/yagi/missing.js"); rec.Code != 404 {
+	if rec := get(h, "GET", "/missing.js"); rec.Code != 404 {
 		t.Errorf("missing asset with no build: %d", rec.Code)
 	}
 }
@@ -136,7 +136,7 @@ func TestExplainsWhenTheUIWasNotBuilt(t *testing.T) {
 // Whatever state the checkout is in, the embedded handler must work: 200 if
 // someone has built the UI here, 503 with instructions if not.
 func TestEmbeddedHandler(t *testing.T) {
-	rec := get(Handler("/yagi/"), "GET", "/yagi/")
+	rec := get(Handler("/"), "GET", "/")
 	if rec.Code != 200 && rec.Code != 503 {
 		t.Errorf("status %d", rec.Code)
 	}

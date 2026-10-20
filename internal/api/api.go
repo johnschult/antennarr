@@ -67,7 +67,7 @@ type TailnetControl interface {
 	Status() tailnet.Status
 }
 
-// API serves /yagi/api/*.
+// API serves /api/*.
 type API struct {
 	// Tailnet is the built-in Tailscale node; nil means this server has none.
 	Tailnet TailnetControl
@@ -133,7 +133,7 @@ type Device struct {
 }
 
 // Prefix is where the API is mounted.
-const Prefix = "/yagi/api/"
+const Prefix = "/api/"
 
 func (a *API) Handler() http.Handler {
 	if a.Log == nil {

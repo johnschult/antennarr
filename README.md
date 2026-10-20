@@ -73,7 +73,7 @@ go build -o yagi ./cmd/yagi
 ./yagi                            # finds your HDHomeRun, or: ./yagi -tuner 192.168.1.50
 ```
 
-Then open the **setup link** it writes to its log (or `http://localhost:5004/yagi/` on the machine itself) to become the admin, and add a viewer from the web page. A viewer adds the tuner to their media server as `<this machine>:5004`. [Getting started](docs/getting-started.md) walks through every step, with the settings file, Docker and updating.
+Then open the **setup link** it writes to its log (or `http://localhost:5004/` on the machine itself) to become the admin, and add a viewer from the web page. A viewer adds the tuner to their media server as `<this machine>:5004`. [Getting started](docs/getting-started.md) walks through every step, with the settings file, Docker and updating.
 
 Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with that number as well as `latest`; the app shows its version in the footer, linked to the release notes.
 

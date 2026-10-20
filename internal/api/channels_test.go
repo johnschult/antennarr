@@ -26,8 +26,8 @@ func (t toServer) RoundTrip(r *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(r)
 }
 
-const chanPath = "/yagi/api/devices/antenna/channels"
-const scanPath = "/yagi/api/devices/antenna/channel-scan"
+const chanPath = "/api/devices/antenna/channels"
+const scanPath = "/api/devices/antenna/channel-scan"
 
 func channelsEnv(t *testing.T, tunerStatus string) (*env, *linetest.Server) {
 	t.Helper()
@@ -148,7 +148,7 @@ func TestChannelsOfAnOfflineTunerAreNotAsked(t *testing.T) {
 
 func TestUnknownTunerAndNoLineupClient(t *testing.T) {
 	e, _ := channelsEnv(t, idleTuner)
-	if code, _ := e.call(t, "GET", "/yagi/api/devices/nope/channels", ""); code != 404 {
+	if code, _ := e.call(t, "GET", "/api/devices/nope/channels", ""); code != 404 {
 		t.Errorf("unknown tuner: %d", code)
 	}
 	e.api.Lineup = nil
@@ -446,7 +446,7 @@ func TestChannelsHaveNoAboutWithoutAGuideOrWhileItIsOff(t *testing.T) {
 		t.Error("about without a guide")
 	}
 	e.api.Guide = guideService(t, nil)
-	e.call(t, "PATCH", "/yagi/api/settings", `{"guide":false}`)
+	e.call(t, "PATCH", "/api/settings", `{"guide":false}`)
 	_, v = e.call(t, "GET", chanPath, "")
 	for _, c := range obj(t, v)["channels"].([]any) {
 		if _, has := obj(t, c)["about"]; has {

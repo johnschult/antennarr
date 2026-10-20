@@ -72,7 +72,7 @@ func TestClaimSavesTheAddressAsAdminAndBurnsTheToken(t *testing.T) {
 	}
 
 	rec := r.post("192.168.1.20:5555", tok, nil)
-	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/yagi/" {
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/" {
 		t.Fatalf("%d %q", rec.Code, rec.Header().Get("Location"))
 	}
 	if got := r.admins(); len(got) != 1 || got[0] != "192.168.1.20" {
@@ -240,9 +240,9 @@ func TestTokensAreDifferentEachTime(t *testing.T) {
 func TestURLs(t *testing.T) {
 	got := URLs("abc_-", "5004", []string{"100.64.0.5", "192.168.1.5", "fd7a:115c:a1e0::5"})
 	want := []string{
-		"http://100.64.0.5:5004/yagi/claim?token=abc_-",
-		"http://192.168.1.5:5004/yagi/claim?token=abc_-",
-		"http://[fd7a:115c:a1e0::5]:5004/yagi/claim?token=abc_-",
+		"http://100.64.0.5:5004/claim?token=abc_-",
+		"http://192.168.1.5:5004/claim?token=abc_-",
+		"http://[fd7a:115c:a1e0::5]:5004/claim?token=abc_-",
 	}
 	for i := range want {
 		if got[i] != want[i] {

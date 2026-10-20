@@ -405,7 +405,7 @@ func TestActiveListsStreamsOldestFirst(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	p.ActiveHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/yagi/streams", nil))
+	p.ActiveHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/streams", nil))
 	var got []Active
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || len(got) != 2 {
 		t.Errorf("handler body %s (%v)", rec.Body, err)
@@ -432,7 +432,7 @@ func TestAdminOnly(t *testing.T) {
 		"garbage":            403,
 	} {
 		rec := httptest.NewRecorder()
-		r := httptest.NewRequest(http.MethodGet, "/yagi/status", nil)
+		r := httptest.NewRequest(http.MethodGet, "/status", nil)
 		r.RemoteAddr = remote
 		h.ServeHTTP(rec, r)
 		if rec.Code != want {
@@ -474,11 +474,12 @@ func TestConcurrentStreamsNeverExceedLimit(t *testing.T) {
 
 func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "tuner front page") })
+	page := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusTeapot) })
 
 	t.Run("no viewers: only this machine is an admin", func(t *testing.T) {
 		p, _ := newPolicy(t, DefaultSettings(), &fakeMon{})
-		h := p.AdminHome("/yagi/", next)
-		for remote, want := range map[string]int{"127.0.0.1:1": http.StatusFound, "192.168.1.9:1": http.StatusOK} {
+		h := p.AdminHome(page, next)
+		for remote, want := range map[string]int{"127.0.0.1:1": http.StatusTeapot, "192.168.1.9:1": http.StatusOK} {
 			rec := httptest.NewRecorder()
 			h.ServeHTTP(rec, req(remote))
 			if rec.Code != want {
@@ -491,11 +492,11 @@ func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
 		s := twoViewers
 		s.Admin = []string{"192.168.68.0/22"}
 		p, _ := newPolicy(t, s, &fakeMon{})
-		h := p.AdminHome("/yagi/", next)
+		h := p.AdminHome(page, next)
 		for remote, want := range map[string]int{
-			"127.0.0.1:1":     http.StatusFound, // loopback
-			"192.168.68.9:1":  http.StatusFound, // configured admin range
-			"100.67.117.32:1": http.StatusOK,    // a viewer is not an admin: gets the normal handler
+			"127.0.0.1:1":     http.StatusTeapot, // loopback
+			"192.168.68.9:1":  http.StatusTeapot, // configured admin range
+			"100.67.117.32:1": http.StatusOK,     // a viewer is not an admin: gets the normal handler
 			"203.0.113.9:1":   http.StatusOK,
 		} {
 			rec := httptest.NewRecorder()
@@ -513,7 +514,8 @@ func TestAdminHomeRedirectsAdminsOnly(t *testing.T) {
 func TestAdminHomeSendsEveryBrowserToTheAdminPage(t *testing.T) {
 	p, _ := newPolicy(t, twoViewers, &fakeMon{})
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "tuner front page") })
-	h := p.AdminHome("/yagi/", next)
+	page := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusTeapot) })
+	h := p.AdminHome(page, next)
 
 	for _, remote := range []string{"203.0.113.9:1", "100.67.117.32:1"} { // not admins: a stranger and a viewer
 		rec := httptest.NewRecorder()
@@ -521,8 +523,8 @@ func TestAdminHomeSendsEveryBrowserToTheAdminPage(t *testing.T) {
 		r.RemoteAddr = remote
 		r.Header.Set("Accept", "text/html,application/xhtml+xml")
 		h.ServeHTTP(rec, r)
-		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/yagi/" {
-			t.Errorf("a browser from %s: %d %q, want a redirect to the admin page", remote, rec.Code, rec.Header().Get("Location"))
+		if rec.Code != http.StatusTeapot {
+			t.Errorf("a browser from %s: %d, want the admin page", remote, rec.Code)
 		}
 	}
 	// A media server or script (no HTML in Accept) still reaches the tuner's side.

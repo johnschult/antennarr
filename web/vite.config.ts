@@ -3,13 +3,13 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
-// The Go server mounts the UI at /yagi/ and serves the API beside it, so
+// The Go server mounts the UI at / and serves the API beside it, so
 // `npm run dev` proxies the API there. Point YAGI_URL at another instance
 // to develop against it.
 const backend = process.env.YAGI_URL ?? 'http://127.0.0.1:5004'
 
 export default defineConfig({
-  base: '/yagi/',
+  base: '/',
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   build: {
@@ -19,7 +19,7 @@ export default defineConfig({
     emptyOutDir: false,
   },
   // The release notes are CHANGELOG.md at the repository root, bundled into the page (see use-whats-new.ts).
-  server: { fs: { allow: ['..'] }, proxy: { '/yagi/api': backend } },
+  server: { fs: { allow: ['..'] }, proxy: { '/api': backend, '/auth': backend, '/streams': backend } },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
