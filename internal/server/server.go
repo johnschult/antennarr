@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/johnschult/yagi/internal/access"
@@ -123,23 +124,25 @@ type device struct {
 
 // Server runs the devices.
 type Server struct {
-	cfg       Config
-	log       *slog.Logger
-	policy    *access.Policy
-	store     *access.Store
-	hub       *live.Hub
-	firmware  *firmware.Checker
-	guide     *guide.Service
-	notify    *notify.Notifier
-	upgrade   *upgrade.Manager
-	tunerinfo *tunerinfo.Reader
-	restart   *restart.Manager
-	history   *history.Recorder
-	plex      *plexauth.Auth
-	claim     *claim.Claimer
-	tailnet   *tailnet.Manager
-	tail      tailServing  // the tailnet side of the ports
-	admin     http.Handler // the admin pages, shared by every listener
+	cfg          Config
+	log          *slog.Logger
+	policy       *access.Policy
+	store        *access.Store
+	hub          *live.Hub
+	lan          lanConns    // connections from outside the machine, so they can be cut when the LAN closes
+	lanWasClosed atomic.Bool // the LAN was closed when enforceLAN last looked
+	firmware     *firmware.Checker
+	guide        *guide.Service
+	notify       *notify.Notifier
+	upgrade      *upgrade.Manager
+	tunerinfo    *tunerinfo.Reader
+	restart      *restart.Manager
+	history      *history.Recorder
+	plex         *plexauth.Auth
+	claim        *claim.Claimer
+	tailnet      *tailnet.Manager
+	tail         tailServing  // the tailnet side of the ports
+	admin        http.Handler // the admin pages, shared by every listener
 	// fromFlags: the devices came from command-line flags, so there is no
 	// devices list in the settings file to add to or remove from.
 	fromFlags bool

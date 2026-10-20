@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -291,8 +292,8 @@ func TestTheGateRefusesAnythingButLoopbackWhileTheLANIsClosed(t *testing.T) {
 	if got := c.RemoteAddr().(*net.TCPAddr).IP.String(); got != "127.0.0.1" {
 		t.Errorf("accepted a connection from %s; the LAN one should have been dropped", got)
 	}
-	if fl.closedConns != 1 {
-		t.Errorf("dropped %d connections, want 1", fl.closedConns)
+	if n := fl.closedConns.Load(); n != 1 {
+		t.Errorf("dropped %d connections, want 1", n)
 	}
 }
 
@@ -321,7 +322,7 @@ func TestTheLANStaysOpenWhenTailnetOnlyIsOffTheNodeIsDownOrAllowLANIsSet(t *test
 type fakeListener struct {
 	addr        net.Addr
 	pending     []net.Conn
-	closedConns int
+	closedConns atomic.Int32
 }
 
 func (f *fakeListener) queue(froms ...net.Addr) {
@@ -347,7 +348,7 @@ type fakeConn struct {
 }
 
 func (c *fakeConn) RemoteAddr() net.Addr { return c.from }
-func (c *fakeConn) Close() error         { c.l.closedConns++; return nil }
+func (c *fakeConn) Close() error         { c.l.closedConns.Add(1); return nil }
 
 func TestAViewerOnTheTailnetIsRecognisedByLoginAndALanClientIsNot(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
@@ -385,8 +386,16 @@ type httpsNode struct {
 	stubNode
 	tlsMu   sync.Mutex
 	failTLS error
+	warmed  string
 }
 
+func (n *httpsNode) WarmCertificate(_ context.Context, domain string) error {
+	n.tlsMu.Lock()
+	n.warmed = domain
+	n.tlsMu.Unlock()
+	return nil
+}
+func (n *httpsNode) warmedFor() string { n.tlsMu.Lock(); defer n.tlsMu.Unlock(); return n.warmed }
 func (n *httpsNode) setFail(err error) { n.tlsMu.Lock(); n.failTLS = err; n.tlsMu.Unlock() }
 
 func (n *httpsNode) Status() tailnet.NodeStatus {
@@ -469,4 +478,53 @@ func TestOpenPagesAreToldWhenHTTPSComesUpOrFails(t *testing.T) {
 	if keys["base"] == keys["up"] || keys["base"] == keys["failed"] || keys["up"] == keys["failed"] {
 		t.Errorf("the watch can't tell these apart, so the open pages would not be told: %v", keys)
 	}
+}
+
+func TestConnectionsAlreadyOpenFromTheLANAreCutWhenItCloses(t *testing.T) {
+	r, _ := lanRig(t, false, nil) // open: nothing is refused yet
+	fl := &fakeListener{addr: &net.TCPAddr{IP: net.ParseIP("192.168.1.9"), Port: 5004}}
+	ln := r.srv.gate(fl)
+	fl.queue(&net.TCPAddr{IP: net.ParseIP("192.168.1.9"), Port: 40000}, &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40001})
+	var lan, local net.Conn
+	for _, dst := range []*net.Conn{&lan, &local} {
+		c, err := ln.Accept()
+		if err != nil {
+			t.Fatal(err)
+		}
+		*dst = c
+	}
+	if lan.RemoteAddr().(*net.TCPAddr).IP.String() != "192.168.1.9" {
+		t.Fatal("accepted in an unexpected order")
+	}
+
+	set := r.srv.Policy().Settings()
+	set.Tailscale.TailnetOnly = true
+	if err := r.srv.Policy().Update(set); err != nil {
+		t.Fatal(err)
+	}
+	r.srv.enforceLAN()
+	waitFor(t, "the LAN connection to be cut", func() bool { return fl.closedConns.Load() == 1 })
+	time.Sleep(100 * time.Millisecond)
+	if n := fl.closedConns.Load(); n != 1 {
+		t.Errorf("%d connections cut, want only the LAN one (the machine's own must stay)", n)
+	}
+
+	// Switching it off and on again cuts what is open then, once.
+	set.Tailscale.TailnetOnly = false
+	_ = r.srv.Policy().Update(set)
+	r.srv.enforceLAN()
+	fl.queue(&net.TCPAddr{IP: net.ParseIP("192.168.1.10"), Port: 40002})
+	if _, err := ln.Accept(); err != nil {
+		t.Fatal(err)
+	}
+	set.Tailscale.TailnetOnly = true
+	_ = r.srv.Policy().Update(set)
+	r.srv.enforceLAN()
+	waitFor(t, "the second LAN connection to be cut", func() bool { return fl.closedConns.Load() == 2 })
+}
+
+func TestTheCertificateIsRequestedAheadOfTheFirstVisit(t *testing.T) {
+	node := &httpsNode{}
+	httpsRig(t, true, node)
+	waitFor(t, "the certificate to be requested", func() bool { return node.warmedFor() == "attic.tail1.ts.net" })
 }

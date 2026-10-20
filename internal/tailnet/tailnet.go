@@ -236,6 +236,30 @@ func (m *Manager) WhoIs(ctx context.Context, remote string) (Who, error) {
 	return node.WhoIs(ctx, remote)
 }
 
+// CertWarmer is what a node can do to have its HTTPS certificate ready before anyone asks for it. A node that can't just
+// fetches the certificate on the first visit, which takes a few seconds.
+type CertWarmer interface {
+	WarmCertificate(ctx context.Context, domain string) error
+}
+
+// WarmCertificate has the running node get its certificate for domain now. It does nothing, and says so with a nil
+// error, for a node that can't.
+func (m *Manager) WarmCertificate(ctx context.Context, domain string) error {
+	if m == nil {
+		return ErrNoNode
+	}
+	m.mu.Lock()
+	node := m.node
+	m.mu.Unlock()
+	if node == nil {
+		return ErrNoNode
+	}
+	if w, ok := node.(CertWarmer); ok {
+		return w.WarmCertificate(ctx, domain)
+	}
+	return nil
+}
+
 // ListenTLS is Listen with HTTPS through the running node.
 func (m *Manager) ListenTLS(addr string) (net.Listener, uint64, error) {
 	if m == nil {

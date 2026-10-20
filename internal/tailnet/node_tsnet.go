@@ -128,6 +128,16 @@ func (n *tsnetNode) WhoIs(ctx context.Context, remote string) (Who, error) {
 	return w, nil
 }
 
+// WarmCertificate gets (or renews) the certificate for the node's name, so the first visit over HTTPS doesn't wait for it.
+func (n *tsnetNode) WarmCertificate(ctx context.Context, domain string) error {
+	lc, err := n.srv.LocalClient()
+	if err != nil {
+		return err
+	}
+	_, _, err = lc.CertPair(ctx, domain)
+	return err
+}
+
 func (n *tsnetNode) ListenTLS(addr string) (net.Listener, error) { return n.srv.ListenTLS("tcp", addr) }
 
 func (n *tsnetNode) Close() error {
