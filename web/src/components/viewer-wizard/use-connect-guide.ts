@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useApp } from '@/hooks/app-context'
 import { getNetwork } from '@/lib/api'
-import { firewallRules, hostProblem, portOf, tunerAddress, type Firewall, type MediaServer, type Transport } from '@/lib/setup-guide'
+import { firewallRules, hostProblem, portOf, tunerAddress, type Firewall, type MediaServer, type Transport, type YagiNode } from '@/lib/setup-guide'
 
 /**
  * What the connect and media-server steps share: the address to give the viewer,
@@ -17,7 +17,8 @@ export function useConnectGuide(viewerAddresses: string[], lookUp: boolean) {
   const [deviceName, setDeviceName] = useState(devices[0]?.name ?? '')
   // What the person typed, or null while the guide is choosing the address for them.
   const [typedHost, setTypedHost] = useState<string | null>(null)
-  const [transport, setTransport] = useState<Transport>('tailscale')
+  // What the person picked, or null while the guide goes by what is available: Yagi's own Tailscale when it is up.
+  const [pickedTransport, setTransport] = useState<Transport | null>(null)
   // The person's choices, or null while the guide goes by what it found on this machine.
   const [firewallGate, setFirewallGate] = useState<boolean | null>(null)
   const [firewallPick, setFirewallPick] = useState<Firewall | null>(null)
@@ -27,12 +28,21 @@ export function useConnectGuide(viewerAddresses: string[], lookUp: boolean) {
   const device = devices.find((d) => d.name === deviceName) ?? devices[0]
   const port = device ? portOf(device.listen) : ''
 
+  // Yagi's own Tailscale node, a device of its own on the tailnet, separate from any Tailscale on this machine. It is
+  // offered while its switch is on.
+  const ts = state.tailscale
+  const yagiOn = !!ts?.built && state.settings.tailscale.enabled
+  const yagi: YagiNode | null = yagiOn && ts ? { state: ts.state, dnsName: ts.dnsName, addresses: ts.addresses, serving: ts.serving, port } : null
+  const yagiName = yagi?.state === 'running' ? (yagi.dnsName ?? yagi.addresses?.[0]) : undefined
+  const transport: Transport = pickedTransport ?? (yagiName ? 'yagi' : 'tailscale')
+
   // This machine's own addresses, when the server could read them. The address
   // follows the connection chosen until the person types their own.
   const found = network.data?.addresses ?? []
   const tailscale = found.find((a) => a.kind === 'tailscale')
   const lan = found.find((a) => a.kind === 'lan')
-  const suggested = (transport === 'tailscale' ? tailscale?.ip : transport === 'lan' ? lan?.ip : undefined) ?? window.location.hostname
+  // Yagi's own node has no stand-in: until it is up there is no address to suggest, and the browser's would be wrong.
+  const suggested = transport === 'yagi' ? (yagiName ?? '') : ((transport === 'tailscale' ? tailscale?.ip : transport === 'lan' ? lan?.ip : undefined) ?? window.location.hostname)
   const host = typedHost ?? suggested
 
   // Which firewall is switched on here, if the server could tell. Only a firewall
@@ -47,7 +57,7 @@ export function useConnectGuide(viewerAddresses: string[], lookUp: boolean) {
 
   return {
     devices, device, port, setDeviceName,
-    network, found, tailscale, host, setTypedHost, problem, address,
+    network, found, tailscale, yagi, host, setTypedHost, problem, address,
     transport, setTransport,
     detected, detectedTool, hasFirewall, setFirewallGate, firewall, setFirewallPick, rules,
     media, setMedia,

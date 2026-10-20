@@ -32,6 +32,7 @@ Yagi keeps the device's identity in a `tailscale` folder beside the settings fil
 
 Once the status row says *Connected, and answering on port …*, a viewer on the tailnet adds the tuner in their media server at the device's name and the tuner's port, such as `yagi:5004`, like any other HDHomeRun (see [Media servers](media-servers.md)). The tuner ports answer exactly as they do on the LAN: the same limits, the same allowlist, the same log.
 
+- **The viewer's setup steps know about it.** In *Viewers → Connection steps* (and when adding a viewer), **Yagi's own Tailscale** is its own choice, first, with the device's tailnet name as the address to give them, and it is kept apart from **Tailscale on this machine** (the Tailscale the host runs, if it runs one): they are two devices with two addresses, and each choice shows only its own. For Yagi's own there is no firewall step, because its traffic doesn't come through the machine's network.
 - **The viewer is still matched by address.** On the tailnet that is their Tailscale address (`100.x.y.z`), so list that in the viewer's addresses. Recognising them by their Tailscale login instead is a later part.
 - **The admin page is on the tuner's port too**, and is still only for an admin: an address in *Settings → Access → Admin addresses* (add `100.64.0.0/10` to allow your whole tailnet, but only if none of your viewers is on it), or a Plex account.
 - **The LAN ports are unchanged.** Yagi still answers on the machine's own address as before; turning that off is the *tailnet only* switch, which comes next.

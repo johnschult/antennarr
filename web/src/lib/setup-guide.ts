@@ -5,11 +5,13 @@
 // inside a shell command is checked first (see validHost / validNetwork), so a
 // typed address can never add a second command.
 
-export type Transport = 'tailscale' | 'vpn' | 'lan' | 'internet'
+/** `yagi` is Yagi's own built-in Tailscale node; `tailscale` is Tailscale running on the machine Yagi is on. */
+export type Transport = 'yagi' | 'tailscale' | 'vpn' | 'lan' | 'internet'
 export type Firewall = 'ufw' | 'firewalld' | 'iptables'
 export type MediaServer = 'plex' | 'jellyfin' | 'emby'
 
 export const TRANSPORTS: { id: Transport; label: string; hint: string }[] = [
+  // 'yagi' is not here: it is only offered when the node is switched on (see yagiTransport)
   { id: 'tailscale', label: 'Tailscale', hint: 'Easiest: no ports opened to the internet' },
   { id: 'vpn', label: 'Other VPN', hint: 'WireGuard, ZeroTier, Netbird…' },
   { id: 'lan', label: 'Same network', hint: 'Both servers on one LAN' },
@@ -105,13 +107,59 @@ export function firewallRules(fw: Firewall, port: string, networks: string[]): R
   return rules
 }
 
+/** What Yagi knows about its own Tailscale node, for the steps. */
+export interface YagiNode {
+  state: 'off' | 'unavailable' | 'no-store' | 'starting' | 'needs-login' | 'running' | 'error'
+  dnsName?: string
+  addresses?: string[]
+  /** The ports it answers on at those addresses. */
+  serving?: string[]
+  /** The port of the tuner being set up. */
+  port: string
+}
+
+/** The option for Yagi's own Tailscale, with where it is: what is shown on the button. */
+export function yagiTransport(node: YagiNode): { id: Transport; label: string; hint: string } {
+  const name = node.dnsName ?? node.addresses?.[0]
+  const hint =
+    node.state === 'running' && name
+      ? `Built in, no install needed here (${name})`
+      : node.state === 'needs-login'
+        ? 'Built in. Sign it in first: Settings → Access'
+        : node.state === 'error'
+          ? 'Built in, but it could not start: Settings → Access'
+          : 'Built in. Connecting…'
+  return { id: 'yagi', label: 'Yagi\u2019s own Tailscale', hint }
+}
+
 /**
  * What the viewer's side needs for the way the two servers will reach each other.
  * `tailscaleIP` is this machine's Tailscale address, if Yagi found one:
- * then there is nothing to install on this side.
+ * then there is nothing to install on this side. `node` is Yagi's own Tailscale node, for the `yagi` way.
  */
-export function transportSteps(t: Transport, tailscaleIP?: string): string[] {
+export function transportSteps(t: Transport, tailscaleIP?: string, node?: YagiNode): string[] {
   switch (t) {
+    case 'yagi': {
+      if (!node || node.state === 'off' || node.state === 'unavailable') {
+        return ['Switch on \u201cJoin your Tailscale network\u201d in Settings → Access first: that is Yagi\u2019s own Tailscale node.']
+      }
+      if (node.state !== 'running') {
+        return [
+          node.state === 'needs-login'
+            ? 'Yagi\u2019s own Tailscale isn\u2019t signed in yet. Sign it in under Settings → Access (the link is there), then come back to this step.'
+            : node.state === 'error'
+              ? 'Yagi\u2019s own Tailscale could not start. Settings → Access says why.'
+              : 'Yagi\u2019s own Tailscale is still connecting. Give it a moment.',
+        ]
+      }
+      const name = node.dnsName ?? node.addresses?.[0] ?? 'this device'
+      const steps = [
+        `Yagi is on your tailnet as ${name}${node.addresses?.[0] && node.dnsName ? ` (${node.addresses[0]})` : ''}, so nothing needs installing or opening on this machine. The viewer\u2019s media server needs Tailscale too, signed in to the same tailnet, or share Yagi\u2019s device with their tailnet (Tailscale admin console → Machines → ${node.dnsName?.split('.')[0] ?? 'yagi'} → Share).`,
+        'Make sure the viewer\u2019s Tailscale address (100.x.y.z) is one of their addresses in Yagi (Viewers → Edit).',
+      ]
+      if (!node.serving?.includes(node.port)) steps.push(`Yagi isn\u2019t answering on port ${node.port} on the tailnet yet. It takes a couple of seconds after a port is added or changed.`)
+      return steps
+    }
     case 'tailscale':
       if (tailscaleIP) {
         return [
