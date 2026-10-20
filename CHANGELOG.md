@@ -13,6 +13,7 @@ Each release's notes on GitHub are its section of this file.
 
 ### Changed
 
+- **Yagi no longer adds a tuner by itself.** On a first start with no tuner named, Yagi used to look for ten seconds and save whatever answered. Now it starts with only the web page, and the page looks for tuners while it is open (every few seconds, for a few minutes) and **lists what it finds**, each with a name filled in from the tuner's own name (you can change it) and an **Add** button, or **Add all**. Nothing is added until you press it. When it has stopped looking, **Look again** starts another round; in Docker without host networking, add the tuner by its address, or set the new `YAGI_TUNER`. Tuners already in your settings file, and `-tuner`, work as before.
 - **The tuner pages are at `/tuners`** (was `/tuner`), so the address matches the menu: `/tuners`, `/tuners/<name>/channels`. Old `/tuner/…` links and bookmarks are sent on to the new address.
 - **The web page is at the address itself, not under `/yagi/`.** `http://<this machine>:5004/` is the page (and `http://<this machine>:5000/` with an admin port), and its API is `/api/`. Old links and bookmarks to `/yagi/…` (and `/antennarr/…`) are sent on to the same page, including the first-run setup link. On a tuner's port only the page's own paths go to the page: the tuner's own addresses (`/discover.json`, `/lineup.json`, `/auto/…`) are exactly as before. If you installed the page to your Home Screen, add it again. **You will need to sign in with Plex once more**, because the sign-in cookie now covers the whole site.
 

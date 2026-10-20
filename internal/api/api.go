@@ -80,6 +80,8 @@ type API struct {
 	Fleet Fleet
 	// Discover looks for tuners on the network. Nil means discovery.Discover.
 	Discover func(ctx context.Context, wait time.Duration) ([]discovery.Device, error)
+	// Describe returns what a tuner at an address calls itself, for offering a name. Nil means asking it over HTTP.
+	Describe func(ctx context.Context, address string) string
 	// Firmware reads SiliconDust's changelog; nil means no firmware checking.
 	Firmware *firmware.Checker
 	// Logs holds the recent log lines for the Logs page; nil means there is no page.
@@ -759,6 +761,7 @@ func (a *API) device(name string) *Device {
 // deviceInput is a tuner to start fronting. Only the address (or DeviceID) is
 // needed; the name and port are chosen if left out.
 type deviceInput struct {
+	Label  string `json:"label"`
 	Name   string `json:"name"`
 	Listen string `json:"listen"`
 	Tuner  string `json:"tuner"`
@@ -781,6 +784,17 @@ func (a *API) addDevice(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.fail(w, err)
 		return
+	}
+	if label := strings.TrimSpace(in.Label); label != "" {
+		if _, err := a.Store.Edit(func(s *access.Settings) error {
+			if s.Labels == nil {
+				s.Labels = map[string]string{}
+			}
+			s.Labels[d.Name] = label
+			return nil
+		}); err != nil {
+			a.Log.Warn("the tuner was added but its display name wasn't saved", "device", d.Name, "err", err)
+		}
 	}
 	dev := a.device(d.Name)
 	if dev == nil {
@@ -813,6 +827,8 @@ type Found struct {
 	Address string `json:"address"` // where it answered
 	Tuners  int    `json:"tuners"`  // how many tuners it has
 	Added   string `json:"added"`   // the device it is already, if it is one
+	Label   string `json:"label"`   // a display name to offer, from the tuner's own name
+	Name    string `json:"name"`    // a device name to offer, such as flex-4k-87; it shows in addresses
 }
 
 const discoverWait = 3 * time.Second
@@ -852,6 +868,7 @@ func (a *API) discover(w http.ResponseWriter, r *http.Request) {
 	for _, f := range found {
 		out = append(out, Found{ID: f.ID, Address: f.BaseURL, Tuners: f.TunerCount, Added: have[strings.ToUpper(f.ID)]})
 	}
+	a.nameFound(r.Context(), out)
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	writeJSON(w, http.StatusOK, map[string]any{"tuners": out})
 }

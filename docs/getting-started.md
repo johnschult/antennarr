@@ -47,10 +47,9 @@ Unraid User Script). `./yagi -version` prints the version.
 
 ## 2. Your tuner
 
-**Usually there is nothing to do.** If you don't name a tuner, Yagi looks for HDHomeRuns on the network when it starts, for about ten seconds. What it finds is saved under `devices` in the settings file, so the next start uses the same tuner. One tuner is called `tuner`; several are called `tuner-<DeviceID>`, each on the next port up from `5004`.
-This needs to see your network's broadcasts, so in Docker use host networking.
+**Usually there is little to do.** If you don't name a tuner, Yagi starts with only the web page, on port `5004`, and looks for HDHomeRuns on your network while the page is open (every few seconds, for a few minutes). Open it (step 3): each tuner it finds is listed with a name filled in, which you can change, and an **Add** button (or **Add all**). **Nothing is added until you press it**, because a tuner on a shared network may not be yours. If it stops looking before yours is on, press **Look again**. Tuners you add are saved under `devices` in the settings file; each gets the next port up from `5004`, and the first takes over `5004` so the page stays where it is. You can add more, or remove one, later on the *Tuners* page.
 
-**If none answers, Yagi starts anyway**, with no tuner and only the web page, on port `5004`. Open it (step 3) and press **Find tuners**, or add the tuner by its address. The first tuner you add takes over port `5004`, so the page stays where it is. You can add more tuners, or remove one, later on the *Tuners* page.
+Finding a tuner needs to see your network's broadcasts, so in Docker use host networking. Without it, add the tuner by its address on the same page, or set `YAGI_TUNER` (for example `YAGI_TUNER=192.168.1.50`) for an install nobody opens a page on.
 
 To name a tuner yourself in the settings file or on the command line, list what is on your network:
 

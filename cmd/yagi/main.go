@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -36,7 +35,7 @@ func main() {
 
 	var f deviceFlags
 	flag.StringVar(&f.listen, "listen", ":5004", "address to listen on")
-	flag.StringVar(&f.tuner, "tuner", "", "tuner host or URL, e.g. 192.168.1.132")
+	flag.StringVar(&f.tuner, "tuner", os.Getenv("YAGI_TUNER"), "tuner host or URL, e.g. 192.168.1.132 (also set by YAGI_TUNER)")
 	flag.StringVar(&f.id, "tuner-id", "", "DeviceID of the tuner to follow if its address changes (learned from -tuner if omitted)")
 	flag.StringVar(&f.streamPort, "stream-port", "5004", "tuner's streaming port")
 	flag.StringVar(&f.advertise, "advertise", "", "base URL to hand to clients (default: the host they connected with)")
@@ -48,7 +47,7 @@ func main() {
 	configPath := flag.String("config", defaultConfigPath, "settings file (devices, viewers, limits); created with defaults if it doesn't exist, reloaded on SIGHUP")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: yagi [flags]\n       yagi discover [-wait 3s] [host ...]\n\n"+
-			"With no -tuner, Yagi looks for HDHomeRun tuners on the network and remembers them in the settings file.\n"+
+			"With no tuner named, Yagi starts without one; the admin page lists the HDHomeRun tuners it can see, to add.\n"+
 			"Name a tuner with -tuner or -tuner-id, or declare devices under \"devices\" in the settings file.\n\n")
 		flag.PrintDefaults()
 	}
@@ -74,38 +73,10 @@ func main() {
 	if err != nil {
 		fail(err)
 	}
-	// With no tuner given anywhere, find one: nobody should have to write a
-	// config file before the first start. What is found is saved to the settings
-	// file, so it is the same tuner next time and can be edited from then on.
-	if wantsAutoDiscovery(settings, set) {
-		// Look for a short while. If nothing answers, start anyway with no tuner:
-		// the admin page is there, and a tuner can be added from it (or found
-		// again with its Find button) once it is plugged in or reachable.
-		sctx, cancel := context.WithTimeout(ctx, startupSearch)
-		found, err := findTuners(sctx, f.listen, func(ctx context.Context, wait time.Duration) ([]discovery.Device, error) {
-			return discovery.Discover(ctx, wait)
-		}, discoverRetry, log)
-		cancel()
-		switch {
-		case err == nil:
-			settings.Devices = found
-			for _, d := range found {
-				log.Info("found a tuner", "device", d.Name, "id", d.ID, "at", d.Tuner, "listen", d.Listen)
-			}
-			if savePath != "" {
-				if err := access.SaveSettings(savePath, settings); err != nil {
-					log.Warn("couldn't save the tuners that were found; they will be looked for again next start", "path", savePath, "err", err)
-				} else {
-					log.Info("saved them to the settings file", "path", savePath)
-				}
-			}
-		case ctx.Err() != nil:
-			return // asked to stop while still looking
-		case errors.Is(err, context.DeadlineExceeded):
-			log.Info("no tuner found, so starting without one. Open the admin page to add one; if yours is on another network, add it by its address", "listen", f.listen)
-		default:
-			fail(err)
-		}
+	// With no tuner given anywhere, start without one. Tuners that Yagi can see are shown on the admin page, and
+	// the person adds them: nothing is added without being asked.
+	if len(settings.Devices) == 0 && f.tuner == "" && f.id == "" {
+		log.Info("no tuner is set up yet. Open the admin page to add one; it lists the HDHomeRun tuners it can see. If yours is on another network, or Yagi is in Docker without host networking, add it by its address (or start with -tuner ADDRESS or YAGI_TUNER)", "listen", f.listen)
 	}
 	devices, err := devicesFor(settings, f, set)
 	if err != nil {
@@ -154,10 +125,6 @@ func adminAddress(v string) (string, error) {
 // defaultConfigPath is where the settings live when -config isn't given: next
 // to wherever Yagi is run from. (The Docker image runs from /config.)
 const defaultConfigPath = "yagi.json"
-
-// startupSearch is how long a start with no tuner named looks for one before
-// giving up and starting without.
-const startupSearch = 10 * time.Second
 
 // loadOrCreateSettings reads the settings file, and writes one with the
 // defaults if there is none yet, so there is always a file to edit and the

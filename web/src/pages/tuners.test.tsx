@@ -70,11 +70,11 @@ describe('the Tuners page', () => {
     expect(screen.getByText(/no settings file to save tuners in/)).toBeInTheDocument()
   })
 
-  it('says there is no tuner yet and offers to find one', () => {
+  it('says there is no tuner yet and looks for one', () => {
     vi.stubGlobal('fetch', stubFetch({}).fn)
     list(makeState({ devices: [] }))
     expect(screen.getByText('No tuner yet')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Find tuners' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add by address' })).toBeInTheDocument()
   })
 
   it('has one link to each tuner’s page, not two that go to the same place', () => {

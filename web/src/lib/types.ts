@@ -312,6 +312,10 @@ export interface FoundTuner {
   address: string
   tuners: number
   added: string
+  /** What the tuner calls itself, offered as its display name. Empty when it could not be asked. */
+  label: string
+  /** A device name to offer, such as flex-4k-87. It shows in addresses, so it is plain. */
+  name: string
 }
 
 /** A tuner to start sharing. Only the address (or DeviceID) is needed; the rest is chosen. */
@@ -319,6 +323,7 @@ export interface DeviceInput {
   tuner: string
   id?: string
   name?: string
+  label?: string
   listen?: string
 }
 
