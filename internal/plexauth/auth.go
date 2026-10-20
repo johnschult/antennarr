@@ -16,8 +16,8 @@ import (
 // CookieName is the session cookie. It is only sent to the admin pages.
 const CookieName = "yagi_session"
 
-// CookiePath keeps the cookie off the tuner endpoints that media servers use.
-const CookiePath = "/yagi/"
+// CookiePath is the whole site: the pages and the sign-in share a port with a tuner's endpoints, which never read it.
+const CookiePath = "/"
 
 // Config for Auth.
 type Config struct {
@@ -155,17 +155,17 @@ func (a *Auth) client() *Client {
 	return &Client{Base: a.cfg.Base, AuthBase: a.cfg.AuthBase, HTTP: a.cfg.HTTP, ClientID: a.clientIDFor()}
 }
 
-// Handler serves /yagi/auth/*. It is public by design (you can't sign in
+// Handler serves /auth/*. It is public by design (you can't sign in
 // to reach the sign-in), so each endpoint does its own checks.
 func (a *Auth) Handler() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /yagi/auth/status", a.status)
-	mux.HandleFunc("POST /yagi/auth/plex/start", func(w http.ResponseWriter, r *http.Request) { a.start(w, r, false) })
-	mux.HandleFunc("POST /yagi/auth/plex/poll", func(w http.ResponseWriter, r *http.Request) { a.poll(w, r, false) })
-	mux.HandleFunc("POST /yagi/auth/plex/add/start", func(w http.ResponseWriter, r *http.Request) { a.start(w, r, true) })
-	mux.HandleFunc("POST /yagi/auth/plex/add/poll", func(w http.ResponseWriter, r *http.Request) { a.poll(w, r, true) })
-	mux.HandleFunc("POST /yagi/auth/logout", a.logout)
-	mux.HandleFunc("/yagi/auth/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /auth/status", a.status)
+	mux.HandleFunc("POST /auth/plex/start", func(w http.ResponseWriter, r *http.Request) { a.start(w, r, false) })
+	mux.HandleFunc("POST /auth/plex/poll", func(w http.ResponseWriter, r *http.Request) { a.poll(w, r, false) })
+	mux.HandleFunc("POST /auth/plex/add/start", func(w http.ResponseWriter, r *http.Request) { a.start(w, r, true) })
+	mux.HandleFunc("POST /auth/plex/add/poll", func(w http.ResponseWriter, r *http.Request) { a.poll(w, r, true) })
+	mux.HandleFunc("POST /auth/logout", a.logout)
+	mux.HandleFunc("/auth/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteErr(w, http.StatusNotFound, "no such endpoint")
 	})
 	return httpx.GuardWrites(mux)

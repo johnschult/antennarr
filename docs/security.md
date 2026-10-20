@@ -30,7 +30,7 @@ Optional, off by default, and switched on under *Settings → Access*. It lets c
 
 - Yagi uses plex.tv's sign-in flow **on the server**. Your Plex token never reaches the browser, and it is thrown away as soon as Yagi knows who you are. Only the numeric account ID and name are kept, in the settings file.
 - Only accounts you have added (by ID, which never changes, not by name) can sign in. Removing an account, or turning the feature off, signs it out on the very next request.
-- Sessions last up to 12 hours idle or 7 days in all. The cookie (`yagi_session`) is `HttpOnly`, `SameSite=Strict`, limited to `/yagi/`, and `Secure` when the request came over HTTPS.
+- Sessions last up to 12 hours idle or 7 days in all. The cookie (`yagi_session`) is `HttpOnly`, `SameSite=Strict`, limited to `/`, and `Secure` when the request came over HTTPS.
 - Starting a sign-in is rate-limited per address and the number in progress is capped.
 - Nothing contacts plex.tv until someone signs in. It appears in your Plex account's authorised devices as "Yagi" (the `clientId` in the settings file).
 - To add the first account you need to be an admin another way (this machine, or an `admin` address): turn the switch on, then *Add a Plex account*.

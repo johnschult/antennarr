@@ -266,14 +266,14 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	policy.SetSessionCheck(s.plex.IsSignedInAdmin)
 
 	admin := http.NewServeMux()
-	admin.Handle("/yagi/streams", policy.AdminOnly(policy.ActiveHandler()))
+	admin.Handle("/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
 		AdminSeparate: cfg.AdminSeparate, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
 	// everything it shows comes from the admin-only API above.
-	admin.Handle("/yagi/", ui.Handler("/yagi/"))
+	admin.Handle("/", ui.Handler("/"))
 	s.admin = admin
 
 	for _, d := range cfg.Devices {
@@ -320,17 +320,25 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 		// The admin pages have a port of their own, so this one is only the tuner.
 		mux.Handle("/", tunerAPI)
 	} else {
-		mux.Handle("/yagi/", s.admin) // the admin pages are reachable on every device's port
+		// The admin pages are reachable on every device's port, beside the
+		// tuner's own paths (/discover.json, /lineup.json, /auto/…), which the
+		// pages never use: only the pages' own paths are sent to the admin side.
+		for _, p := range ui.Routes() {
+			mux.Handle("GET "+p, s.admin)
+		}
+		mux.Handle("/api/", s.admin)
+		mux.Handle("/streams", s.admin)
 		// Signing in has to be reachable by someone who isn't signed in yet; each
 		// endpoint checks for itself what it will allow.
-		mux.Handle("/yagi/auth/", s.plex.Handler())
+		mux.Handle("/auth/", s.plex.Handler())
 		mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
+		mux.HandleFunc("GET "+renamedPrefix, redirectRenamed)
 		mux.Handle(claim.Path, s.claim.Handler())
 		mux.Handle("/", tunerAPI)
 		// Someone who types the bare address into a browser wants the admin
 		// page, not the tuner's own front page. Everyone else (viewers, media
 		// servers) is handled as before.
-		mux.Handle("GET /{$}", s.policy.AdminHome("/yagi/", tunerAPI))
+		mux.Handle("GET /{$}", s.policy.AdminHome(s.admin, tunerAPI))
 	}
 
 	log.Debug("device built", "listen", d.Listen, "tuner", base)

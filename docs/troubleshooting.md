@@ -32,7 +32,7 @@ Check the log: if the request appears there, it arrived and this section isn't y
 
 The page loaded (it is public so you can sign in), but Yagi doesn't consider your address an admin. Once you have a viewer, only these can open the admin pages:
 
-- this machine itself (`http://localhost:5004/yagi/`, or through `ssh -L 5004:127.0.0.1:5004 yourserver`);
+- this machine itself (`http://localhost:5004/`, or through `ssh -L 5004:127.0.0.1:5004 yourserver`);
 - addresses listed under `admin` in the settings;
 - a Plex account you have added, if *Sign in with Plex* is on (the page then shows a **Sign in with Plex** button).
 
@@ -42,7 +42,7 @@ Your address might not be the one you expect. Behind Docker's bridge network, a 
 
 ## The bare address says "this address is not allowed to use this tuner"
 
-You opened `http://host:5004/` (no `/yagi/`), which is the tuner's own address, not the web page. From 2026.10.0 a browser is sent on to the admin page automatically. If you still see the message, you're on an older version, or you aren't using a browser. Use `http://host:5004/yagi/`.
+The address itself is fine, but whatever opened it (a script, a media server, `curl`) isn't one of your viewers, so it is refused. A browser at `http://host:5004/` gets the web page, where you can sign in. If a browser shows this message, it is on an older version (before 2026.10.13 the page was at `/yagi/`), or the address is not on your admin list: see above.
 
 If you open Yagi by a name like `mini.local`, your phone or laptop may connect over IPv6 using a link-local address (`fe80::…`). Yagi now treats those as ordinary addresses, so you can list `fe80::/10` under `admin` if you want the whole local network, but it is usually easier to use the machine's IPv4 address.
 

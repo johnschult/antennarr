@@ -1,11 +1,11 @@
 # Yagi web UI
 
 React 19 + Vite + TypeScript, Tailwind v4 and shadcn/ui. It is built into
-`../internal/ui/dist`, which the Go binary embeds and serves at `/yagi/`.
+`../internal/ui/dist`, which the Go binary embeds and serves at `/`.
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173/yagi/, proxying the API to a running Yagi
+npm run dev        # http://localhost:5173/, proxying the API to a running Yagi
 npm test           # vitest
 npm run typecheck
 npm run build      # into ../internal/ui/dist; then `go build ./cmd/yagi`
@@ -20,14 +20,14 @@ npm run build      # into ../internal/ui/dist; then `go build ./cmd/yagi`
 go run ./cmd/yagi -config /tmp/yagi-dev.json
 
 # 2. The UI with hot reload, from web/.
-npm run dev        # then open http://localhost:5173/yagi/
+npm run dev        # then open http://localhost:5173/
 ```
 
 - **No tuner needed.** With no `-tuner`, Yagi looks for HDHomeRuns for about ten seconds, and if it finds none it starts anyway with just the web page. That is enough to work on the UI (you can add a tuner from the Tuners page). To use your own, add `-tuner 192.168.1.50`.
 - **Keep the settings file out of the repository.** `-config` names a file that Yagi creates and saves to, and it can hold notification tokens, so use a path outside the repo as above. (If you do put one in the repo, `yagi*.json` is ignored by git.) Delete the file to start again from the defaults.
 - **If the page says 502, or the terminal says `http proxy error` and `ECONNREFUSED 127.0.0.1:5004`,** the Go server isn't running (or is on another port). Start step 1. Without `-config` nothing can be saved, so adding a viewer or a channel is refused.
 - **Another port or machine:** `YAGI_URL=http://host:port npm run dev`. Loopback is always allowed to use the admin page; for anything else, add its address under `admin` in the settings file.
-- **The embedded copy.** The Go server also serves the last *built* UI at `http://localhost:5004/yagi/`. That one only changes when you run `npm run build` (the Go program embeds it), so use port 5173 while you are editing.
+- **The embedded copy.** The Go server also serves the last *built* UI at `http://localhost:5004/`. That one only changes when you run `npm run build` (the Go program embeds it), so use port 5173 while you are editing.
 
 The UI talks only to the JSON API in `internal/api`. Its types are in
 `src/lib/types.ts` and must be kept in step with `internal/api/api.go`.

@@ -96,7 +96,7 @@ type Settings struct {
 	// OwnerReserve tuners are always kept free for your own devices. Devices
 	// can override it.
 	OwnerReserve int `json:"ownerReserve"`
-	// Admin lists extra addresses (IPs or CIDRs) allowed to see /yagi/*.
+	// Admin lists extra addresses (IPs or CIDRs) allowed to see /*.
 	// Loopback is always allowed once any viewer is configured.
 	Admin []string `json:"admin"`
 	// Labels are display names for devices, by device name. The name itself is

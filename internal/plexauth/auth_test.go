@@ -138,7 +138,7 @@ func (r *rig) do(req *http.Request) (int, map[string]any, *http.Response) {
 // begin starts a login and returns the PIN id.
 func (r *rig) begin(prefix string) int64 {
 	r.t.Helper()
-	code, m, _ := r.post("/yagi/auth/plex"+prefix+"/start", `{}`)
+	code, m, _ := r.post("/auth/plex"+prefix+"/start", `{}`)
 	if code != 200 {
 		r.t.Fatalf("start: %d %v", code, m)
 	}
@@ -148,7 +148,7 @@ func (r *rig) begin(prefix string) int64 {
 func (r *rig) poll(prefix string, pin int64) (int, map[string]any, *http.Response) {
 	r.t.Helper()
 	body, _ := json.Marshal(map[string]int64{"pinId": pin})
-	return r.post("/yagi/auth/plex"+prefix+"/poll", string(body))
+	return r.post("/auth/plex"+prefix+"/poll", string(body))
 }
 
 // pollOK polls until the status leaves "pending" (moving the clock past the
@@ -168,7 +168,7 @@ func (r *rig) pollDone(prefix string, pin int64) (int, map[string]any, *http.Res
 
 func (r *rig) status() map[string]any {
 	r.t.Helper()
-	_, m, _ := r.getJSON("/yagi/auth/status")
+	_, m, _ := r.getJSON("/auth/status")
 	return m
 }
 
@@ -184,7 +184,7 @@ func (r *rig) signedIn() {
 
 func (r *rig) isAdmin() bool {
 	req := httptest.NewRequest("GET", "/x", nil)
-	for _, c := range r.client.Jar.Cookies(mustURL(r.srv.URL + "/yagi/")) {
+	for _, c := range r.client.Jar.Cookies(mustURL(r.srv.URL + "/")) {
 		req.AddCookie(c)
 	}
 	return r.auth.IsSignedInAdmin(req)

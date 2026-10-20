@@ -60,7 +60,7 @@ type Fleet interface {
 // NewError is an error that reaches the person as this status and message.
 func NewError(code int, msg string) error { return &httpErr{code: code, msg: msg} }
 
-// API serves /yagi/api/*.
+// API serves /api/*.
 type API struct {
 	// AdminSeparate says the admin pages are on a port of their own, which the state tells the page.
 	AdminSeparate bool
@@ -124,7 +124,7 @@ type Device struct {
 }
 
 // Prefix is where the API is mounted.
-const Prefix = "/yagi/api/"
+const Prefix = "/api/"
 
 func (a *API) Handler() http.Handler {
 	if a.Log == nil {

@@ -46,7 +46,7 @@ with sync_playwright() as p:
 
     def open_page(ctx, path, wait_for):
         page = ctx.new_page()
-        page.route('**/yagi/api/network', lambda r: r.fulfill(status=200, content_type='application/json', body=json.dumps(NETWORK)))
+        page.route('**/api/network', lambda r: r.fulfill(status=200, content_type='application/json', body=json.dumps(NETWORK)))
         # The live feed never goes idle, so don't wait for the network to.
         page.goto(base + path, wait_until='domcontentloaded')
         page.wait_for_selector(wait_for, timeout=15000)
@@ -54,7 +54,7 @@ with sync_playwright() as p:
 
     for scheme in ('light', 'dark'):
         ctx = context(scheme)
-        page = open_page(ctx, '/yagi/', '[data-testid="tuner-tile"]')
+        page = open_page(ctx, '/', '[data-testid="tuner-tile"]')
         time.sleep(14)  # let the sparklines gather some samples
         page.evaluate(SHOW_LAN_ADDRESS)
         time.sleep(0.3)
@@ -63,14 +63,14 @@ with sync_playwright() as p:
         ctx.close()
 
     ctx = context('dark')
-    page = open_page(ctx, '/yagi/viewers', 'table')
+    page = open_page(ctx, '/viewers', 'table')
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
     shot(page, 'viewers', clip={'x': 0, 'y': 0, 'width': 1280, 'height': 418})
     ctx.close()
 
     ctx = context('dark')
-    page = open_page(ctx, '/yagi/viewers', 'table')
+    page = open_page(ctx, '/viewers', 'table')
     # How to connect is a step of adding a viewer; this is the same steps, opened from a viewer's row.
     page.get_by_role('button', name='Connection steps for Alex').click()
     dialog = page.get_by_role('dialog')
@@ -83,7 +83,7 @@ with sync_playwright() as p:
 
     # Who watched what: the demo seeds two weeks of made-up sessions, and Alex's stream is recorded for real.
     ctx = context('dark', height=980)
-    page = open_page(ctx, '/yagi/activity', '[data-testid="session"]')
+    page = open_page(ctx, '/activity', '[data-testid="session"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     shot(page, 'activity')
@@ -91,7 +91,7 @@ with sync_playwright() as p:
 
     # A tuner's page, on its Overview (opened directly; /tuner is the list).
     ctx = context('dark', height=600)
-    page = open_page(ctx, '/yagi/tuner/antenna', '[data-testid="firmware-line"]')
+    page = open_page(ctx, '/tuner/antenna', '[data-testid="firmware-line"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
@@ -100,7 +100,7 @@ with sync_playwright() as p:
 
     # A tuner's Channels tab.
     ctx = context('dark', height=860)
-    page = open_page(ctx, '/yagi/tuner/antenna/channels', '[data-testid="channel"]')
+    page = open_page(ctx, '/tuner/antenna/channels', '[data-testid="channel"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     shot(page, 'channels')
@@ -108,7 +108,7 @@ with sync_playwright() as p:
 
     # What is known about a channel: the card the i opens, on a channel the guide has things to say about.
     ctx = context('dark', height=760)
-    page = open_page(ctx, '/yagi/tuner/antenna/channels', '[data-testid="channel"]')
+    page = open_page(ctx, '/tuner/antenna/channels', '[data-testid="channel"]')
     time.sleep(1)
     page.get_by_role('button', name=re.compile('^About .* Classic TV')).click()
     page.wait_for_selector('[data-testid="channel-about"]', timeout=15000)
@@ -119,7 +119,7 @@ with sync_playwright() as p:
 
     # Filtering the channels: the panel open, with a category chosen.
     ctx = context('dark', height=760)
-    page = open_page(ctx, '/yagi/tuner/antenna/channels', '[data-testid="channel"]')
+    page = open_page(ctx, '/tuner/antenna/channels', '[data-testid="channel"]')
     time.sleep(1)
     page.get_by_role('button', name='Filters').click()
     page.wait_for_selector('[data-testid="filters"]', timeout=15000)
@@ -132,7 +132,7 @@ with sync_playwright() as p:
 
     # Settings, on its Logs tab.
     ctx = context('dark', height=720)
-    page = open_page(ctx, '/yagi/settings/logs', '[data-testid="log-line"]')
+    page = open_page(ctx, '/settings/logs', '[data-testid="log-line"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     shot(page, 'logs')
@@ -140,14 +140,14 @@ with sync_playwright() as p:
 
     # Settings, on its Privacy tab, where the activity history switch is.
     ctx = context('dark', height=1100)
-    page = open_page(ctx, '/yagi/settings/privacy', 'text=Keep activity history')
+    page = open_page(ctx, '/settings/privacy', 'text=Keep activity history')
     time.sleep(0.5)
     page.evaluate(SHOW_LAN_ADDRESS)
     shot(page, 'settings')
     ctx.close()
 
     ctx = context('dark', 390, 844, 2, phone=True)
-    page = open_page(ctx, '/yagi/', '[data-testid="tuner-tile"]')
+    page = open_page(ctx, '/', '[data-testid="tuner-tile"]')
     time.sleep(2)
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
