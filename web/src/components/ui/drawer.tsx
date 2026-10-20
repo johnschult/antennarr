@@ -36,7 +36,8 @@ function DrawerContent({
         )}
         {...props}
       >
-        <div aria-hidden className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
+        {/* Out of the flow, so a body laid out as a grid or rows keeps its own first row. Bodies leave room above for it. */}
+        <div aria-hidden className="pointer-events-none absolute top-2.5 left-1/2 h-1.5 w-10 -translate-x-1/2 rounded-full bg-muted-foreground/30" />
         {children}
       </DrawerPrimitive.Content>
     </DrawerPrimitive.Portal>

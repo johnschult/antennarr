@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -41,6 +41,11 @@ describe.each([true, false])('dialogs when phone is %s', (phone) => {
     const d = await screen.findByRole('dialog', { name: 'Edit it' })
     expect(d).toHaveAccessibleDescription('Change things.')
     expect(d.className.includes('bottom-0')).toBe(phone)
+    if (phone) {
+      expect(d.className).toMatch(/\bfixed\b/) // not overridden by a relative, which would drop it into the page
+      expect(d.className).not.toMatch(/\brelative\b/)
+      expect(d.firstElementChild).toHaveClass('absolute') // the drag handle is out of the flow, so it takes no row of the body's grid
+    }
     await userEvent.setup().keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
@@ -54,5 +59,30 @@ describe.each([true, false])('dialogs when phone is %s', (phone) => {
     expect(d).toHaveAccessibleDescription('This cannot be undone.')
     await user.click(screen.getByRole('button', { name: 'Keep' }))
     await waitFor(() => expect(screen.queryByRole(phone ? 'dialog' : 'alertdialog')).not.toBeInTheDocument())
+  })
+})
+
+describe('a dialog open while the screen crosses the phone breakpoint', () => {
+  function WithInput() {
+    const [open, setOpen] = useState(true)
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogTitle>Add</DialogTitle>
+          <DialogDescription>Fill in.</DialogDescription>
+          <input aria-label="Name" />
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  it('stays what it was and keeps what was typed, then follows the screen once closed and reopened', async () => {
+    const m = mockPhone(true)
+    render(<WithInput />)
+    const user = userEvent.setup()
+    await user.type(await screen.findByRole('textbox', { name: 'Name' }), 'Sam')
+    act(() => m.set(false)) // turned sideways
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Sam')
+    expect(screen.getByRole('dialog').className).toContain('bottom-0')
   })
 })

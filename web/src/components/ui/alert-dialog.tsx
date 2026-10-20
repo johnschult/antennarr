@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer"
-import { useIsPhone } from "@/hooks/use-media-query"
+import { SheetModeProvider, useSheet, useSheetChoice } from "@/components/ui/sheet-mode"
 
 // On a phone a confirmation is a sheet from the bottom (Vaul) rather than a box
 // in the middle. Dragging it away or tapping outside is the same as Cancel.
@@ -18,18 +18,19 @@ function AlertDialog({
   onOpenChange?: (open: boolean) => void
   children?: React.ReactNode
 }) {
-  const phone = useIsPhone()
-  if (phone) {
-    return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        {children}
-      </Drawer>
-    )
-  }
+  const phone = useSheetChoice(open)
   return (
-    <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} onOpenChange={onOpenChange}>
-      {children}
-    </AlertDialogPrimitive.Root>
+    <SheetModeProvider value={phone}>
+      {phone ? (
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          {children}
+        </Drawer>
+      ) : (
+        <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} onOpenChange={onOpenChange}>
+          {children}
+        </AlertDialogPrimitive.Root>
+      )}
+    </SheetModeProvider>
   )
 }
 
@@ -68,13 +69,12 @@ function AlertDialogContent({
 }: AlertDialogPrimitive.Popup.Props & {
   size?: "default" | "sm"
 }) {
-  const phone = useIsPhone()
+  const phone = useSheet()
   if (phone) {
     return (
       <DrawerContent
         data-size={size}
-        className={cn("group/alert-dialog-content grid gap-4 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]", typeof className === "string" ? className : undefined, "max-h-[92dvh] max-w-none")}
-        aria-describedby={undefined}
+        className={cn("group/alert-dialog-content grid gap-4 overflow-y-auto p-4 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))]", typeof className === "string" ? className : undefined, "max-h-[92dvh] max-w-none")}
       >
         {props.children}
       </DrawerContent>
@@ -148,7 +148,7 @@ function AlertDialogTitle({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
-  const phone = useIsPhone()
+  const phone = useSheet()
   if (phone) return <DrawerTitle className={cn("text-center", className as string | undefined)}>{props.children}</DrawerTitle>
   return (
     <AlertDialogPrimitive.Title
@@ -166,7 +166,7 @@ function AlertDialogDescription({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
-  const phone = useIsPhone()
+  const phone = useSheet()
   if (phone) return <DrawerDescription className={cn("text-balance", className as string | undefined)}>{props.children}</DrawerDescription>
   return (
     <AlertDialogPrimitive.Description
@@ -200,7 +200,7 @@ function AlertDialogCancel({
   ...props
 }: AlertDialogPrimitive.Close.Props &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
-  const phone = useIsPhone()
+  const phone = useSheet()
   if (phone) {
     return (
       <DrawerClose asChild>

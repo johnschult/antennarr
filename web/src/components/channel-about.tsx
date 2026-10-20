@@ -106,7 +106,7 @@ export function ChannelAbout({ channel }: { channel: TunerChannel }) {
         <DrawerTrigger aria-label={label} title="About this channel" className={TRIGGER_CLASS}>
           <Info aria-hidden className="size-4" />
         </DrawerTrigger>
-        <DrawerContent aria-describedby={undefined} className="overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+        <DrawerContent className="overflow-y-auto pt-4 pb-[env(safe-area-inset-bottom)]">
           <AboutBody channel={channel} Title={DrawerTitle} Description={DrawerDescription} />
         </DrawerContent>
       </Drawer>

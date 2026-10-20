@@ -342,6 +342,8 @@ describe('about a channel', () => {
     const sheet = screen.getByRole('dialog')
     expect(sheet).toContainElement(screen.getByTestId('channel-about'))
     expect(sheet.className).toContain('bottom-0')
+    expect(sheet).toHaveAccessibleName('WSB-HD')
+    expect(sheet).toHaveAccessibleDescription('What is known about this channel')
     expect(about.getByText('WSB-HD')).toBeInTheDocument()
     expect(about.getByText('2.1')).toBeInTheDocument()
     expect(about.getByText('In the lineup')).toBeInTheDocument()
