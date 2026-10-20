@@ -74,7 +74,7 @@ function AlertDialogContent({
     return (
       <DrawerContent
         data-size={size}
-        className={cn("group/alert-dialog-content grid gap-4 overflow-y-auto p-4 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))]", typeof className === "string" ? className : undefined, "max-h-[92dvh] max-w-none")}
+        className={cn("group/alert-dialog-content grid gap-4 overflow-y-auto p-4 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))]", typeof className === "string" ? className : undefined, "max-h-[92dvh] max-w-xl")}
       >
         {props.children}
       </DrawerContent>

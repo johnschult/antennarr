@@ -78,7 +78,7 @@ function DialogContent({
     return (
       <DrawerContent
         // The class names say how a dialog sits in the middle of a page; the sheet keeps what it needs (a scrolling, gridded body).
-        className={cn("grid gap-4 overflow-y-auto p-4 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))] text-sm", className, "max-h-[92dvh] max-w-none")}
+        className={cn("grid gap-4 overflow-y-auto p-4 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))] text-sm", className, "max-h-[92dvh] max-w-xl")}
       >
         {children}
         {showCloseButton && (

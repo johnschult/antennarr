@@ -90,7 +90,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
  */
 function BottomBar({ pages }: { pages: typeof nav }) {
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 border-t border-border/60 bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 border-t border-border/60 bg-background/90 pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] backdrop-blur">
       <ul className="mx-auto flex max-w-xl">
         {pages.map((n) => (
           <li key={n.to} className="min-w-0 flex-1">
@@ -99,7 +99,7 @@ function BottomBar({ pages }: { pages: typeof nav }) {
               end={n.end}
               className={({ isActive }) =>
                 cn(
-                  'flex h-16 flex-col items-center justify-center gap-1 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+                  'flex h-14 flex-col items-center justify-center gap-1 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                   isActive ? 'font-medium text-foreground' : 'text-muted-foreground',
                 )
               }
@@ -133,7 +133,7 @@ export function Shell() {
   const phone = useIsPhone()
 
   return (
-    <div className={cn('flex min-h-dvh flex-col bg-background', phone && 'pb-[calc(4rem+env(safe-area-inset-bottom))]')}>
+    <div className={cn('flex min-h-dvh flex-col bg-background pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]', phone && 'pb-[calc(3.5rem+env(safe-area-inset-bottom))]')}>
       <header className="sticky top-0 z-10 border-b border-border/60 bg-background/70 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6 md:gap-8">
           {/* The text lines up with the TV's body, not the antenna ears above it. */}

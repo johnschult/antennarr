@@ -67,7 +67,7 @@ describe('Shell bottom bar on a phone', () => {
 
   it('leaves room for the bar under the page, and for the home indicator', () => {
     mount()
-    expect(screen.getByRole('contentinfo').parentElement!.className).toContain('pb-[calc(4rem+env(safe-area-inset-bottom))]')
+    expect(screen.getByRole('contentinfo').parentElement!.className).toContain('pb-[calc(3.5rem+env(safe-area-inset-bottom))]')
     expect(screen.getByRole('navigation', { name: 'Main' }).className).toContain('pb-[env(safe-area-inset-bottom)]')
   })
 
