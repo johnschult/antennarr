@@ -89,9 +89,9 @@ with sync_playwright() as p:
     shot(page, 'activity')
     ctx.close()
 
-    # A tuner's page, on its Overview (a single tuner opens its page from /tuner).
+    # A tuner's page, on its Overview (opened directly; /tuner is the list).
     ctx = context('dark', height=600)
-    page = open_page(ctx, '/yagi/tuner', '[data-testid="firmware-line"]')
+    page = open_page(ctx, '/yagi/tuner/antenna', '[data-testid="firmware-line"]')
     time.sleep(1)
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
@@ -152,11 +152,9 @@ with sync_playwright() as p:
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
     shot(page, 'phone-live')
-    page.get_by_role('button', name='Open menu').click()
-    time.sleep(0.5)
-    page.evaluate(SHOW_LAN_ADDRESS)  # the menu has the address too, and only exists now
-    time.sleep(0.3)
-    shot(page, 'phone-menu', clip={'x': 0, 'y': 0, 'width': 390, 'height': 560})
+    page.get_by_role('link', name='Viewers').click()
+    time.sleep(1)
+    shot(page, 'phone-viewers')
     ctx.close()
     browser.close()
 print('screenshots written to', out)

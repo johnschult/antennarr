@@ -276,11 +276,17 @@ describe('axe: installing firmware', () => {
 })
 
 describe('axe: the phone layout', () => {
-  it('the pages and the open menu', async () => {
+  it('the pages with the bottom bar', async () => {
     mockPhone(true)
     render(makeState(), '/viewers')
     expect(await check()).toHaveNoViolations()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Open menu' }))
+  })
+
+  it('a dialog open as a sheet', async () => {
+    mockPhone(true)
+    render(makeState(), '/viewers')
+    await userEvent.setup().click(screen.getByRole('button', { name: /Add viewer/ }))
+    await screen.findByRole('dialog')
     expect(await check()).toHaveNoViolations()
   })
 })
@@ -338,7 +344,7 @@ describe('axe: dialogs', () => {
 
   it('Add tuner', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'POST /discover': () => ({ body: { found: [] } }) }).fn)
-    render(makeState(), '/tuner?list')
+    render(makeState(), '/tuner')
     await userEvent.setup().click(screen.getByRole('button', { name: /Add tuner/ }))
     await screen.findByRole('dialog')
     expect(await check()).toHaveNoViolations()

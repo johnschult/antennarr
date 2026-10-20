@@ -1,4 +1,5 @@
 import { vi } from 'vitest'
+import { PHONE_QUERY } from '@/hooks/use-media-query'
 
 /**
  * Stand in for the browser's prefers-color-scheme. jsdom has no matchMedia, so
@@ -35,7 +36,7 @@ export function mockPhone(initial: boolean) {
   const listeners = new Set<() => void>()
   vi.stubGlobal('matchMedia', (q: string) => ({
     get matches() {
-      return q === '(max-width: 767px)' && phone
+      return q === PHONE_QUERY && phone
     },
     media: q,
     addEventListener: (_: string, fn: () => void) => listeners.add(fn),

@@ -40,13 +40,13 @@ describe('a tuner’s page', () => {
   it('goes back to the list of tuners, which a single tuner would otherwise skip', () => {
     overview()
     const back = screen.getAllByRole('link', { name: /Tuners/ }).find((l) => !l.closest('nav'))!
-    expect(back).toHaveAttribute('href', '/tuner?list')
+    expect(back).toHaveAttribute('href', '/tuner')
   })
 
   it('says there is no such tuner, with a way back', () => {
     renderTunerRoutes(makeState(), '/tuner/nobody')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No tuner called nobody')
-    expect(screen.getByRole('link', { name: /Tuners/ })).toHaveAttribute('href', '/tuner?list')
+    expect(screen.getByRole('link', { name: /Tuners/ })).toHaveAttribute('href', '/tuner')
   })
 
   it('sends an unknown tab to the overview', () => {

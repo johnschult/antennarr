@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeState } from '@/test/fixtures'
+import { mockPhone } from '@/test/match-media'
 import { renderWithApp, stubFetch } from '@/test/render'
 import { Shell } from './shell'
 
@@ -35,45 +36,72 @@ describe('Shell sign-in chip', () => {
   })
 })
 
-describe('Shell menu on a phone', () => {
+describe('Shell bottom bar on a phone', () => {
   const mount = (route = '/') => {
+    mockPhone(true)
     vi.stubGlobal('fetch', stubFetch({ 'GET /auth/status': () => ({ body: { plexEnabled: true, signedIn: { id: 7, name: 'john' }, admin: true } }) }).fn)
     return renderWithApp(<Shell />, makeState(), { route })
   }
-  const button = () => screen.getByRole('button', { name: /menu/i })
+  const bar = () => within(screen.getByRole('navigation', { name: 'Main' }))
 
-  it('starts closed, with a button that says it is closed', () => {
+  it('has every page along the bottom, each with an icon and its name, and no menu button', () => {
     mount()
-    expect(button()).toHaveAttribute('aria-expanded', 'false')
-    expect(button()).toHaveAccessibleName('Open menu')
-    expect(screen.queryByRole('navigation', { name: 'Main menu' })).not.toBeInTheDocument() // hidden until opened
+    expect(bar().getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Activity', 'Settings'])
+    expect(bar().getAllByRole('link').every((l) => l.querySelector('svg'))).toBe(true)
+    expect(screen.queryByRole('button', { name: /menu/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Main' }).className).toContain('fixed')
+    expect(screen.getByRole('navigation', { name: 'Main' }).className).toContain('bottom-0')
   })
 
-  it('opens to every page, and says it is open', async () => {
+  it('is the only navigation, not one more beside the wide-screen top bar', () => {
     mount()
-    await userEvent.setup().click(button())
-    expect(button()).toHaveAttribute('aria-expanded', 'true')
-    expect(button()).toHaveAccessibleName('Close menu')
-    const menu = within(screen.getByRole('navigation', { name: 'Main menu' }))
-    expect(menu.getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Activity', 'Settings'])
+    expect(screen.getAllByRole('navigation', { name: 'Main' })).toHaveLength(1)
+    expect(within(screen.getByRole('banner')).queryByRole('navigation')).not.toBeInTheDocument()
   })
 
-  it('also holds the connection and sign-out that the phone header has no room for, and nothing about the tuners', async () => {
-    mount()
-    const user = userEvent.setup()
-    await user.click(button())
-    const panel = document.getElementById('mobile-menu')!
-    expect(within(panel).getByTestId('connection')).toBeInTheDocument()
-    expect(await within(panel).findByRole('button', { name: /john/ })).toBeInTheDocument()
-    expect(within(panel).queryByText(/Steve FLEX 4K/)).not.toBeInTheDocument()
-  })
-
-  it('has an icon on every page in the phone menu', async () => {
+  it('marks the page you are on', () => {
     mount('/viewers')
-    await userEvent.setup().click(button())
-    const menu = within(screen.getByRole('navigation', { name: 'Main menu' }))
-    expect(menu.getAllByRole('link').every((l) => l.querySelector('svg'))).toBe(true)
+    expect(bar().getByRole('link', { name: 'Viewers' })).toHaveAttribute('aria-current', 'page')
+    expect(bar().getByRole('link', { name: 'Live' })).not.toHaveAttribute('aria-current')
   })
+
+  it('leaves room for the bar under the page, and for the home indicator', () => {
+    mount()
+    expect(screen.getByRole('contentinfo').parentElement!.className).toContain('pb-[calc(3.5rem+env(safe-area-inset-bottom))]')
+    expect(screen.getByRole('navigation', { name: 'Main' }).className).toContain('pb-[env(safe-area-inset-bottom)]')
+  })
+
+  it('keeps the connection status in the header, and moves sign-out, which the phone header has no room for, to the footer', async () => {
+    mount()
+    const footer = within(screen.getByRole('contentinfo'))
+    expect(within(screen.getByRole('banner')).getByTestId('connection')).toBeInTheDocument()
+    expect(footer.queryByTestId('connection')).not.toBeInTheDocument()
+    expect(await footer.findByRole('button', { name: /john/ })).toBeInTheDocument()
+    expect(within(screen.getByRole('banner')).queryByRole('button', { name: /john/ })).not.toBeInTheDocument()
+  })
+
+  it('goes to a page when you tap it', async () => {
+    mount()
+    await userEvent.setup().click(bar().getByRole('link', { name: 'Settings' }))
+    expect(bar().getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('does not offer Activity when the history is off', () => {
+    mockPhone(true)
+    vi.stubGlobal('fetch', stubFetch({ 'GET /auth/status': () => ({ body: { plexEnabled: false, signedIn: null, admin: true } }) }).fn)
+    const s = makeState()
+    s.settings.history = false
+    renderWithApp(<Shell />, s)
+    expect(bar().queryByRole('link', { name: 'Activity' })).not.toBeInTheDocument()
+    expect(bar().getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Settings'])
+  })
+})
+
+describe('Shell top bar on a wide screen', () => {
+  const mount = (route = '/') => {
+    vi.stubGlobal('fetch', stubFetch({ 'GET /auth/status': () => ({ body: { plexEnabled: false, signedIn: null, admin: true } }) }).fn)
+    return renderWithApp(<Shell />, makeState(), { route })
+  }
 
   it('shows an icon in the top bar only beside the page you are on', () => {
     mount('/viewers')
@@ -81,43 +109,11 @@ describe('Shell menu on a phone', () => {
     expect(bar.getAllByRole('link').filter((l) => l.querySelector('svg')).map((l) => l.textContent)).toEqual(['Viewers'])
   })
 
-  it('marks the page you are on', async () => {
-    mount('/viewers')
-    await userEvent.setup().click(button())
-    const menu = within(screen.getByRole('navigation', { name: 'Main menu' }))
-    expect(menu.getByRole('link', { name: 'Viewers' })).toHaveAttribute('aria-current', 'page')
-    expect(menu.getByRole('link', { name: 'Live' })).not.toHaveAttribute('aria-current')
-  })
-
-  it('puts itself away when you pick a page', async () => {
+  it('has no menu button and no bottom bar', () => {
     mount()
-    const user = userEvent.setup()
-    await user.click(button())
-    await user.click(within(screen.getByRole('navigation', { name: 'Main menu' })).getByRole('link', { name: 'Settings' }))
-    expect(button()).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('navigation', { name: 'Main menu' })).not.toBeInTheDocument()
-  })
-
-  it('closes with Escape and gives the focus back to its button', async () => {
-    mount()
-    const user = userEvent.setup()
-    await user.click(button())
-    await user.keyboard('{Escape}')
-    expect(button()).toHaveAttribute('aria-expanded', 'false')
-    expect(button()).toHaveFocus()
-  })
-
-  it('closes when the button is pressed again', async () => {
-    mount()
-    const user = userEvent.setup()
-    await user.click(button())
-    await user.click(button())
-    expect(button()).toHaveAttribute('aria-expanded', 'false')
-  })
-
-  it('keeps the wide-screen navigation too', () => {
-    mount()
-    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /menu/i })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('navigation', { name: 'Main' })).toHaveLength(1)
+    expect(within(screen.getByRole('banner')).getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
 })
 
@@ -154,12 +150,10 @@ describe('Shell pages', () => {
     expect(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', { name: 'Activity' })).toBeInTheDocument()
   })
 
-  it('does not offer Activity, in the bar or the phone menu, when the history is off', async () => {
+  it('does not offer Activity when the history is off', () => {
     mount(false)
     expect(within(screen.getByRole('navigation', { name: 'Main' })).queryByRole('link', { name: 'Activity' })).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation', { name: 'Main' })).getAllByRole('link').map((l) => l.textContent)).toEqual(['Live', 'Viewers', 'Tuners', 'Settings'])
-    await userEvent.setup().click(screen.getByRole('button', { name: /menu/i }))
-    expect(within(screen.getByRole('navigation', { name: 'Main menu' })).queryByRole('link', { name: 'Activity' })).not.toBeInTheDocument()
   })
 })
 
@@ -180,7 +174,7 @@ describe('Shell footer', () => {
   it('shows the version in the footer, first, linked to its release page, and not in the top bar where the wordmark would cover it', () => {
     mount()
     const version = screen.getByTestId('version')
-    expect(version).toHaveTextContent('2026.10.0')
+    expect(version).toHaveTextContent('v2026.10.0')
     expect(version).toHaveAttribute('href', 'https://github.com/johnschult/yagi/releases/tag/v2026.10.0')
     expect(within(screen.getByRole('contentinfo')).getByTestId('version')).toBe(version)
     expect(within(screen.getByRole('banner')).queryByTestId('version')).not.toBeInTheDocument()
@@ -198,7 +192,7 @@ describe('Shell footer', () => {
     mount()
     const footer = screen.getByRole('contentinfo')
     expect(footer.className).toContain('justify-center')
-    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['2026.10.0', 'Logs', 'Help', 'Yagi on GitHub'])
+    expect(within(footer).getAllByRole('link').map((l) => l.textContent || l.getAttribute('aria-label'))).toEqual(['v2026.10.0', 'Logs', 'Help', 'Yagi on GitHub'])
   })
 
   it('keeps the footer at the bottom of a short page: the page is a full-height column and the content takes the spare room', () => {

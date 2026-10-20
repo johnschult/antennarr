@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChannelsDoc, TunerChannel } from '@/lib/types'
 import { makeDevice, makeState } from '@/test/fixtures'
+import { mockPhone } from '@/test/match-media'
 import { renderTunerRoutes, stubFetch } from '@/test/render'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -333,6 +334,22 @@ describe('about a channel', () => {
     await userEvent.setup().click(within(row(name)).getByRole('button', { name: /^About / }))
     return within(await screen.findByTestId('channel-about'))
   }
+
+  it('opens as a bottom sheet on a phone, with the same facts, and closes with Escape', async () => {
+    mockPhone(true)
+    show(doc())
+    const about = await open('WSB-HD')
+    const sheet = screen.getByRole('dialog')
+    expect(sheet).toContainElement(screen.getByTestId('channel-about'))
+    expect(sheet.className).toContain('bottom-0')
+    expect(sheet).toHaveAccessibleName('WSB-HD')
+    expect(sheet).toHaveAccessibleDescription('What is known about this channel')
+    expect(about.getByText('WSB-HD')).toBeInTheDocument()
+    expect(about.getByText('2.1')).toBeInTheDocument()
+    expect(about.getByText('In the lineup')).toBeInTheDocument()
+    await userEvent.setup().keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByTestId('channel-about')).not.toBeInTheDocument())
+  })
 
   it('has an info button before the name that opens a popover with its number, name and state', async () => {
     show(doc())

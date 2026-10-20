@@ -3,9 +3,35 @@ import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog
 import { cn } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer"
+import { SheetModeProvider, useSheet, useSheetChoice } from "@/components/ui/sheet-mode"
 
-function AlertDialog({ ...props }: AlertDialogPrimitive.Root.Props) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+// On a phone a confirmation is a sheet from the bottom (Vaul) rather than a box
+// in the middle. Dragging it away or tapping outside is the same as Cancel.
+
+function AlertDialog({
+  open,
+  onOpenChange,
+  children,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  children?: React.ReactNode
+}) {
+  const phone = useSheetChoice(open)
+  return (
+    <SheetModeProvider value={phone}>
+      {phone ? (
+        <Drawer open={open} onOpenChange={onOpenChange}>
+          {children}
+        </Drawer>
+      ) : (
+        <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} onOpenChange={onOpenChange}>
+          {children}
+        </AlertDialogPrimitive.Root>
+      )}
+    </SheetModeProvider>
+  )
 }
 
 function AlertDialogTrigger({ ...props }: AlertDialogPrimitive.Trigger.Props) {
@@ -43,6 +69,17 @@ function AlertDialogContent({
 }: AlertDialogPrimitive.Popup.Props & {
   size?: "default" | "sm"
 }) {
+  const phone = useSheet()
+  if (phone) {
+    return (
+      <DrawerContent
+        data-size={size}
+        className={cn("group/alert-dialog-content grid gap-4 overflow-y-auto p-4 pt-8 pb-[calc(1rem+env(safe-area-inset-bottom))]", typeof className === "string" ? className : undefined, "max-h-[92dvh] max-w-xl")}
+      >
+        {props.children}
+      </DrawerContent>
+    )
+  }
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -111,6 +148,8 @@ function AlertDialogTitle({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
+  const phone = useSheet()
+  if (phone) return <DrawerTitle className={cn("text-center", className as string | undefined)}>{props.children}</DrawerTitle>
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
@@ -127,6 +166,8 @@ function AlertDialogDescription({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
+  const phone = useSheet()
+  if (phone) return <DrawerDescription className={cn("text-balance", className as string | undefined)}>{props.children}</DrawerDescription>
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
@@ -159,6 +200,16 @@ function AlertDialogCancel({
   ...props
 }: AlertDialogPrimitive.Close.Props &
   Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
+  const phone = useSheet()
+  if (phone) {
+    return (
+      <DrawerClose asChild>
+        <Button data-slot="alert-dialog-cancel" variant={variant} size={size} className={className as string | undefined}>
+          {props.children}
+        </Button>
+      </DrawerClose>
+    )
+  }
   return (
     <AlertDialogPrimitive.Close
       data-slot="alert-dialog-cancel"
