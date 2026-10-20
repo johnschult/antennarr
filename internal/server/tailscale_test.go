@@ -396,7 +396,6 @@ func (n *httpsNode) WarmCertificate(_ context.Context, domain string) error {
 	return nil
 }
 func (n *httpsNode) warmedFor() string { n.tlsMu.Lock(); defer n.tlsMu.Unlock(); return n.warmed }
-func (n *httpsNode) setFail(err error) { n.tlsMu.Lock(); n.failTLS = err; n.tlsMu.Unlock() }
 
 func (n *httpsNode) Status() tailnet.NodeStatus {
 	return tailnet.NodeStatus{State: tailnet.Running, DNSName: "attic.tail1.ts.net", Addresses: []string{"100.64.0.5"}}
