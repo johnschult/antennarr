@@ -43,7 +43,7 @@ describe('axe: every page, in each state', () => {
   const pages = [
     ['/', 'Live'],
     ['/viewers', 'Viewers'],
-    ['/tuner', 'Tuners'],
+    ['/tuners', 'Tuners'],
     ['/settings', 'Settings: Access'],
     ['/settings/notifications', 'Settings: Notifications'],
     ['/settings/privacy', 'Settings: Privacy'],
@@ -167,14 +167,14 @@ describe('axe: a viewer’s page', () => {
 
 describe('axe: the tuner pages', () => {
   it('the list of several tuners', async () => {
-    render(makeTwoDeviceState(), '/tuner')
+    render(makeTwoDeviceState(), '/tuners')
     await screen.findByRole('list', { name: 'Tuners' })
     expect(await check()).toHaveNoViolations()
   })
 
   it.each(['', '/firmware', '/settings'])('a tuner’s page at %s', async (tab) => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }) }).fn)
-    render(makeState({ devices: [makeDevice({ firmware: updateAvailable })] }), `/tuner/antenna${tab}`)
+    render(makeState({ devices: [makeDevice({ firmware: updateAvailable })] }), `/tuners/antenna${tab}`)
     await screen.findByRole('navigation', { name: 'Sections of this tuner' })
     expect(await check()).toHaveNoViolations()
   })
@@ -193,7 +193,7 @@ describe('axe: channels', () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /devices/antenna/channels': () => ({ body: { channels, scan } }) }).fn)
     const s = makeState()
     s.devices[0].summary.inUse = 2
-    render(s, '/tuner/antenna/channels')
+    render(s, '/tuners/antenna/channels')
     await screen.findAllByTestId('channel')
     expect(await check()).toHaveNoViolations()
     await userEvent.setup().click(screen.getByRole('button', { name: 'Scan for channels' }))
@@ -203,7 +203,7 @@ describe('axe: channels', () => {
 
   it('the Channels tab while a scan runs', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /devices/antenna/channels': () => ({ body: { channels, scan: { ...scan, inProgress: true, possible: false, progress: 35, found: 9 } } }) }).fn)
-    render(makeState(), '/tuner/antenna/channels')
+    render(makeState(), '/tuners/antenna/channels')
     await screen.findByRole('progressbar')
     expect(await check()).toHaveNoViolations()
   })
@@ -214,7 +214,7 @@ describe('axe: the Device panel', () => {
 
   it('with the details read, and with a note on what could not be', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: makeState() }), 'GET /devices/antenna/info': () => ({ body: info }) }).fn)
-    render(makeState(), '/tuner/antenna/device')
+    render(makeState(), '/tuners/antenna/device')
     await screen.findByText('SD20230420')
     expect(await check()).toHaveNoViolations()
   })
@@ -225,7 +225,7 @@ describe('axe: restarting a tuner', () => {
     const s = makeState()
     s.devices[0].summary.inUse = 2
     vi.stubGlobal('fetch', stubFetch({ 'GET /state': () => ({ body: s }), 'GET /devices/antenna/info': () => ({ body: { hardwareModel: 'HDFX-4K', readAt: new Date().toISOString() } }) }).fn)
-    render(s, '/tuner/antenna/device')
+    render(s, '/tuners/antenna/device')
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Restart' }))
     await screen.findByRole('alertdialog')
     expect(await check()).toHaveNoViolations()
@@ -245,7 +245,7 @@ describe('axe: installing firmware', () => {
     })
 
   it('the Tuners page offering the update, and its confirmation', async () => {
-    render(upgrading(), '/tuner/antenna/firmware')
+    render(upgrading(), '/tuners/antenna/firmware')
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Install' }))
     await screen.findByRole('alertdialog')
@@ -255,7 +255,7 @@ describe('axe: installing firmware', () => {
   it('the confirmation with something running to interrupt', async () => {
     const s = upgrading()
     s.devices[0].summary.inUse = 2
-    render(s, '/tuner/antenna/firmware')
+    render(s, '/tuners/antenna/firmware')
     const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Install' }))
     await screen.findByRole('alertdialog')
@@ -263,7 +263,7 @@ describe('axe: installing firmware', () => {
   })
 
   it.each(['downloading', 'sending', 'restarting', 'verifying', 'done', 'failed'] as const)('the page while it is %s', async (phase) => {
-    render(upgrading({ phase, error: phase === 'failed' ? 'the tuner has not come back.' : undefined }), '/tuner/antenna/firmware')
+    render(upgrading({ phase, error: phase === 'failed' ? 'the tuner has not come back.' : undefined }), '/tuners/antenna/firmware')
     await screen.findByRole('region', { name: 'Firmware' })
     expect(await check()).toHaveNoViolations()
   })
@@ -344,14 +344,14 @@ describe('axe: dialogs', () => {
 
   it('Add tuner', async () => {
     vi.stubGlobal('fetch', stubFetch({ 'POST /discover': () => ({ body: { found: [] } }) }).fn)
-    render(makeState(), '/tuner')
+    render(makeState(), '/tuners')
     await userEvent.setup().click(screen.getByRole('button', { name: /Add tuner/ }))
     await screen.findByRole('dialog')
     expect(await check()).toHaveNoViolations()
   })
 
   it('Remove tuner', async () => {
-    await open('/tuner/antenna/settings', makeState(), /Remove/, 'alertdialog')
+    await open('/tuners/antenna/settings', makeState(), /Remove/, 'alertdialog')
     expect(await check()).toHaveNoViolations()
   })
 })

@@ -8,9 +8,9 @@ describe('App routes', () => {
   it.each([
     ['/', 'tuners live'],
     ['/viewers', 'Viewers'],
-    ['/tuner', 'Tuners'],
-    ['/tuner/antenna', 'Steve FLEX 4K'],
-    ['/tuner/antenna/firmware', 'Steve FLEX 4K'],
+    ['/tuners', 'Tuners'],
+    ['/tuners/antenna', 'Steve FLEX 4K'],
+    ['/tuners/antenna/firmware', 'Steve FLEX 4K'],
     ['/settings', 'Settings'],
   ])('renders %s inside the shell', (route, heading) => {
     renderWithApp(<App />, makeState(), { route })
@@ -18,12 +18,20 @@ describe('App routes', () => {
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
 
-  it('shows the list of tuners at /tuner, even when there is only one', () => {
+  it('shows the list of tuners at /tuners, even when there is only one', () => {
+    const { unmount } = renderWithApp(<App />, makeState(), { route: '/tuners' })
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
+    unmount()
+    renderWithApp(<App />, makeTwoDeviceState(), { route: '/tuners' })
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
+  })
+
+  it('sends the old /tuner addresses to /tuners, keeping the tab, query and hash', () => {
     const { unmount } = renderWithApp(<App />, makeState(), { route: '/tuner' })
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
     unmount()
-    renderWithApp(<App />, makeTwoDeviceState(), { route: '/tuner' })
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
+    renderWithApp(<App />, makeState(), { route: '/tuner/antenna/firmware?x=1#y' })
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Steve FLEX 4K')
   })
 
   it('sends the old Connect page to Viewers, where adding a viewer now walks through it', () => {

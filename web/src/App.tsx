@@ -14,6 +14,12 @@ function LogsRedirect() {
   return <Navigate to={`/settings/logs${search}`} replace />
 }
 
+/** The tuners' pages were at /tuner and /tuner/<name>: an old link or bookmark goes to the same page under /tuners. */
+function TunersRedirect() {
+  const { pathname, search, hash } = useLocation()
+  return <Navigate to={`${pathname.replace(/^\/tuner(?=\/|$)/, '/tuners')}${search}${hash}`} replace />
+}
+
 export function App() {
   return (
     <Routes>
@@ -23,9 +29,11 @@ export function App() {
         <Route path="viewers/:name" element={<ViewerPage />} />
         {/* The Connect page is now part of adding a viewer; keep old links working. */}
         <Route path="setup" element={<Navigate to="/viewers" replace />} />
-        <Route path="tuner" element={<TunersPage />} />
-        <Route path="tuner/:name" element={<TunerPage />} />
-        <Route path="tuner/:name/:tab" element={<TunerPage />} />
+        <Route path="tuners" element={<TunersPage />} />
+        <Route path="tuners/:name" element={<TunerPage />} />
+        <Route path="tuners/:name/:tab" element={<TunerPage />} />
+        <Route path="tuner" element={<TunersRedirect />} />
+        <Route path="tuner/*" element={<TunersRedirect />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="settings/:tab" element={<SettingsPage />} />

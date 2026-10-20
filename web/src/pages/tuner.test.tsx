@@ -15,8 +15,8 @@ afterEach(() => {
 
 const okState = { 'GET /state': () => ({ body: makeState() }) }
 const info = { 'GET /devices/antenna/info': () => ({ body: { hardwareModel: 'HDFX-4K', version: '20260326', readAt: new Date().toISOString() } }) }
-const overview = (s = makeState()) => renderTunerRoutes(s, '/tuner/antenna')
-const settings = (s = makeState()) => renderTunerRoutes(s, '/tuner/antenna/settings')
+const overview = (s = makeState()) => renderTunerRoutes(s, '/tuners/antenna')
+const settings = (s = makeState()) => renderTunerRoutes(s, '/tuners/antenna/settings')
 const section = (name: string) => screen.getByRole('region', { name })
 const saveButton = (scope: HTMLElement) => within(scope).queryByRole('button', { name: 'Save' })
 
@@ -40,17 +40,17 @@ describe('a tuner’s page', () => {
   it('goes back to the list of tuners, which a single tuner would otherwise skip', () => {
     overview()
     const back = screen.getAllByRole('link', { name: /Tuners/ }).find((l) => !l.closest('nav'))!
-    expect(back).toHaveAttribute('href', '/tuner')
+    expect(back).toHaveAttribute('href', '/tuners')
   })
 
   it('says there is no such tuner, with a way back', () => {
-    renderTunerRoutes(makeState(), '/tuner/nobody')
+    renderTunerRoutes(makeState(), '/tuners/nobody')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No tuner called nobody')
-    expect(screen.getByRole('link', { name: /Tuners/ })).toHaveAttribute('href', '/tuner')
+    expect(screen.getByRole('link', { name: /Tuners/ })).toHaveAttribute('href', '/tuners')
   })
 
   it('sends an unknown tab to the overview', () => {
-    renderTunerRoutes(makeState(), '/tuner/antenna/nonsense')
+    renderTunerRoutes(makeState(), '/tuners/antenna/nonsense')
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
   })
 
@@ -59,11 +59,11 @@ describe('a tuner’s page', () => {
     const nav = screen.getByRole('navigation', { name: 'Sections of this tuner' })
     const links = within(nav).getAllByRole('link')
     expect(links.map((l) => [l.textContent, l.getAttribute('href')])).toEqual([
-      ['Overview', '/tuner/antenna'],
-      ['Channels', '/tuner/antenna/channels'],
-      ['Device', '/tuner/antenna/device'],
-      ['Firmware', '/tuner/antenna/firmware'],
-      ['Settings', '/tuner/antenna/settings'],
+      ['Overview', '/tuners/antenna'],
+      ['Channels', '/tuners/antenna/channels'],
+      ['Device', '/tuners/antenna/device'],
+      ['Firmware', '/tuners/antenna/firmware'],
+      ['Settings', '/tuners/antenna/settings'],
     ])
     expect(within(nav).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
     expect(within(nav).getByRole('link', { name: 'Device' })).not.toHaveAttribute('aria-current')
@@ -97,9 +97,9 @@ describe('the overview', () => {
     expect(statusEl.compareDocumentPosition(facts as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // the device's details are on the Device tab, and its name and port are settings
     for (const text of ['Steve FLEX 4K', 'HDFX-4K', '10ABCC87', '192.168.1.132']) {
-      expect(within(facts).getByRole('link', { name: text })).toHaveAttribute('href', '/tuner/antenna/device')
+      expect(within(facts).getByRole('link', { name: text })).toHaveAttribute('href', '/tuners/antenna/device')
     }
-    expect(within(facts).getByRole('link', { name: '5004' })).toHaveAttribute('href', '/tuner/antenna/settings')
+    expect(within(facts).getByRole('link', { name: '5004' })).toHaveAttribute('href', '/tuners/antenna/settings')
     // how many tuners it has and when it was last seen have nowhere else to go
     expect(status.queryByRole('link', { name: '4' })).not.toBeInTheDocument()
     expect(status.queryByRole('link', { name: /ago|just now/ })).not.toBeInTheDocument()
@@ -111,7 +111,7 @@ describe('the overview', () => {
     first.unmount()
     overview(makeState({ devices: [makeDevice({ label: 'Living room antenna' })] }))
     const facts = screen.getByText('DeviceID').closest('dl')!
-    expect(within(facts).getByRole('link', { name: 'Living room antenna' })).toHaveAttribute('href', '/tuner/antenna/settings')
+    expect(within(facts).getByRole('link', { name: 'Living room antenna' })).toHaveAttribute('href', '/tuners/antenna/settings')
   })
 
   it('lists each tuner and who is using it', () => {
@@ -167,13 +167,13 @@ describe('the overview', () => {
       overview()
       expect(line()).toHaveTextContent('26 Mar 2026')
       expect(line()).toHaveTextContent(/Up to date|Not known/)
-      expect(within(line()).getByRole('link')).toHaveAttribute('href', '/tuner/antenna/firmware')
+      expect(within(line()).getByRole('link')).toHaveAttribute('href', '/tuners/antenna/firmware')
     })
 
     it('says an update is available, and links to what is new', () => {
       overview(makeState({ devices: [makeDevice({ firmware: { ...updateAvailable, current: '20250815', latest: '20260326' } })] }))
       expect(line()).toHaveTextContent('Update available: 26 Mar 2026')
-      expect(within(line()).getByRole('link', { name: /See what's new/ })).toHaveAttribute('href', '/tuner/antenna/firmware')
+      expect(within(line()).getByRole('link', { name: /See what's new/ })).toHaveAttribute('href', '/tuners/antenna/firmware')
     })
 
     it('says when the check is off', () => {
@@ -186,19 +186,19 @@ describe('the overview', () => {
     const s = makeState()
     s.devices[0].tuner = { ...s.devices[0].tuner, restarting: true }
     const { unmount } = overview(s)
-    expect(screen.getByRole('link', { name: 'Restarting…' })).toHaveAttribute('href', '/tuner/antenna/device')
+    expect(screen.getByRole('link', { name: 'Restarting…' })).toHaveAttribute('href', '/tuners/antenna/device')
     unmount()
     const u = makeState()
     u.devices[0].tuner = { ...u.devices[0].tuner, updating: true }
     overview(u)
-    expect(screen.getByRole('link', { name: 'Updating firmware…' })).toHaveAttribute('href', '/tuner/antenna/firmware')
+    expect(screen.getByRole('link', { name: 'Updating firmware…' })).toHaveAttribute('href', '/tuners/antenna/firmware')
   })
 })
 
 describe('the other tabs', () => {
   it('has the Device panel, and a way to the tuner’s own page for what Yagi does not show', async () => {
     vi.stubGlobal('fetch', stubFetch({ ...info, ...okState }).fn)
-    renderTunerRoutes(makeState(), '/tuner/antenna/device')
+    renderTunerRoutes(makeState(), '/tuners/antenna/device')
     expect(await screen.findByRole('region', { name: 'Device' })).toBeInTheDocument()
     const own = screen.getByRole('link', { name: /Open the tuner's own page/ })
     expect(own).toHaveAttribute('href', 'http://192.168.1.132')
@@ -206,7 +206,7 @@ describe('the other tabs', () => {
   })
 
   it('has the Firmware section, without naming the tuner a page that is already about it', () => {
-    renderTunerRoutes(makeState(), '/tuner/antenna/firmware')
+    renderTunerRoutes(makeState(), '/tuners/antenna/firmware')
     expect(screen.getByRole('region', { name: 'Firmware' })).toBeInTheDocument()
   })
 

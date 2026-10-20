@@ -23,7 +23,7 @@ const path = 'GET /devices/antenna/channels'
 function show(d: ChannelsDoc | { status: number; error: string }, extra: Record<string, (b: unknown) => { status?: number; body?: unknown }> = {}, state = makeState()) {
   const { fn, calls } = stubFetch({ [path]: () => ('status' in d ? { status: d.status, body: { error: d.error } } : { body: d }), ...extra })
   vi.stubGlobal('fetch', fn)
-  renderTunerRoutes(state, '/tuner/antenna/channels')
+  renderTunerRoutes(state, '/tuners/antenna/channels')
   return calls
 }
 const rows = () => screen.getAllByTestId('channel')
@@ -502,7 +502,7 @@ describe('testing a signal', () => {
   it('shows it is working, and allows only one test at a time', async () => {
     const { fn } = stubFetch({ [path]: () => ({ body: doc() }), [testPath]: () => ({ body: sig() }) })
     vi.stubGlobal('fetch', (url: RequestInfo | URL, init?: RequestInit) => (init?.method === 'POST' ? new Promise((r) => setTimeout(() => r(fn(url, init)), 80)) : fn(url, init)))
-    renderTunerRoutes(idle(), '/tuner/antenna/channels')
+    renderTunerRoutes(idle(), '/tuners/antenna/channels')
     await screen.findAllByTestId('channel')
     await userEvent.setup().click(button('WSB-HD'))
     expect(button('WSB-HD')).toBeDisabled()
@@ -622,7 +622,7 @@ describe('scanning', () => {
       const running = (k: number) => doc({ scan: { inProgress: true, possible: false, source: 'Antenna', sources: ['Antenna'], progress: 10 * k, found: k } })
       const { fn, calls } = stubFetch({ [path]: () => ({ body: ++n < 3 ? running(n) : doc() }) })
       vi.stubGlobal('fetch', fn)
-      renderTunerRoutes(makeState(), '/tuner/antenna/channels')
+      renderTunerRoutes(makeState(), '/tuners/antenna/channels')
       await screen.findByRole('status')
       await vi.advanceTimersByTimeAsync(2100)
       await vi.advanceTimersByTimeAsync(2100)

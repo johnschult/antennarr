@@ -47,13 +47,13 @@ export function stubFetch(routes: Record<string, (body: unknown) => { status?: n
   return { fn, calls }
 }
 
-/** The tuner pages with their routes, opened at `path` (a list at /tuner, a tuner at /tuner/antenna, a tab at /tuner/antenna/device). */
+/** The tuner pages with their routes, opened at `path` (a list at /tuner, a tuner at /tuners/antenna, a tab at /tuners/antenna/device). */
 export function renderTunerRoutes(state: AppState, path: string, opts: { connected?: boolean } = {}) {
   return renderWithApp(
     <Routes>
-      <Route path="/tuner" element={<TunersPage />} />
-      <Route path="/tuner/:name" element={<TunerPage />} />
-      <Route path="/tuner/:name/:tab" element={<TunerPage />} />
+      <Route path="/tuners" element={<TunersPage />} />
+      <Route path="/tuners/:name" element={<TunerPage />} />
+      <Route path="/tuners/:name/:tab" element={<TunerPage />} />
     </Routes>,
     state,
     { ...opts, route: path },
