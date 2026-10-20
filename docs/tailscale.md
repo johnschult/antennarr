@@ -42,7 +42,7 @@ Once the status row says *Connected, and answering on port …*, a viewer on the
 
 Once the node is connected, *Settings → Access → Only on the tailnet* closes Yagi to everything that comes in over the machine's own network address. What is left is the tailnet and the machine itself (a browser on the same machine at `127.0.0.1`). Media servers and viewers on your LAN, and the admin page opened at the LAN address, are refused; the log says so, once a minute at most.
 
-- **It is a gate, not a closed port.** The ports stay bound (a tuner keeps its port, and switching the setting off is immediate), but a connection from anywhere but the machine itself is dropped as it arrives. A scan of the LAN still sees the port open. A stream running when you switch it on continues until it ends.
+- **It is a gate, not a closed port.** The ports stay bound (a tuner keeps its port, and switching the setting off is immediate), but a connection from anywhere but the machine itself is dropped as it arrives. A scan of the LAN still sees the port open. When you switch it on, connections already open from the LAN are closed within a couple of seconds, a stream in progress included.
 - **It can only be switched on while the node is connected**, so there is always a way in. Before it saves, the page tells you if you are using it at the LAN address, and where to open it afterwards (`<name>.<tailnet>.ts.net:<port>`).
 - **It is not in force while the node is not connected.** If the tailnet is down, or signed out, the LAN stays open and the page says *On, but not in force*, so a Tailscale outage never takes the admin page with it.
 - **Docker:** a browser on the Docker host reaches a published port from the bridge address, not from loopback, so with the switch on it is refused too. Use the tailnet name from that machine as well.
@@ -71,7 +71,7 @@ The rules:
 - **Your tailnet needs HTTPS certificates turned on** (Tailscale admin console → DNS: MagicDNS, then *Enable HTTPS*). Without it the switch shows Tailscale's own reason instead of an address.
 - **The name goes into a public certificate log.** Certificates are issued by Let's Encrypt, which publishes them, so the device name and your tailnet's name become public. That is why it is off until you turn it on.
 - **Only the admin pages are on it.** The tuner ports stay plain HTTP: media servers expect it, and the traffic is already encrypted by the tailnet. Port 443 is on the node, not on the machine, so it doesn't clash with anything the machine runs.
-- **Sign-in cookies are marked secure** over HTTPS, so signing in with Plex works there too. The first visit can take a few seconds while the certificate is issued.
+- **Sign-in cookies are marked secure** over HTTPS, so signing in with Plex works there too. Yagi asks Tailscale for the certificate as soon as the HTTPS listener starts, so it is usually ready before the first visit; if you are quicker than that, the first visit waits a few seconds.
 - Whether someone on **another tailnet** can use the HTTPS name of a shared device is not covered by Tailscale's documentation.
 
 ## Good to know

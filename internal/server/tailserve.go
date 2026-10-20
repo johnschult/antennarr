@@ -166,6 +166,27 @@ func (s *Server) syncHTTPS(gen uint64) {
 	t.https, t.httpsErr = &tailPort{ln: ln, srv: srv, handler: h}, ""
 	s.log.Info("tailscale: serving the admin pages over HTTPS", "port", httpsPort)
 	go func() { _ = srv.Serve(ln) }()
+	go s.warmCertificate(gen)
+}
+
+// warmCertificate has the node get its certificate now, rather than on the first visit, which would wait for it. It is
+// only an early start: when it fails (the tailnet has no HTTPS certificates, or Let's Encrypt is slow), the first
+// visit tries again and shows its own reason.
+func (s *Server) warmCertificate(gen uint64) {
+	dns := s.tailnet.Status().DNSName
+	if dns == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(s.runCtx, 2*time.Minute)
+	defer cancel()
+	start := time.Now()
+	if err := s.tailnet.WarmCertificate(ctx, dns); err != nil {
+		if s.tailnet.Generation() == gen && ctx.Err() == nil {
+			s.log.Info("tailscale: could not get the HTTPS certificate ahead of the first visit", "name", dns, "err", err)
+		}
+		return
+	}
+	s.log.Info("tailscale: the HTTPS certificate is ready", "name", dns, "took", time.Since(start).Round(time.Millisecond).String())
 }
 
 // dropHTTPS stops the HTTPS listener. The caller holds t.mu.
@@ -258,6 +279,7 @@ func (s *Server) watchTailnet(ctx context.Context) {
 	last := ""
 	for {
 		s.syncTailnet()
+		s.enforceLAN() // not from Reconcile: the request that switched it on gets its answer first, then is cut at the next look
 		// The page shows the node's state and whether the LAN is closed, which change on the node's schedule, so
 		// tell the open pages when either does.
 		st := tailnetControl{s}.Status()

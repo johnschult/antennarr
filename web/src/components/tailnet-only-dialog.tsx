@@ -48,7 +48,7 @@ export function TailnetOnlyDialog({ open, onClose, status }: Props) {
           <AlertDialogTitle>Only answer on the tailnet?</AlertDialogTitle>
           <AlertDialogDescription>
             Yagi will answer on the tailnet and to this machine itself. Anything that comes in over your network&apos;s own address is refused: media servers
-            and viewers on the LAN, and this page opened at the LAN address. A stream running now keeps going until it ends.
+            and viewers on the LAN, and this page opened at the LAN address. Connections already open from the LAN are closed, a stream in progress included.
           </AlertDialogDescription>
         </AlertDialogHeader>
         {reachedAnotherWay(status) && (
