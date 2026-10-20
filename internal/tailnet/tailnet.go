@@ -7,6 +7,7 @@
 package tailnet
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net"
@@ -88,8 +89,16 @@ type Node interface {
 	// Listen accepts connections on the tailnet, at the node's own addresses (addr is ":5004"). It can be called as
 	// soon as the node is made: the listener starts to answer once the node is on the tailnet.
 	Listen(addr string) (net.Listener, error)
+	// WhoIs says who is on the other end of a connection that came in over the node (remote is its RemoteAddr).
+	WhoIs(ctx context.Context, remote string) (Who, error)
 	// Close leaves the tailnet and stops.
 	Close() error
+}
+
+// Who is the person and device the tailnet says a connection came from.
+type Who struct {
+	Login string // such as alice@example.com; empty for a device that belongs to a tag, not a person
+	Node  string // the device's full tailnet name, such as laptop.tail1234.ts.net
 }
 
 // Starter makes a node, or nil in a build that doesn't have one.
@@ -205,6 +214,20 @@ func (m *Manager) Listen(addr string) (net.Listener, uint64, error) {
 	}
 	ln, err := node.Listen(addr)
 	return ln, gen, err
+}
+
+// WhoIs asks the running node who is on the other end of a connection it accepted.
+func (m *Manager) WhoIs(ctx context.Context, remote string) (Who, error) {
+	if m == nil {
+		return Who{}, ErrNoNode
+	}
+	m.mu.Lock()
+	node := m.node
+	m.mu.Unlock()
+	if node == nil {
+		return Who{}, ErrNoNode
+	}
+	return node.WhoIs(ctx, remote)
 }
 
 // Generation changes whenever a node is started or stopped.

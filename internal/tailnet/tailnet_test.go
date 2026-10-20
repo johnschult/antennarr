@@ -1,6 +1,7 @@
 package tailnet
 
 import (
+	"context"
 	"errors"
 	"net"
 	"sync"
@@ -20,6 +21,9 @@ type fakeNode struct {
 func (f *fakeNode) Status() NodeStatus { f.mu.Lock(); defer f.mu.Unlock(); return f.status }
 func (f *fakeNode) Close() error       { f.mu.Lock(); f.closed = true; f.mu.Unlock(); return nil }
 func (f *fakeNode) set(s NodeStatus)   { f.mu.Lock(); f.status = s; f.mu.Unlock() }
+func (f *fakeNode) WhoIs(context.Context, string) (Who, error) {
+	return Who{Login: "alice@example.com", Node: "laptop.tail1.ts.net"}, nil
+}
 func (f *fakeNode) Listen(addr string) (net.Listener, error) {
 	f.mu.Lock()
 	f.listened = append(f.listened, addr)

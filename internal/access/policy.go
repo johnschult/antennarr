@@ -273,6 +273,16 @@ func (p *Policy) identify(r *http.Request) (parsedViewer, bool) {
 	if !ok {
 		return parsedViewer{}, false
 	}
+	// Who the tailnet says it is beats where they came from: it names the person or device, not a network.
+	if id, has := IdentityOf(r); has {
+		for _, v := range p.cfg.viewers {
+			for _, e := range v.idents {
+				if id.matches(e) {
+					return v, true
+				}
+			}
+		}
+	}
 	// With no viewers configured nobody matches: the tuner stays closed until
 	// the owner adds one.
 	best, bestBits, found := parsedViewer{}, -1, false
@@ -310,7 +320,7 @@ func PrivateAddr(ip netip.Addr) bool { return privateAddr(ip) }
 func (p *Policy) HasAdmin() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	return len(p.cfg.admin) > 0 || (p.cfg.PlexEnabled() && len(p.cfg.Plex.Admins) > 0)
+	return len(p.cfg.admin) > 0 || len(p.cfg.adminID) > 0 || (p.cfg.PlexEnabled() && len(p.cfg.Plex.Admins) > 0)
 }
 
 func notAllowed() error {
@@ -581,6 +591,13 @@ func (p *Policy) isAdminAddress(r *http.Request) bool {
 	for _, pre := range p.cfg.admin {
 		if pre.Contains(ip) {
 			return true
+		}
+	}
+	if id, has := IdentityOf(r); has {
+		for _, e := range p.cfg.adminID {
+			if id.matches(e) {
+				return true
+			}
 		}
 	}
 	return false

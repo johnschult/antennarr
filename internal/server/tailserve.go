@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/johnschult/yagi/internal/access"
 	"github.com/johnschult/yagi/internal/api"
 	"github.com/johnschult/yagi/internal/tailnet"
 )
@@ -117,11 +118,28 @@ func (s *Server) syncTailnet() {
 			_ = ln.Close()
 			continue
 		}
-		srv := &http.Server{Handler: h, ReadHeaderTimeout: 10 * time.Second}
+		srv := &http.Server{Handler: s.withTailnetIdentity(h), ReadHeaderTimeout: 10 * time.Second}
 		t.ports[port] = &tailPort{ln: ln, srv: srv, handler: h}
 		s.log.Info("tailscale: answering on the tailnet", "port", port)
 		go func() { _ = srv.Serve(ln) }()
 	}
+}
+
+// withTailnetIdentity asks the node who is on the other end of each request that came in over the tailnet and attaches
+// the answer to the request, so a viewer or admin can be matched by login or device as well as by address. It is only
+// put on the tailnet's listeners, so a request from the LAN can never carry one, and the answer is the node's, not
+// anything the client sent. When the node can't say, the request goes on without an identity and is matched by its
+// address as before.
+func (s *Server) withTailnetIdentity(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		who, err := s.tailnet.WhoIs(ctx, r.RemoteAddr)
+		cancel()
+		if err == nil && (who.Login != "" || who.Node != "") {
+			r = r.WithContext(access.WithIdentity(r.Context(), access.Identity{Login: who.Login, Node: who.Node}))
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // drop stops answering on a port. The caller holds t.mu.
