@@ -1,3 +1,4 @@
+import { HdMark } from '@/components/hd-mark'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, EyeOff, Gauge, Loader2, Radar, Sigma, Square, Star, Tv, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -367,7 +368,7 @@ export function ChannelsPanel({ device }: { device: DeviceState }) {
                       <ChannelAbout channel={c} />
                       <span className={cn('min-w-0 flex-1 truncate', c.state === 'disabled' && 'text-muted-foreground line-through', !c.subscribed && 'text-muted-foreground')}>{c.name || '—'}</span>
                       {!c.subscribed && <span className="shrink-0 text-xs text-muted-foreground">not available to this tuner</span>}
-                      {c.hd && <Badge variant="secondary">HD</Badge>}
+                      {c.hd && <HdMark />}
                       {c.drm && <Badge variant="secondary">DRM</Badge>}
                       {c.video && <span className="hidden w-14 shrink-0 text-xs text-muted-foreground sm:block">{c.video}</span>}
                       {state.settings.history && (
