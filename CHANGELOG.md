@@ -7,6 +7,10 @@ Each release's notes on GitHub are its section of this file.
 
 ## Unreleased
 
+### Added
+
+- **Yagi can join your Tailscale network by itself** (first part). A new `-tailscale` image (`ghcr.io/johnschult/yagi:tailscale`, or `<version>-tailscale`) has a Tailscale node built in: switch it on in *Settings → Access*, sign in with the link (or set `TS_AUTHKEY`), and Yagi appears on your tailnet as its own device, with no Tailscale on the machine. It doesn't answer on the tailnet yet; that and recognising viewers by their Tailscale identity come next. The normal image is unchanged. See [Built-in Tailscale](https://github.com/johnschult/yagi/blob/main/docs/tailscale.md).
+
 ### Changed
 
 - **The web page is at the address itself, not under `/yagi/`.** `http://<this machine>:5004/` is the page (and `http://<this machine>:5000/` with an admin port), and its API is `/api/`. Old links and bookmarks to `/yagi/…` (and `/antennarr/…`) are sent on to the same page, including the first-run setup link. On a tuner's port only the page's own paths go to the page: the tuner's own addresses (`/discover.json`, `/lineup.json`, `/auto/…`) are exactly as before. If you installed the page to your Home Screen, add it again. **You will need to sign in with Plex once more**, because the sign-in cookie now covers the whole site.

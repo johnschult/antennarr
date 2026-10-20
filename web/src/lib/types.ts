@@ -210,7 +210,30 @@ export interface Settings {
   /** How much is logged, and shown on the Logs page. */
   logLevel: LogLevel
   plex: PlexSettings
+  tailscale: TailscaleSettings
   notifications: Notifications
+}
+
+export interface TailscaleSettings {
+  enabled: boolean
+  /** The name on the tailnet; "yagi" unless changed. */
+  hostname: string
+}
+
+/** Where the built-in Tailscale node is. */
+export interface TailscaleStatus {
+  /** This build has the node at all (the -tailscale image does). */
+  built: boolean
+  state: 'off' | 'unavailable' | 'no-store' | 'starting' | 'needs-login' | 'running' | 'error'
+  hostname: string
+  /** The full name the tailnet gave it, once running. */
+  dnsName?: string
+  /** Where to sign the node in, while state is needs-login. */
+  loginUrl?: string
+  addresses?: string[]
+  error?: string
+  /** TS_AUTHKEY is set, so signing in needs no link. */
+  authKeyInEnv?: boolean
 }
 
 export interface Summary {
@@ -272,6 +295,8 @@ export interface AppState {
   editable: boolean
   /** The admin pages have a port of their own, so moving a tuner to another port doesn't move the page. */
   adminSeparate?: boolean
+  /** The built-in Tailscale node. Absent from an older server. */
+  tailscale?: TailscaleStatus
   /** This build's version ("2026.10.0", or "dev") and its page on GitHub. */
   version: string
   versionUrl: string
@@ -311,6 +336,9 @@ export interface SettingsPatch {
   history?: boolean
   logLevel?: LogLevel
   plexEnabled?: boolean
+  tailscaleEnabled?: boolean
+  /** The name on the tailnet; an empty string means the default. */
+  tailscaleHostname?: string
   notifyEvents?: Partial<NotifyEvents>
 }
 
