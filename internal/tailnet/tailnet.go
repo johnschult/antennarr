@@ -51,6 +51,11 @@ type Status struct {
 	AuthKeyInEnv bool `json:"authKeyInEnv,omitempty"`
 	// Serving is the ports Yagi answers on at the node's addresses: the tuners' ports, and the admin port when it is separate.
 	Serving []string `json:"serving,omitempty"`
+	// LANClosed says the LAN ports are being refused right now, because tailnet-only is on and the node is connected.
+	LANClosed bool `json:"lanClosed,omitempty"`
+	// AdminReachable says somebody on the tailnet could open the admin pages (an admin range covers the tailnet, or a
+	// Plex account is allowed), so closing the LAN does not leave only this machine able to. Always sent.
+	AdminReachable bool `json:"adminReachable"`
 }
 
 // NodeStatus is what a running node knows about itself.

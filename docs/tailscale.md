@@ -2,7 +2,7 @@
 
 Yagi can join your Tailscale network by itself, as its own device, with no Tailscale installed on the machine it runs on. The idea is that you share that one device with the people who need it, and nothing is opened on your router.
 
-> **Where this is.** Yagi can join a tailnet, keep its sign-in, show you where it is, and **answer on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. Still to come, see [the plan](DESIGN.md#built-in-tailscale-plan): a *tailnet only* switch that turns the LAN ports off, recognising viewers by their Tailscale identity, and HTTPS.
+> **Where this is.** Yagi can join a tailnet, keep its sign-in, show you where it is, and **answer on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. Still to come, see [the plan](DESIGN.md#built-in-tailscale-plan): recognising viewers by their Tailscale identity, and HTTPS.
 
 ## Which image
 
@@ -35,8 +35,19 @@ Once the status row says *Connected, and answering on port …*, a viewer on the
 - **The viewer's setup steps know about it.** In *Viewers → Connection steps* (and when adding a viewer), **Yagi's own Tailscale** is its own choice, first, with the device's tailnet name as the address to give them, and it is kept apart from **Tailscale on this machine** (the Tailscale the host runs, if it runs one): they are two devices with two addresses, and each choice shows only its own. For Yagi's own there is no firewall step, because its traffic doesn't come through the machine's network.
 - **The viewer is still matched by address.** On the tailnet that is their Tailscale address (`100.x.y.z`), so list that in the viewer's addresses. Recognising them by their Tailscale login instead is a later part.
 - **The admin page is on the tuner's port too**, and is still only for an admin: an address in *Settings → Access → Admin addresses* (add `100.64.0.0/10` to allow your whole tailnet, but only if none of your viewers is on it), or a Plex account.
-- **The LAN ports are unchanged.** Yagi still answers on the machine's own address as before; turning that off is the *tailnet only* switch, which comes next.
+- **The LAN ports stay open unless you close them.** Yagi still answers on the machine's own address as before. See [Only on the tailnet](#only-on-the-tailnet) to turn that off.
 - If a port is changed, or a tuner added or removed, the tailnet follows within a couple of seconds.
+
+## Only on the tailnet
+
+Once the node is connected, *Settings → Access → Only on the tailnet* closes Yagi to everything that comes in over the machine's own network address. What is left is the tailnet and the machine itself (a browser on the same machine at `127.0.0.1`). Media servers and viewers on your LAN, and the admin page opened at the LAN address, are refused; the log says so, once a minute at most.
+
+- **It is a gate, not a closed port.** The ports stay bound (a tuner keeps its port, and switching the setting off is immediate), but a connection from anywhere but the machine itself is dropped as it arrives. A scan of the LAN still sees the port open. A stream running when you switch it on continues until it ends.
+- **It can only be switched on while the node is connected**, so there is always a way in. Before it saves, the page tells you if you are using it at the LAN address, and where to open it afterwards (`<name>.<tailnet>.ts.net:<port>`).
+- **It is not in force while the node is not connected.** If the tailnet is down, or signed out, the LAN stays open and the page says *On, but not in force*, so a Tailscale outage never takes the admin page with it.
+- **Docker:** a browser on the Docker host reaches a published port from the bridge address, not from loopback, so with the switch on it is refused too. Use the tailnet name from that machine as well.
+- **Getting back in.** Switch it off from the page over the tailnet, or start Yagi with `-allow-lan` (`YAGI_ALLOW_LAN=1`), which keeps the LAN open whatever the setting says.
+- Tailscale running on the machine itself (not Yagi's node) connects from a `100.x` address on the machine's own network interface, so it is refused too. Use Yagi's own node with this switch.
 
 ## Good to know
 

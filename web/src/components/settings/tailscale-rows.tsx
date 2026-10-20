@@ -1,7 +1,7 @@
 import { ExternalLink } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { TailscaleIcon } from '@/components/tailscale-icon'
+import { TailnetOnlyDialog } from '@/components/tailnet-only-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
@@ -21,6 +21,7 @@ export function TailscaleRows() {
   const status: TailscaleStatus = state.tailscale ?? { built: false, state: 'unavailable', hostname: set.hostname }
   const { settings: update } = useEdits()
   const qc = useQueryClient()
+  const [closing, setClosing] = useState(false)
 
   // The node's progress isn't pushed to the page, so while it is still getting somewhere, look again.
   const settling = set.enabled && (status.state === 'starting' || status.state === 'needs-login')
@@ -34,7 +35,6 @@ export function TailscaleRows() {
     return (
       <Row
         title="Join your Tailscale network"
-        icon={<TailscaleIcon />}
         description={
           <>
             This build of Yagi doesn&apos;t include Tailscale. The <code>-tailscale</code> image does: change the image tag in your compose file.{' '}
@@ -54,14 +54,32 @@ export function TailscaleRows() {
       <SwitchRow
         id="setting-tailscale"
         title="Join your Tailscale network"
-        icon={<TailscaleIcon />}
-        description="Yagi becomes its own device on your tailnet (it doesn't need Tailscale installed on this machine), so people you share it with can reach the admin page and tuners by name, without opening ports."
+        description="Yagi becomes its own device on your tailnet. It doesn't need Tailscale installed on this machine."
         checked={set.enabled}
         disabled={!editable}
         onChange={(next) => update.mutateAsync({ tailscaleEnabled: next })}
       />
       {set.enabled && (
         <>
+          {(status.state === 'running' || set.tailnetOnly) && (
+            <SwitchRow
+              id="setting-tailnetOnly"
+              title="Only on the tailnet"
+              description={
+                !set.tailnetOnly
+                  ? "Refuse everything that comes in over your network's own address. Yagi then answers on the tailnet, and to this machine itself, and nothing else."
+                  : status.lanClosed
+                    ? 'On. Your network’s own address is refused: Yagi answers on the tailnet, and to this machine itself.'
+                    : 'On, but not in force: the LAN stays open while the tailnet is not connected' + ' (or Yagi was started with -allow-lan).'
+              }
+              checked={set.tailnetOnly}
+              disabled={!editable}
+              onChange={async (next) => {
+                if (next) setClosing(true) // asks first; the switch moves when it is saved
+                else await update.mutateAsync({ tailnetOnly: false })
+              }}
+            />
+          )}
           <EditRow
             key={`ts-host-${set.hostname}`}
             kind="text"
@@ -75,6 +93,7 @@ export function TailscaleRows() {
             onSave={(text) => update.mutateAsync({ tailscaleHostname: text.trim() })}
           />
           <TailscaleStatusRow status={status} />
+          <TailnetOnlyDialog open={closing} onClose={() => setClosing(false)} status={status} />
         </>
       )}
     </>

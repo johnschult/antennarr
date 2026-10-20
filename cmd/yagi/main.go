@@ -41,6 +41,7 @@ func main() {
 	flag.StringVar(&f.advertise, "advertise", "", "base URL to hand to clients (default: the host they connected with)")
 	flag.StringVar(&f.reportID, "report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
 	adminListen := flag.String("admin-listen", os.Getenv("YAGI_ADMIN_LISTEN"), "serve the admin pages on their own address, e.g. \":5000\", and only there; the tuner ports then carry nothing but the tuners (also set by YAGI_ADMIN_LISTEN)")
+	allowLAN := flag.Bool("allow-lan", os.Getenv("YAGI_ALLOW_LAN") != "", "keep the LAN ports open even if \"tailnet only\" is on, to get back in if it left you locked out (also set by YAGI_ALLOW_LAN)")
 	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuners")
 	firmwareURL := flag.String("firmware-url", "", "read the firmware changelog from here instead of SiliconDust's page (for a mirror, or testing)")
 	showVersion := flag.Bool("version", false, "print the version and exit")
@@ -95,7 +96,7 @@ func main() {
 		}
 	}
 	srv, err := server.New(ctx, server.Config{
-		Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: admin, AdminSeparate: *adminListen != "", TailscaleAuthKey: os.Getenv("TS_AUTHKEY"), Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
+		AllowLAN: *allowLAN, Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: admin, AdminSeparate: *adminListen != "", TailscaleAuthKey: os.Getenv("TS_AUTHKEY"), Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
 	})
 	if err != nil {
 		fail(err)

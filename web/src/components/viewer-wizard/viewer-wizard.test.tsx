@@ -391,7 +391,7 @@ describe("ViewerWizard with Yagi's own Tailscale", () => {
   const field = async () => (await screen.findByLabelText(/Address viewers will use/)) as HTMLInputElement
   const node = (over: Partial<NonNullable<State['tailscale']>> = {}, enabled = true) => {
     const s = makeState()
-    s.settings.tailscale = { enabled, hostname: 'yagi' }
+    s.settings.tailscale = { enabled, hostname: 'yagi', tailnetOnly: false }
     s.tailscale = { built: true, state: 'running', hostname: 'yagi', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.100.0.7'], serving: ['5004'], ...over }
     return s
   }

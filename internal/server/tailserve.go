@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"sort"
@@ -38,6 +39,8 @@ type tailnetControl struct{ s *Server }
 func (c tailnetControl) Status() tailnet.Status {
 	st := c.s.tailnet.Status()
 	st.Serving = c.s.tailPorts()
+	st.LANClosed = c.s.lanClosed()
+	st.AdminReachable = c.s.policy.Settings().AdminReaches(st.Addresses)
 	return st
 }
 
@@ -160,8 +163,18 @@ func (s *Server) closeTailnetServing() {
 func (s *Server) watchTailnet(ctx context.Context) {
 	tick := time.NewTicker(2 * time.Second)
 	defer tick.Stop()
+	last := ""
 	for {
 		s.syncTailnet()
+		// The page shows the node's state and whether the LAN is closed, which change on the node's schedule, so
+		// tell the open pages when either does.
+		st := tailnetControl{s}.Status()
+		if key := fmt.Sprint(st.State, st.LANClosed, st.Serving, st.DNSName); key != last {
+			if last != "" {
+				s.hub.Notify()
+			}
+			last = key
+		}
 		select {
 		case <-ctx.Done():
 			return

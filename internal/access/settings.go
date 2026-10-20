@@ -129,6 +129,9 @@ type TailscaleSettings struct {
 	Enabled bool `json:"enabled"`
 	// Hostname is the node's name on the tailnet. Empty means "yagi".
 	Hostname string `json:"hostname,omitempty"`
+	// TailnetOnly turns the LAN off: Yagi then answers on the tailnet, and to the machine itself (loopback), and to
+	// nothing else. It only takes hold while the node is connected; see Server.lanClosed.
+	TailnetOnly bool `json:"tailnetOnly,omitempty"`
 }
 
 // DefaultTailscaleHostname is what the node is called until someone says otherwise.
@@ -146,6 +149,11 @@ func ValidateTailscaleHostname(name string) error {
 
 // TailscaleEnabled reports whether the built-in Tailscale node is switched on (off by default).
 func (s Settings) TailscaleEnabled() bool { return s.Tailscale != nil && s.Tailscale.Enabled }
+
+// TailnetOnly reports whether the LAN side is to be closed while the Tailscale node is connected.
+func (s Settings) TailnetOnly() bool {
+	return s.Tailscale != nil && s.Tailscale.Enabled && s.Tailscale.TailnetOnly
+}
 
 // TailscaleHostname is the node's name on the tailnet.
 func (s Settings) TailscaleHostname() string {
@@ -237,6 +245,10 @@ func (s Settings) Clone() Settings {
 	if s.History != nil {
 		b := *s.History
 		out.History = &b
+	}
+	if s.Tailscale != nil {
+		ts := *s.Tailscale
+		out.Tailscale = &ts
 	}
 	if s.Plex != nil {
 		pl := *s.Plex
@@ -510,6 +522,32 @@ func (s Settings) parse() (parsed, error) {
 		out.viewers = append(out.viewers, pv)
 	}
 	return out, nil
+}
+
+// AdminReaches reports whether somebody other than this machine itself could open the admin pages when they
+// arrive from one of the node's neighbours on the tailnet: Plex sign-in has an account, or an admin range (not a single
+// address, which only one client could have) covers the given addresses. addrs are the tailnet addresses of Yagi's own
+// node, and stand for the tailnet's address range.
+func (s Settings) AdminReaches(addrs []string) bool {
+	c, err := s.parse()
+	if err != nil {
+		return false
+	}
+	if c.PlexEnabled() && len(c.Plex.Admins) > 0 {
+		return true
+	}
+	for _, a := range addrs {
+		ip, err := netip.ParseAddr(a)
+		if err != nil {
+			continue
+		}
+		for _, p := range c.admin {
+			if p.Bits() < p.Addr().BitLen() && p.Contains(ip.Unmap()) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Warnings lists things in the settings that are allowed but probably not what
