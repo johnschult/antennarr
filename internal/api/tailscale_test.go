@@ -94,3 +94,40 @@ func TestWithoutANodeTheStateSaysUnavailable(t *testing.T) {
 		t.Errorf("status = %v, want unavailable and not built", status)
 	}
 }
+
+func TestTailnetOnlyCanOnlyBeSwitchedOnWhileTheNodeIsConnected(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	ft := &fakeTailnet{status: tailnet.Status{Built: true, State: tailnet.NeedsLogin, Hostname: "yagi"}}
+	e.api.Tailnet = ft
+	if code, _ := e.call(t, "PATCH", "/api/settings", `{"tailscaleEnabled":true}`); code != 200 {
+		t.Fatal("turning the node on failed")
+	}
+	if code, v := e.call(t, "PATCH", "/api/settings", `{"tailnetOnly":true}`); code != 409 {
+		t.Fatalf("with the node not connected: %d %v, want 409", code, v)
+	}
+	if e.pol.Settings().TailnetOnly() {
+		t.Fatal("tailnet only was saved although it was refused")
+	}
+
+	ft.mu.Lock()
+	ft.status.State = tailnet.Running
+	ft.mu.Unlock()
+	if code, v := e.call(t, "PATCH", "/api/settings", `{"tailnetOnly":true}`); code != 200 {
+		t.Fatalf("with the node connected: %d %v", code, v)
+	}
+	set, _ := tsDoc(t, e)
+	if set["tailnetOnly"] != true || !e.pol.Settings().TailnetOnly() {
+		t.Errorf("settings = %v, want tailnet only on", set)
+	}
+
+	// Switching it off is always allowed, connected or not.
+	ft.mu.Lock()
+	ft.status.State = tailnet.Failed
+	ft.mu.Unlock()
+	if code, _ := e.call(t, "PATCH", "/api/settings", `{"tailnetOnly":false}`); code != 200 {
+		t.Error("could not switch tailnet only off while the node was down")
+	}
+	if e.pol.Settings().TailnetOnly() {
+		t.Error("still on")
+	}
+}

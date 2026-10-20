@@ -233,3 +233,109 @@ func TestARemovedTunerIsNoLongerAnsweredOnTheTailnet(t *testing.T) {
 		t.Errorf("serving = %v, want only %s", st.Serving, p1)
 	}
 }
+
+// lanRig starts a server with the Tailscale node "running" (a stub) and returns where the LAN side answers.
+func lanRig(t *testing.T, tailnetOnly bool, mutate func(*Config)) (r *rig, lan string) {
+	t.Helper()
+	a := newFakeTuner(t, "10ABCC87", "antenna-box")
+	devs := []access.Device{{Name: "antenna", Listen: ":5004", Tuner: a.name, StreamPort: a.streamPort}}
+	cfgPath := filepath.Join(t.TempDir(), "yagi.json")
+	s := access.DefaultSettings()
+	s.Tailscale = &access.TailscaleSettings{Enabled: true, Hostname: "attic", TailnetOnly: tailnetOnly}
+	if err := access.SaveSettings(cfgPath, s); err != nil {
+		t.Fatal(err)
+	}
+	node := &runningNode{}
+	r = startConfigured(t, s, devs, "", "", func(c *Config) {
+		c.ConfigPath = cfgPath
+		c.TailscaleStart = func(tailnet.Config) tailnet.Node { return node }
+		if mutate != nil {
+			mutate(c)
+		}
+	}, a)
+	return r, ""
+}
+
+// runningNode is a node that says it is connected.
+type runningNode struct{ stubNode }
+
+func (n *runningNode) Status() tailnet.NodeStatus {
+	return tailnet.NodeStatus{State: tailnet.Running, DNSName: "attic.tail1.ts.net", Addresses: []string{"100.64.0.5"}}
+}
+
+func TestTheGateRefusesAnythingButLoopbackWhileTheLANIsClosed(t *testing.T) {
+	r, _ := lanRig(t, true, nil)
+	if !r.srv.lanClosed() {
+		t.Fatal("the LAN is not closed with tailnet only on and the node connected")
+	}
+	// the test client is on loopback, so it still gets through
+	if code, _ := r.get(t, "antenna", "/api/state"); code != 200 {
+		t.Errorf("loopback while closed: %d, want 200", code)
+	}
+	ln := r.srv.gate(&fakeListener{addr: &net.TCPAddr{IP: net.ParseIP("192.168.1.9"), Port: 5004}})
+	fl := ln.(*gatedListener).Listener.(*fakeListener)
+	fl.queue(&net.TCPAddr{IP: net.ParseIP("192.168.1.9"), Port: 40000}, &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 40001})
+	c, err := ln.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.RemoteAddr().(*net.TCPAddr).IP.String(); got != "127.0.0.1" {
+		t.Errorf("accepted a connection from %s; the LAN one should have been dropped", got)
+	}
+	if fl.closedConns != 1 {
+		t.Errorf("dropped %d connections, want 1", fl.closedConns)
+	}
+}
+
+func TestTheLANStaysOpenWhenTailnetOnlyIsOffTheNodeIsDownOrAllowLANIsSet(t *testing.T) {
+	r, _ := lanRig(t, false, nil)
+	if r.srv.lanClosed() {
+		t.Error("closed with tailnet only off")
+	}
+	r, _ = lanRig(t, true, func(c *Config) { c.AllowLAN = true })
+	if r.srv.lanClosed() {
+		t.Error("-allow-lan did not keep the LAN open")
+	}
+	// A node that is not connected must not take the admin page with it.
+	a := newFakeTuner(t, "10ABCC87", "antenna-box")
+	devs := []access.Device{{Name: "antenna", Listen: ":5004", Tuner: a.name, StreamPort: a.streamPort}}
+	s := access.DefaultSettings()
+	s.Tailscale = &access.TailscaleSettings{Enabled: true, TailnetOnly: true}
+	down := startConfigured(t, s, devs, "", "", func(c *Config) {
+		c.TailscaleStart = func(tailnet.Config) tailnet.Node { return &stubNode{} } // needs login
+	}, a)
+	if down.srv.lanClosed() {
+		t.Error("the LAN was closed while the node was not connected")
+	}
+}
+
+type fakeListener struct {
+	addr        net.Addr
+	pending     []net.Conn
+	closedConns int
+}
+
+func (f *fakeListener) queue(froms ...net.Addr) {
+	for _, from := range froms {
+		f.pending = append(f.pending, &fakeConn{from: from, l: f})
+	}
+}
+func (f *fakeListener) Accept() (net.Conn, error) {
+	if len(f.pending) == 0 {
+		return nil, net.ErrClosed
+	}
+	c := f.pending[0]
+	f.pending = f.pending[1:]
+	return c, nil
+}
+func (f *fakeListener) Close() error   { return nil }
+func (f *fakeListener) Addr() net.Addr { return f.addr }
+
+type fakeConn struct {
+	net.Conn
+	from net.Addr
+	l    *fakeListener
+}
+
+func (c *fakeConn) RemoteAddr() net.Addr { return c.from }
+func (c *fakeConn) Close() error         { c.l.closedConns++; return nil }

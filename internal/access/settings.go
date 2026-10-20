@@ -129,6 +129,9 @@ type TailscaleSettings struct {
 	Enabled bool `json:"enabled"`
 	// Hostname is the node's name on the tailnet. Empty means "yagi".
 	Hostname string `json:"hostname,omitempty"`
+	// TailnetOnly turns the LAN off: Yagi then answers on the tailnet, and to the machine itself (loopback), and to
+	// nothing else. It only takes hold while the node is connected; see Server.lanClosed.
+	TailnetOnly bool `json:"tailnetOnly,omitempty"`
 }
 
 // DefaultTailscaleHostname is what the node is called until someone says otherwise.
@@ -146,6 +149,11 @@ func ValidateTailscaleHostname(name string) error {
 
 // TailscaleEnabled reports whether the built-in Tailscale node is switched on (off by default).
 func (s Settings) TailscaleEnabled() bool { return s.Tailscale != nil && s.Tailscale.Enabled }
+
+// TailnetOnly reports whether the LAN side is to be closed while the Tailscale node is connected.
+func (s Settings) TailnetOnly() bool {
+	return s.Tailscale != nil && s.Tailscale.Enabled && s.Tailscale.TailnetOnly
+}
 
 // TailscaleHostname is the node's name on the tailnet.
 func (s Settings) TailscaleHostname() string {
@@ -237,6 +245,10 @@ func (s Settings) Clone() Settings {
 	if s.History != nil {
 		b := *s.History
 		out.History = &b
+	}
+	if s.Tailscale != nil {
+		ts := *s.Tailscale
+		out.Tailscale = &ts
 	}
 	if s.Plex != nil {
 		pl := *s.Plex

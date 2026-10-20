@@ -1,3 +1,5 @@
+import type { TailscaleStatus } from '@/lib/types'
+import { entryCovers, reachedAnotherWay, tailnetCanAdmin } from '@/components/tailnet-only-dialog'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -11,7 +13,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi' }, notifications: noNotifications() }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -411,12 +413,34 @@ describe('Plex sign-in settings', () => {
   })
 })
 
+describe('tailnetCanAdmin', () => {
+  it('needs an admin entry that covers the node, or Plex sign-in', () => {
+    expect(tailnetCanAdmin([], ['100.64.0.5'], false)).toBe(false)
+    expect(tailnetCanAdmin(['192.168.1.0/24'], ['100.64.0.5'], false)).toBe(false)
+    expect(tailnetCanAdmin(['100.64.0.0/10'], ['100.64.0.5'], false)).toBe(true)
+    expect(tailnetCanAdmin(['100.64.0.5'], ['100.64.0.5'], false)).toBe(true)
+    expect(tailnetCanAdmin([], ['100.64.0.5'], true)).toBe(true)
+    expect(entryCovers('0.0.0.0/0', '100.64.0.5')).toBe(true)
+  })
+})
+
+describe('reachedAnotherWay', () => {
+  const status: TailscaleStatus = { built: true, state: 'running', hostname: 'yagi', dnsName: 'Yagi.tail1.ts.net', addresses: ['100.64.0.5'] }
+  it('warns for a LAN address, not for the machine itself or the tailnet', () => {
+    expect(reachedAnotherWay(status, '192.168.1.5')).toBe(true)
+    expect(reachedAnotherWay(status, 'localhost')).toBe(false)
+    expect(reachedAnotherWay(status, '127.0.0.1')).toBe(false)
+    expect(reachedAnotherWay(status, 'yagi.tail1.ts.net')).toBe(false)
+    expect(reachedAnotherWay(status, '100.64.0.5')).toBe(false)
+  })
+})
+
 describe('Tailscale settings', () => {
   const access = () => section('Admins and viewers')
-  const withTailscale = (over: Partial<NonNullable<ReturnType<typeof state>['tailscale']>> & { enabled?: boolean; hostname?: string }) => {
+  const withTailscale = (over: Partial<NonNullable<ReturnType<typeof state>['tailscale']>> & { enabled?: boolean; hostname?: string; tailnetOnly?: boolean }) => {
     const s = state()
-    const { enabled = true, hostname = 'yagi', ...status } = over
-    s.settings.tailscale = { enabled, hostname }
+    const { enabled = true, hostname = 'yagi', tailnetOnly: tailnetOnlyOn = false, ...status } = over
+    s.settings.tailscale = { enabled, hostname, tailnetOnly: tailnetOnlyOn }
     s.tailscale = { built: true, state: enabled ? 'starting' : 'off', hostname, ...status }
     return s
   }
@@ -495,5 +519,51 @@ describe('Tailscale settings', () => {
     await user.type(box, 'my yagi')
     await user.click(saveButton(access())!)
     expect(await within(access()).findByText(/not starting or ending with a hyphen/i)).toBeInTheDocument()
+  })
+
+  it('offers "only on the tailnet" once connected, asks first, and saves only after the person agrees', async () => {
+    const { fn, calls } = patched()
+    vi.stubGlobal('fetch', fn)
+    const s = withTailscale({ state: 'running', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.64.0.5'] })
+    s.settings.admin = [] // nobody on the tailnet could open the page afterwards
+    renderSettings(s, 'access')
+    const user = userEvent.setup()
+    await user.click(within(access()).getByRole('switch', { name: 'Only on the tailnet' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByText(/refused/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(/Nobody on the tailnet is allowed/) // no admin address covers it
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false) // nothing yet
+    await user.click(within(dialog).getByRole('button', { name: 'Close the LAN' }))
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ tailnetOnly: true }))
+  })
+
+  it('does not warn about admin addresses when the tailnet is already allowed', async () => {
+    renderSettings(withTailscale({ state: 'running', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.64.0.5'] }), 'access') // the fixture lists 100.64.0.0/10
+    await userEvent.setup().click(within(access()).getByRole('switch', { name: 'Only on the tailnet' }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('does not offer it while the node is not connected, and turns it off without asking', async () => {
+    const { unmount } = renderSettings(withTailscale({ state: 'needs-login' }), 'access')
+    expect(within(access()).queryByRole('switch', { name: 'Only on the tailnet' })).not.toBeInTheDocument()
+    unmount()
+    const { fn, calls } = patched()
+    vi.stubGlobal('fetch', fn)
+    renderSettings(withTailscale({ state: 'starting', tailnetOnly: true }), 'access') // on, but the node is not connected: still there to switch off
+    expect(within(access()).getByText(/not in force/)).toBeInTheDocument()
+    await userEvent.setup().click(within(access()).getByRole('switch', { name: 'Only on the tailnet' }))
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ tailnetOnly: false }))
+  })
+
+  it('tells the admin addresses row that LAN addresses no longer matter while the LAN is closed', () => {
+    renderSettings(withTailscale({ state: 'running', tailnetOnly: true, lanClosed: true }), 'access')
+    expect(within(access()).getByText(/addresses on your LAN can’t connect at all/)).toBeInTheDocument()
+  })
+
+  it('says when the LAN is closed', () => {
+    renderSettings(withTailscale({ state: 'running', tailnetOnly: true, lanClosed: true }), 'access')
+    expect(within(access()).getByRole('switch', { name: 'Only on the tailnet' })).toBeChecked()
+    expect(within(access()).getByText(/own address is refused/)).toBeInTheDocument()
   })
 })

@@ -230,8 +230,9 @@ type PlexDoc struct {
 
 // TailscaleDoc is the settings for the built-in Tailscale node. Where the node is now is State.Tailscale.
 type TailscaleDoc struct {
-	Enabled  bool   `json:"enabled"`
-	Hostname string `json:"hostname"`
+	Enabled     bool   `json:"enabled"`
+	Hostname    string `json:"hostname"`
+	TailnetOnly bool   `json:"tailnetOnly"`
 }
 
 // DeviceDoc is one tuner as the dashboard shows it. OwnerReserve and
@@ -342,7 +343,7 @@ func (a *API) state() State {
 			History:       set.HistoryEnabled(),
 			LogLevel:      set.LogLevelName(),
 			Plex:          plexDoc(set),
-			Tailscale:     TailscaleDoc{Enabled: set.TailscaleEnabled(), Hostname: set.TailscaleHostname()},
+			Tailscale:     TailscaleDoc{Enabled: set.TailscaleEnabled(), Hostname: set.TailscaleHostname(), TailnetOnly: set.Tailscale != nil && set.Tailscale.TailnetOnly},
 			Notifications: notificationsDoc(set),
 		},
 		Editable:      a.Store.Editable(),
@@ -567,6 +568,9 @@ type settingsPatch struct {
 	// TailscaleEnabled turns the built-in Tailscale node on and off, and TailscaleHostname names it on the tailnet.
 	TailscaleEnabled  *bool   `json:"tailscaleEnabled"`
 	TailscaleHostname *string `json:"tailscaleHostname"`
+	// TailnetOnly refuses connections from the LAN while the node is connected. It can only be turned on while the node
+	// is connected, so it is never switched on with nothing to take its place.
+	TailnetOnly *bool `json:"tailnetOnly"`
 	// NotifyEvents switches kinds of event on and off for notifications.
 	NotifyEvents *notifyEventsPatch `json:"notifyEvents"`
 }
@@ -613,6 +617,15 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			s.Plex.Enabled = *in.PlexEnabled
 		}
+		if in.TailnetOnly != nil {
+			if *in.TailnetOnly && !(s.TailscaleEnabled() && a.tailscale().State == tailnet.Running) {
+				return &httpErr{http.StatusConflict, "Yagi's own Tailscale has to be on and connected first, so there is a way in once the LAN is closed"}
+			}
+			if s.Tailscale == nil {
+				s.Tailscale = &access.TailscaleSettings{}
+			}
+			s.Tailscale.TailnetOnly = *in.TailnetOnly
+		}
 		if in.TailscaleEnabled != nil || in.TailscaleHostname != nil {
 			if s.Tailscale == nil {
 				s.Tailscale = &access.TailscaleSettings{}
@@ -656,7 +669,7 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 	if in.Guide != nil && *in.Guide && a.Guide != nil {
 		a.Guide.Kick()
 	}
-	if (in.TailscaleEnabled != nil || in.TailscaleHostname != nil) && a.Tailnet != nil {
+	if (in.TailscaleEnabled != nil || in.TailscaleHostname != nil || in.TailnetOnly != nil) && a.Tailnet != nil {
 		a.Tailnet.Reconcile()
 	}
 	writeJSON(w, http.StatusOK, a.settingsDoc())

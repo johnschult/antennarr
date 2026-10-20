@@ -38,6 +38,7 @@ type tailnetControl struct{ s *Server }
 func (c tailnetControl) Status() tailnet.Status {
 	st := c.s.tailnet.Status()
 	st.Serving = c.s.tailPorts()
+	st.LANClosed = c.s.lanClosed()
 	return st
 }
 

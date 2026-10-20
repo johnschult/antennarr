@@ -218,6 +218,8 @@ export interface TailscaleSettings {
   enabled: boolean
   /** The name on the tailnet; "yagi" unless changed. */
   hostname: string
+  /** Refuse connections from the LAN while the node is connected. */
+  tailnetOnly: boolean
 }
 
 /** Where the built-in Tailscale node is. */
@@ -236,6 +238,8 @@ export interface TailscaleStatus {
   authKeyInEnv?: boolean
   /** The ports Yagi answers on at the node's addresses: the tuners' ports, and the admin port when it has its own. */
   serving?: string[]
+  /** The LAN is being refused right now: tailnet only is on and the node is connected. */
+  lanClosed?: boolean
 }
 
 export interface Summary {
@@ -346,6 +350,7 @@ export interface SettingsPatch {
   tailscaleEnabled?: boolean
   /** The name on the tailnet; an empty string means the default. */
   tailscaleHostname?: string
+  tailnetOnly?: boolean
   notifyEvents?: Partial<NotifyEvents>
 }
 

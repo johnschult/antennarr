@@ -411,6 +411,7 @@ func (s *Server) startBare(ln net.Listener) {
 	mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
 	mux.HandleFunc("GET "+renamedPrefix, redirectRenamed)
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
+	ln = s.gate(ln)
 	s.bare = &bareListener{srv: srv, ln: ln}
 	s.log.Info("no tuners yet: serving the admin pages so one can be added", "addr", ln.Addr().String())
 	go func() {

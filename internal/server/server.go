@@ -45,6 +45,10 @@ type Locator func(ctx context.Context, addr, id string) (baseURL string, err err
 
 // Config is everything needed to run.
 type Config struct {
+	// AllowLAN keeps the LAN ports open whatever the tailnet-only setting says (-allow-lan, YAGI_ALLOW_LAN): the way
+	// back in if the setting leaves someone locked out, for instance in Docker, where the machine's own browser
+	// does not arrive as loopback.
+	AllowLAN bool
 	// Settings as read from the settings file (or the defaults).
 	Settings access.Settings
 	// Devices to run: Settings.Devices, or one built from command-line flags.
@@ -471,6 +475,7 @@ func (s *Server) start(d *device, ln net.Listener) {
 
 // serve answers requests for a device on ln.
 func (s *Server) serve(d *device, ln net.Listener) {
+	ln = s.gate(ln)
 	d.ln = ln
 	// No overall timeouts: streams run for hours. Only the header read is
 	// bounded, so a stalled client can't hold a connection open for free.
