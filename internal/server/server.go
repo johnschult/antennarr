@@ -134,6 +134,7 @@ type Server struct {
 	plex      *plexauth.Auth
 	claim     *claim.Claimer
 	tailnet   *tailnet.Manager
+	tail      tailServing  // the tailnet side of the ports
 	admin     http.Handler // the admin pages, shared by every listener
 	// fromFlags: the devices came from command-line flags, so there is no
 	// devices list in the settings file to add to or remove from.
@@ -285,7 +286,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		AdminSeparate: cfg.AdminSeparate, Tailnet: s.tailnet, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		AdminSeparate: cfg.AdminSeparate, Tailnet: tailnetControl{s}, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -417,6 +418,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 
 	s.tailnet.Reconcile()
+	go s.watchTailnet(ctx)
 	go s.firmware.Run(ctx)
 	go s.guide.Run(ctx)
 	go s.notify.Run(ctx)
@@ -437,6 +439,7 @@ func (s *Server) Run(ctx context.Context) error {
 	case first = <-errc:
 	}
 	cancel()
+	s.closeTailnetServing()
 	s.tailnet.Close()
 
 	s.fleetMu.Lock()

@@ -7,7 +7,9 @@
 package tailnet
 
 import (
+	"errors"
 	"log/slog"
+	"net"
 	"sync"
 
 	"github.com/johnschult/yagi/internal/access"
@@ -47,6 +49,8 @@ type Status struct {
 	Error     string   `json:"error,omitempty"`
 	// AuthKeyInEnv says TS_AUTHKEY is set, so signing in needs no link.
 	AuthKeyInEnv bool `json:"authKeyInEnv,omitempty"`
+	// Serving is the ports Yagi answers on at the node's addresses: the tuners' ports, and the admin port when it is separate.
+	Serving []string `json:"serving,omitempty"`
 }
 
 // NodeStatus is what a running node knows about itself.
@@ -76,6 +80,9 @@ type Config struct {
 type Node interface {
 	// Status is a snapshot, safe to call at any time.
 	Status() NodeStatus
+	// Listen accepts connections on the tailnet, at the node's own addresses (addr is ":5004"). It can be called as
+	// soon as the node is made: the listener starts to answer once the node is on the tailnet.
+	Listen(addr string) (net.Listener, error)
 	// Close leaves the tailnet and stops.
 	Close() error
 }
@@ -95,6 +102,7 @@ type Manager struct {
 	mu   sync.Mutex
 	node Node
 	name string // the hostname the running node was started with
+	gen  uint64 // counts nodes started and stopped, so a listener can tell it belongs to one that has gone
 }
 
 // NewManager makes a manager. dir is where the node keeps its identity ("" means there is nowhere, and the node is
@@ -120,11 +128,13 @@ func (m *Manager) Reconcile() {
 			m.log.Warn("tailscale: stopping the node", "err", err)
 		}
 		m.node, m.name = nil, ""
+		m.gen++
 	}
 	if want && m.node == nil {
 		cfg := Config{Hostname: set.TailscaleHostname(), Dir: m.dir, AuthKey: m.authKey, Log: m.log}
 		if n := m.start(cfg); n != nil {
 			m.node, m.name = n, cfg.Hostname
+			m.gen++
 			m.log.Info("tailscale: starting", "hostname", cfg.Hostname)
 		}
 	}
@@ -169,5 +179,35 @@ func (m *Manager) Close() {
 	if m.node != nil {
 		_ = m.node.Close()
 		m.node, m.name = nil, ""
+		m.gen++
 	}
+}
+
+// ErrNoNode is what Listen says when there is no node to listen on: it is off, still being made, or this build has none.
+var ErrNoNode = errors.New("there is no Tailscale node running")
+
+// Listen accepts connections on the tailnet through the running node. It also returns the generation of the node it
+// belongs to; when Generation is different, that node has gone and so has the listener.
+func (m *Manager) Listen(addr string) (net.Listener, uint64, error) {
+	if m == nil {
+		return nil, 0, ErrNoNode
+	}
+	m.mu.Lock()
+	node, gen := m.node, m.gen
+	m.mu.Unlock()
+	if node == nil {
+		return nil, gen, ErrNoNode
+	}
+	ln, err := node.Listen(addr)
+	return ln, gen, err
+}
+
+// Generation changes whenever a node is started or stopped.
+func (m *Manager) Generation() uint64 {
+	if m == nil {
+		return 0
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.gen
 }

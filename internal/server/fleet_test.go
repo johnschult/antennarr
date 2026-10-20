@@ -41,6 +41,12 @@ func freePort(t *testing.T) string {
 // startFleet runs a server from s, with devices already running.
 func startFleet(t *testing.T, s access.Settings, devices []access.Device, withFile bool, tuners ...*fakeTuner) *fleet {
 	t.Helper()
+	return startFleetWith(t, s, devices, withFile, nil, tuners...)
+}
+
+// startFleetWith is startFleet with a say in the configuration.
+func startFleetWith(t *testing.T, s access.Settings, devices []access.Device, withFile bool, tweak func(*Config), tuners ...*fakeTuner) *fleet {
+	t.Helper()
 	f := &fleet{logs: &lockedBuf{}}
 	off := false
 	s.FirmwareCheck, s.Guide = &off, &off
@@ -57,6 +63,9 @@ func startFleet(t *testing.T, s access.Settings, devices []access.Device, withFi
 			t.Fatal(err)
 		}
 		cfg.ConfigPath = f.path
+	}
+	if tweak != nil {
+		tweak(&cfg)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)

@@ -10,6 +10,7 @@ import {
   validNetwork,
   validPort,
   verifyCommands,
+  yagiTransport,
 } from './setup-guide'
 
 describe('addresses', () => {
@@ -113,6 +114,41 @@ describe('steps', () => {
     expect(unknown.join(' ')).toContain('tailscale ip -4')
     expect(unknown.join(' ')).not.toContain('tailscale ping') // the check commands at the end cover reaching it
     expect(transportSteps('lan', '100.64.0.9').join(' ')).not.toContain('100.64.0.9') // only Tailscale uses it
+  })
+
+  describe("Yagi's own Tailscale", () => {
+    const up = { state: 'running' as const, dnsName: 'yagi.tail1234.ts.net', addresses: ['100.100.0.7'], serving: ['5004'], port: '5004' }
+
+    it('says what its button shows, by where the node is', () => {
+      expect(yagiTransport(up)).toMatchObject({ id: 'yagi', label: 'Yagi\u2019s own Tailscale', hint: 'Built in, no install needed here (yagi.tail1234.ts.net)' })
+      expect(yagiTransport({ ...up, dnsName: undefined }).hint).toContain('100.100.0.7') // the address when it has no name yet
+      expect(yagiTransport({ ...up, state: 'needs-login' }).hint).toBe('Built in. Sign it in first: Settings → Access')
+      expect(yagiTransport({ ...up, state: 'starting' }).hint).toBe('Built in. Connecting…')
+      expect(yagiTransport({ ...up, state: 'error' }).hint).toContain('could not start')
+    })
+
+    it('has steps that need nothing installed or opened on this machine, and name the device to share', () => {
+      const steps = transportSteps('yagi', undefined, up).join(' ')
+      expect(steps).toContain('Yagi is on your tailnet as yagi.tail1234.ts.net (100.100.0.7)')
+      expect(steps).toContain('nothing needs installing or opening on this machine')
+      expect(steps).toContain('Machines → yagi → Share')
+      expect(steps).not.toMatch(/Install Tailscale|tailscale ip -4|firewall/i)
+      expect(transportSteps('yagi', undefined, up)).toHaveLength(2)
+    })
+
+    it('says so when it is not answering on the tuner’s port yet, and not otherwise', () => {
+      expect(transportSteps('yagi', undefined, { ...up, serving: ['5999'] }).join(' ')).toContain('isn\u2019t answering on port 5004')
+      expect(transportSteps('yagi', undefined, { ...up, serving: undefined }).join(' ')).toContain('isn\u2019t answering on port 5004')
+      expect(transportSteps('yagi', undefined, up).join(' ')).not.toContain('answering')
+    })
+
+    it('says what to do first when it is not up, and shows no addresses to share', () => {
+      expect(transportSteps('yagi', undefined, { ...up, state: 'needs-login' })).toEqual([expect.stringContaining('isn\u2019t signed in yet')])
+      expect(transportSteps('yagi', undefined, { ...up, state: 'starting' })).toEqual([expect.stringContaining('still connecting')])
+      expect(transportSteps('yagi', undefined, { ...up, state: 'error' })).toEqual([expect.stringContaining('could not start')])
+      expect(transportSteps('yagi', undefined, { ...up, state: 'off' })).toEqual([expect.stringContaining('Switch on')])
+      expect(transportSteps('yagi')).toEqual([expect.stringContaining('Switch on')]) // no node to speak of
+    })
   })
 
   it('checks the address with curl', () => {

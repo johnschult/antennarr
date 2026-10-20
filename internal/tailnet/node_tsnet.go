@@ -5,6 +5,7 @@ package tailnet
 import (
 	"context"
 	"log/slog"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -105,6 +106,8 @@ func (n *tsnetNode) Status() NodeStatus {
 	defer n.mu.Unlock()
 	return n.status
 }
+
+func (n *tsnetNode) Listen(addr string) (net.Listener, error) { return n.srv.Listen("tcp", addr) }
 
 func (n *tsnetNode) Close() error {
 	n.cancel()

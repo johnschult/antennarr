@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Viewer } from '@/lib/types'
@@ -24,6 +24,8 @@ function mount(state: State = makeState(), viewer: Viewer | null = john, onOpenC
 
 async function typeHost(value: string) {
   const user = userEvent.setup()
+  // The dialog moves the focus to its first control a moment after it opens; typing before that loses the focus.
+  await waitFor(() => expect(document.activeElement).not.toBe(document.body))
   await user.clear(host())
   if (value) await user.type(host(), value)
   return user
@@ -297,7 +299,7 @@ describe('ViewerWizard on a machine that knows its own addresses', () => {
   it("fills in the machine's Tailscale address, and says Tailscale is already running", async () => {
     machine(ts, lan)
     mount()
-    await screen.findByRole('group', { name: 'Addresses of this machine' })
+    await screen.findByRole('group', { name: 'Addresses for this way' })
     expect(await field()).toHaveValue('100.64.0.9')
     expect(screen.getByLabelText('tuner address')).toHaveTextContent('100.64.0.9:5004')
     expect(within(block('The address')).queryByRole('alert')).not.toBeInTheDocument()
@@ -307,25 +309,33 @@ describe('ViewerWizard on a machine that knows its own addresses', () => {
     expect(within(steps).getByRole('radio', { name: /Tailscale/ })).toHaveTextContent('Running on this machine (100.64.0.9)')
   })
 
-  it('offers each address, and clicking one uses it', async () => {
-    machine(ts, lan)
+  it('offers only the addresses that belong to the way chosen, each saying what it is, and clicking one uses it', async () => {
+    const lan2 = { ip: '10.0.0.5', kind: 'lan', interface: 'wlan0' }
+    machine(ts, lan, lan2)
     mount()
     const user = userEvent.setup()
-    const chips = within(await screen.findByRole('group', { name: 'Addresses of this machine' }))
-    expect(chips.getByRole('button', { name: /100\.64\.0\.9.*Tailscale/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(chips.getByRole('button', { name: /192\.168\.1\.5.*LAN/ })).toHaveAttribute('aria-pressed', 'false')
+    const chips = () => within(screen.getByRole('group', { name: 'Addresses for this way' }))
+    await screen.findByRole('group', { name: 'Addresses for this way' })
+    // Tailscale on this machine: its own address, and none of the LAN ones
+    expect(chips().getByRole('button', { name: /100\.64\.0\.9.*Tailscale/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(chips().queryByRole('button', { name: /192\.168\.1\.5/ })).not.toBeInTheDocument()
+    // the same network: the LAN ones, and not the Tailscale one
+    await user.click(within(screen.getByRole('radiogroup', { name: 'Connection' })).getByRole('radio', { name: /Same network/ }))
+    expect(chips().queryByRole('button', { name: /100\.64\.0\.9/ })).not.toBeInTheDocument()
+    expect(chips().getByRole('button', { name: /192\.168\.1\.5.*LAN/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(chips().getByRole('button', { name: /10\.0\.0\.5.*LAN/ })).toHaveAttribute('aria-pressed', 'false')
 
-    await user.click(chips.getByRole('button', { name: /192\.168\.1\.5/ }))
-    expect(await field()).toHaveValue('192.168.1.5')
-    expect(chips.getByRole('button', { name: /192\.168\.1\.5/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByLabelText('tuner address')).toHaveTextContent('192.168.1.5:5004')
+    await user.click(chips().getByRole('button', { name: /10\.0\.0\.5/ }))
+    expect(await field()).toHaveValue('10.0.0.5')
+    expect(chips().getByRole('button', { name: /10\.0\.0\.5/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('tuner address')).toHaveTextContent('10.0.0.5:5004')
   })
 
   it('follows the connection you choose until you type an address of your own', async () => {
     machine(ts, lan)
     mount()
     const user = userEvent.setup()
-    await screen.findByRole('group', { name: 'Addresses of this machine' })
+    await screen.findByRole('group', { name: 'Addresses for this way' })
     const connection = within(screen.getByRole('radiogroup', { name: 'Connection' }))
 
     await user.click(connection.getByRole('radio', { name: /Same network/ }))
@@ -362,15 +372,107 @@ describe('ViewerWizard on a machine that knows its own addresses', () => {
     mount()
     expect(await field()).toHaveValue(window.location.hostname)
     await new Promise((r) => setTimeout(r, 50))
-    expect(screen.queryByRole('group', { name: 'Addresses of this machine' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Addresses for this way' })).not.toBeInTheDocument()
     expect(screen.queryByText(/wasn't found running/)).not.toBeInTheDocument()
   })
 
   it('leaves the connection hint alone when there is no Tailscale here', async () => {
     machine(lan)
     mount()
-    await screen.findByRole('group', { name: 'Addresses of this machine' })
+    await screen.findByText(/Tailscale wasn't found running on this machine/)
     expect(screen.getByRole('radio', { name: /Tailscale/ })).not.toHaveTextContent('Running on this machine')
+  })
+})
+
+describe("ViewerWizard with Yagi's own Tailscale", () => {
+  const hostTs = { ip: '100.127.0.1', kind: 'tailscale', interface: 'tailscale0' }
+  const hostLan = { ip: '192.168.1.5', kind: 'lan', interface: 'eth0' }
+  const machine = (...addresses: unknown[]) => vi.stubGlobal('fetch', stubFetch({ 'GET /network': () => ({ body: { addresses } }) }).fn)
+  const field = async () => (await screen.findByLabelText(/Address viewers will use/)) as HTMLInputElement
+  const node = (over: Partial<NonNullable<State['tailscale']>> = {}, enabled = true) => {
+    const s = makeState()
+    s.settings.tailscale = { enabled, hostname: 'yagi' }
+    s.tailscale = { built: true, state: 'running', hostname: 'yagi', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.100.0.7'], serving: ['5004'], ...over }
+    return s
+  }
+  const ways = () => within(screen.getByRole('radiogroup', { name: 'Connection' }))
+
+  it('is offered first, apart from the Tailscale on this machine, each saying which it is', async () => {
+    machine(hostTs, hostLan)
+    mount(node())
+    await waitFor(() => expect(ways().getByRole('radio', { name: /Tailscale on this machine/ })).toHaveTextContent('Running on this machine (100.127.0.1)')) // once the machine's addresses are read
+    const labels = ways().getAllByRole('radio').map((r) => r.querySelector('span')?.textContent)
+    expect(labels).toEqual(['Yagi’s own Tailscale', 'Tailscale on this machine', 'Other VPN', 'Same network', 'Internet'])
+    expect(ways().getByRole('radio', { name: /Yagi’s own Tailscale/ })).toHaveTextContent('Built in, no install needed here (yagi.tail1234.ts.net)')
+    expect(ways().getByRole('radio', { name: /Tailscale on this machine/ })).toHaveTextContent('Running on this machine (100.127.0.1)')
+  })
+
+  it('is chosen when it is up, and its name is the address, with only its own addresses offered', async () => {
+    machine(hostTs, hostLan)
+    mount(node())
+    expect(ways().getByRole('radio', { name: /Yagi’s own Tailscale/ })).toBeChecked()
+    expect(await field()).toHaveValue('yagi.tail1234.ts.net')
+    expect(screen.getByLabelText('tuner address')).toHaveTextContent('yagi.tail1234.ts.net:5004')
+    const chips = within(screen.getByRole('group', { name: 'Addresses for this way' }))
+    expect(screen.getByRole('group', { name: 'Addresses for this way' })).toHaveTextContent('Yagi’s own Tailscale is at')
+    expect(chips.getAllByRole('button').map((b) => b.textContent)).toEqual(['yagi.tail1234.ts.netname', '100.100.0.7address'])
+    // nothing from this machine's own Tailscale or network
+    expect(chips.queryByRole('button', { name: /100\.127\.0\.1|192\.168\.1\.5/ })).not.toBeInTheDocument()
+  })
+
+  it('says what is needed from the viewer, and that nothing is needed here, and has no firewall to set up', async () => {
+    machine(hostTs)
+    mount(node())
+    const steps = block('How will they reach it?')
+    expect(steps).toHaveTextContent('Yagi is on your tailnet as yagi.tail1234.ts.net (100.100.0.7)')
+    expect(steps).toHaveTextContent('nothing needs installing or opening on this machine')
+    expect(steps).toHaveTextContent('Machines → yagi → Share')
+    expect(steps).not.toHaveTextContent(/Install Tailscale|tailscale ip -4/)
+    expect(screen.queryByRole('region', { name: 'On this machine' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: /has a firewall/ })).not.toBeInTheDocument()
+  })
+
+  it('goes back to the machine’s own Tailscale, and its firewall, when that is chosen', async () => {
+    machine(hostTs, hostLan)
+    mount(node())
+    const user = userEvent.setup()
+    await user.click(ways().getByRole('radio', { name: /Tailscale on this machine/ }))
+    expect(await field()).toHaveValue('100.127.0.1')
+    expect(block('How will they reach it?')).toHaveTextContent('Tailscale is running on this machine (100.127.0.1)')
+    expect(screen.getByRole('switch', { name: /has a firewall/ })).toBeInTheDocument()
+  })
+
+  it('is not the default, and not offered as ready, until it is signed in', async () => {
+    machine(hostTs)
+    mount(node({ state: 'needs-login', dnsName: undefined, addresses: undefined, serving: undefined }))
+    expect(ways().getByRole('radio', { name: /Yagi’s own Tailscale/ })).toHaveTextContent('Built in. Sign it in first: Settings → Access')
+    expect(ways().getByRole('radio', { name: /Tailscale on this machine/ })).toBeChecked() // the machine's own is the default meanwhile
+    await waitFor(async () => expect(await field()).toHaveValue('100.127.0.1'))
+    const user = userEvent.setup()
+    await user.click(ways().getByRole('radio', { name: /Yagi’s own Tailscale/ }))
+    expect(block('How will they reach it?')).toHaveTextContent('isn’t signed in yet. Sign it in under Settings → Access')
+    expect(await field()).toHaveValue('') // not the browser's address: that would be the wrong one to give
+    expect(screen.queryByLabelText('tuner address')).not.toBeInTheDocument()
+  })
+
+  it('says when it is not answering on this tuner’s port yet', async () => {
+    machine(hostTs)
+    mount(node({ serving: ['5999'] }))
+    expect(block('How will they reach it?')).toHaveTextContent('isn’t answering on port 5004 on the tailnet yet')
+  })
+
+  it('is not offered when its switch is off, or when this build does not have it', async () => {
+    machine(hostTs)
+    const { unmount } = renderWithApp(<ViewerWizard open onOpenChange={vi.fn()} devices={node({}, false).devices} viewer={john} />, node({ state: 'off' }, false))
+    await screen.findByRole('radiogroup', { name: 'Connection' })
+    expect(screen.queryByRole('radio', { name: /Yagi’s own Tailscale/ })).not.toBeInTheDocument()
+    expect(ways().getByRole('radio', { name: /^Tailscale/ })).toBeInTheDocument() // unlabelled "on this machine": there is only one
+    unmount()
+    const s = node()
+    s.tailscale = { built: false, state: 'unavailable', hostname: 'yagi' }
+    renderWithApp(<ViewerWizard open onOpenChange={vi.fn()} devices={s.devices} viewer={john} />, s)
+    await screen.findByRole('radiogroup', { name: 'Connection' })
+    expect(screen.queryByRole('radio', { name: /Yagi’s own Tailscale/ })).not.toBeInTheDocument()
   })
 })
 

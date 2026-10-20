@@ -32,6 +32,7 @@ import (
 	"github.com/johnschult/yagi/internal/history"
 	"github.com/johnschult/yagi/internal/lineup/linetest"
 	"github.com/johnschult/yagi/internal/logbuf"
+	"github.com/johnschult/yagi/internal/tailnet"
 	"github.com/johnschult/yagi/internal/upgrade"
 )
 
@@ -456,6 +457,7 @@ func TestDemo(t *testing.T) {
 	s.Labels = map[string]string{"antenna": "Living room antenna"}
 	dev := access.Device{Name: "antenna", Listen: ln.Addr().String(), Tuner: "demo", ID: "10ABCC87", StreamPort: sport}
 	s.Devices = []access.Device{dev}
+	s.Tailscale = &access.TailscaleSettings{Enabled: true, Hostname: "yagi"} // a made-up node that is up, so the pages show it
 	cfgPath := filepath.Join(dir, "yagi.json")
 	if err := access.SaveSettings(cfgPath, s); err != nil {
 		t.Fatal(err)
@@ -470,7 +472,8 @@ func TestDemo(t *testing.T) {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	cfg := Config{
-		Settings: s, Devices: s.Devices, ConfigPath: cfgPath, Poll: time.Second, Log: demoLog, LogLevel: demoLevel, Logs: demoLogs,
+		TailscaleStart: func(tailnet.Config) tailnet.Node { return demoNode{} },
+		Settings:       s, Devices: s.Devices, ConfigPath: cfgPath, Poll: time.Second, Log: demoLog, LogLevel: demoLevel, Logs: demoLogs,
 		Locate:    func(context.Context, string, string) (string, error) { return api.URL, nil },
 		Listeners: map[string]net.Listener{"antenna": ln}, GuideURL: guide.URL + "/api/xmltv", GuideIconBase: guide.URL,
 		AdminListen: "127.0.0.1:0",
@@ -529,3 +532,12 @@ func TestDemo(t *testing.T) {
 	}()
 	<-ctx.Done()
 }
+
+// demoNode is a Tailscale node that is up, with a made-up name and address, so the demo can show what the pages do with one.
+type demoNode struct{}
+
+func (demoNode) Status() tailnet.NodeStatus {
+	return tailnet.NodeStatus{State: tailnet.Running, DNSName: "yagi.tail-demo.ts.net", Addresses: []string{"100.101.102.103"}}
+}
+func (demoNode) Listen(string) (net.Listener, error) { return net.Listen("tcp", "127.0.0.1:0") }
+func (demoNode) Close() error                        { return nil }
