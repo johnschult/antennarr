@@ -13,7 +13,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false }, notifications: noNotifications() }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false, https: false }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -426,10 +426,10 @@ describe('reachedAnotherWay', () => {
 
 describe('Tailscale settings', () => {
   const access = () => section('Tailscale')
-  const withTailscale = (over: Partial<NonNullable<ReturnType<typeof state>['tailscale']>> & { enabled?: boolean; hostname?: string; tailnetOnly?: boolean }) => {
+  const withTailscale = (over: Partial<NonNullable<ReturnType<typeof state>['tailscale']>> & { enabled?: boolean; hostname?: string; tailnetOnly?: boolean; httpsOn?: boolean }) => {
     const s = state()
-    const { enabled = true, hostname = 'yagi', tailnetOnly: tailnetOnlyOn = false, ...status } = over
-    s.settings.tailscale = { enabled, hostname, tailnetOnly: tailnetOnlyOn }
+    const { enabled = true, hostname = 'yagi', tailnetOnly: tailnetOnlyOn = false, httpsOn = false, ...status } = over
+    s.settings.tailscale = { enabled, hostname, tailnetOnly: tailnetOnlyOn, https: httpsOn }
     s.tailscale = { built: true, state: enabled ? 'starting' : 'off', hostname, ...status }
     return s
   }
@@ -498,6 +498,29 @@ describe('Tailscale settings', () => {
     await user.type(box, 'attic')
     await user.click(saveButton(access())!)
     await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ tailscaleHostname: 'attic' }))
+  })
+
+  it('offers HTTPS for the admin page once connected, saying what it needs and costs, and saves the choice', async () => {
+    const { fn, calls } = patched()
+    vi.stubGlobal('fetch', fn)
+    renderSettings(withTailscale({ state: 'running', dnsName: 'yagi.tail1234.ts.net' }), 'access')
+    expect(within(access()).getByText(/public certificate log/)).toBeInTheDocument()
+    expect(within(access()).getByText(/HTTPS certificates turned on/)).toBeInTheDocument()
+    await userEvent.setup().click(within(access()).getByRole('switch', { name: 'HTTPS for the admin page' }))
+    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ tailscaleHttps: true }))
+  })
+
+  it('links to the HTTPS address once it is up, and shows Tailscale’s reason when it is not', () => {
+    const { unmount } = renderSettings(withTailscale({ state: 'running', httpsOn: true, https: 'https://yagi.tail1234.ts.net/' }), 'access')
+    expect(within(access()).getByRole('link', { name: 'https://yagi.tail1234.ts.net/' })).toHaveAttribute('href', 'https://yagi.tail1234.ts.net/')
+    unmount()
+    renderSettings(withTailscale({ state: 'running', httpsOn: true, httpsError: 'this tailnet does not have HTTPS enabled' }), 'access')
+    expect(within(access()).getByText(/does not have HTTPS enabled/)).toBeInTheDocument()
+  })
+
+  it('does not offer HTTPS while the node is not connected', () => {
+    renderSettings(withTailscale({ state: 'needs-login' }), 'access')
+    expect(within(access()).queryByRole('switch', { name: 'HTTPS for the admin page' })).not.toBeInTheDocument()
   })
 
   it('refuses a bad hostname before sending it', async () => {

@@ -3,9 +3,11 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -50,6 +52,8 @@ func (n *stubNode) at(addr string) string {
 func (n *stubNode) WhoIs(context.Context, string) (tailnet.Who, error) {
 	return tailnet.Who{Login: "alice@example.com", Node: "laptop.tail1.ts.net"}, nil
 }
+
+func (n *stubNode) ListenTLS(addr string) (net.Listener, error) { return n.Listen(addr) }
 
 func (n *stubNode) Status() tailnet.NodeStatus {
 	return tailnet.NodeStatus{State: tailnet.NeedsLogin, LoginURL: "https://login.tailscale.com/a/xyz"}
@@ -373,5 +377,96 @@ func TestAViewerOnTheTailnetIsRecognisedByLoginAndALanClientIsNot(t *testing.T) 
 	// the very same address on the LAN side has no identity, and nothing else lists it
 	if code, _ := r.get(t, "antenna", "/discover.json"); code != 403 {
 		t.Errorf("over the LAN: %d, want 403 (an identity only counts when the node said it)", code)
+	}
+}
+
+// httpsNode is a connected node whose HTTPS listener can be made to fail, as it does on a tailnet without certificates.
+type httpsNode struct {
+	stubNode
+	tlsMu   sync.Mutex
+	failTLS error
+}
+
+func (n *httpsNode) setFail(err error) { n.tlsMu.Lock(); n.failTLS = err; n.tlsMu.Unlock() }
+
+func (n *httpsNode) Status() tailnet.NodeStatus {
+	return tailnet.NodeStatus{State: tailnet.Running, DNSName: "attic.tail1.ts.net", Addresses: []string{"100.64.0.5"}}
+}
+func (n *httpsNode) ListenTLS(addr string) (net.Listener, error) {
+	n.tlsMu.Lock()
+	fail := n.failTLS
+	n.tlsMu.Unlock()
+	if fail != nil {
+		return nil, fail
+	}
+	return n.stubNode.ListenTLS(addr)
+}
+
+func httpsRig(t *testing.T, on bool, node *httpsNode) *rig {
+	t.Helper()
+	a := newFakeTuner(t, "10ABCC87", "antenna-box")
+	devs := []access.Device{{Name: "antenna", Listen: ":5004", Tuner: a.name, StreamPort: a.streamPort}}
+	cfgPath := filepath.Join(t.TempDir(), "yagi.json")
+	s := access.DefaultSettings()
+	s.Tailscale = &access.TailscaleSettings{Enabled: true, Hostname: "attic", HTTPS: on}
+	if err := access.SaveSettings(cfgPath, s); err != nil {
+		t.Fatal(err)
+	}
+	return startConfigured(t, s, devs, "", "", func(c *Config) {
+		c.ConfigPath = cfgPath
+		c.TailscaleStart = func(tailnet.Config) tailnet.Node { return node }
+	}, a)
+}
+
+func TestTheAdminPagesAreServedOverHTTPSOnlyWhenAskedFor(t *testing.T) {
+	node := &httpsNode{}
+	r := httpsRig(t, true, node)
+	waitFor(t, "the HTTPS listener", func() bool { return node.at(":443") != "" })
+	resp, err := http.Get("http://" + node.at(":443") + "/api/state") // the stub is not TLS; what matters is which handler answers
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("/api/state on the HTTPS port: %d, want 200 (the admin pages)", resp.StatusCode)
+	}
+	resp, err = http.Get("http://" + node.at(":443") + "/discover.json") // a tuner's own address is not there
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode == 200 {
+		t.Error("the HTTPS port answers the tuner's own addresses; it should carry the admin pages only")
+	}
+	if st := tc(r).Status(); st.HTTPS != "https://attic.tail1.ts.net/" || st.HTTPSError != "" {
+		t.Errorf("status = %q %q, want the address and no error", st.HTTPS, st.HTTPSError)
+	}
+
+	off := &httpsNode{}
+	httpsRig(t, false, off)
+	time.Sleep(300 * time.Millisecond)
+	if got := off.at(":443"); got != "" {
+		t.Errorf("listening for HTTPS with the switch off: %s", got)
+	}
+}
+
+func TestWhyHTTPSCouldNotStartIsShown(t *testing.T) {
+	node := &httpsNode{failTLS: errors.New("this tailnet does not have HTTPS certificates enabled")}
+	r := httpsRig(t, true, node)
+	waitFor(t, "the reason", func() bool { return tc(r).Status().HTTPSError != "" })
+	st := tc(r).Status()
+	if st.HTTPS != "" || !strings.Contains(st.HTTPSError, "HTTPS certificates") {
+		t.Errorf("status = %q %q, want no address and Tailscale's own reason", st.HTTPS, st.HTTPSError)
+	}
+}
+
+func TestOpenPagesAreToldWhenHTTPSComesUpOrFails(t *testing.T) {
+	base := tailnet.Status{State: tailnet.Running, DNSName: "attic.tail1.ts.net", Serving: []string{"5004"}}
+	up, failed := base, base
+	up.HTTPS = "https://attic.tail1.ts.net/"
+	failed.HTTPSError = "this tailnet does not have HTTPS certificates enabled"
+	keys := map[string]string{"base": tailStatusKey(base), "up": tailStatusKey(up), "failed": tailStatusKey(failed)}
+	if keys["base"] == keys["up"] || keys["base"] == keys["failed"] || keys["up"] == keys["failed"] {
+		t.Errorf("the watch can't tell these apart, so the open pages would not be told: %v", keys)
 	}
 }

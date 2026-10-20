@@ -128,6 +128,8 @@ func (n *tsnetNode) WhoIs(ctx context.Context, remote string) (Who, error) {
 	return w, nil
 }
 
+func (n *tsnetNode) ListenTLS(addr string) (net.Listener, error) { return n.srv.ListenTLS("tcp", addr) }
+
 func (n *tsnetNode) Close() error {
 	n.cancel()
 	<-n.done

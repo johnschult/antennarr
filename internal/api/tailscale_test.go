@@ -131,3 +131,24 @@ func TestTailnetOnlyCanOnlyBeSwitchedOnWhileTheNodeIsConnected(t *testing.T) {
 		t.Error("still on")
 	}
 }
+
+func TestHTTPSIsASeparateOptInSetting(t *testing.T) {
+	e := newEnv(t, johnAndMom, true)
+	ft := &fakeTailnet{status: tailnet.Status{Built: true, State: tailnet.Off, Hostname: "yagi"}}
+	e.api.Tailnet = ft
+	if set, _ := tsDoc(t, e); set["https"] != false {
+		t.Fatalf("off by default, got %v", set)
+	}
+	if code, v := e.call(t, "PATCH", "/api/settings", `{"tailscaleEnabled":true,"tailscaleHttps":true}`); code != 200 {
+		t.Fatalf("patch: %d %v", code, v)
+	}
+	set, _ := tsDoc(t, e)
+	if set["https"] != true || !e.pol.Settings().TailscaleHTTPS() {
+		t.Errorf("settings = %v, want HTTPS on", set)
+	}
+	before := ft.reconciled
+	e.call(t, "PATCH", "/api/settings", `{"tailscaleHttps":false}`)
+	if ft.reconciled == before || e.pol.Settings().TailscaleHTTPS() {
+		t.Error("switching HTTPS off did not reach the node, or did not save")
+	}
+}

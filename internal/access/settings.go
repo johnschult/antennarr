@@ -132,6 +132,9 @@ type TailscaleSettings struct {
 	// TailnetOnly turns the LAN off: Yagi then answers on the tailnet, and to the machine itself (loopback), and to
 	// nothing else. It only takes hold while the node is connected; see Server.lanClosed.
 	TailnetOnly bool `json:"tailnetOnly,omitempty"`
+	// HTTPS also serves the admin pages over HTTPS at the node's tailnet name (port 443), with a certificate from
+	// Tailscale. Opt-in: the name then appears in a public certificate log.
+	HTTPS bool `json:"https,omitempty"`
 }
 
 // DefaultTailscaleHostname is what the node is called until someone says otherwise.
@@ -153,6 +156,11 @@ func (s Settings) TailscaleEnabled() bool { return s.Tailscale != nil && s.Tails
 // TailnetOnly reports whether the LAN side is to be closed while the Tailscale node is connected.
 func (s Settings) TailnetOnly() bool {
 	return s.Tailscale != nil && s.Tailscale.Enabled && s.Tailscale.TailnetOnly
+}
+
+// TailscaleHTTPS reports whether the admin pages are also to be served over HTTPS on the tailnet.
+func (s Settings) TailscaleHTTPS() bool {
+	return s.Tailscale != nil && s.Tailscale.Enabled && s.Tailscale.HTTPS
 }
 
 // TailscaleHostname is the node's name on the tailnet.
