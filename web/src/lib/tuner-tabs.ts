@@ -14,6 +14,6 @@ export const isTunerTab = (s: string | undefined): s is TunerTab => TUNER_TABS.s
 
 /** Where a tuner's page, or one of its tabs, is. The Overview is the page itself. */
 export function tunerPath(name: string, tab: TunerTab = 'overview'): string {
-  const base = `/tuner/${encodeURIComponent(name)}`
+  const base = `/tuners/${encodeURIComponent(name)}`
   return tab === 'overview' ? base : `${base}/${tab}`
 }

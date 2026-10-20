@@ -40,7 +40,7 @@ func TestServesIndexAtTheRoot(t *testing.T) {
 
 func TestAppRoutesFallBackToIndex(t *testing.T) {
 	h := handler("/", built)
-	for _, target := range []string{"/viewers", "/settings", "/deep/link/here", "/assets/"} {
+	for _, target := range []string{"/viewers", "/tuners", "/tuners/antenna/firmware", "/tuner", "/tuner/antenna", "/settings", "/deep/link/here", "/assets/"} {
 		rec := get(h, "GET", target)
 		if rec.Code != 200 || !strings.Contains(rec.Body.String(), `id="root"`) {
 			t.Errorf("%s: %d %q (the app must handle its own routes)", target, rec.Code, rec.Body)

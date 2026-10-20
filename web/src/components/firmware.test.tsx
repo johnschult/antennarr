@@ -19,7 +19,7 @@ describe('FirmwareBadge', () => {
   it('flags a tuner with newer firmware, linking to the details', () => {
     renderWithApp(<FirmwareBadge status={updateAvailable} />, makeState())
     const link = screen.getByRole('link')
-    expect(link).toHaveAttribute('href', '/tuner')
+    expect(link).toHaveAttribute('href', '/tuners')
     expect(link).toHaveTextContent('Firmware update')
   })
   it('is more cautious when it is only possible', () => {

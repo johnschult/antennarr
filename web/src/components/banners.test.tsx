@@ -82,8 +82,8 @@ describe('the offline banner', () => {
         <Banners state={state} />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('link', { name: 'Steve FLEX 4K' })).toHaveAttribute('href', '/tuner/antenna')
-    expect(screen.getByRole('link', { name: 'Cable HDHR' })).toHaveAttribute('href', '/tuner/cable')
+    expect(screen.getByRole('link', { name: 'Steve FLEX 4K' })).toHaveAttribute('href', '/tuners/antenna')
+    expect(screen.getByRole('link', { name: 'Cable HDHR' })).toHaveAttribute('href', '/tuners/cable')
   })
 
   it('links the one tuner’s offline notice to its page', () => {
@@ -94,6 +94,6 @@ describe('the offline banner', () => {
         <Banners state={state} />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('link', { name: 'The tuner is offline.' })).toHaveAttribute('href', '/tuner/antenna')
+    expect(screen.getByRole('link', { name: 'The tuner is offline.' })).toHaveAttribute('href', '/tuners/antenna')
   })
 })

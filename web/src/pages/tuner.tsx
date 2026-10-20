@@ -233,7 +233,7 @@ export function TunerPage() {
   const [removing, setRemoving] = useState<DeviceState | null>(null)
   const device = state.devices.find((d) => d.name === name)
   const back = (
-    <Link to="/tuner" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+    <Link to="/tuners" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
       <ArrowLeft aria-hidden className="size-4" /> Tuners
     </Link>
   )

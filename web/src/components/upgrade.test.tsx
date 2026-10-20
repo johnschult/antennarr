@@ -173,7 +173,7 @@ describe('a tuner that is updating', () => {
   })
 
   it('shows it on the Tuners page too', () => {
-    renderWithApp(<App />, updating(), { route: '/tuner' })
+    renderWithApp(<App />, updating(), { route: '/tuners' })
     expect(screen.getByTitle('Updating firmware')).toBeInTheDocument()
   })
 

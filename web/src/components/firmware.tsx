@@ -31,7 +31,7 @@ function upgradeText(u: UpgradeStatus): string {
 export const CHANGELOG_URL = 'https://www.silicondust.com/support/downloads/firmware-changelog.html'
 
 /** A small flag on a tuner that has newer firmware, linking to the details. */
-export function FirmwareBadge({ status, to = '/tuner' }: { status: FirmwareStatus; /** Where it goes: the tuner's Firmware tab. */ to?: string }) {
+export function FirmwareBadge({ status, to = '/tuners' }: { status: FirmwareStatus; /** Where it goes: the tuner's Firmware tab. */ to?: string }) {
   if (status.state !== 'update-available' && status.state !== 'possible-update') return null
   return (
     <Link to={to} className="inline-flex" title="See what's new">

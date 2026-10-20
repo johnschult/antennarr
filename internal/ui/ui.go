@@ -30,7 +30,8 @@ func Handler(prefix string) http.Handler {
 
 // pages are the first parts of the paths the web page's own router answers (see web/src/App.tsx). A port that is
 // also a tuner's has to send exactly these to the page and leave every other path to the tuner.
-var pages = []string{"/viewers", "/viewers/", "/tuner", "/tuner/", "/activity", "/settings", "/settings/", "/logs", "/setup", "/assets/"}
+// /tuner and /tuner/ are what the tuners' pages were called: the router sends them on to /tuners.
+var pages = []string{"/viewers", "/viewers/", "/tuners", "/tuners/", "/tuner", "/tuner/", "/activity", "/settings", "/settings/", "/logs", "/setup", "/assets/"}
 
 // Routes lists the path patterns the page answers on a port shared with a tuner: its router's pages, its built
 // assets, and the files at the top of the build (the icons, the theme script, index.html).

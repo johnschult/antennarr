@@ -16,12 +16,11 @@ import { signOut } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // The pages, in the order they are used: watching, who may watch, the hardware,
-// then everything else. The path of /tuner is older than its name here and stays,
-// so existing links keep working.
+// then everything else.
 const nav: { to: string; label: string; icon: LucideIcon; end?: boolean; needs?: 'history' }[] = [
   { to: '/', label: 'Live', icon: Radio, end: true },
   { to: '/viewers', label: 'Viewers', icon: Users },
-  { to: '/tuner', label: 'Tuners', icon: RadioReceiver },
+  { to: '/tuners', label: 'Tuners', icon: RadioReceiver },
   { to: '/activity', label: 'Activity', icon: History, needs: 'history' },
   { to: '/settings', label: 'Settings', icon: SlidersHorizontal },
 ]

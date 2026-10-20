@@ -124,7 +124,7 @@ describe('Shell logo', () => {
   }
 
   it('is a link to the Live page, named for the app', () => {
-    mount('/tuner')
+    mount('/tuners')
     const link = screen.getByRole('link', { name: 'Yagi' })
     expect(link).toHaveAttribute('href', '/')
     expect(link).toHaveAttribute('title', 'Live')

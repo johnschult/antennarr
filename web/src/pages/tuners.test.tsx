@@ -5,7 +5,7 @@ import { renderTunerRoutes, stubFetch } from '@/test/render'
 
 afterEach(() => vi.unstubAllGlobals())
 
-const list = (s = makeTwoDeviceState(), path = '/tuner') => renderTunerRoutes(s, path)
+const list = (s = makeTwoDeviceState(), path = '/tuners') => renderTunerRoutes(s, path)
 
 describe('the Tuners page', () => {
   it('lists the tuners, each linking to its own page', () => {
@@ -13,8 +13,8 @@ describe('the Tuners page', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
     const rows = within(screen.getByRole('list', { name: 'Tuners' })).getAllByRole('listitem')
     expect(rows).toHaveLength(2)
-    expect(within(rows[0]).getByRole('link', { name: /Steve FLEX 4K/ })).toHaveAttribute('href', '/tuner/antenna')
-    expect(within(rows[1]).getByRole('link', { name: /Cable HDHR/ })).toHaveAttribute('href', '/tuner/cable')
+    expect(within(rows[0]).getByRole('link', { name: /Steve FLEX 4K/ })).toHaveAttribute('href', '/tuners/antenna')
+    expect(within(rows[1]).getByRole('link', { name: /Cable HDHR/ })).toHaveAttribute('href', '/tuners/cable')
   })
 
   it('shows what a tuner is, where it is and how many of its tuners are in use', () => {
@@ -41,7 +41,7 @@ describe('the Tuners page', () => {
     s.devices[0].firmware = updateAvailable
     list(s)
     const flag = screen.getByRole('link', { name: 'Firmware update' })
-    expect(flag).toHaveAttribute('href', '/tuner/antenna/firmware')
+    expect(flag).toHaveAttribute('href', '/tuners/antenna/firmware')
     expect(within(screen.getAllByRole('listitem')[1]).queryByText('Firmware update')).not.toBeInTheDocument()
   })
 
@@ -79,7 +79,7 @@ describe('the Tuners page', () => {
 
   it('has one link to each tuner’s page, not two that go to the same place', () => {
     list()
-    const hrefs = screen.getAllByRole('link').map((l) => l.getAttribute('href')).filter((h) => h === '/tuner/antenna' || h === '/tuner/cable')
-    expect(hrefs).toEqual(['/tuner/antenna', '/tuner/cable'])
+    const hrefs = screen.getAllByRole('link').map((l) => l.getAttribute('href')).filter((h) => h === '/tuners/antenna' || h === '/tuners/cable')
+    expect(hrefs).toEqual(['/tuners/antenna', '/tuners/cable'])
   })
 })
