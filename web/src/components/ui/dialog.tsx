@@ -5,10 +5,35 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 import { cn } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerTitle } from "@/components/ui/drawer"
+import { useIsPhone } from "@/hooks/use-media-query"
 import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+// On a phone every dialog is a sheet from the bottom (Vaul) instead of a box in
+// the middle. The parts below each pick which, so a dialog is written once.
+
+function Dialog({
+  open,
+  onOpenChange,
+  children,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  children?: React.ReactNode
+}) {
+  const phone = useIsPhone()
+  if (phone) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        {children}
+      </Drawer>
+    )
+  }
+  return (
+    <DialogPrimitive.Root data-slot="dialog" open={open} onOpenChange={onOpenChange}>
+      {children}
+    </DialogPrimitive.Root>
+  )
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
@@ -47,6 +72,26 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
 }) {
+  const phone = useIsPhone()
+  if (phone) {
+    return (
+      <DrawerContent
+        // The class names say how a dialog sits in the middle of a page; the sheet keeps what it needs (a scrolling, gridded body).
+        className={cn("relative grid gap-4 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-sm", className, "max-h-[92dvh] max-w-none")}
+        aria-describedby={undefined}
+      >
+        {children}
+        {showCloseButton && (
+          <DrawerClose asChild>
+            <Button variant="ghost" className="absolute top-2 right-2" size="icon-sm">
+              <XIcon />
+              <span className="sr-only">Close</span>
+            </Button>
+          </DrawerClose>
+        )}
+      </DrawerContent>
+    )
+  }
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -118,6 +163,8 @@ function DialogFooter({
 }
 
 function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
+  const phone = useIsPhone()
+  if (phone) return <DrawerTitle className={typeof className === "string" ? className : undefined}>{props.children}</DrawerTitle>
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
@@ -134,6 +181,8 @@ function DialogDescription({
   className,
   ...props
 }: DialogPrimitive.Description.Props) {
+  const phone = useIsPhone()
+  if (phone) return <DrawerDescription className={typeof className === "string" ? className : undefined}>{props.children}</DrawerDescription>
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"

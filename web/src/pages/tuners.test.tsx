@@ -54,14 +54,9 @@ describe('the Tuners page', () => {
     expect(within(screen.getAllByRole('listitem')[1]).getByTitle('Offline')).toHaveClass('bg-red-500')
   })
 
-  it('goes straight to the page of a single tuner, which has nothing to choose from', () => {
+  it('shows the list even for a single tuner, so another can be added', () => {
     list(makeState())
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Steve FLEX 4K')
-    expect(screen.getByRole('navigation', { name: 'Sections of this tuner' })).toBeInTheDocument()
-  })
-
-  it('still shows the list of a single tuner when asked, so another can be added', () => {
-    list(makeState(), '/tuner?list')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
     expect(screen.getByRole('list', { name: 'Tuners' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add tuner' })).toBeEnabled()
   })

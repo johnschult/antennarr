@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- The Home Screen icon: a full-bleed square (iOS rounds the corners itself) with the mark kept well inside the safe area. -->
+  <rect width="256" height="256" fill="#0f1b24"/>
+  <g transform="translate(44 44) scale(7)" fill="none" stroke="#2dd4bf" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 12 7 2"/><path d="m7 12 5-10"/><path d="m12 12 5-10"/><path d="m17 12 5-10"/><path d="M4.5 7h15"/><path d="M12 16v6"/>
+  </g>
+</svg>

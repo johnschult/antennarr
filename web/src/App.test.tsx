@@ -8,7 +8,7 @@ describe('App routes', () => {
   it.each([
     ['/', 'tuners live'],
     ['/viewers', 'Viewers'],
-    ['/tuner?list', 'Tuners'],
+    ['/tuner', 'Tuners'],
     ['/tuner/antenna', 'Steve FLEX 4K'],
     ['/tuner/antenna/firmware', 'Steve FLEX 4K'],
     ['/settings', 'Settings'],
@@ -18,9 +18,9 @@ describe('App routes', () => {
     expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument()
   })
 
-  it('opens the only tuner’s page from /tuner, and the list when there are several', () => {
+  it('shows the list of tuners at /tuner, even when there is only one', () => {
     const { unmount } = renderWithApp(<App />, makeState(), { route: '/tuner' })
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Steve FLEX 4K')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')
     unmount()
     renderWithApp(<App />, makeTwoDeviceState(), { route: '/tuner' })
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Tuners')

@@ -1,6 +1,6 @@
 import { ChevronRight, Plus } from 'lucide-react'
 import { useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router'
+import { Link } from 'react-router'
 import { AddTunerDialog } from '@/components/add-tuner-dialog'
 import { FirmwareBadge } from '@/components/firmware'
 import { NoTuners } from '@/components/no-tuners'
@@ -51,13 +51,10 @@ function TunerRow({ device }: { device: DeviceState }) {
   )
 }
 
-/** The tuners being shared, one row each; a row opens that tuner's page. With only one, the page is its page. */
+/** The tuners being shared, one row each; a row opens that tuner's page. Even with only one, so there is always a way to add another. */
 export function TunersPage() {
   const { state } = useApp()
   const [adding, setAdding] = useState(false)
-  const [params] = useSearchParams()
-  // One tuner doesn't need a list to pick from. The page's own link back asks for the list (?list) so there is a way to add another.
-  if (state.devices.length === 1 && !params.has('list')) return <Navigate to={tunerPath(state.devices[0].name)} replace />
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
