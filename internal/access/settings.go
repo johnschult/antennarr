@@ -524,6 +524,32 @@ func (s Settings) parse() (parsed, error) {
 	return out, nil
 }
 
+// AdminReaches reports whether somebody other than this machine itself could open the admin pages when they
+// arrive from one of the node's neighbours on the tailnet: Plex sign-in has an account, or an admin range (not a single
+// address, which only one client could have) covers the given addresses. addrs are the tailnet addresses of Yagi's own
+// node, and stand for the tailnet's address range.
+func (s Settings) AdminReaches(addrs []string) bool {
+	c, err := s.parse()
+	if err != nil {
+		return false
+	}
+	if c.PlexEnabled() && len(c.Plex.Admins) > 0 {
+		return true
+	}
+	for _, a := range addrs {
+		ip, err := netip.ParseAddr(a)
+		if err != nil {
+			continue
+		}
+		for _, p := range c.admin {
+			if p.Bits() < p.Addr().BitLen() && p.Contains(ip.Unmap()) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Warnings lists things in the settings that are allowed but probably not what
 // the owner meant. Today that is a viewer address inside an admin range, which
 // makes that viewer an admin too: they could open the admin page and change

@@ -1,5 +1,5 @@
 import type { TailscaleStatus } from '@/lib/types'
-import { entryCovers, reachedAnotherWay, tailnetCanAdmin } from '@/components/tailnet-only-dialog'
+import { reachedAnotherWay } from '@/components/tailnet-only-dialog'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -413,17 +413,6 @@ describe('Plex sign-in settings', () => {
   })
 })
 
-describe('tailnetCanAdmin', () => {
-  it('needs an admin entry that covers the node, or Plex sign-in', () => {
-    expect(tailnetCanAdmin([], ['100.64.0.5'], false)).toBe(false)
-    expect(tailnetCanAdmin(['192.168.1.0/24'], ['100.64.0.5'], false)).toBe(false)
-    expect(tailnetCanAdmin(['100.64.0.0/10'], ['100.64.0.5'], false)).toBe(true)
-    expect(tailnetCanAdmin(['100.64.0.5'], ['100.64.0.5'], false)).toBe(true)
-    expect(tailnetCanAdmin([], ['100.64.0.5'], true)).toBe(true)
-    expect(entryCovers('0.0.0.0/0', '100.64.0.5')).toBe(true)
-  })
-})
-
 describe('reachedAnotherWay', () => {
   const status: TailscaleStatus = { built: true, state: 'running', hostname: 'yagi', dnsName: 'Yagi.tail1.ts.net', addresses: ['100.64.0.5'] }
   it('warns for a LAN address, not for the machine itself or the tailnet', () => {
@@ -524,8 +513,7 @@ describe('Tailscale settings', () => {
   it('offers "only on the tailnet" once connected, asks first, and saves only after the person agrees', async () => {
     const { fn, calls } = patched()
     vi.stubGlobal('fetch', fn)
-    const s = withTailscale({ state: 'running', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.64.0.5'] })
-    s.settings.admin = [] // nobody on the tailnet could open the page afterwards
+    const s = withTailscale({ state: 'running', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.64.0.5'], adminReachable: false }) // nobody on the tailnet could open the page afterwards
     renderSettings(s, 'access')
     const user = userEvent.setup()
     await user.click(within(access()).getByRole('switch', { name: 'Only on the tailnet' }))
@@ -538,7 +526,7 @@ describe('Tailscale settings', () => {
   })
 
   it('does not warn about admin addresses when the tailnet is already allowed', async () => {
-    renderSettings(withTailscale({ state: 'running', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.64.0.5'] }), 'access') // the fixture lists 100.64.0.0/10
+    renderSettings(withTailscale({ state: 'running', dnsName: 'yagi.tail1234.ts.net', addresses: ['100.64.0.5'], adminReachable: true }), 'access')
     await userEvent.setup().click(within(access()).getByRole('switch', { name: 'Only on the tailnet' }))
     const dialog = await screen.findByRole('alertdialog')
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()

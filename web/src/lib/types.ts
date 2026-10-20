@@ -240,6 +240,8 @@ export interface TailscaleStatus {
   serving?: string[]
   /** The LAN is being refused right now: tailnet only is on and the node is connected. */
   lanClosed?: boolean
+  /** Somebody on the tailnet could open the admin pages (an admin range covers it, or a Plex account is allowed). */
+  adminReachable?: boolean
 }
 
 export interface Summary {

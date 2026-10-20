@@ -9,7 +9,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
 import type { TailscaleStatus } from '@/lib/types'
 
@@ -26,31 +25,10 @@ export function reachedAnotherWay(status: TailscaleStatus, host = window.locatio
   return !(here === status.dnsName?.toLowerCase() || status.addresses?.includes(here))
 }
 
-const v4 = (s: string): number | null => {
-  const p = s.split('.').map(Number)
-  return p.length === 4 && p.every((n) => Number.isInteger(n) && n >= 0 && n <= 255) ? ((p[0]! << 24) | (p[1]! << 16) | (p[2]! << 8) | p[3]!) >>> 0 : null
-}
-
-/** Whether an admin address entry (an IPv4 address or range) covers an address. */
-export function entryCovers(entry: string, address: string): boolean {
-  const [net, bits = '32'] = entry.trim().split('/')
-  const n = v4(net ?? ''), a = v4(address), len = Number(bits)
-  if (n === null || a === null || !Number.isInteger(len) || len < 0 || len > 32) return net === address
-  const mask = len === 0 ? 0 : (~0 << (32 - len)) >>> 0
-  return ((n & mask) >>> 0) === ((a & mask) >>> 0)
-}
-
-/** Whether somebody on the tailnet can open the admin pages once the LAN is closed: an admin address covers the node's, or Plex sign-in has an account. */
-export function tailnetCanAdmin(admin: string[], addresses: string[] | undefined, plexReady: boolean): boolean {
-  return plexReady || (addresses ?? []).some((a) => admin.some((e) => entryCovers(e, a)))
-}
-
 /** Asks before closing Yagi to the LAN, saying what will stop and how to get back. */
 export function TailnetOnlyDialog({ open, onClose, status }: Props) {
   const { settings } = useEdits()
-  const { state } = useApp()
-  const set = state.settings
-  const canAdmin = tailnetCanAdmin(set.admin, status.addresses, set.plex.enabled && set.plex.admins.length > 0)
+  const canAdmin = status.adminReachable !== false // the server knows the address family and ranges
   const port = window.location.port
   const where = status.dnsName ? `${status.dnsName.replace(/\.$/, '')}${port ? `:${port}` : ''}` : 'the tailnet name'
 
