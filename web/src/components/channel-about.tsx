@@ -1,5 +1,6 @@
 import { Check, EyeOff, Info, Languages, RadioReceiver, Star, Tags, Tv } from 'lucide-react'
 import type { ComponentType, ReactNode } from 'react'
+import { HdMark } from '@/components/hd-mark'
 import { LanguageFlag } from '@/components/language-flag'
 import { Badge } from '@/components/ui/badge'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
@@ -10,9 +11,9 @@ import type { ChannelState, TunerChannel } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const STATE: Record<ChannelState, { label: string; icon: typeof Check; tone: string }> = {
-  enabled: { label: 'In the lineup', icon: Check, tone: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
-  favorite: { label: 'Favorite', icon: Star, tone: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
-  disabled: { label: 'Disabled', icon: EyeOff, tone: 'bg-red-500/15 text-red-700 dark:text-red-300' },
+  enabled: { label: 'In the lineup', icon: Check, tone: 'text-emerald-700 dark:text-emerald-300' },
+  favorite: { label: 'Favorite', icon: Star, tone: 'text-amber-700 dark:text-amber-300' },
+  disabled: { label: 'Disabled', icon: EyeOff, tone: 'text-red-700 dark:text-red-300' },
 }
 
 /** One fact: a picture for what kind of fact it is, and then the fact. */
@@ -46,15 +47,15 @@ function AboutBody({ channel, Title, Description }: { channel: TunerChannel; Tit
         <div className="flex items-start gap-3">
           <span className="rounded-lg bg-muted px-2.5 py-1 font-mono text-xl leading-none font-bold tabular-nums">{channel.number}</span>
           <div className="min-w-0 flex-1">
-            <Title className="truncate">{channel.name || 'Unnamed channel'}</Title>
-            <Description className="sr-only">What is known about this channel</Description>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              <Badge className={cn('gap-1', state.tone)}>
-                <state.icon aria-hidden className="size-3" /> {state.label}
-              </Badge>
-              {channel.hd && <Badge variant="secondary">HD</Badge>}
+            <div className="flex items-center gap-2">
+              <Title className="min-w-0 truncate">{channel.name || 'Unnamed channel'}</Title>
+              {channel.hd && <HdMark />}
               {channel.drm && <Badge variant="secondary">DRM</Badge>}
             </div>
+            <Description className="sr-only">What is known about this channel</Description>
+            <p className={cn('mt-1 flex items-center gap-1.5 text-sm font-medium', state.tone)}>
+              <state.icon aria-hidden className="size-3.5" /> {state.label}
+            </p>
           </div>
         </div>
 
