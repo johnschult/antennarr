@@ -14,14 +14,16 @@ RUN mkdir -p /src/internal/ui/dist && npm run build
 #    own architecture, so building an arm64 image doesn't mean emulating a compiler.
 FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build
 ARG VERSION=dev
+# TAGS=tsnet builds the image with the built-in Tailscale node (the -tailscale image); empty is the plain one.
+ARG TAGS=
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
-COPY go.mod ./
+COPY go.mod go.sum ./
 COPY cmd ./cmd
 COPY internal ./internal
 COPY --from=web /src/internal/ui/dist ./internal/ui/dist
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w -X github.com/johnschult/yagi/internal/version.Version=${VERSION}" -o /out/yagi ./cmd/yagi
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -tags "${TAGS}" -ldflags="-s -w -X github.com/johnschult/yagi/internal/version.Version=${VERSION}" -o /out/yagi ./cmd/yagi
 
 # 3. A small image to run it.
 FROM alpine:3

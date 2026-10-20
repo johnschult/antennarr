@@ -58,6 +58,10 @@ type NodeStatus struct {
 	Error     string
 }
 
+// NewNode starts a node. It is nil in a build without the Tailscale node (everything but -tags tsnet): the page
+// says so, and the setting does nothing.
+var NewNode Starter
+
 // Config is what a node is started with.
 type Config struct {
 	Hostname string
