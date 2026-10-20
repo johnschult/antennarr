@@ -14,7 +14,7 @@ export function SwitchRow({
 }: {
   id: string
   title: string
-  description?: string
+  description?: ReactNode
   icon?: ReactNode
   checked: boolean
   onChange: (next: boolean) => Promise<unknown>

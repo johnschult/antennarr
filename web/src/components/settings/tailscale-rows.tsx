@@ -1,5 +1,5 @@
 import { ExternalLink } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { TailnetOnlyDialog } from '@/components/tailnet-only-dialog'
 import { buttonVariants } from '@/components/ui/button'
@@ -80,6 +80,16 @@ export function TailscaleRows() {
               }}
             />
           )}
+          {(status.state === 'running' || set.https) && (
+            <SwitchRow
+              id="setting-tailscaleHttps"
+              title="HTTPS for the admin page"
+              description={httpsDescription(set.https, status)}
+              checked={set.https}
+              disabled={!editable}
+              onChange={(next) => update.mutateAsync({ tailscaleHttps: next })}
+            />
+          )}
           <EditRow
             key={`ts-host-${set.hostname}`}
             kind="text"
@@ -121,6 +131,21 @@ function TailscaleStatusRow({ status }: { status: TailscaleStatus }) {
       )}
     </Row>
   )
+}
+
+/** What the HTTPS row says: what it does and costs, then where it is or why it is not. */
+function httpsDescription(on: boolean, s: TailscaleStatus): ReactNode {
+  if (!on) {
+    return 'Also serve this page over HTTPS at the device’s tailnet name, with a certificate from Tailscale. It needs HTTPS certificates turned on for your tailnet (Tailscale admin console → DNS), and the name then appears in a public certificate log. The tuner ports stay plain HTTP.'
+  }
+  if (s.https) {
+    return (
+      <>
+        On: <a href={s.https} target="_blank" rel="noreferrer noopener" className="font-mono underline underline-offset-2">{s.https}</a>
+      </>
+    )
+  }
+  return s.httpsError ? `Not running yet: ${s.httpsError}. Check that HTTPS certificates are turned on for your tailnet (Tailscale admin console → DNS).` : 'Starting…'
 }
 
 function describe(s: TailscaleStatus): string {

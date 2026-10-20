@@ -402,15 +402,20 @@ func samePort(a, b string) bool {
 	return errA == nil && errB == nil && pa == pb
 }
 
-// startBare serves the admin pages alone on ln. The caller holds fleetMu.
-func (s *Server) startBare(ln net.Listener) {
+// adminMux is the admin pages on their own: what a port with no tuner on it answers.
+func (s *Server) adminMux() http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/", s.admin) // the pages, their API, and everything else a browser asks this port for
 	mux.Handle("/auth/", s.plex.Handler())
 	mux.Handle(claim.Path, s.claim.Handler())
 	mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
 	mux.HandleFunc("GET "+renamedPrefix, redirectRenamed)
-	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
+	return mux
+}
+
+// startBare serves the admin pages alone on ln. The caller holds fleetMu.
+func (s *Server) startBare(ln net.Listener) {
+	srv := &http.Server{Handler: s.adminMux(), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 	ln = s.gate(ln)
 	s.bare = &bareListener{srv: srv, ln: ln}
 	s.log.Info("no tuners yet: serving the admin pages so one can be added", "addr", ln.Addr().String())

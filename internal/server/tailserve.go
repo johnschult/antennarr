@@ -31,7 +31,15 @@ type tailServing struct {
 	gen    uint64
 	ports  map[string]*tailPort
 	failed map[string]uint64 // port -> the generation it was last reported failing in, so a failure is said once
+
+	// The admin pages over HTTPS at the node's name, when asked for: one listener, on port 443.
+	https       *tailPort
+	httpsErr    string
+	httpsFailed uint64 // the generation the failure was last logged in
 }
+
+// httpsPort is where the admin pages are served over HTTPS on the tailnet: the usual one, so the address needs no port.
+const httpsPort = "443"
 
 // tailnetControl is what the API sees of the node: the manager's status with the ports being served, and a
 // Reconcile that also brings the listeners in line, since the node starts and stops with the settings.
@@ -42,6 +50,7 @@ func (c tailnetControl) Status() tailnet.Status {
 	st.Serving = c.s.tailPorts()
 	st.LANClosed = c.s.lanClosed()
 	st.AdminReachable = c.s.policy.Settings().AdminReaches(st.Addresses)
+	st.HTTPS, st.HTTPSError = c.s.tailHTTPS(st.DNSName)
 	return st
 }
 
@@ -95,6 +104,7 @@ func (s *Server) syncTailnet() {
 		for port := range t.ports {
 			t.drop(port)
 		}
+		t.dropHTTPS()
 		t.gen = gen
 	}
 	for port, tp := range t.ports {
@@ -123,6 +133,64 @@ func (s *Server) syncTailnet() {
 		s.log.Info("tailscale: answering on the tailnet", "port", port)
 		go func() { _ = srv.Serve(ln) }()
 	}
+	s.syncHTTPS(gen)
+}
+
+// syncHTTPS keeps the admin pages' HTTPS listener in line with the setting and the node. The caller holds t.mu.
+func (s *Server) syncHTTPS(gen uint64) {
+	t := &s.tail
+	want := s.policy.Settings().TailscaleHTTPS() && s.tailnet.Status().State == tailnet.Running
+	if !want {
+		t.dropHTTPS()
+		t.httpsErr = ""
+		return
+	}
+	if t.https != nil {
+		return
+	}
+	ln, g, err := s.tailnet.ListenTLS(":" + httpsPort)
+	if err != nil {
+		t.httpsErr = err.Error()
+		if !errors.Is(err, tailnet.ErrNoNode) && t.httpsFailed != g {
+			t.httpsFailed = g
+			s.log.Warn("tailscale: could not serve the admin pages over HTTPS (does the tailnet have HTTPS certificates turned on?)", "err", err)
+		}
+		return
+	}
+	if g != gen { // the node changed between the two calls: leave it to the next look
+		_ = ln.Close()
+		return
+	}
+	h := s.adminMux()
+	srv := &http.Server{Handler: s.withTailnetIdentity(h), ReadHeaderTimeout: 10 * time.Second}
+	t.https, t.httpsErr = &tailPort{ln: ln, srv: srv, handler: h}, ""
+	s.log.Info("tailscale: serving the admin pages over HTTPS", "port", httpsPort)
+	go func() { _ = srv.Serve(ln) }()
+}
+
+// dropHTTPS stops the HTTPS listener. The caller holds t.mu.
+func (t *tailServing) dropHTTPS() {
+	tp := t.https
+	t.https = nil
+	if tp == nil {
+		return
+	}
+	go retire(tp.srv)
+	_ = tp.ln.Close()
+}
+
+// tailHTTPS is where the admin pages are served over HTTPS now ("" if they are not), and why not, if they were asked for.
+func (s *Server) tailHTTPS(dnsName string) (addr, problem string) {
+	t := &s.tail
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.https != nil && dnsName != "" {
+		return "https://" + dnsName + "/", ""
+	}
+	if s.policy.Settings().TailscaleHTTPS() {
+		return "", t.httpsErr
+	}
+	return "", ""
 }
 
 // withTailnetIdentity asks the node who is on the other end of each request that came in over the tailnet and attaches
@@ -174,6 +242,7 @@ func (s *Server) closeTailnetServing() {
 	for port := range t.ports {
 		t.drop(port)
 	}
+	t.dropHTTPS()
 }
 
 // watchTailnet looks after the listeners as the node comes up, goes away or is replaced, and as tuners are added,

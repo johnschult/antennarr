@@ -24,6 +24,7 @@ func (f *fakeNode) set(s NodeStatus)   { f.mu.Lock(); f.status = s; f.mu.Unlock(
 func (f *fakeNode) WhoIs(context.Context, string) (Who, error) {
 	return Who{Login: "alice@example.com", Node: "laptop.tail1.ts.net"}, nil
 }
+func (f *fakeNode) ListenTLS(string) (net.Listener, error) { return net.Listen("tcp", "127.0.0.1:0") }
 func (f *fakeNode) Listen(addr string) (net.Listener, error) {
 	f.mu.Lock()
 	f.listened = append(f.listened, addr)

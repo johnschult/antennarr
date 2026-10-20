@@ -220,6 +220,8 @@ export interface TailscaleSettings {
   hostname: string
   /** Refuse connections from the LAN while the node is connected. */
   tailnetOnly: boolean
+  /** Also serve the admin pages over HTTPS at the node's tailnet name. */
+  https: boolean
 }
 
 /** Where the built-in Tailscale node is. */
@@ -242,6 +244,10 @@ export interface TailscaleStatus {
   lanClosed?: boolean
   /** Somebody on the tailnet could open the admin pages (an admin range covers it, or a Plex account is allowed). */
   adminReachable?: boolean
+  /** Where the admin pages are served over HTTPS, once they are. */
+  https?: string
+  /** Why they are not, when HTTPS is on, in Tailscale's words. */
+  httpsError?: string
 }
 
 export interface Summary {
@@ -353,6 +359,7 @@ export interface SettingsPatch {
   /** The name on the tailnet; an empty string means the default. */
   tailscaleHostname?: string
   tailnetOnly?: boolean
+  tailscaleHttps?: boolean
   notifyEvents?: Partial<NotifyEvents>
 }
 

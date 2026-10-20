@@ -233,6 +233,7 @@ type TailscaleDoc struct {
 	Enabled     bool   `json:"enabled"`
 	Hostname    string `json:"hostname"`
 	TailnetOnly bool   `json:"tailnetOnly"`
+	HTTPS       bool   `json:"https"`
 }
 
 // DeviceDoc is one tuner as the dashboard shows it. OwnerReserve and
@@ -343,7 +344,7 @@ func (a *API) state() State {
 			History:       set.HistoryEnabled(),
 			LogLevel:      set.LogLevelName(),
 			Plex:          plexDoc(set),
-			Tailscale:     TailscaleDoc{Enabled: set.TailscaleEnabled(), Hostname: set.TailscaleHostname(), TailnetOnly: set.Tailscale != nil && set.Tailscale.TailnetOnly},
+			Tailscale:     TailscaleDoc{Enabled: set.TailscaleEnabled(), Hostname: set.TailscaleHostname(), TailnetOnly: set.Tailscale != nil && set.Tailscale.TailnetOnly, HTTPS: set.Tailscale != nil && set.Tailscale.HTTPS},
 			Notifications: notificationsDoc(set),
 		},
 		Editable:      a.Store.Editable(),
@@ -571,6 +572,8 @@ type settingsPatch struct {
 	// TailnetOnly refuses connections from the LAN while the node is connected. It can only be turned on while the node
 	// is connected, so it is never switched on with nothing to take its place.
 	TailnetOnly *bool `json:"tailnetOnly"`
+	// TailscaleHTTPS also serves the admin pages over HTTPS at the node's tailnet name.
+	TailscaleHTTPS *bool `json:"tailscaleHttps"`
 	// NotifyEvents switches kinds of event on and off for notifications.
 	NotifyEvents *notifyEventsPatch `json:"notifyEvents"`
 }
@@ -626,12 +629,15 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			s.Tailscale.TailnetOnly = *in.TailnetOnly
 		}
-		if in.TailscaleEnabled != nil || in.TailscaleHostname != nil {
+		if in.TailscaleEnabled != nil || in.TailscaleHostname != nil || in.TailscaleHTTPS != nil {
 			if s.Tailscale == nil {
 				s.Tailscale = &access.TailscaleSettings{}
 			}
 			if in.TailscaleEnabled != nil {
 				s.Tailscale.Enabled = *in.TailscaleEnabled
+			}
+			if in.TailscaleHTTPS != nil {
+				s.Tailscale.HTTPS = *in.TailscaleHTTPS
 			}
 			if in.TailscaleHostname != nil {
 				h := strings.ToLower(strings.TrimSpace(*in.TailscaleHostname))
@@ -669,7 +675,7 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 	if in.Guide != nil && *in.Guide && a.Guide != nil {
 		a.Guide.Kick()
 	}
-	if (in.TailscaleEnabled != nil || in.TailscaleHostname != nil || in.TailnetOnly != nil) && a.Tailnet != nil {
+	if (in.TailscaleEnabled != nil || in.TailscaleHostname != nil || in.TailnetOnly != nil || in.TailscaleHTTPS != nil) && a.Tailnet != nil {
 		a.Tailnet.Reconcile()
 	}
 	writeJSON(w, http.StatusOK, a.settingsDoc())

@@ -57,6 +57,9 @@ type Status struct {
 	// AdminReachable says somebody on the tailnet could open the admin pages (an admin range covers the tailnet, or a
 	// Plex account is allowed), so closing the LAN does not leave only this machine able to. Always sent.
 	AdminReachable bool `json:"adminReachable"`
+	// HTTPS is the address the admin pages are served at over HTTPS, once they are; HTTPSError says why not, in words.
+	HTTPS      string `json:"https,omitempty"`
+	HTTPSError string `json:"httpsError,omitempty"`
 }
 
 // NodeStatus is what a running node knows about itself.
@@ -91,6 +94,9 @@ type Node interface {
 	Listen(addr string) (net.Listener, error)
 	// WhoIs says who is on the other end of a connection that came in over the node (remote is its RemoteAddr).
 	WhoIs(ctx context.Context, remote string) (Who, error)
+	// ListenTLS is Listen with HTTPS, using a certificate Tailscale gets for the node's name. It fails when the tailnet
+	// has not turned on HTTPS certificates, and only once the node is running.
+	ListenTLS(addr string) (net.Listener, error)
 	// Close leaves the tailnet and stops.
 	Close() error
 }
@@ -228,6 +234,21 @@ func (m *Manager) WhoIs(ctx context.Context, remote string) (Who, error) {
 		return Who{}, ErrNoNode
 	}
 	return node.WhoIs(ctx, remote)
+}
+
+// ListenTLS is Listen with HTTPS through the running node.
+func (m *Manager) ListenTLS(addr string) (net.Listener, uint64, error) {
+	if m == nil {
+		return nil, 0, ErrNoNode
+	}
+	m.mu.Lock()
+	node, gen := m.node, m.gen
+	m.mu.Unlock()
+	if node == nil {
+		return nil, gen, ErrNoNode
+	}
+	ln, err := node.ListenTLS(addr)
+	return ln, gen, err
 }
 
 // Generation changes whenever a node is started or stopped.

@@ -543,5 +543,6 @@ func (demoNode) WhoIs(context.Context, string) (tailnet.Who, error) {
 func (demoNode) Status() tailnet.NodeStatus {
 	return tailnet.NodeStatus{State: tailnet.Running, DNSName: "yagi.tail-demo.ts.net", Addresses: []string{"100.101.102.103"}}
 }
-func (demoNode) Listen(string) (net.Listener, error) { return net.Listen("tcp", "127.0.0.1:0") }
-func (demoNode) Close() error                        { return nil }
+func (demoNode) ListenTLS(string) (net.Listener, error) { return net.Listen("tcp", "127.0.0.1:0") }
+func (demoNode) Listen(string) (net.Listener, error)    { return net.Listen("tcp", "127.0.0.1:0") }
+func (demoNode) Close() error                           { return nil }

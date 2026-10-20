@@ -2,7 +2,7 @@
 
 Yagi can join your Tailscale network by itself, as its own device, with no Tailscale installed on the machine it runs on. The idea is that you share that one device with the people who need it, and nothing is opened on your router.
 
-> **Where this is.** Yagi can join a tailnet, keep its sign-in, show you where it is, and **answer on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. Still to come, see [the plan](DESIGN.md#built-in-tailscale-plan): HTTPS.
+> **Where this is.** Yagi can join a tailnet, keep its sign-in, show you where it is, and **answer on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. See [the plan](DESIGN.md#built-in-tailscale-plan) for how it was built.
 
 ## Which image
 
@@ -63,6 +63,16 @@ The rules:
 - **It beats the address.** If a connection matches a name, that viewer is used; otherwise the address decides, as before. The same name can't be listed for two viewers.
 - **Shared devices work the same way.** Someone on another tailnet who is given access to Yagi's device by sharing arrives with their own login.
 - **It is checked against what Tailscale reports now**, so removing someone from the tailnet, or their login changing, takes effect for their next connection.
+
+## HTTPS for the admin page
+
+*Settings → Tailscale → HTTPS for the admin page* also serves the admin pages (and only those) over HTTPS at the device's tailnet name, such as `https://yagi.tail1234.ts.net/`, with no port. Yagi's node gets and renews the certificate itself from Tailscale; nothing on the machine changes.
+
+- **Your tailnet needs HTTPS certificates turned on** (Tailscale admin console → DNS: MagicDNS, then *Enable HTTPS*). Without it the switch shows Tailscale's own reason instead of an address.
+- **The name goes into a public certificate log.** Certificates are issued by Let's Encrypt, which publishes them, so the device name and your tailnet's name become public. That is why it is off until you turn it on.
+- **Only the admin pages are on it.** The tuner ports stay plain HTTP: media servers expect it, and the traffic is already encrypted by the tailnet. Port 443 is on the node, not on the machine, so it doesn't clash with anything the machine runs.
+- **Sign-in cookies are marked secure** over HTTPS, so signing in with Plex works there too. The first visit can take a few seconds while the certificate is issued.
+- Whether someone on **another tailnet** can use the HTTPS name of a shared device is not covered by Tailscale's documentation.
 
 ## Good to know
 
