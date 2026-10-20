@@ -15,7 +15,7 @@ The setup it replaces is a friend's HDHomeRun shared with the user's Plex. It's 
 
 ## Name
 
-**Yagi**: over-the-air TV plus the -arr family. It's deliberately not "Tunarr", which is an existing, popular project that also emulates an HDHomeRun. A quick search found no other "Yagi"; check GitHub, Docker Hub and Unraid Community Apps before committing.
+**Yagi**, after the Yagi–Uda antenna: the rooftop TV antenna, a boom with a row of rods across it, named for Hidetsugu Yagi and Shintaro Uda, who developed it in the 1920s. The program does something similar for a tuner: it takes a signal that only reaches one place and points it at the people you choose. It was called Antennarr until October 2026; [the FAQ](faq.md#why-is-it-called-yagi) tells the story and how to say it.
 
 Logo: Lucide's `antenna` icon (ISC licence) in teal on a dark tile; the SVG and PNGs are in `docs/brand/`. It replaced an earlier retro-TV-with-rabbit-ears mark.
 
