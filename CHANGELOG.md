@@ -7,6 +7,10 @@ Each release's notes on GitHub are its section of this file.
 
 ## Unreleased
 
+### Changed
+
+- **The web page is at the address itself, not under `/yagi/`.** `http://<this machine>:5004/` is the page (and `http://<this machine>:5000/` with an admin port), and its API is `/api/`. Old links and bookmarks to `/yagi/…` (and `/antennarr/…`) are sent on to the same page, including the first-run setup link. On a tuner's port only the page's own paths go to the page: the tuner's own addresses (`/discover.json`, `/lineup.json`, `/auto/…`) are exactly as before. If you installed the page to your Home Screen, add it again. **You will need to sign in with Plex once more**, because the sign-in cookie now covers the whole site.
+
 ### Added
 
 - **The admin pages can have a port of their own.** Start Yagi with `-admin-listen :5000` (or set `YAGI_ADMIN_LISTEN`, which is easiest in Docker) and the web page, its API, sign-in and the first-run setup link are on that port only. The tuner ports then carry nothing but the tuners, so you can open them to your viewers and keep the admin port to yourself. Adding or removing a tuner never moves the page, and a tuner can't be given the admin port. Nothing changes unless you set it: see [Configuration](https://github.com/johnschult/yagi/blob/main/docs/configuration.md#giving-the-admin-pages-their-own-port).

@@ -239,7 +239,7 @@ func (r *rig) waitOnline(t *testing.T, devices int) {
 	}
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		resp, err := http.Get("http://" + first + "/yagi/api/state")
+		resp, err := http.Get("http://" + first + "/api/state")
 		if err == nil {
 			var st struct {
 				Devices []struct{ Tuner struct{ Online bool } }
@@ -364,16 +364,16 @@ func TestAdminPagesAreOnEveryPort(t *testing.T) {
 	r := start(t, access.DefaultSettings(), twoDevs(a, c), a, c)
 
 	for dev := range r.addr {
-		code, body := r.get(t, dev, "/yagi/api/state")
+		code, body := r.get(t, dev, "/api/state")
 		var st struct{ Devices []struct{ Name string } }
 		json.Unmarshal([]byte(body), &st)
 		if code != 200 || len(st.Devices) != 2 || st.Devices[0].Name != "antenna" || st.Devices[1].Name != "cable" {
 			t.Errorf("%s: %d %s", dev, code, body)
 		}
-		if code, _ := r.get(t, dev, "/yagi/streams"); code != 200 {
-			t.Errorf("%s: /yagi/streams %d", dev, code)
+		if code, _ := r.get(t, dev, "/streams"); code != 200 {
+			t.Errorf("%s: /streams %d", dev, code)
 		}
-		if code, _ := r.get(t, dev, "/yagi/"); code != 200 && code != 503 { // 503: the UI isn't built in this checkout
+		if code, _ := r.get(t, dev, "/"); code != 200 && code != 503 { // 503: the UI isn't built in this checkout
 			t.Errorf("%s: UI %d", dev, code)
 		}
 	}
@@ -390,8 +390,8 @@ func TestBareAddressGoesToTheAdminPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
-	if resp.StatusCode != 302 || resp.Header.Get("Location") != "/yagi/" {
-		t.Errorf("%d -> %q", resp.StatusCode, resp.Header.Get("Location"))
+	if resp.StatusCode != 200 && resp.StatusCode != 503 { // 503: the UI isn't built in this checkout
+		t.Errorf("GET / = %d, want the admin page", resp.StatusCode)
 	}
 }
 
@@ -404,7 +404,7 @@ func TestStrangersAreRefusedOnEveryDevice(t *testing.T) {
 		if code, _ := r.get(t, dev, "/discover.json"); code != 403 {
 			t.Errorf("%s: discover.json from a non-viewer: %d", dev, code)
 		}
-		if code, _ := r.get(t, dev, "/yagi/api/state"); code != 200 {
+		if code, _ := r.get(t, dev, "/api/state"); code != 200 {
 			t.Errorf("%s: the admin should still get in: %d", dev, code)
 		}
 	}
@@ -649,7 +649,7 @@ func TestRenamingATunerNeverChangesWhatMediaServersSee(t *testing.T) {
 		return d["FriendlyName"].(string)
 	}
 	label := func() string {
-		_, body := r.get(t, "antenna", "/yagi/api/state")
+		_, body := r.get(t, "antenna", "/api/state")
 		var st struct{ Devices []struct{ Label string } }
 		json.Unmarshal([]byte(body), &st)
 		return st.Devices[0].Label

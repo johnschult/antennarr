@@ -533,7 +533,7 @@ func (p *Policy) Mode() string {
 	return "enforced"
 }
 
-// AdminOnly restricts a handler (the /yagi/* endpoints) to the owner.
+// AdminOnly restricts a handler (the /* endpoints) to the owner.
 // Only loopback, the configured admin addresses and a signed-in Plex admin get
 // through.
 func (p *Policy) AdminOnly(next http.Handler) http.Handler {
@@ -555,7 +555,7 @@ func (p *Policy) SetSessionCheck(check func(*http.Request) bool) {
 	p.mu.Unlock()
 }
 
-// IsAdmin reports whether the request may use the /yagi/* admin
+// IsAdmin reports whether the request may use the /* admin
 // endpoints: from an admin address, or signed in as an admin.
 func (p *Policy) IsAdmin(r *http.Request) bool {
 	if p.isAdminAddress(r) {
@@ -590,15 +590,15 @@ func (p *Policy) isAdminAddress(r *http.Request) bool {
 // ignoring any sign-in. Plex sign-in uses it to tell the two apart.
 func (p *Policy) IsAdminAddress(r *http.Request) bool { return p.isAdminAddress(r) }
 
-// AdminHome sends admins who open the bare address to the admin page at `to`,
+// AdminHome gives admins who open the bare address the admin page (served by `admin`),
 // and so is any other browser (a request that accepts HTML): that page is where
 // someone not yet allowed in is told so and what to do, which beats a bare
 // refusal from the tuner's side. Everything else (media servers, scripts) is
 // handed to next, as if this wasn't here.
-func (p *Policy) AdminHome(to string, next http.Handler) http.Handler {
+func (p *Policy) AdminHome(admin, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if p.IsAdmin(r) || strings.Contains(r.Header.Get("Accept"), "text/html") {
-			http.Redirect(w, r, to, http.StatusFound)
+			admin.ServeHTTP(w, r)
 			return
 		}
 		next.ServeHTTP(w, r)

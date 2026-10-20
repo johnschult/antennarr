@@ -21,7 +21,7 @@ Yagi the program does something similar for a tuner: it takes a signal that only
 
 Nothing right away, and nothing breaks:
 
-- **The web page.** Old `/antennarr/` addresses and bookmarks redirect to `/yagi/`. The one-time setup link in an old log is only good until you restart, so use the new one.
+- **The web page.** Old `/antennarr/` addresses and bookmarks redirect to `/`. The one-time setup link in an old log is only good until you restart, so use the new one.
 - **Your settings file.** If you start Yagi without `-config` and there is an `antennarr.json` but no `yagi.json`, it uses the old file and says so in the log. Renaming the file to `yagi.json` (and updating any `-config` you pass, such as in a compose file) stops the message.
 - **The container image.** New releases are published as `ghcr.io/johnschult/yagi`, and for a few releases also as `ghcr.io/johnschult/antennarr` with the same tags, so an existing compose file keeps updating. Change it to the new name when convenient.
 - **Plex.** Signing in with Plex shows the name Yagi on plex.tv from now on. If you signed in before the rename, you are signed out of the admin pages once and need to sign in again.

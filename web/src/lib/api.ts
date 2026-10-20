@@ -1,6 +1,6 @@
 import type { AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, LogLevel, LogsDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
 
-// The UI is served from /yagi/ and the API lives beside it.
+// The UI is served from / and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
 
 /** An error reply from the Go API; message is safe to show to the user. */

@@ -48,7 +48,7 @@ type upgradeState struct {
 // upgradeState reads the first device from the API.
 func (r *rig) upgradeState(t *testing.T) upgradeState {
 	t.Helper()
-	_, body := r.get(t, "antenna", "/yagi/api/state")
+	_, body := r.get(t, "antenna", "/api/state")
 	var st struct {
 		Devices []struct {
 			Tuner struct {
@@ -110,7 +110,7 @@ func TestInstallingFirmwareEndToEndWhileTheTunerRestarts(t *testing.T) {
 	}, a)
 	waitFor(t, "the update to be found", func() bool { return r.upgradeState(t).FwState == "update-available" })
 
-	if code, body := r.post(t, "/yagi/api/devices/antenna/firmware/upgrade", `{"version":"20260326"}`); code != 202 {
+	if code, body := r.post(t, "/api/devices/antenna/firmware/upgrade", `{"version":"20260326"}`); code != 202 {
 		t.Fatalf("%d %s", code, body)
 	}
 
@@ -161,7 +161,7 @@ func TestInstallingFirmwareEndToEndWhileTheTunerRestarts(t *testing.T) {
 		}
 	}
 	// The tuner is not offered what it now has.
-	if code, body := r.post(t, "/yagi/api/devices/antenna/firmware/upgrade", `{"version":"20260326"}`); code != 400 {
+	if code, body := r.post(t, "/api/devices/antenna/firmware/upgrade", `{"version":"20260326"}`); code != 400 {
 		t.Errorf("installing again: %d %s", code, body)
 	}
 }
@@ -186,7 +186,7 @@ func TestAnInstallThatFailsReportsItAndLeavesTheTunerWatchedAsUsual(t *testing.T
 	}, a)
 	waitFor(t, "the update to be found", func() bool { return r.upgradeState(t).FwState == "update-available" })
 
-	if code, body := r.post(t, "/yagi/api/devices/antenna/firmware/upgrade", `{"version":"20260326"}`); code != 202 {
+	if code, body := r.post(t, "/api/devices/antenna/firmware/upgrade", `{"version":"20260326"}`); code != 202 {
 		t.Fatalf("%d %s", code, body)
 	}
 	waitFor(t, "the install to end", func() bool { p := r.upgradeState(t).Phase; return p == "failed" || p == "done" })

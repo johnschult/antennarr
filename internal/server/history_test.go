@@ -57,7 +57,7 @@ func TestAnOfflineTunerHasNothingInUse(t *testing.T) {
 }
 
 func TestTheHistoryFileIsBesideTheSettingsFileAndOnlyThenKept(t *testing.T) {
-	if got := historyFile("/etc/yagi/yagi.json"); got != "/etc/yagi/yagi.history.jsonl" {
+	if got := historyFile("/etc/yagi.json"); got != "/etc/yagi.history.jsonl" {
 		t.Errorf("got %q", got)
 	}
 	if got := historyFile(""); got != "" {

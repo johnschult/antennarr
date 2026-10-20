@@ -15,7 +15,7 @@ import (
 // cookieOf is the session cookie the rig's browser holds.
 func (r *rig) cookieOf() *http.Cookie {
 	r.t.Helper()
-	for _, c := range r.client.Jar.Cookies(mustURL(r.srv.URL + "/yagi/")) {
+	for _, c := range r.client.Jar.Cookies(mustURL(r.srv.URL + "/")) {
 		if c.Name == CookieName {
 			return c
 		}
@@ -61,7 +61,7 @@ func TestSigningOutStaysSignedOutAcrossARestart(t *testing.T) {
 	before := newRig(t, func(c *Config) { c.SessionsFile = file })
 	before.signedIn()
 	cookie := before.cookieOf()
-	if code, _, _ := before.post("/yagi/auth/logout", "{}"); code != 200 && code != 204 {
+	if code, _, _ := before.post("/auth/logout", "{}"); code != 200 && code != 204 {
 		t.Fatalf("logout: %d", code)
 	}
 	after := newRig(t, func(c *Config) { c.SessionsFile = file })

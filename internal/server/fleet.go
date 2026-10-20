@@ -405,12 +405,11 @@ func samePort(a, b string) bool {
 // startBare serves the admin pages alone on ln. The caller holds fleetMu.
 func (s *Server) startBare(ln net.Listener) {
 	mux := http.NewServeMux()
-	mux.Handle("/yagi/", s.admin)
-	mux.Handle("/yagi/auth/", s.plex.Handler())
-	mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
+	mux.Handle("/", s.admin) // the pages, their API, and everything else a browser asks this port for
+	mux.Handle("/auth/", s.plex.Handler())
 	mux.Handle(claim.Path, s.claim.Handler())
-	mux.Handle("/", http.NotFoundHandler())
-	mux.Handle("GET /{$}", s.policy.AdminHome("/yagi/", http.NotFoundHandler()))
+	mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
+	mux.HandleFunc("GET "+renamedPrefix, redirectRenamed)
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 	s.bare = &bareListener{srv: srv, ln: ln}
 	s.log.Info("no tuners yet: serving the admin pages so one can be added", "addr", ln.Addr().String())
