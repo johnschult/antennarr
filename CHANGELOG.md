@@ -15,6 +15,7 @@ Each release's notes on GitHub are its section of this file.
 
 - **Allow whoever asks.** A friend adds Yagi in their media server; Yagi refuses, because they aren't a viewer yet, and they appear on the Viewers page under *Asking to use your tuner* as their Tailscale login (when Yagi's own Tailscale is used), their device, or their address. Press **Allow**, give them a name and a tuner limit, and they're a viewer: you never have to find out their address, and over Tailscale they are recognized by who they are, so it keeps working when their device or address changes. **Dismiss** hides one you don't recognize. Yagi serves private networks only, so only people on your network, a VPN or your tailnet can appear. There is a notification the first time someone asks (*Settings → Notifications*, on by default).
 - **Getting started says how your viewers will reach Yagi** (Tailscale, a VPN or the same network) before it asks for any address, and leads with letting them ask.
+- **`./build.sh` builds Yagi from source in one step.** It checks for Go and Node 22.12 or newer and says plainly what to install if one is missing or too old (rather than failing partway through `npm`), builds the web page, then the program, and shows `npm`'s output only if something goes wrong. The README and Getting started use it instead of the three manual commands.
 
 ### Removed
 

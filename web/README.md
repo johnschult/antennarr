@@ -8,7 +8,7 @@ npm install
 npm run dev        # http://localhost:5173/, proxying the API to a running Yagi
 npm test           # vitest
 npm run typecheck
-npm run build      # into ../internal/ui/dist; then `go build ./cmd/yagi`
+npm run build      # into ../internal/ui/dist; `../build.sh` does this and then builds the program
 ```
 
 ## Running it for development

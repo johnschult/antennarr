@@ -68,13 +68,12 @@ docker pull ghcr.io/johnschult/yagi:latest
 
 Copy [docker-compose.example.yml](docker-compose.example.yml) next to your `yagi.json` and run `docker compose up -d`. It uses host networking, which Yagi needs to recognize its own streams and to offer your Tailscale and LAN addresses. Images are published for `amd64` and `arm64`.
 
-Or build it (you need Go, see `go.mod`, and Node 22.12 or newer; the web UI is built first because the Go binary embeds it):
+Or build it. You need Go (see `go.mod`) and Node 22.12 or newer; `./build.sh` checks for them, says what to install if one is missing, and builds the web page and the program:
 
 ```sh
 git clone https://github.com/johnschult/yagi
 cd yagi
-(cd web && npm ci && npm run build)    # builds into internal/ui/dist
-go build -o yagi ./cmd/yagi
+./build.sh
 ./yagi                            # starts the web page on :9244; add your HDHomeRun there
 ```
 

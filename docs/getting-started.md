@@ -35,13 +35,12 @@ looks for the tuner with a broadcast on your network, and offers this machine's 
 
 ### A program, without Docker
 
-You need Go (see `go.mod` for the version) and Node 22.12 or newer. The web UI is built first, because the Go program embeds it.
+You need Go (see `go.mod` for the version) and Node 22.12 or newer. `./build.sh` checks that you have them (and tells you what to install if not), then builds the web page and the program, which embeds it.
 
 ```sh
 git clone https://github.com/johnschult/yagi
 cd yagi
-(cd web && npm ci && npm run build)
-go build -o yagi ./cmd/yagi
+./build.sh
 ```
 
 Run it with `./yagi -config yagi.json`. To start it on boot, use whatever your system uses (a systemd unit, launchd, an

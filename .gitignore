@@ -1,4 +1,6 @@
 bin/
+# the program ./build.sh builds
+/yagi
 # a settings file made by running Yagi from this directory: it can hold secrets
 /yagi*.json
 *.test
