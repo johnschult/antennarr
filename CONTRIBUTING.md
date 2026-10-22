@@ -29,7 +29,7 @@ golangci-lint run ./...                   # the linters CI runs (settings in .go
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...   # known vulnerabilities the code can reach
 cd web && npm ci && npm test              # the web UI (Vitest)
 cd web && npx tsc -b                      # type-check the UI
-go run ./cmd/yagi -config /tmp/yagi-dev.json   # the Go server (the API), on :5004; start this first
+go run ./cmd/yagi -config /tmp/yagi-dev.json   # the Go server (the API), on :9244; start this first
 cd web && npm run dev                     # the UI with hot reload, in a second terminal; it proxies to the server above (see web/README.md)
 (cd web && npm run build) && go build -o yagi ./cmd/yagi    # the real thing: the UI is built first, because the program embeds it
 ```

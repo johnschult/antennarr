@@ -12,7 +12,11 @@ import { toast } from 'sonner'
 import { Row } from './section'
 import { SwitchRow } from './switch-row'
 
-/** The Plex part of the Access section: on or off, and who may sign in. */
+/**
+ * The Plex section of Access: two independent things Yagi can use plex.tv for. Signing in to this page with a Plex
+ * account (and who may), and letting viewers join through an invite link. Neither needs the other, and nothing
+ * contacts plex.tv until someone uses one.
+ */
 export function PlexRows() {
   const { state } = useApp()
   const { plex } = state.settings
@@ -31,6 +35,15 @@ export function PlexRows() {
         onChange={(next) => update.mutateAsync({ plexEnabled: next })}
       />
       {plex.enabled && <PlexAccounts />}
+      <SwitchRow
+        id="setting-plex-enrollment"
+        title="Invite viewers with Plex"
+        icon={<PlexIcon className="size-8" />}
+        description="Adds Invite with Plex to the Viewers page. You send someone a link, they sign in with Plex and pick their Plex server, and Yagi allows that server's internet address with the limit you set, so you don't collect addresses by hand. Their Plex password and sign-in are not kept. The link opens a public page on this port. Nothing contacts plex.tv until someone opens a link."
+        checked={plex.enrollment}
+        disabled={!editable}
+        onChange={(next) => update.mutateAsync({ plexEnrollment: next })}
+      />
     </>
   )
 }

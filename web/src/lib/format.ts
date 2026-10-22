@@ -18,6 +18,17 @@ export function timeAgo(iso: string | null | undefined, now: Date = new Date()):
   return `${Math.floor(hours / 24)}d ago`
 }
 
+/** "in 6 days", "in 5h", "in 12m", or "now" once it is past: how long until a moment. */
+export function timeUntil(iso: string, now: Date = new Date()): string {
+  const mins = Math.round((new Date(iso).getTime() - now.getTime()) / 60000)
+  if (mins <= 0) return 'now'
+  if (mins < 60) return `in ${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `in ${hours}h`
+  const days = Math.floor(hours / 24)
+  return `in ${days} ${days === 1 ? 'day' : 'days'}`
+}
+
 /** "1h 05m", "7m 03s" — how long a stream has been running. */
 export function duration(iso: string, now: Date = new Date()): string {
   const secs = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 1000))

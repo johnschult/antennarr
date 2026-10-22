@@ -1,4 +1,4 @@
-import type { AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, LogLevel, LogsDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
+import type { AppState, ChannelInput, InviteCreated, InviteInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, LogLevel, LogsDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
 
 // The UI is served from / and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -48,6 +48,9 @@ export const addViewer = (v: ViewerInput) => request<Viewer>('POST', '/viewers',
 export const replaceViewer = (name: string, v: ViewerInput) =>
   request<Viewer>('PUT', `/viewers/${encodeURIComponent(name)}`, v)
 export const deleteViewer = (name: string) => request<void>('DELETE', `/viewers/${encodeURIComponent(name)}`)
+/** Make an invite. The reply is the only time its link is shown. */
+export const createInvite = (i: InviteInput) => request<InviteCreated>('POST', '/invites', i)
+export const deleteInvite = (id: string) => request<void>('DELETE', `/invites/${encodeURIComponent(id)}`)
 export const patchSettings = (p: SettingsPatch) => request<Settings>('PATCH', '/settings', p)
 export const patchDevice = (name: string, p: DevicePatch) =>
   request<DeviceState>('PATCH', `/devices/${encodeURIComponent(name)}`, p)

@@ -6,8 +6,6 @@ import { deviceTitle } from '@/lib/device'
 import type { DeviceState } from '@/lib/types'
 
 export function ViewerFields({ f, devices }: { f: ViewerFieldsState; devices: DeviceState[] }) {
-  const several = devices.length > 1
-  const mostTuners = Math.max(1, ...devices.map((d) => d.tuner.tunerCount))
   return (
     <>
       <div className="space-y-2">
@@ -26,6 +24,17 @@ export function ViewerFields({ f, devices }: { f: ViewerFieldsState; devices: De
         />
         <p className="text-xs text-muted-foreground">One per line: a single IP, or a range like 10.8.0.0/24.</p>
       </div>
+      <LimitFields f={f} devices={devices} />
+    </>
+  )
+}
+
+/** How many tuners at once, and the same per device when there are several. Shared by a viewer and an invite. */
+export function LimitFields({ f, devices }: { f: Pick<ViewerFieldsState, 'limit' | 'setLimit' | 'overrides' | 'setOverrides'>; devices: DeviceState[] }) {
+  const several = devices.length > 1
+  const mostTuners = Math.max(1, ...devices.map((d) => d.tuner.tunerCount))
+  return (
+    <>
       <div className="space-y-2">
         <Label htmlFor="viewer-limit">{several ? 'Tuners at once (default)' : 'Tuners at once'}</Label>
         <Input

@@ -84,7 +84,7 @@ type PlexSettings struct {
 	// kept; Plex lists the sign-ins under it in the account's authorized devices.
 	ClientID string `json:"clientId,omitempty"`
 	// Enrollment lets a person add themselves as a viewer by signing in with Plex on an invite link (see Invite).
-	// It does nothing while Enabled is off.
+	// It is independent of Enabled, which is about signing in to the admin pages.
 	Enrollment bool `json:"enrollment,omitempty"`
 }
 

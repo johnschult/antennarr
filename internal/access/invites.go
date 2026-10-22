@@ -115,10 +115,10 @@ func (s Settings) InviteByID(id string) (Invite, bool) {
 	return Invite{}, false
 }
 
-// EnrollmentEnabled is whether people may enroll themselves through an invite link. It needs Sign in with Plex to be
-// on as well, because it is the same switch for whether Yagi may talk to plex.tv at all.
+// EnrollmentEnabled is whether people may enroll themselves through an invite link. It is its own switch: it has
+// nothing to do with whether Plex accounts may sign in to the admin pages (PlexEnabled), and neither needs the other.
 func (s Settings) EnrollmentEnabled() bool {
-	return s.PlexEnabled() && s.Plex.Enrollment
+	return s.Plex != nil && s.Plex.Enrollment
 }
 
 func cloneInvites(in []Invite) []Invite {

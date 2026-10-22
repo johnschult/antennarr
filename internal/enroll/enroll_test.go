@@ -128,13 +128,13 @@ type rig struct {
 
 var t0 = time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
 
-// newRig sets up a Yagi with Plex sign-in and enrollment on, a viewer called Existing, and an invite for each name
+// newRig sets up a Yagi with enrollment on (and nobody signing in with Plex, which has nothing to do with it), a viewer called Existing, and an invite for each name
 // given (with a limit of 2). file false gives a Store with nowhere to save.
 func newRig(t *testing.T, file bool, invites ...string) *rig {
 	t.Helper()
 	r := &rig{t: t, plex: newFakePlex(t), logs: &bytes.Buffer{}, now: t0, tokens: map[string]string{}}
 	s := access.DefaultSettings()
-	s.Plex = &access.PlexSettings{Enabled: true, Enrollment: true}
+	s.Plex = &access.PlexSettings{Enrollment: true}
 	s.Viewers = []access.Viewer{{Name: "Existing", Addresses: []string{"198.51.100.20"}, Limit: 1}}
 	for _, name := range invites {
 		tok, inv := access.NewInvite(name, 2, nil, t0)
@@ -375,18 +375,17 @@ func TestEveryWayAnInviteCanBeBadIsTheSame404(t *testing.T) {
 	if code != 404 || body != "not found\n" {
 		t.Errorf("expired: %d %q", code, body)
 	}
-	// Enrollment off, and Sign in with Plex off: the same.
+	// Enrollment off: the same 404. Whether Plex accounts may sign in to the admin pages makes no difference either way.
 	r.now = t0
-	for name, mut := range map[string]func(*access.PlexSettings){
-		"enrollment off": func(p *access.PlexSettings) { p.Enrollment = false },
-		"plex off":       func(p *access.PlexSettings) { p.Enabled = false },
-	} {
-		_, _ = r.store.Edit(func(s *access.Settings) error { mut(s.Plex); return nil })
-		if code, body, _ := r.do("GET", r.link("Mom"), "10.0.2.1", nil); code != 404 || body != "not found\n" {
-			t.Errorf("%s: %d %q", name, code, body)
-		}
-		_, _ = r.store.Edit(func(s *access.Settings) error { s.Plex.Enabled, s.Plex.Enrollment = true, true; return nil })
+	_, _ = r.store.Edit(func(s *access.Settings) error { s.Plex.Enrollment = false; return nil })
+	if code, body, _ := r.do("GET", r.link("Mom"), "10.0.2.1", nil); code != 404 || body != "not found\n" {
+		t.Errorf("enrollment off: %d %q", code, body)
 	}
+	_, _ = r.store.Edit(func(s *access.Settings) error { s.Plex.Enrollment, s.Plex.Enabled = true, true; return nil })
+	if code, _, _ := r.do("GET", r.link("Mom"), "10.0.2.2", nil); code != 200 {
+		t.Errorf("enrollment on with Plex sign-in on too: %d", code)
+	}
+	_, _ = r.store.Edit(func(s *access.Settings) error { s.Plex.Enabled = false; return nil })
 	if code, _, _ := r.do("GET", r.link("Mom"), "10.0.3.1", nil); code != 200 {
 		t.Errorf("the good link stopped working: %d", code)
 	}
