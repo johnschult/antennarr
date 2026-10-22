@@ -210,7 +210,7 @@ func TestAddingASecondTunerGetsItsOwnNameAndPort(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	b := newFakeTuner(t, "10DEF123", "cable-box")
 	f := startFleet(t, access.DefaultSettings(), nil, true, a, b)
-	if code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box"}); code != 201 {
+	if code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box", "listen": "127.0.0.1:" + freePort(t)}); code != 201 {
 		t.Fatalf("first add = %d %s", code, body)
 	}
 	f.waitUp(t)
@@ -255,7 +255,7 @@ func TestAddingIsRefusedWhenItCannotWork(t *testing.T) {
 	}
 
 	// The same tuner twice.
-	if code, body := call(t, "POST", url, map[string]string{"tuner": "antenna-box"}); code != 201 {
+	if code, body := call(t, "POST", url, map[string]string{"tuner": "antenna-box", "listen": "127.0.0.1:" + freePort(t)}); code != 201 {
 		t.Fatalf("add = %d %s", code, body)
 	}
 	f.waitUp(t)

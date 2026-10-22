@@ -86,7 +86,7 @@ func TestAdminPagesOnTheirOwnPortAreNotOnTheTunerPort(t *testing.T) {
 func TestAddingATunerWithAnAdminPortGivesItAnotherPort(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	f := startSplitFleet(t, nil, a)
-	code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box"})
+	code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box", "listen": "127.0.0.1:" + freePort(t)})
 	if code != http.StatusCreated {
 		t.Fatalf("add = %d %s\n%s", code, body, f.logs.String())
 	}
