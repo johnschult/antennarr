@@ -13,7 +13,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false, https: false }, notifications: noNotifications() }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [], enrollment: false }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false, https: false }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -342,7 +342,7 @@ describe('activity history setting', () => {
 describe('Plex sign-in settings', () => {
   const withPlex = (admins: { id: number; name: string }[] = [], enabled = true) => {
     const s = state()
-    s.settings.plex = { enabled, admins }
+    s.settings.plex = { enabled, admins, enrollment: false }
     return s
   }
   const access = () => section('Admin access')

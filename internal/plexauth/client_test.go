@@ -296,3 +296,21 @@ func TestResourcesFailures(t *testing.T) {
 		t.Errorf("unreachable: %v", err)
 	}
 }
+
+func TestAuthURLCanSendThePersonBack(t *testing.T) {
+	c := &Client{ClientID: "yagi-abc123"}
+	link := c.AuthURLReturning(PIN{ID: 5, Code: "the-code"}, "https://yagi.example:9244/invite/tok/wait?h=abc&x=1")
+	q, err := url.ParseQuery(strings.TrimPrefix(link, "https://app.plex.tv/auth#?"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.Get("forwardUrl") != "https://yagi.example:9244/invite/tok/wait?h=abc&x=1" || q.Get("code") != "the-code" || q.Get("clientID") != "yagi-abc123" {
+		t.Errorf("query = %v", q)
+	}
+	if strings.Contains(link, "&x=1") {
+		t.Errorf("the address to return to is not encoded, so Plex would read its query as its own: %s", link)
+	}
+	if got := c.AuthURL(PIN{Code: "c"}); strings.Contains(got, "forwardUrl") {
+		t.Errorf("a plain link asks to be returned to: %s", got)
+	}
+}

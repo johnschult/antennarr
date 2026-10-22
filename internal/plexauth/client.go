@@ -289,7 +289,11 @@ func cleanName(s string) string {
 
 // AuthURL is where to send the person to sign in: Plex's own page, which
 // brings them back nowhere; Yagi finds out by asking plex.tv about the PIN.
-func (c *Client) AuthURL(p PIN) string {
+func (c *Client) AuthURL(p PIN) string { return c.AuthURLReturning(p, "") }
+
+// AuthURLReturning is AuthURL with an address for Plex to send the person back to once they have signed in, so a
+// page that started the sign-in needn't be left open and watched. back has to be an absolute address.
+func (c *Client) AuthURLReturning(p PIN, back string) string {
 	base := c.AuthBase
 	if base == "" {
 		base = DefaultAuthBase
@@ -298,5 +302,8 @@ func (c *Client) AuthURL(p PIN) string {
 	q.Set("clientID", c.ClientID)
 	q.Set("code", p.Code)
 	q.Set("context[device][product]", Product)
+	if back != "" {
+		q.Set("forwardUrl", back)
+	}
 	return base + "#?" + q.Encode()
 }

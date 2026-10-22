@@ -166,6 +166,8 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
 		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
+		{"invites", map[string]http.HandlerFunc{"GET": a.listInvites, "POST": a.addInvite}},
+		{"invites/{id}", map[string]http.HandlerFunc{"DELETE": a.deleteInvite}},
 		{"notifications/channels", map[string]http.HandlerFunc{"POST": a.addChannel}},
 		{"notifications/channels/{id}", map[string]http.HandlerFunc{"PUT": a.replaceChannel, "DELETE": a.deleteChannel}},
 		{"notifications/test", map[string]http.HandlerFunc{"POST": a.testChannel}},
@@ -224,6 +226,8 @@ type SettingsDoc struct {
 type PlexDoc struct {
 	Enabled bool                 `json:"enabled"`
 	Admins  []access.PlexAccount `json:"admins"`
+	// Enrollment is whether people may add themselves as viewers through an invite link (it needs Enabled too).
+	Enrollment bool `json:"enrollment"`
 }
 
 // TailscaleDoc is the settings for the built-in Tailscale node. Where the node is now is State.Tailscale.
@@ -261,6 +265,7 @@ type State struct {
 	Time     time.Time             `json:"time"`
 	Devices  []DeviceDoc           `json:"devices"`
 	Viewers  []access.ViewerStatus `json:"viewers"`
+	Invites  []InviteDoc           `json:"invites"`
 	Settings SettingsDoc           `json:"settings"`
 	Editable bool                  `json:"editable"` // false: started without -config
 	// Tailscale is the built-in Tailscale node: whether this build has it, and where it is.
@@ -332,6 +337,7 @@ func (a *API) state() State {
 		Time:    time.Now(),
 		Devices: devices,
 		Viewers: a.Pol.ViewerStatuses(),
+		Invites: inviteDocs(set, time.Now()),
 		Settings: SettingsDoc{
 			Mode: a.Pol.Mode(), SharedCap: set.SharedCap, OwnerReserve: set.OwnerReserve, Admin: nonNil(set.Admin),
 			FirmwareCheck: set.FirmwareCheckEnabled(),
@@ -351,7 +357,7 @@ func (a *API) state() State {
 }
 
 func plexDoc(set access.Settings) PlexDoc {
-	d := PlexDoc{Enabled: set.PlexEnabled(), Admins: []access.PlexAccount{}}
+	d := PlexDoc{Enabled: set.PlexEnabled(), Enrollment: set.Plex != nil && set.Plex.Enrollment, Admins: []access.PlexAccount{}}
 	if set.Plex != nil {
 		d.Admins = append(d.Admins, set.Plex.Admins...)
 	}
@@ -507,6 +513,14 @@ func (a *API) replaceViewer(w http.ResponseWriter, r *http.Request) {
 		if i < 0 {
 			return &httpErr{http.StatusNotFound, fmt.Sprintf("no viewer named %q", name)}
 		}
+		v.Plex = s.Viewers[i].Plex // what the owner changes here is not where the viewer came from
+		if !strings.EqualFold(s.Viewers[i].Name, v.Name) {
+			for j := range s.Invites { // an invite follows its viewer's name
+				if s.Invites[j].Used() && strings.EqualFold(s.Invites[j].ViewerName, s.Viewers[i].Name) {
+					s.Invites[j].ViewerName = v.Name
+				}
+			}
+		}
 		s.Viewers[i] = v
 		return nil
 	})
@@ -525,7 +539,15 @@ func (a *API) deleteViewer(w http.ResponseWriter, r *http.Request) {
 		if i < 0 {
 			return &httpErr{http.StatusNotFound, fmt.Sprintf("no viewer named %q", name)}
 		}
+		gone := s.Viewers[i].Name
 		s.Viewers = append(s.Viewers[:i:i], s.Viewers[i+1:]...)
+		kept := s.Invites[:0:0] // a viewer who is removed does not come back through the invite they came in by
+		for _, inv := range s.Invites {
+			if !strings.EqualFold(inv.ViewerName, gone) || !inv.Used() {
+				kept = append(kept, inv)
+			}
+		}
+		s.Invites = kept
 		return nil
 	})
 	if err != nil {
@@ -560,6 +582,8 @@ type settingsPatch struct {
 	History       *bool     `json:"history"`
 	LogLevel      *string   `json:"logLevel"`
 	PlexEnabled   *bool     `json:"plexEnabled"`
+	// PlexEnrollment lets people add themselves as viewers with an invite link.
+	PlexEnrollment *bool `json:"plexEnrollment"`
 	// TailscaleEnabled turns the built-in Tailscale node on and off, and TailscaleHostname names it on the tailnet.
 	TailscaleEnabled  *bool   `json:"tailscaleEnabled"`
 	TailscaleHostname *string `json:"tailscaleHostname"`
@@ -613,6 +637,12 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 				s.Plex = &access.PlexSettings{}
 			}
 			s.Plex.Enabled = *in.PlexEnabled
+		}
+		if in.PlexEnrollment != nil {
+			if s.Plex == nil {
+				s.Plex = &access.PlexSettings{}
+			}
+			s.Plex.Enrollment = *in.PlexEnrollment
 		}
 		if in.TailnetOnly != nil {
 			if *in.TailnetOnly && (!s.TailscaleEnabled() || a.tailscale().State != tailnet.Running) {

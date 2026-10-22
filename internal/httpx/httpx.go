@@ -74,3 +74,19 @@ func GuardWrites(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// CrossOriginForm is whether a form post comes from a page on another site. A page that is not the browser's own
+// can't know a secret in the address, but the origin is checked as well, as the admin API does. A browser sends
+// "Origin: null" when the page has no referrer policy to speak of; it is accepted only if the browser also says the
+// request is same-origin. A request with no Origin header (not a browser, or an old one) is not cross-origin.
+func CrossOriginForm(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return false
+	}
+	if origin == "null" && r.Header.Get("Sec-Fetch-Site") == "same-origin" {
+		return false
+	}
+	u, err := url.Parse(origin)
+	return err != nil || u.Host != r.Host
+}

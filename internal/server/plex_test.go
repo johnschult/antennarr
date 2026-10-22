@@ -30,6 +30,7 @@ type plexTV struct {
 		id   int64
 		name string
 	}
+	servers map[string]string // the JSON /resources answers with, by token
 }
 
 func newPlexTV(t *testing.T) *plexTV {
@@ -37,7 +38,7 @@ func newPlexTV(t *testing.T) *plexTV {
 	p := &plexTV{next: 500, codes: map[int64]string{}, token: map[int64]string{}, users: map[string]struct {
 		id   int64
 		name string
-	}{}}
+	}{}, servers: map[string]string{}}
 	p.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p.mu.Lock()
 		defer p.mu.Unlock()
@@ -64,6 +65,12 @@ func newPlexTV(t *testing.T) *plexTV {
 				return
 			}
 			fmt.Fprintf(w, `{"id":%d,"username":%q}`, u.id, u.name)
+		case r.Method == "GET" && r.URL.Path == "/api/v2/resources":
+			if _, ok := p.users[r.Header.Get("X-Plex-Token")]; !ok {
+				http.Error(w, "no", http.StatusUnauthorized)
+				return
+			}
+			fmt.Fprint(w, p.servers[r.Header.Get("X-Plex-Token")])
 		default:
 			http.NotFound(w, r)
 		}

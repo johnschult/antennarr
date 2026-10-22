@@ -58,7 +58,7 @@ describe('axe: every page, in each state', () => {
 
   it('Settings with Sign in with Plex on, and an account allowed', async () => {
     const s = makeState()
-    s.settings.plex = { enabled: true, admins: [{ id: 1, name: 'John' }] }
+    s.settings.plex = { enabled: true, admins: [{ id: 1, name: 'John' }], enrollment: false }
     render(s, '/settings')
     expect(await check()).toHaveNoViolations()
   })
