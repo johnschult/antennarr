@@ -79,7 +79,7 @@ curl -i http://<yagi address>:5004/discover.json
 ```
 
 - A timeout means the connection never arrived: a firewall, or the wrong network or address.
-- `403` with `X-Yagi-Reason: not-allowed` means it arrived and Yagi doesn't recognize the sender's address. The log shows the address it saw. Add that.
+- `403` with `X-Yagi-Reason: not-allowed` means it arrived and Yagi doesn't recognize the sender. They now appear on the Viewers page under *Asking to use your tuner*: press **Allow**. (The log shows the address it saw too.)
 - `502 tuner unreachable` means it got through and the tuner is offline.
 - `200` with your tuner's name and Yagi's address means it works.
 

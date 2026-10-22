@@ -52,6 +52,7 @@ type EventsDoc struct {
 	Viewer   bool `json:"viewer"`
 	Unknown  bool `json:"unknown"`
 	Watching bool `json:"watching"`
+	Request  bool `json:"request"`
 }
 
 func notificationsDoc(set access.Settings) NotificationsDoc {
@@ -60,7 +61,7 @@ func notificationsDoc(set access.Settings) NotificationsDoc {
 		Events: EventsDoc{
 			Firmware: set.NotifyEnabled(access.NotifyFirmware), Tuner: set.NotifyEnabled(access.NotifyTuner),
 			Viewer: set.NotifyEnabled(access.NotifyViewer), Unknown: set.NotifyEnabled(access.NotifyUnknown),
-			Watching: set.NotifyEnabled(access.NotifyWatching),
+			Watching: set.NotifyEnabled(access.NotifyWatching), Request: set.NotifyEnabled(access.NotifyRequest),
 		},
 	}
 	for _, c := range set.NotifyChannels() {
@@ -292,6 +293,7 @@ type notifyEventsPatch struct {
 	Viewer   *bool `json:"viewer"`
 	Unknown  *bool `json:"unknown"`
 	Watching *bool `json:"watching"`
+	Request  *bool `json:"request"`
 }
 
 func (p notifyEventsPatch) apply(n *access.Notifications) {
@@ -306,4 +308,5 @@ func (p notifyEventsPatch) apply(n *access.Notifications) {
 	set(&n.Events.Viewer, p.Viewer)
 	set(&n.Events.Unknown, p.Unknown)
 	set(&n.Events.Watching, p.Watching)
+	set(&n.Events.Request, p.Request)
 }

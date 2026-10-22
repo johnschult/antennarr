@@ -277,3 +277,12 @@ An optional node inside Yagi (Tailscale's `tsnet` package), so the machine needs
 
 - Viewers add the tuner by address manually; Plex likely won't auto-discover it across networks.
 - First target: replace the existing socat relay and viewer-side DNAT for the friend's tuner. Generalize after that.
+
+## Requests
+
+Yagi serves private networks only, so anyone who reaches a tuner port and isn't a viewer is on the owner's network, a VPN or the tailnet: a friend who has just added Yagi in their media server. Instead of asking the owner to look up their address, Yagi lists them.
+
+- **Recording** (`internal/access/requests.go`). `Policy.unknown` runs for every request from a non-viewer; it now also notes who: the tailnet login if the node said (`IdentityOf`), else the tailnet device, else the address, so one person on several devices is one entry. Kept in memory, at most 50 (the one asked about longest ago goes first), with a count and first and last times. A requester who is dismissed stays off the list until Yagi restarts. Whoever has become a viewer since is filtered out when the list is read, so nothing has to be pruned.
+- **Allowing** (`internal/api/requests.go`): `GET /api/requests`, `POST /api/requests/{id}/allow {name, limit, limits}`, `DELETE /api/requests/{id}`. Allow adds a viewer whose entry is `tailscale:<login>`, `tailscale:<device>` or the address, from what Yagi saw: the body has no address field, and an unknown field is an error, so it can't be chosen from outside. That is the same path as adding a viewer, so a taken name is a `409`.
+- **The first time** someone asks, the owner is told (`request` notification, on by default) and the Viewers page refreshes; repeats only refresh it now and then.
+- **The page** (`RequestsPanel`, `AllowRequestDialog`): *Asking to use your tuner* above the viewers, with Allow (a name offered from their login or device, and the limits) and Dismiss.

@@ -628,10 +628,11 @@ func TestPrivateAddr(t *testing.T) {
 
 // fakeEvents records what the policy tells the notifier about.
 type fakeEvents struct {
-	mu      sync.Mutex
-	refused []string
-	unknown []string
-	started []string
+	mu        sync.Mutex
+	refused   []string
+	unknown   []string
+	started   []string
+	requested []string
 }
 
 func (f *fakeEvents) Started(device, title, viewer, channel string) {
@@ -648,6 +649,11 @@ func (f *fakeEvents) Refused(device, title, viewer, reason string) {
 func (f *fakeEvents) Unknown(device, title, addr string) {
 	f.mu.Lock()
 	f.unknown = append(f.unknown, device+"|"+title+"|"+addr)
+	f.mu.Unlock()
+}
+func (f *fakeEvents) Requested(device, title, who string) {
+	f.mu.Lock()
+	f.requested = append(f.requested, device+"|"+title+"|"+who)
 	f.mu.Unlock()
 }
 func (f *fakeEvents) get() (refused, unknown []string) {

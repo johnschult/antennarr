@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, clearHistory, dismissRestart, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, restartTuner, replaceViewer, testChannel } from '@/lib/api'
+import { addChannel, addDevice, addViewer, allowRequest, checkFirmware, dismissRequest, deleteChannel, deleteDevice, deleteViewer, clearHistory, dismissRestart, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, restartTuner, replaceViewer, testChannel } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
-import type { AppState, ChannelInput, DeviceInput, UpgradeRequest, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
+import type { AllowInput, AppState, ChannelInput, DeviceInput, UpgradeRequest, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
 
 /** What a firmware check turned up across the tuners: newer firmware, none, or no clear answer. */
@@ -39,6 +39,20 @@ export function useEdits() {
     mutationFn: ({ name }: { name: string }) => deleteViewer(name),
     onSuccess: (_, { name }) => {
       toast.success(`Removed ${name}`)
+      void refresh()
+    },
+  })
+  const requestAllow = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: AllowInput }) => allowRequest(id, input),
+    onSuccess: (_, { input }) => {
+      toast.success(`Allowed ${input.name}`)
+      void refresh()
+    },
+  })
+  const requestDismiss = useMutation({
+    mutationFn: ({ id }: { id: string; label: string }) => dismissRequest(id),
+    onSuccess: (_, { label }) => {
+      toast.success(`Dismissed ${label}`)
       void refresh()
     },
   })
@@ -138,5 +152,5 @@ export function useEdits() {
     mutationFn: ({ device }: { device: string }) => dismissRestart(device),
     onSuccess: () => void refresh(),
   })
-  return { add, replace, remove, settings, device, firmware, install, dismiss, restart, dismissRestartResult, history, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
+  return { add, replace, remove, requestAllow, requestDismiss, settings, device, firmware, install, dismiss, restart, dismissRestartResult, history, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
 }

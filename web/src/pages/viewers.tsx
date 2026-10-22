@@ -2,7 +2,9 @@ import { Cable, Info, Pencil, Plus, RadioReceiver, Trash2, TriangleAlert } from 
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Banner } from '@/components/banners'
+import { AllowRequestDialog } from '@/components/allow-request-dialog'
 import { DeleteViewerDialog } from '@/components/delete-viewer-dialog'
+import { RequestsPanel } from '@/components/requests-panel'
 import { ViewerDialog } from '@/components/viewer-dialog'
 import { ViewerWizard } from '@/components/viewer-wizard/viewer-wizard'
 import { Badge } from '@/components/ui/badge'
@@ -13,7 +15,7 @@ import { useIsPhone } from '@/hooks/use-media-query'
 import { timeAgo } from '@/lib/format'
 import { deviceTitle } from '@/lib/device'
 import { limitFor } from '@/lib/slots'
-import type { DeviceState, Viewer } from '@/lib/types'
+import type { AccessRequest, DeviceState, Viewer } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /** How many of a viewer's tuners are in use, per device, as antennas and a count. */
@@ -94,7 +96,7 @@ function RowActions({
 
 export function ViewersPage() {
   const { state } = useApp()
-  const { viewers, devices, editable } = state
+  const { viewers, devices, editable, requests } = state
   // A viewer's name goes to their page (what they watched and how much data it was) while the history is kept.
   const nameOf = (v: Viewer) =>
     state.settings.history ? (
@@ -109,6 +111,7 @@ export function ViewersPage() {
   const [editing, setEditing] = useState<Viewer | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [removing, setRemoving] = useState<Viewer | null>(null)
+  const [allowing, setAllowing] = useState<AccessRequest | null>(null)
   // The add-viewer wizard, or the connection steps for one viewer. A link with ?add opens it.
   const [wizard, setWizard] = useState<{ viewer?: Viewer } | null>(() => (params.has('add') && editable ? {} : null))
 
@@ -139,11 +142,14 @@ export function ViewersPage() {
         </Button>
       </div>
 
+      <RequestsPanel requests={requests} devices={devices} editable={editable} onAllow={setAllowing} />
+
       {viewers.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
           <p className="font-medium">No viewers yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add the person you share with. Only the addresses you list will be able to use the tuner.
+            Add the person you share with, or ask them to add Yagi in their media server: when they try, they appear here for you to allow. Only
+            viewers you allow can use the tuner.
           </p>
           <Button className="mt-4" onClick={openAdd} disabled={!editable}>
             <Plus /> Add viewer
@@ -213,6 +219,7 @@ export function ViewersPage() {
       </Banner>
 
       <ViewerWizard open={wizard !== null} onOpenChange={(open) => !open && setWizard(null)} devices={devices} viewer={wizard?.viewer} />
+      <AllowRequestDialog request={allowing} devices={devices} onClose={() => setAllowing(null)} />
       <ViewerDialog open={dialogOpen} onOpenChange={setDialogOpen} viewer={editing} devices={devices} />
       <DeleteViewerDialog viewer={removing} isLast={viewers.length === 1} onClose={() => setRemoving(null)} />
     </div>

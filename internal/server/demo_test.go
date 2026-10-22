@@ -528,6 +528,22 @@ func TestDemo(t *testing.T) {
 		t.Fatal(err)
 	}
 	go srv.Run(ctx)
+	// Two people who have just added Yagi in their media server and been refused: one over Yagi's own Tailscale, which
+	// says who they are, and one by a bare address. They are what the Viewers page shows to be allowed.
+	for _, ask := range []struct {
+		from string
+		id   *access.Identity
+	}{
+		{"100.64.0.77:41000", &access.Identity{Login: "pal@example.com", Node: "den.tail1234.ts.net"}},
+		{"192.168.1.60:41000", nil},
+	} {
+		r := httptest.NewRequest(http.MethodGet, "/discover.json", nil)
+		r.RemoteAddr = ask.from
+		if ask.id != nil {
+			r = r.WithContext(access.WithIdentity(r.Context(), *ask.id))
+		}
+		_ = srv.policy.Device("antenna").Authorize(r)
+	}
 	base2 := "http://" + ln.Addr().String() // the tuner's own port
 	// What the pages are opened at is the admin port, which is what $DEMO_DIR/addr holds.
 	os.WriteFile(filepath.Join(dir, "addr"), []byte("http://"+adminLn.Addr().String()), 0o644)

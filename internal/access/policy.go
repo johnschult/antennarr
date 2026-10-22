@@ -36,6 +36,9 @@ type Events interface {
 	Refused(device, title, viewer, reason string)
 	// Unknown is a request from an address that isn't a viewer, one call per request.
 	Unknown(device, title, addr string)
+	// Requested is someone who isn't a viewer asking to use a tuner for the first time (or since they were last
+	// dismissed): who, by their tailnet login or device or else their address.
+	Requested(device, title, who string)
 	// Started is a viewer given a tuner: one call per stream, with the channel number when the request names one
 	// (empty when it doesn't). It is the notifier that decides how often that is worth a message.
 	Started(device, title, viewer, channel string)
@@ -78,8 +81,11 @@ type Policy struct {
 	active   map[uint64]*Active
 	lastNote map[string]time.Time
 	lastSeen map[string]time.Time // by viewer name
-	onChange func()
-	events   Events
+	// requests are who has asked to use a tuner without being a viewer, by who they are (see requests.go).
+	requests  map[string]*Request
+	dismissed map[string]bool
+	onChange  func()
+	events    Events
 	// onSettings is told each new set of settings.
 	onSettings func(Settings)
 	session    func(*http.Request) bool // an admin signed in some other way (Plex)
@@ -152,6 +158,10 @@ func (p *Policy) SetEvents(e Events) {
 // unknown tells the events, if there are any, that an address that isn't a viewer asked for a tuner.
 func (p *Policy) unknown(device string, r *http.Request) {
 	ip, ok := clientIP(r)
+	req, isNew := p.noteRequest(device, r)
+	if isNew || req.Count%20 == 0 { // the page looks again when someone new asks, and now and then as they keep asking
+		p.changed()
+	}
 	p.mu.Lock()
 	e, title := p.events, p.cfg.Labels[device]
 	p.mu.Unlock()
@@ -162,6 +172,9 @@ func (p *Policy) unknown(device string, r *http.Request) {
 		title = device
 	}
 	e.Unknown(device, title, ip.String())
+	if isNew {
+		e.Requested(device, title, requestWho(req))
+	}
 }
 
 // started tells the events, if there are any, that a viewer was given a tuner.

@@ -37,6 +37,15 @@ const states: [string, () => State][] = [
   ['newer firmware', () => makeState({ devices: [makeDevice({ firmware: updateAvailable })] })],
   ['settings that cannot be saved', () => makeState({ editable: false })],
   ['notification channels', () => withChannels(makeState(), phone, pushover, discord)],
+  ['people asking to use a tuner', () => {
+    const base = { device: 'antenna', first: '2026-10-22T12:00:00Z', last: '2026-10-22T12:05:00Z', count: 2 }
+    return makeState({
+      requests: [
+        { ...base, id: 'aaaaaaaaaaaa', label: 'pal@example.com', address: '100.64.0.30', login: 'pal@example.com', node: 'den.tail1.ts.net' },
+        { ...base, id: 'bbbbbbbbbbbb', label: '10.8.0.44', address: '10.8.0.44' },
+      ],
+    })
+  }],
 ]
 
 describe('axe: every page, in each state', () => {
@@ -334,6 +343,14 @@ describe('axe: dialogs', () => {
 
   it('Edit viewer', async () => {
     await open('/viewers', makeState(), 'Edit John')
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('Allow a request', async () => {
+    const s = makeState({
+      requests: [{ id: 'aaaaaaaaaaaa', label: 'pal@example.com', address: '100.64.0.30', login: 'pal@example.com', device: 'antenna', first: '2026-10-22T12:00:00Z', last: '2026-10-22T12:05:00Z', count: 1 }],
+    })
+    await open('/viewers', s, 'Allow pal@example.com')
     expect(await check()).toHaveNoViolations()
   })
 

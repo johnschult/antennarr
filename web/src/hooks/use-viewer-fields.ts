@@ -3,7 +3,7 @@ import { deviceTitle } from '@/lib/device'
 import { parseAddresses } from '@/lib/format'
 import type { DeviceState, Viewer, ViewerInput } from '@/lib/types'
 
-const isCount = (s: string) => s.trim() !== '' && Number.isInteger(Number(s)) && Number(s) >= 0
+export const isCount = (s: string) => s.trim() !== '' && Number.isInteger(Number(s)) && Number(s) >= 0
 
 /** The viewer form's values, and what to send when they are good. Shared by editing a viewer and the add-viewer wizard. */
 export function useViewerFields(viewer: Viewer | undefined, devices: DeviceState[]) {

@@ -179,7 +179,7 @@ export interface NotifyChannel {
   hasUser: boolean
 }
 
-export type NotifyEvent = 'firmware' | 'tuner' | 'viewer' | 'unknown' | 'watching'
+export type NotifyEvent = 'firmware' | 'tuner' | 'viewer' | 'unknown' | 'watching' | 'request'
 export type NotifyEvents = Record<NotifyEvent, boolean>
 
 export interface Notifications {
@@ -307,6 +307,7 @@ export interface AppState {
   time: string
   devices: DeviceState[]
   viewers: Viewer[]
+  requests: AccessRequest[]
   settings: Settings
   editable: boolean
   /** The built-in Tailscale node. Absent from an older server. */
@@ -342,6 +343,28 @@ export interface DeviceInput {
 export interface ViewerInput {
   name: string
   addresses: string[]
+  limit: number
+  limits?: Record<string, number>
+}
+
+/** Someone who asked to use a tuner and is not a viewer yet. They are shown on the Viewers page, to be allowed. */
+export interface AccessRequest {
+  id: string
+  /** What to call them: their Tailscale login, else their device, else their address. */
+  label: string
+  address: string
+  login?: string
+  node?: string
+  /** The tuner they asked for, the last time. */
+  device: string
+  first: string
+  last: string
+  count: number
+}
+
+/** What is sent to allow a request: who they will be called, and what they get. Their address is what Yagi saw. */
+export interface AllowInput {
+  name: string
   limit: number
   limits?: Record<string, number>
 }
