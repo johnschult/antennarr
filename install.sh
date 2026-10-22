@@ -15,7 +15,9 @@
 #   YAGI_DL           where the archives are downloaded from (default: the release's page on GitHub), for a mirror or a test
 #
 # It reads the release's checksums.txt, checks the archive against it before unpacking anything, and unpacks only the
-# program. It is for Linux and macOS, on amd64 and arm64. On Windows, use WSL or Docker.
+# program. If cosign is installed it also checks the signature on checksums.txt, which says the release was built by
+# this project's own release workflow, and installs nothing if that fails. It is for Linux and macOS, on amd64 and
+# arm64. On Windows, use WSL or Docker.
 #
 # All of it is inside main, which runs on the last line, so a download cut short can't run half of it.
 
@@ -75,6 +77,26 @@ sha256() {
 	else
 		fail "Neither sha256sum nor shasum is installed, so the download can't be checked. Install coreutils, or use Docker."
 	fi
+}
+
+# verify_signature BASE DIR VERSION: if cosign is installed, checks that checksums.txt was signed by this project's
+# release workflow for this release (a keyless Sigstore signature, so there is no key to look after or to forge). Without
+# cosign it says so and carries on: the checksums still catch a damaged download, though not a replaced release.
+verify_signature() {
+	if ! have cosign; then
+		say "Not checking the release's signature, because cosign isn't installed (https://docs.sigstore.dev/cosign/). To check it, install cosign and run this again."
+		return 0
+	fi
+	fetch "$1/checksums.txt.sigstore.json" "$2/checksums.txt.sigstore.json" ||
+		fail "Release $3 has no signature ($1/checksums.txt.sigstore.json), and cosign is here to check it, so nothing was installed."
+	cosign verify-blob --bundle "$2/checksums.txt.sigstore.json" \
+		--certificate-identity "https://github.com/$REPO/.github/workflows/release.yml@refs/tags/v$3" \
+		--certificate-oidc-issuer https://token.actions.githubusercontent.com \
+		"$2/checksums.txt" >"$2/cosign.log" 2>&1 || {
+		cat "$2/cosign.log" >&2
+		fail "The signature on this release's checksums is not valid, so nothing was installed."
+	}
+	say "Checked the release's signature: built by $REPO's release workflow"
 }
 
 # latest_version: the newest release's number, from where GitHub's "latest" page sends you (so no API, no rate limit).
@@ -220,6 +242,7 @@ main() {
 
 	say "Installing Yagi $version for $os/$arch"
 	fetch "$base/checksums.txt" "$work/checksums.txt" || fail "Couldn't download $base/checksums.txt. Is $version a release, and is there one for it yet?"
+	verify_signature "$base" "$work" "$version"
 	want=$(awk -v f="$file" '$2 == f { print $1; exit }' "$work/checksums.txt")
 	[ -n "$want" ] || fail "Release $version has no download for $os/$arch ($file isn't in its checksums.txt)."
 	case $want in *[!0-9a-f]*) fail "The checksum for $file isn't a SHA-256 ($want)." ;; esac

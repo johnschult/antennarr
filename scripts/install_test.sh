@@ -36,10 +36,13 @@ echo readme >"$good/$name/README.md"
 tar -C "$good" -czf "$good/$name.tar.gz" "$name"
 echo "$(sum "$good/$name.tar.gz")  $name.tar.gz" >"$good/checksums.txt"
 
+# What a signed release has beside them (the shim below doesn't read it, only whether it is there).
+echo "{}" >"$good/checksums.txt.sigstore.json"
+
 # One whose archive was changed after its checksum was written.
 bad=$work/bad
 mkdir -p "$bad"
-cp "$good/checksums.txt" "$bad/"
+cp "$good/checksums.txt" "$good/checksums.txt.sigstore.json" "$bad/"
 printf 'not what was checksummed' >"$bad/$name.tar.gz"
 
 # One whose archive holds a file it shouldn't, with a checksum that matches it.
@@ -49,11 +52,30 @@ cp "$good/$name/yagi" "$work/x/$name/yagi"
 echo surprise >"$work/x/$name/surprise"
 tar -C "$work/x" -czf "$extra/$name.tar.gz" "$name"
 echo "$(sum "$extra/$name.tar.gz")  $name.tar.gz" >"$extra/checksums.txt"
+echo '{}' >"$extra/checksums.txt.sigstore.json"
 
 # One with no download for this system.
 other=$work/other
 mkdir -p "$other"
 echo "$(sum "$good/$name.tar.gz")  yagi_${version}_plan9_mips.tar.gz" >"$other/checksums.txt"
+echo '{}' >"$other/checksums.txt.sigstore.json"
+
+# A good release with no signature.
+unsigned=$work/unsigned
+mkdir -p "$unsigned"
+cp "$good/$name.tar.gz" "$good/checksums.txt" "$unsigned/"
+
+# A stand-in for cosign, which says whether the signature is good as FAKE_COSIGN says, and keeps what it was asked.
+shim=$work/shim
+mkdir -p "$shim"
+cat >"$shim/cosign" <<'SHIM'
+#!/bin/sh
+echo "$@" >"$FAKE_COSIGN_LOG"
+[ "${FAKE_COSIGN:-ok}" = ok ] || { echo "no matching signature" >&2; exit 1; }
+SHIM
+chmod +x "$shim/cosign"
+real_cosign=0
+command -v cosign >/dev/null 2>&1 && real_cosign=1
 
 port=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')
 (cd "$work" && exec python3 -m http.server "$port" --bind 127.0.0.1 >/dev/null 2>&1) &
@@ -65,10 +87,11 @@ until curl -fs "http://127.0.0.1:$port/good/checksums.txt" >/dev/null 2>&1; do
 	sleep 0.1
 done
 
-run() { # run RELEASE_DIR [ARG...]: install.sh against that fake release, into $work/bin
+run() { # run RELEASE_DIR [ARG...]: install.sh against that fake release, into $work/bin, with the cosign stand-in
 	rel=$1
 	shift
-	YAGI_VERSION=$version YAGI_DL="http://127.0.0.1:$port/$rel" YAGI_INSTALL_DIR="$work/bin" sh "$here/install.sh" "$@"
+	PATH="$shim:$PATH" FAKE_COSIGN_LOG="$work/cosign.args" YAGI_VERSION=$version YAGI_DL="http://127.0.0.1:$port/$rel" \
+		YAGI_INSTALL_DIR="$work/bin" sh "$here/install.sh" "$@"
 }
 
 # -h shows the help, including when the script is piped to sh.
@@ -96,9 +119,33 @@ for rel in bad extra; do
 done
 pass "a changed archive, and one with an extra file, are refused and leave nothing"
 
+# With cosign, the signature is checked, for this release's tag and this repository's workflow.
+grep -q -- "--certificate-identity https://github.com/johnschult/yagi/.github/workflows/release.yml@refs/tags/v$version" "$work/cosign.args" ||
+	fail "cosign wasn't asked to check for this release's tag and workflow: $(cat "$work/cosign.args")"
+grep -q -- "--certificate-oidc-issuer https://token.actions.githubusercontent.com" "$work/cosign.args" || fail "cosign wasn't asked for GitHub's issuer"
+pass "with cosign, the signature is checked for this release's tag and workflow"
+
+# A signature that doesn't check out, or none at all, is refused, and nothing is installed.
+rm -rf "${work:?}/bin"
+if (FAKE_COSIGN=bad && export FAKE_COSIGN && run good) >"$work/out" 2>&1; then fail "it installed a release whose signature failed"; fi
+grep -q "signature on this release's checksums is not valid" "$work/out" || fail "it didn't say the signature failed"
+[ ! -e "$work/bin/yagi" ] || fail "it left a program behind after a bad signature"
+if run unsigned >"$work/out" 2>&1; then fail "it installed an unsigned release while cosign was there to check"; fi
+grep -q "has no signature" "$work/out" || fail "it didn't say the release has no signature"
+pass "a bad signature, and a missing one, are refused when cosign is there"
+
+# Without cosign it says so and installs, on the checksums alone (not tried if this machine has the real cosign).
+if [ "$real_cosign" -eq 0 ]; then
+	rm -rf "${work:?}/bin"
+	YAGI_VERSION=$version YAGI_DL="http://127.0.0.1:$port/unsigned" YAGI_INSTALL_DIR="$work/bin" sh "$here/install.sh" >"$work/out" 2>&1 ||
+		fail "it didn't install without cosign"
+	grep -q "cosign isn't installed" "$work/out" || fail "it didn't say it wasn't checking the signature"
+	pass "without cosign it says so, and installs on the checksums"
+fi
+
 # A release with nothing for this system says so.
 if run other >"$work/out" 2>&1; then fail "it installed a release with no download for this system"; fi
-grep -q "no download for $os/$arch" "$work/out" || fail "it didn't say there is no download for this system"
+grep -q "no download for $os/$arch" "$work/out" || { cat "$work/out" >&2; fail "it didn't say there is no download for this system"; }
 pass "a release with no download for this system is refused"
 
 # A version that isn't a release number is refused before anything is downloaded.
