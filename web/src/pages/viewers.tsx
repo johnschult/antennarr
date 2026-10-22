@@ -51,7 +51,7 @@ function Usage({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
 function PublicNote({ v }: { v: Viewer }) {
   if (!v.publicAddresses?.length) return null
   return (
-    <p className="mt-1 flex items-start gap-1.5 text-xs font-normal text-amber-700 dark:text-amber-300">
+    <p className="mt-1 flex max-w-md items-start gap-1.5 text-xs font-normal whitespace-normal text-amber-700 dark:text-amber-300">
       <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
       <span>
         Can't connect from {v.publicAddresses.join(', ')}: that is a public internet address, and Yagi serves private networks only. Put them on Tailscale or a VPN and list the
