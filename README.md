@@ -71,7 +71,7 @@ Copy [docker-compose.example.yml](docker-compose.example.yml) next to your `yagi
 Or without Docker, on macOS or Linux:
 
 ```sh
-brew install johnschult/yagi/yagi && brew services start yagi
+brew install johnschult/tap/yagi && brew services start yagi
 # or, with no Homebrew:
 curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.sh | sh
 ```

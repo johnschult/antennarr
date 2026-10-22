@@ -1,5 +1,5 @@
 # The Homebrew formula for Yagi, which the release workflow fills in (scripts/render_formula.sh) and pushes to the
-# tap, johnschult/homebrew-yagi, on every release. The @…@ marks are replaced with the release's version and the
+# tap, johnschult/homebrew-tap, on every release. The @…@ marks are replaced with the release's version and the
 # SHA-256 of each of its archives. It installs the program the release already built; nothing is built by Homebrew.
 class Yagi < Formula
   desc "Share an HDHomeRun tuner with the Plex, Jellyfin and Emby of family and friends"

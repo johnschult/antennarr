@@ -36,7 +36,7 @@ looks for the tuner with a broadcast on your network, and offers this machine's 
 ### Homebrew (macOS and Linux)
 
 ```sh
-brew install johnschult/yagi/yagi
+brew install johnschult/tap/yagi
 brew services start yagi        # keeps it running, and starts it again after a restart
 ```
 
