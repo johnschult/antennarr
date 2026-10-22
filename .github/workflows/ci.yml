@@ -71,8 +71,17 @@ jobs:
           persist-credentials: false
       - name: shellcheck
         if: runner.os == 'Linux'
-        run: shellcheck install.sh scripts/install_test.sh
+        run: shellcheck install.sh scripts/install_test.sh scripts/render_formula.sh
       - run: sh scripts/install_test.sh
+      - name: The Homebrew formula fills in and is valid Ruby
+        run: |
+          for t in darwin_arm64 darwin_amd64 linux_arm64 linux_amd64; do
+            printf '%064d  yagi_2026.10.17_%s.tar.gz\n' 7 "$t"
+          done > "$RUNNER_TEMP/checksums.txt"
+          sh scripts/render_formula.sh 2026.10.17 "$RUNNER_TEMP/checksums.txt" > "$RUNNER_TEMP/yagi.rb"
+          ! grep -n '@[A-Z_]*@' "$RUNNER_TEMP/yagi.rb"
+          ruby -c "$RUNNER_TEMP/yagi.rb"
+          ! sh scripts/render_formula.sh 2026.10.17 /dev/null 2>/dev/null
       - name: The same on Alpine
         if: runner.os == 'Linux'
         run: docker run --rm -v "$PWD:/src:ro" alpine:3 sh -c 'apk add --no-cache curl python3 >/dev/null && sh /src/scripts/install_test.sh'
