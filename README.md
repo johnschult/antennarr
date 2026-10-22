@@ -51,9 +51,12 @@ media servers only ever talk to Yagi. It also decides who may use the tuner, and
 - **Any private network.** Plain LAN, Tailscale, WireGuard, ZeroTier… Yagi just listens on a port, and serves private networks only: not the public internet. Getting the two servers onto the same network is up to you.
 - **Its own Tailscale** (the `-tailscale` image). Yagi can join your tailnet as its own device, with no Tailscale on the machine: share that one device and nothing is opened on your router. Viewers and admins can be matched by Tailscale login, the LAN can be closed (*only on the tailnet*), and the admin page can be served over HTTPS. See [Built-in Tailscale](docs/tailscale.md).
 
+> [!IMPORTANT]
+> **Yagi is for family and friends, not for the public.** It shares your own antenna with people you know and trust, over your own network, a VPN or Tailscale. It refuses connections from the public internet, and it is not meant for public or commercial use, or for sending a signal to people you don't know. Keep it to people you would let onto your own network, and follow the laws and terms that apply to you.
+
 > [!WARNING]
 > **Status: early.** It runs a real FLEX 4K and is tested with the Go race detector and a UI test suite, but it is young software.
-> Expect rough edges, and please read [Security](#security) (and [docs/security.md](docs/security.md)) before exposing it to anything beyond a network you trust.
+> Expect rough edges, and please read [Security](#security) (and [docs/security.md](docs/security.md)) first.
 
 ## Quick start
 

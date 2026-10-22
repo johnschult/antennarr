@@ -6,6 +6,7 @@
 - [Does the viewer need to install anything?](#does-the-viewer-need-to-install-anything)
 - [Does it send anything over the internet?](#does-it-send-anything-over-the-internet)
 - [Is it free?](#is-it-free)
+- [Can I share my tuner with the public?](#can-i-share-my-tuner-with-the-public)
 
 ## Why is it called Yagi?
 
@@ -39,3 +40,7 @@ Only to your tuners, plus, each switchable in Settings, SiliconDust's firmware c
 ## Is it free?
 
 Yes. It is MIT licensed.
+
+## Can I share my tuner with the public?
+
+No, and Yagi isn't built for it. It is for sharing **your own antenna with family and friends**: people you know and trust, on your own network, a VPN or Tailscale. It refuses connections from the public internet, and it is not meant for public or commercial use, or for sending a signal to people you don't know. Rules about receiving and passing on broadcast signals differ from place to place, and you are responsible for following the ones that apply to you.

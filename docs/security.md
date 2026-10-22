@@ -18,6 +18,8 @@ If a media server needs a tuner page that isn't on the list, Yagi logs `path not
 
 ## Private networks only
 
+Yagi is for sharing your own antenna with family and friends: people you know and trust, on your network, a VPN or Tailscale. It is not meant for public or commercial use, or for sending a signal to people you don't know, and it is built so that it can't easily be used that way.
+
 Yagi serves this machine, your own network, a VPN and Tailscale, and nothing else. A connection from a public internet address is dropped as it arrives, before any HTTP is read, with one line a minute in the log (`refused a connection from a public internet address`). A viewer's or admin's list can't hold a public address either. There is no switch to change that, so a port forwarded by mistake shows scanners nothing, and sharing a tuner stays between people you trust enough to put on your network ([Networking](networking.md)). A source on a network the machine is directly connected to counts as local even when its address looks public (a LAN on global IPv6).
 Yagi speaks plain HTTP: it has no TLS of its own, so anything sent to it can be read by anyone on the path. On Tailscale or a VPN the traffic is already encrypted. The one exception is the `-tailscale` image, which can also serve the admin pages over HTTPS at its tailnet name, with a certificate from Tailscale ([Built-in Tailscale](tailscale.md#https-for-the-admin-page)); that name then appears in a public certificate log.
 

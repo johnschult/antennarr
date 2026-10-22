@@ -3,6 +3,8 @@
 This takes you from nothing to a viewer watching your tuner. It assumes you have an HDHomeRun tuner on your network
 and a machine that is always on to run Yagi (a small server, a NAS, a Raspberry Pi: anything that runs Linux, macOS or Docker).
 
+**Yagi is for family and friends, not for the public.** It shares your own antenna with people you know and trust, over your own network, a VPN or Tailscale, and it refuses connections from the public internet. Keep it to people you would let onto your own network, and follow the laws and terms that apply to you.
+
 ## 1. Install
 
 ### Docker (recommended)
