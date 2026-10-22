@@ -61,7 +61,6 @@ Who you share with. **With no viewers, nobody can use the tuner**: a new install
 | `addresses` | At least one. Single addresses or ranges on a private network, a VPN or Tailscale: `100.64.0.7`, `10.8.0.0/24`, `fd7a:115c::/48`, or a Tailscale login. A public internet address is refused by the page and the API, and warned about at start-up if the file has one, because Yagi serves private networks only and it could never connect. The address their requests come from, as Yagi sees it. If ranges overlap, the most specific one wins. An address can't be listed for two viewers. With Yagi's own Tailscale it can also be `tailscale:alice@example.com` (anyone signed in as that login) or `tailscale:laptop.tail1234.ts.net` (that device): see [Who is on the other end](tailscale.md#who-is-on-the-other-end). |
 | `limit` | How many tuners they may use at once, on each device. `0` pauses them. |
 | `limits` | Overrides `limit` for particular devices, by device name: `{ "antenna": 2 }`. Needs `devices` to be declared in the file. |
-| `plex` | Set by Yagi on a viewer who enrolled through an [invite](security.md#invite-links): `accountId` and `accountName` of the Plex account that signed in, and `serverId` and `serverName` of the server their addresses came from. You don't write it. Editing the viewer keeps it. |
 
 ### Everything else
 
@@ -78,8 +77,7 @@ Who you share with. **With no viewers, nobody can use the tuner**: a new install
 | `guide` | Read SiliconDust's program guide so Live tiles can show the channel logo, what's on and its picture (default `true`). |
 | `notifications` | Messages to your phone or another service. `channels` is a list (at most 8); `events` switches kinds of event on or off. See [Notifications](#notifications) below. |
 | `tailscale` | The built-in Tailscale node, in the `-tailscale` image: `enabled`, `hostname` (its name on the tailnet, default `yagi`, not written when it is), `tailnetOnly` (refuse everything that arrives over the machine's own address while the node is connected) and `https` (also serve the admin pages over HTTPS at the node's name). Normally set from *Settings → Tailscale*. See [Built-in Tailscale](tailscale.md). |
-| `plex` | Sign in to the admin pages with a Plex account. `enabled`, the allowed `admins` (each with an `id` and a `name`, at most 50), and a `clientId` Yagi creates and keeps for you. `enrollment` lets people add themselves as viewers with an invite link. It is its own switch: it needs neither `enabled` nor any `admins`. See [Security](security.md). |
-| `invites` | The links you have sent so people can enroll as viewers (at most 50): `id`, `name`, `limit`, `limits`, `created`, `expires`, `tokenHash` (a hash; the link itself is never saved) and, once used, `viewerName`. Made from the admin page or `POST /api/invites`, not written by hand. See [Invite links](security.md#invite-links). |
+| `plex` | Sign in to the admin pages with a Plex account. `enabled`, the allowed `admins` (each with an `id` and a `name`, at most 50), and a `clientId` Yagi creates and keeps for you. See [Security](security.md). |
 
 ## Notifications
 
@@ -102,7 +100,6 @@ Each channel has an `id` (made for you, and never changed), a `name`, and a `typ
 | `firmware` | on | A tuner has newer firmware. Once per release, kept across restarts in `<settings file name without .json>.notified.json`. It does nothing while `firmwareCheck` is off, so the page won't let you switch it on until the check is on (and the API refuses). |
 | `tuner` | on | A tuner has been unreachable for two minutes, and when it comes back. A reboot or a brief drop sends nothing. |
 | `viewer` | on | A viewer was turned away because they were at their limit or the tuners were taken. The same viewer and reason is reported at most every half hour. |
-| `enrolled` | on | Someone added themselves as a viewer with an invite, or opened it again to bring their address up to date. At most once a minute for one viewer. |
 | `watching` | **off** | A viewer was given a tuner: who, which channel when the request names one, and on which tuner. A viewer is reported at most once every half hour per tuner, so changing channels or a media server connecting again isn't a message each time. |
 | `unknown` | **off** | An address that isn't a viewer tried to use a tuner. A tuner port that can be reached from the internet is scanned all day, so each address is reported once a day, and at most six an hour in all. |
 

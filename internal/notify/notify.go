@@ -24,7 +24,7 @@ import (
 
 // Event is something to tell the owner.
 type Event struct {
-	// Kind is one of access.NotifyFirmware, NotifyTuner, NotifyViewer, NotifyUnknown, NotifyWatching, NotifyEnrolled.
+	// Kind is one of access.NotifyFirmware, NotifyTuner, NotifyViewer, NotifyUnknown, NotifyWatching.
 	Kind string
 	// Device is the tuner's name, when the event is about one.
 	Device  string
@@ -384,23 +384,6 @@ func (n *Notifier) Refused(device, title, viewer, reason string) {
 		Kind: access.NotifyViewer, Device: device, Title: viewer + " was refused a tuner",
 		Message: fmt.Sprintf("%s asked for a tuner on %s and %s.", viewer, title, why),
 	})
-}
-
-// Enrolled is a person who added themselves as a viewer with an invite, or brought their addresses up to date by
-// opening it again. It is on unless the owner switched it off, and one viewer is only reported once a minute.
-func (n *Notifier) Enrolled(viewer, account, server string, refreshed bool) {
-	if !n.settings().NotifyEnabled(access.NotifyEnrolled) || !n.allow("enrolled|"+viewer, time.Minute) {
-		return
-	}
-	ev := Event{
-		Kind: access.NotifyEnrolled, Title: viewer + " joined",
-		Message: fmt.Sprintf("%s signed in with Plex as %s and was added as a viewer. Their server %s is allowed.", viewer, account, server),
-	}
-	if refreshed {
-		ev.Title = viewer + " updated their address"
-		ev.Message = fmt.Sprintf("%s signed in with Plex as %s again, and the addresses of their server %s were brought up to date.", viewer, account, server)
-	}
-	n.Send(ev)
 }
 
 // Started is a viewer given a tuner. It is off unless the owner switched it on, and a viewer is only reported once

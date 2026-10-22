@@ -41,7 +41,7 @@ import (
 // the normal tests: it only builds with -tags demo.
 //
 // The tuner is an HDHomeRun FLEX 4K with one stream from a viewer (Alex)
-// through Yagi and one or two local devices, plus four made-up viewers (one who joined with an invite).
+// through Yagi and one or two local devices, plus three made-up viewers.
 // The address of the admin pages is written to $DEMO_DIR/addr.
 //
 // The channels are two with plain badges, not any network's marks, unless
@@ -462,15 +462,7 @@ func TestDemo(t *testing.T) {
 		{Name: "Alex", Addresses: []string{"127.0.0.1"}, Limit: 2},
 		{Name: "Sam", Addresses: []string{"100.64.0.9"}, Limit: 1},
 		{Name: "Jordan", Addresses: []string{"10.8.0.0/24"}, Limit: 1},
-		// Someone who joined with an invite: a made-up address and server, as for every viewer here.
-		{Name: "Riley", Addresses: []string{"203.0.113.40"}, Limit: 1, Plex: &access.ViewerPlex{AccountID: 4242, AccountName: "riley", ServerID: "demo-riley-server", ServerName: "Riley's Plex"}},
 	}
-	// Inviting is on, with one invite waiting and one that was used (by Riley).
-	s.Plex = &access.PlexSettings{Enabled: true, Enrollment: true}
-	_, waiting := access.NewInvite("Morgan", 1, nil, time.Now())
-	_, used := access.NewInvite("Riley", 1, nil, time.Now().Add(-2*24*time.Hour))
-	used.ViewerName = "Riley"
-	s.Invites = []access.Invite{used, waiting}
 	s.Labels = map[string]string{"antenna": "Living room antenna"}
 	dev := access.Device{Name: "antenna", Listen: ln.Addr().String(), Tuner: "demo", ID: "10ABCC87", StreamPort: sport}
 	s.Devices = []access.Device{dev}

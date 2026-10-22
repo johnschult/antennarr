@@ -23,12 +23,6 @@ type fakePlexTV struct {
 	calls   map[string]int
 	fail    bool // answer 500 to everything
 	seenIDs map[string]bool
-	// resources is what each token's account has, as plex.tv would send it, by token.
-	resources map[string][]map[string]any
-	// padResources makes the answer to /resources larger than any client should read.
-	padResources bool
-	// queries records the raw query of each request, to see that a token is never in a URL.
-	queries []string
 }
 
 type fakePin struct {
@@ -44,7 +38,7 @@ type fakeUser struct {
 
 func newFakePlexTV(t *testing.T) *fakePlexTV {
 	t.Helper()
-	f := &fakePlexTV{nextID: 1000, pins: map[int64]*fakePin{}, users: map[string]fakeUser{}, calls: map[string]int{}, seenIDs: map[string]bool{}, resources: map[string][]map[string]any{}}
+	f := &fakePlexTV{nextID: 1000, pins: map[int64]*fakePin{}, users: map[string]fakeUser{}, calls: map[string]int{}, seenIDs: map[string]bool{}}
 	f.Server = httptest.NewServer(http.HandlerFunc(f.serve))
 	t.Cleanup(f.Close)
 	return f
@@ -54,7 +48,6 @@ func (f *fakePlexTV) serve(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.calls[r.Method+" "+r.URL.Path]++
-	f.queries = append(f.queries, r.URL.RawQuery)
 	f.seenIDs[r.Header.Get("X-Plex-Client-Identifier")] = true
 	if r.Header.Get("Accept") != "application/json" || r.Header.Get("X-Plex-Product") != "Yagi" || r.Header.Get("X-Plex-Client-Identifier") == "" {
 		http.Error(w, "missing headers", http.StatusBadRequest)
@@ -95,49 +88,8 @@ func (f *fakePlexTV) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]any{"id": u.ID, "username": u.Username, "title": u.Title, "email": "secret@example.com"})
-	case r.Method == "GET" && r.URL.Path == "/api/v2/resources":
-		if q := r.URL.Query(); q.Get("includeHttps") != "1" || q.Get("includeRelay") != "0" {
-			http.Error(w, "want https connections and no relays", http.StatusBadRequest)
-			return
-		}
-		list, ok := f.resources[r.Header.Get("X-Plex-Token")]
-		if _, known := f.users[r.Header.Get("X-Plex-Token")]; !ok && !known {
-			http.Error(w, `{"errors":[{"code":1001,"message":"User could not be authenticated"}]}`, http.StatusUnauthorized)
-			return
-		}
-		if f.padResources {
-			list = append(list, map[string]any{"name": strings.Repeat("x", 2<<20), "provides": "server", "clientIdentifier": "pad"})
-		}
-		json.NewEncoder(w).Encode(list)
 	default:
 		http.NotFound(w, r)
-	}
-}
-
-// setResources gives a token's account these resources, and makes the token a known one.
-func (f *fakePlexTV) setResources(token string, list ...map[string]any) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.resources[token] = list
-	if _, ok := f.users[token]; !ok {
-		f.users[token] = fakeUser{ID: 99, Username: "someone"}
-	}
-}
-
-// server is a resource that is a Plex Media Server, shaped as plex.tv sends it: with its own access token and public
-// address as well, which Yagi must not pass on.
-func server(name, machineID string, owned bool, conns ...map[string]any) map[string]any {
-	return map[string]any{
-		"name": name, "product": "Plex Media Server", "clientIdentifier": machineID, "provides": "server", "owned": owned,
-		"accessToken": "server-access-token-" + machineID, "publicAddress": "203.0.113.50", "connections": conns,
-	}
-}
-
-// conn is one of a resource's connections.
-func conn(address string, port int, local, relay bool) map[string]any {
-	return map[string]any{
-		"protocol": "http", "address": address, "port": port, "local": local, "relay": relay, "IPv6": strings.Contains(address, ":"),
-		"uri": fmt.Sprintf("http://%s:%d", address, port),
 	}
 }
 
@@ -161,12 +113,6 @@ func (f *fakePlexTV) count(call string) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.calls[call]
-}
-func (f *fakePlexTV) setPad(b bool) { f.mu.Lock(); f.padResources = b; f.mu.Unlock() }
-func (f *fakePlexTV) rawQueries() []string {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return append([]string(nil), f.queries...)
 }
 func (f *fakePlexTV) setFail(b bool) { f.mu.Lock(); f.fail = b; f.mu.Unlock() }
 func (f *fakePlexTV) ids() map[string]bool {

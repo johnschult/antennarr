@@ -130,41 +130,6 @@ export interface Viewer {
   lastSeen: string | null
   /** Addresses in this viewer's list that are on the public internet. Yagi serves private networks only, so these can never connect. */
   publicAddresses?: string[]
-  /** Set on a viewer who enrolled through an invite: who signed in with Plex, and the server their addresses came from. */
-  plex?: ViewerPlex
-}
-
-export interface ViewerPlex {
-  accountId: number
-  accountName: string
-  serverId: string
-  serverName: string
-}
-
-/**
- * A link sent to a person so they can add themselves as a viewer by signing in with Plex. The link itself is shown
- * once, when it is made, and never again.
- */
-export interface Invite {
-  id: string
-  name: string
-  limit: number
-  limits?: Record<string, number>
-  created: string
-  expires: string
-  /** Someone has enrolled with it; `viewer` is the viewer that made. */
-  used: boolean
-  viewer?: string
-  /** An unused invite whose time ran out. */
-  expired: boolean
-}
-
-/** What making an invite answers with: the invite, and the only look at its link. */
-export interface InviteCreated extends Invite {
-  /** The link without a host. */
-  path: string
-  /** The link as the admin page was reached. */
-  url: string
 }
 
 /** A Plex account that may sign in to the admin pages. */
@@ -176,8 +141,6 @@ export interface PlexAccount {
 export interface PlexSettings {
   enabled: boolean
   admins: PlexAccount[]
-  /** People may add themselves as viewers with an invite link. Needs `enabled` too. */
-  enrollment: boolean
 }
 
 /** Who this browser is, as far as signing in goes. Public: it is how the page knows whether to offer sign-in. */
@@ -216,7 +179,7 @@ export interface NotifyChannel {
   hasUser: boolean
 }
 
-export type NotifyEvent = 'firmware' | 'tuner' | 'viewer' | 'unknown' | 'watching' | 'enrolled'
+export type NotifyEvent = 'firmware' | 'tuner' | 'viewer' | 'unknown' | 'watching'
 export type NotifyEvents = Record<NotifyEvent, boolean>
 
 export interface Notifications {
@@ -344,7 +307,6 @@ export interface AppState {
   time: string
   devices: DeviceState[]
   viewers: Viewer[]
-  invites: Invite[]
   settings: Settings
   editable: boolean
   /** The built-in Tailscale node. Absent from an older server. */
@@ -384,13 +346,6 @@ export interface ViewerInput {
   limits?: Record<string, number>
 }
 
-/** What is sent to make an invite. */
-export interface InviteInput {
-  name: string
-  limit: number
-  limits?: Record<string, number>
-}
-
 export interface SettingsPatch {
   sharedCap?: number
   ownerReserve?: number
@@ -400,7 +355,6 @@ export interface SettingsPatch {
   history?: boolean
   logLevel?: LogLevel
   plexEnabled?: boolean
-  plexEnrollment?: boolean
   tailscaleEnabled?: boolean
   /** The name on the tailnet; an empty string means the default. */
   tailscaleHostname?: string

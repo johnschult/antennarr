@@ -28,8 +28,6 @@ Below the tiles are your viewers, who is watching, and a timeline of events (a s
 
 Who may use the tuner, from which addresses, and how many tuners each gets at once. **Add viewer** walks through three steps (who, how their server reaches yours, and what to do in their media server); **Connection steps** on a row reopens it. See [Getting started](getting-started.md#4-add-a-viewer).
 
-**Invite with Plex** is the other way in, for a viewer who uses Plex. It appears only once you have turned on *Invite viewers with Plex* in *Settings → Plex*: instead of collecting their addresses, you send them a link. They open it, sign in with Plex and pick their Plex server, and Yagi allows that server's internet address with the limit you set. The link is shown once, with a Copy button and a choice of the address they will open it at; the *Invites* list under the viewers shows each one as waiting, joined or expired, and **Revoke** ends one. A viewer who came this way has a Plex line under their name, and if their address changes they open the same link again. See [Invite links](security.md#invite-links) for what it does and doesn't prove.
-
 ## Tuners
 
 <img src="screenshots/tuners.jpg" alt="A tuner's page, on its Overview: how it is now, what is on each of its tuners, a line about its firmware and its details, with Overview, Channels, Device, Firmware and Settings tabs" width="900">

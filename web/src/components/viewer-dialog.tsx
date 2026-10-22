@@ -63,14 +63,6 @@ function ViewerForm({ viewer, devices, onDone }: { viewer?: Viewer; devices: Dev
         </DialogDescription>
       </DialogHeader>
 
-      {viewer?.plex && (
-        <p className="rounded-lg border border-border bg-muted/50 p-3 text-xs text-muted-foreground">
-          Joined through an invite, as Plex account <strong>{viewer.plex.accountName}</strong> with the server{' '}
-          <strong>{viewer.plex.serverName}</strong>. If they open their invite link again, the addresses below are replaced with that server's
-          current ones.
-        </p>
-      )}
-
       <ViewerFields f={fields} devices={devices} />
 
       {error && (

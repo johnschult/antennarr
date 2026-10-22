@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { duration, firmwareDate, formatMbps, isNever, parseAddresses, timeAgo, timeUntil } from './format'
+import { duration, firmwareDate, formatMbps, isNever, parseAddresses, timeAgo } from './format'
 
 const now = new Date('2026-10-17T12:00:00Z')
 
@@ -55,18 +55,6 @@ describe('firmwareDate', () => {
     expect(firmwareDate('20261340')).toBe('20261340') // month 13
     expect(firmwareDate('')).toBe('unknown')
     expect(firmwareDate(undefined)).toBe('unknown')
-  })
-})
-
-describe('timeUntil', () => {
-  const now = new Date('2026-10-22T12:00:00Z')
-  it('says how long until a moment, and now once it has gone by', () => {
-    expect(timeUntil('2026-10-22T11:00:00Z', now)).toBe('now')
-    expect(timeUntil('2026-10-22T12:00:00Z', now)).toBe('now')
-    expect(timeUntil('2026-10-22T12:12:00Z', now)).toBe('in 12m')
-    expect(timeUntil('2026-10-22T17:30:00Z', now)).toBe('in 5h')
-    expect(timeUntil('2026-10-23T13:00:00Z', now)).toBe('in 1 day')
-    expect(timeUntil('2026-10-29T12:00:00Z', now)).toBe('in 7 days')
   })
 })
 

@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { EditRow } from '@/components/settings/edit-row'
 import { NotificationRows } from '@/components/settings/notification-rows'
 import { PlexRows } from '@/components/settings/plex-rows'
-import { PlexIcon } from '@/components/plex-button'
 import { TailscaleIcon } from '@/components/tailscale-icon'
 import { TailscaleRows } from '@/components/settings/tailscale-rows'
 import { Row, Section } from '@/components/settings/section'
@@ -24,7 +23,6 @@ import { LogsPanel } from '@/pages/logs'
 const wholeNumber = (text: string) =>
   text.trim() === '' || !Number.isInteger(Number(text)) || Number(text) < 0 ? 'Enter a whole number, 0 or more.' : null
 
-const PlexSectionIcon = ({ className }: { className?: string }) => <PlexIcon className={className} />
 const TailscaleSectionIcon = ({ className }: { className?: string }) => <TailscaleIcon className={className} />
 
 export function SettingsPage() {
@@ -108,8 +106,6 @@ export function SettingsPage() {
               disabled={!editable}
               onSave={(text) => update.mutateAsync({ admin: parseAddresses(text) })}
             />
-          </Section>
-          <Section title="Plex" icon={PlexSectionIcon} description="Two things Yagi can do with a Plex account, each on its own: let you open this page by signing in with Plex, and let people join as viewers through an invite link.">
             <PlexRows />
           </Section>
           <Section title="Tailscale" icon={TailscaleSectionIcon} description="Yagi can join your tailnet by itself, with no Tailscale on this machine, so the people you share it with reach the admin page and tuners by name, without opening ports.">

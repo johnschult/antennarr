@@ -19,7 +19,7 @@ export default defineConfig({
     emptyOutDir: false,
   },
   // The release notes are CHANGELOG.md at the repository root, bundled into the page (see use-whats-new.ts).
-  server: { fs: { allow: ['..'] }, proxy: { '/api': backend, '/auth': backend, '/streams': backend, '/invite': backend } },
+  server: { fs: { allow: ['..'] }, proxy: { '/api': backend, '/auth': backend, '/streams': backend } },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

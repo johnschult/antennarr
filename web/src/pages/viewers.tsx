@@ -3,11 +3,6 @@ import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Banner } from '@/components/banners'
 import { DeleteViewerDialog } from '@/components/delete-viewer-dialog'
-import { InviteDialog } from '@/components/invite-dialog'
-import { InvitesList } from '@/components/invites-list'
-import { PlexIcon } from '@/components/plex-button'
-import { PlexViewerNote } from '@/components/plex-viewer-note'
-import { RevokeInviteDialog } from '@/components/revoke-invite-dialog'
 import { ViewerDialog } from '@/components/viewer-dialog'
 import { ViewerWizard } from '@/components/viewer-wizard/viewer-wizard'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +13,7 @@ import { useIsPhone } from '@/hooks/use-media-query'
 import { timeAgo } from '@/lib/format'
 import { deviceTitle } from '@/lib/device'
 import { limitFor } from '@/lib/slots'
-import type { DeviceState, Invite, Viewer } from '@/lib/types'
+import type { DeviceState, Viewer } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /** How many of a viewer's tuners are in use, per device, as antennas and a count. */
@@ -99,9 +94,7 @@ function RowActions({
 
 export function ViewersPage() {
   const { state } = useApp()
-  const { viewers, devices, editable, invites } = state
-  // Inviting is a Plex thing with its own switch in Settings → Plex, and is not offered at all until that is on.
-  const canInvite = state.settings.plex.enrollment
+  const { viewers, devices, editable } = state
   // A viewer's name goes to their page (what they watched and how much data it was) while the history is kept.
   const nameOf = (v: Viewer) =>
     state.settings.history ? (
@@ -116,8 +109,6 @@ export function ViewersPage() {
   const [editing, setEditing] = useState<Viewer | undefined>()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [removing, setRemoving] = useState<Viewer | null>(null)
-  const [inviting, setInviting] = useState(false)
-  const [revoking, setRevoking] = useState<Invite | null>(null)
   // The add-viewer wizard, or the connection steps for one viewer. A link with ?add opens it.
   const [wizard, setWizard] = useState<{ viewer?: Viewer } | null>(() => (params.has('add') && editable ? {} : null))
 
@@ -138,22 +129,16 @@ export function ViewersPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+      <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Viewers</h1>
           <p className="mt-1 text-sm text-muted-foreground">Who can use your tuner, from where, and how many tuners each gets.</p>
         </div>
-        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
-          {canInvite && (
-            <Button variant="outline" onClick={() => setInviting(true)} disabled={!editable}>
-              <PlexIcon className="size-5" /> Invite with Plex
-            </Button>
-          )}
-          <Button onClick={openAdd} disabled={!editable}>
-            <Plus /> Add viewer
-          </Button>
-        </div>
+        <Button onClick={openAdd} disabled={!editable}>
+          <Plus /> Add viewer
+        </Button>
       </div>
+
       {viewers.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
           <p className="font-medium">No viewers yet</p>
@@ -172,7 +157,6 @@ export function ViewersPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate font-medium">{nameOf(v)}</div>
-                    {v.plex && <PlexViewerNote plex={v.plex} />}
                     <PublicNote v={v} />
                     <div className="mt-0.5 font-mono text-xs break-all text-muted-foreground">{v.addresses.join(', ')}</div>
                   </div>
@@ -204,8 +188,7 @@ export function ViewersPage() {
                   <TableRow key={v.name}>
                     <TableCell className="pl-4 font-medium">
                       {nameOf(v)}
-                      {v.plex && <PlexViewerNote plex={v.plex} />}
-                      <PublicNote v={v} />
+                        <PublicNote v={v} />
                     </TableCell>
                     <TableCell className="font-mono text-xs">{v.addresses.join(', ')}</TableCell>
                     <TableCell>
@@ -225,15 +208,11 @@ export function ViewersPage() {
         )
       )}
 
-      <InvitesList invites={invites} editable={editable} onRevoke={setRevoking} />
-
       <Banner tone="blue" icon={<Info aria-hidden className="size-4" />} dismissKey="viewer-limit">
         <strong>Over a viewer's limit?</strong> Yagi answers with a 503, the same as a busy tuner does, so media servers handle it cleanly.
       </Banner>
 
       <ViewerWizard open={wizard !== null} onOpenChange={(open) => !open && setWizard(null)} devices={devices} viewer={wizard?.viewer} />
-      <InviteDialog open={inviting} onOpenChange={setInviting} devices={devices} />
-      <RevokeInviteDialog invite={revoking} onClose={() => setRevoking(null)} />
       <ViewerDialog open={dialogOpen} onOpenChange={setDialogOpen} viewer={editing} devices={devices} />
       <DeleteViewerDialog viewer={removing} isLast={viewers.length === 1} onClose={() => setRemoving(null)} />
     </div>

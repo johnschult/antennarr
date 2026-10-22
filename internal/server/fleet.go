@@ -13,7 +13,6 @@ import (
 	"github.com/johnschult/yagi/internal/access"
 	"github.com/johnschult/yagi/internal/api"
 	"github.com/johnschult/yagi/internal/claim"
-	"github.com/johnschult/yagi/internal/enroll"
 )
 
 // adminName is the key in Config.Listeners for the listener that serves the
@@ -358,7 +357,6 @@ func (s *Server) adminMux() http.Handler {
 	mux.Handle("/", s.admin) // the pages, their API, and everything else a browser asks this port for
 	mux.Handle("/auth/", s.plex.Handler())
 	mux.Handle(claim.Path, s.claim.Handler())
-	mux.Handle(enroll.Path, s.enroll.Handler())
 	mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
 	mux.HandleFunc("GET "+renamedPrefix, redirectRenamed)
 	return mux

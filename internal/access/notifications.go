@@ -24,7 +24,6 @@ const (
 	NotifyViewer   = "viewer"   // a viewer was refused: at its limit, or over a cap
 	NotifyUnknown  = "unknown"  // an address that isn't a viewer tried to connect
 	NotifyWatching = "watching" // a viewer started watching
-	NotifyEnrolled = "enrolled" // someone enrolled as a viewer with an invite, or brought their addresses up to date
 )
 
 const (
@@ -58,7 +57,7 @@ type NotifyChannel struct {
 }
 
 // NotifyEvents says which kinds of event are sent. An unset one takes its default:
-// firmware, tuner, viewer and enrolled are on, and unknown addresses are off, since a tuner
+// firmware, tuner and viewer are on, and unknown addresses are off, since a tuner
 // port that faces the internet is scanned all day. A viewer starting to watch is off too: it is only wanted by
 // someone who wants to know each time.
 type NotifyEvents struct {
@@ -67,7 +66,6 @@ type NotifyEvents struct {
 	Viewer   *bool `json:"viewer,omitempty"`
 	Unknown  *bool `json:"unknown,omitempty"`
 	Watching *bool `json:"watching,omitempty"`
-	Enrolled *bool `json:"enrolled,omitempty"`
 }
 
 // Notifications is the optional "tell me about it" settings. With no channels
@@ -108,8 +106,6 @@ func (s Settings) NotifyEnabled(kind string) bool {
 		return pick(ev.Unknown, false)
 	case NotifyWatching:
 		return pick(ev.Watching, false)
-	case NotifyEnrolled:
-		return pick(ev.Enrolled, true)
 	}
 	return false
 }
@@ -132,7 +128,7 @@ func (n *Notifications) clone() *Notifications {
 	}
 	out := *n
 	out.Channels = append([]NotifyChannel(nil), n.Channels...)
-	out.Events = NotifyEvents{Firmware: cloneBool(n.Events.Firmware), Tuner: cloneBool(n.Events.Tuner), Viewer: cloneBool(n.Events.Viewer), Unknown: cloneBool(n.Events.Unknown), Watching: cloneBool(n.Events.Watching), Enrolled: cloneBool(n.Events.Enrolled)}
+	out.Events = NotifyEvents{Firmware: cloneBool(n.Events.Firmware), Tuner: cloneBool(n.Events.Tuner), Viewer: cloneBool(n.Events.Viewer), Unknown: cloneBool(n.Events.Unknown), Watching: cloneBool(n.Events.Watching)}
 	return &out
 }
 

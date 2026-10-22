@@ -94,8 +94,6 @@ A *viewer* is a person or a server you share the tuner with. Open **Viewers → 
 - **Addresses:** the address their media server will connect *from*, as your Yagi sees it. Single addresses (`100.64.0.7`) or ranges (`10.8.0.0/24`). On Tailscale it is the viewer machine's Tailscale address. [Networking](networking.md) explains how to find it.
 - **Tuners:** how many tuners they may use at once.
 
-**Or send an invite instead.** If the viewer uses Plex, you don't need their addresses. Turn on *Invite viewers with Plex* in *Settings → Plex* (it is separate from *Sign in with Plex*, and needs nothing else), then use **Viewers → Invite with Plex** (the button appears once that is on): give them a name and a tuner limit, and copy the link it shows (once) to send them. They open it, sign in with Plex, pick their Plex server, and are added. The last page tells them what to do in Plex, and the invite shows as *Joined* on your Viewers page. If their internet address changes, they open the same link again to update it. It verifies who owns the server, not which Plex user is watching: see [Security](security.md#invite-links). Viewers on Jellyfin or Emby are added by address, as above.
-
 Only listed viewers can use the tuner, and only loopback (this machine), the addresses under `admin` in the settings, and signed-in Plex accounts can open the admin pages.
 If you lose access to the web page, you can always get back in by one of these:
 

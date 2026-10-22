@@ -41,8 +41,12 @@ with sync_playwright() as p:
     browser = p.chromium.launch()
 
     def context(scheme, width=1280, height=834, scale=1.25, phone=False):
-        return browser.new_context(viewport={'width': width, 'height': height}, device_scale_factor=scale,
-                                   color_scheme=scheme, is_mobile=phone, has_touch=phone)
+        ctx = browser.new_context(viewport={'width': width, 'height': height}, device_scale_factor=scale,
+                                  color_scheme=scheme, is_mobile=phone, has_touch=phone)
+        # The demo has no Plex sign-in, so the page offers a notice about the address being the way in. It can be
+        # closed, and a person would have: the pictures are of the pages, not of that notice.
+        ctx.add_init_script("try { localStorage.setItem('yagi.dismissedNotices', 'admin-address') } catch (e) {}")
+        return ctx
 
     def open_page(ctx, path, wait_for):
         page = ctx.new_page()
@@ -66,7 +70,7 @@ with sync_playwright() as p:
     page = open_page(ctx, '/viewers', 'table')
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
-    shot(page, 'viewers', clip={'x': 0, 'y': 0, 'width': 1280, 'height': 600})
+    shot(page, 'viewers', clip={'x': 0, 'y': 0, 'width': 1280, 'height': 418})
     ctx.close()
 
     ctx = context('dark')

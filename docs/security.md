@@ -63,7 +63,6 @@ Only your tuners, plus these. Each can be switched off or left unset, and Yagi c
 | Firmware file | `download.silicondust.com` | only when an admin presses Install | Nothing about you or your tuners. |
 | Program guide, channel logos and program pictures | `api.hdhomerun.com`, `img.hdhomerun.com` | every 6 hours | Your tuner's guide key (its `DeviceAuth`), which is how SiliconDust knows which channels to list. |
 | Sign in with Plex | `plex.tv` | when someone signs in | The sign-in request. |
-| Enrolling with an invite | `plex.tv` | when a person signs in on an invite link | The sign-in request, and then the person's Plex token, once, to ask who signed in and which servers they have. The token is not kept. |
 | Notifications | the ntfy server, `api.pushover.net`, or the webhook address **you** set up | when something you switched on happens, and when you press Test | A short message: a title and a sentence naming a tuner, a viewer or an address, for example `Mom was refused a tuner`, `192.0.2.9 tried to use Living room`, or `Living room is offline`. Nothing is sent, and nothing is contacted, until you add a channel. |
 
 
@@ -72,18 +71,6 @@ The tokens, user keys and webhook addresses are saved in the settings file (read
 
 The guide key stays on the server: it isn't in the admin API's output or the logs, and error messages from fetching the guide have it stripped out.
 One thing to know: `discover.json` passes the tuner's own `DeviceAuth` through to viewers, the same as the tuner would to anyone on its network. It lets someone fetch that tuner's guide data from SiliconDust, which is low risk, but it is there.
-
-## Invite links
-
-An invite is a link the owner sends so a person can add themselves as a viewer. They open it, sign in with Plex, pick one of the Plex servers they own, and Yagi allows that server's public internet address with the tuner limit the invite carries. It is off until you turn on *Invite viewers with Plex* in *Settings → Plex*, which is separate from signing in to the admin pages with Plex.
-
-- **The link is a password.** It carries a random 256-bit token, shown once when the invite is made. Only a hash of it is saved, so the settings file can't be used to enroll anyone. A wrong, expired or revoked link, and a link while enrollment is off, are all the same plain `404`, and wrong links from one address are limited to five every ten minutes.
-- **It expires.** An invite nobody has used stops working after seven days. Once used it keeps working until you revoke it, because opening it again is how a person brings their address up to date when their internet address changes; the account that enrolled is the only one that can.
-- **The browser never supplies an address.** Yagi asks plex.tv which servers the account **owns**, and offers only those with a public internet address: not a server that is only shared with them, not a relay, not a private or Tailscale address. What the person picks is a server; the addresses come from plex.tv. An address that another viewer already covers is refused, with a message that doesn't say who.
-- **The Plex token is used once.** It is held only while two questions go to plex.tv (who is this, and what servers do they have) and is in no log, file or reply. The sign-in is its own: the page that does it can't sign anyone in to the admin pages or add an admin, and the admin sign-in can't finish one of these.
-- **The page is public.** It is on the admin port, so it is reachable wherever you already let people reach that port (the *Tailnet only* switch still applies). It is plain HTML with no scripts and a content security policy that allows nothing else.
-
-**What this does and doesn't tell you.** Plex does not authenticate the streams a server fetches from a tuner, so this verifies who **owns** the server, not which Plex user is watching. And an address is shared by everything behind it: if a person's server is behind a connection that other people also use, all of them are allowed with it.
 
 ## What is checked automatically
 
