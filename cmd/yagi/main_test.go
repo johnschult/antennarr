@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"log/slog"
 	"os"
@@ -154,5 +155,28 @@ func TestBrokenSettingsFileIsNotOverwritten(t *testing.T) {
 	b, _ := os.ReadFile(path)
 	if string(b) != `{"viewrs": []}` {
 		t.Errorf("the broken file was overwritten: %s", b)
+	}
+}
+
+func TestDeprecatedFlagsSayWhatToDoInstead(t *testing.T) {
+	var out bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&out, nil))
+
+	warnDeprecated(log, map[string]bool{"tuner": true, "config": true, "poll": true})
+	if out.Len() != 0 {
+		t.Errorf("the flags that stay were warned about: %s", out.String())
+	}
+
+	warnDeprecated(log, map[string]bool{"listen": true, "tuner-id": true, "stream-port": true, "advertise": true, "report-id": true})
+	for _, name := range []string{"-listen", "-tuner-id", "-stream-port", "-advertise", "-report-id"} {
+		if !strings.Contains(out.String(), name+" is deprecated") {
+			t.Errorf("%s: no warning in %s", name, out.String())
+		}
+	}
+	if got := strings.Count(out.String(), "level=WARN"); got != 5 {
+		t.Errorf("%d warnings, want one for each of the five", got)
+	}
+	if !strings.Contains(out.String(), `\"streamPort\"`) || !strings.Contains(out.String(), "admin page") {
+		t.Errorf("the warnings don't say what to do instead: %s", out.String())
 	}
 }

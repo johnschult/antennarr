@@ -246,6 +246,7 @@ The question was whether a tuner Yagi can see should have to be *added* by hand,
 - **Each found tuner comes with a name filled in** from what it calls itself (`HDHomeRun FLEX 4K`) and an address name from its model and the end of its DeviceID (`flex-4k-87`), both editable, and one **Add**, or **Add all** (each still shown with its name first). Existing names are never changed.
 - **Docker without host networking** can't see the broadcast: the page says so, with the address field at hand, and `YAGI_TUNER` is read like `-tuner` for an install nobody opens a page on.
 - **Unattended starts are unchanged:** `-tuner`, `YAGI_TUNER` or `devices` in the settings file still use the tuner with no questions, and a settings file with tuners in it never looks.
+- **One way to say where a tuner is on the command line.** `-tuner` (and `YAGI_TUNER`) stay, as a seed for a start with no settings to write. The flags that described a device any further (`-listen`, `-tuner-id`, `-stream-port`, `-advertise`, `-report-id`) are deprecated: the admin page adds a tuner, learns its DeviceID and moves its port, and the settings file holds the rest, so a flag for each was a fourth place to say the same thing. They still work and log a warning (`deprecatedFlags` in `cmd/yagi/main.go`), to be removed in a later release.
 
 **Not done:** an *Ignore* for a tuner that keeps being found and is not yours, and leaving the name out of the page address when there is a single tuner (`/tuners/channels`).
 
