@@ -128,6 +128,8 @@ export interface Viewer {
   inUse: number
   inUseByDevice: Record<string, number>
   lastSeen: string | null
+  /** Addresses in this viewer's list that are on the public internet. Yagi serves private networks only, so these can never connect. */
+  publicAddresses?: string[]
   /** Set on a viewer who enrolled through an invite: who signed in with Plex, and the server their addresses came from. */
   plex?: ViewerPlex
 }

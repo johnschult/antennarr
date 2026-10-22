@@ -22,7 +22,10 @@ export function ViewerFields({ f, devices }: { f: ViewerFieldsState; devices: De
           className="font-mono"
           rows={3}
         />
-        <p className="text-xs text-muted-foreground">One per line: a single IP, or a range like 10.8.0.0/24.</p>
+        <p className="text-xs text-muted-foreground">
+          One per line: a single IP, or a range like 10.8.0.0/24. Yagi serves private networks only (your network, a VPN, Tailscale), so these are the
+          addresses it sees from there, never public internet ones.
+        </p>
       </div>
       <LimitFields f={f} devices={devices} />
     </>

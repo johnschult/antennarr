@@ -496,6 +496,9 @@ type ViewerStatus struct {
 	InUse         int            `json:"inUse"`         // across all devices
 	InUseByDevice map[string]int `json:"inUseByDevice"` // only devices they're using
 	LastSeen      *time.Time     `json:"lastSeen"`      // nil: never been in contact
+	// PublicAddresses are addresses in the viewer's list that are on the public internet. Yagi serves private
+	// networks only, so these can never connect. Absent when there are none.
+	PublicAddresses []string `json:"publicAddresses,omitempty"`
 }
 
 // ViewerStatuses lists the configured viewers with live information.
@@ -504,7 +507,7 @@ func (p *Policy) ViewerStatuses() []ViewerStatus {
 	defer p.mu.Unlock()
 	out := make([]ViewerStatus, 0, len(p.cfg.viewers))
 	for _, v := range p.cfg.viewers {
-		vs := ViewerStatus{Viewer: v.clone(), InUseByDevice: map[string]int{}}
+		vs := ViewerStatus{Viewer: v.clone(), InUseByDevice: map[string]int{}, PublicAddresses: PublicEntries(v.Addresses)}
 		for _, a := range p.active {
 			if a.Viewer == v.Name {
 				vs.InUse++

@@ -35,7 +35,7 @@ Bodies are limited to 64 KB, and a field the endpoint doesn't know is an error. 
 | `GET state` | Everything the web page shows, in one document (below). |
 | `GET events` | The same document, pushed as a server-sent event (`event: state`) each time something changes, with a comment line every 20 seconds to keep the connection open. |
 | `GET viewers` | The viewers, with their current use and when they were last seen. |
-| `POST viewers` | Add a viewer: `{"name": "Mom", "addresses": ["100.64.0.7"], "limit": 1}`, and optionally `"limits": {"device": 2}`. Replies `201` with the viewer. |
+| `POST viewers` | Add a viewer (`400` if an address is a public internet address: Yagi serves private networks only): `{"name": "Mom", "addresses": ["100.64.0.7"], "limit": 1}`, and optionally `"limits": {"device": 2}`. Replies `201` with the viewer. |
 | `PUT viewers/{name}` | Replace a viewer (the same body). |
 | `DELETE viewers/{name}` | Remove a viewer, `204`. Removing the last viewer leaves nobody able to use the tuner. The `mode` in the settings is then `no-viewers`. |
 | `GET invites` | The invites, without their links: `[{"id", "name", "limit", "limits", "created", "expires", "used", "viewer", "expired"}]`. |

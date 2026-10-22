@@ -125,6 +125,7 @@ type Server struct {
 	policy       *access.Policy
 	store        *access.Store
 	hub          *live.Hub
+	nets         localNets   // the networks this machine is on, to tell a public source from one of our own
 	lan          lanConns    // connections from outside the machine, so they can be cut when the LAN closes
 	lanWasClosed atomic.Bool // the LAN was closed when enforceLAN last looked
 	firmware     *firmware.Checker
@@ -193,7 +194,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		cfg: cfg, log: cfg.Log, policy: policy, hub: live.NewHub(), announced: map[string]string{},
+		cfg: cfg, log: cfg.Log, policy: policy, hub: live.NewHub(), announced: map[string]string{}, nets: localNets{read: interfaceNets},
 		fromFlags: len(cfg.Settings.Devices) == 0 && len(cfg.Devices) > 0,
 	}
 	s.firmware = firmware.NewChecker(firmware.Config{

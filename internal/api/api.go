@@ -480,12 +480,25 @@ func indexOf(vs []access.Viewer, name string) int {
 	return -1
 }
 
+// refusePublic is the error for an address list that names a public internet address. Yagi serves private networks
+// only (this network, a VPN, Tailscale), so one could never connect.
+func refusePublic(entries []string) error {
+	if pub := access.PublicEntries(entries); len(pub) > 0 {
+		return &httpErr{http.StatusBadRequest, fmt.Sprintf("%s is a public internet address. Yagi serves private networks only: put the viewer on Tailscale or a VPN, and list the address Yagi sees from there", pub[0])}
+	}
+	return nil
+}
+
 func (a *API) addViewer(w http.ResponseWriter, r *http.Request) {
 	var in viewerInput
 	if !decode(w, r, &in) {
 		return
 	}
 	v := in.viewer()
+	if err := refusePublic(v.Addresses); err != nil {
+		a.fail(w, err)
+		return
+	}
 	_, err := a.Store.Edit(func(s *access.Settings) error {
 		if indexOf(s.Viewers, v.Name) >= 0 {
 			return &httpErr{http.StatusConflict, fmt.Sprintf("viewer %q already exists", v.Name)}
@@ -508,6 +521,10 @@ func (a *API) replaceViewer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := in.viewer()
+	if err := refusePublic(v.Addresses); err != nil {
+		a.fail(w, err)
+		return
+	}
 	_, err := a.Store.Edit(func(s *access.Settings) error {
 		i := indexOf(s.Viewers, name)
 		if i < 0 {
@@ -609,6 +626,9 @@ func (a *API) patchSettings(w http.ResponseWriter, r *http.Request) {
 			s.OwnerReserve = *in.OwnerReserve
 		}
 		if in.Admin != nil {
+			if err := refusePublic(*in.Admin); err != nil {
+				return err
+			}
 			s.Admin = *in.Admin
 		}
 		if in.FirmwareCheck != nil {

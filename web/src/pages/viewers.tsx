@@ -1,4 +1,4 @@
-import { Cable, Info, Pencil, Plus, RadioReceiver, Trash2 } from 'lucide-react'
+import { Cable, Info, Pencil, Plus, RadioReceiver, Trash2, TriangleAlert } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { Banner } from '@/components/banners'
@@ -44,6 +44,20 @@ function Usage({ v, devices }: { v: Viewer; devices: DeviceState[] }) {
         )
       })}
     </div>
+  )
+}
+
+/** A viewer who lists an address on the public internet: Yagi serves private networks only, so it can never connect. */
+function PublicNote({ v }: { v: Viewer }) {
+  if (!v.publicAddresses?.length) return null
+  return (
+    <p className="mt-1 flex items-start gap-1.5 text-xs font-normal text-amber-700 dark:text-amber-300">
+      <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+      <span>
+        Can't connect from {v.publicAddresses.join(', ')}: that is a public internet address, and Yagi serves private networks only. Put them on Tailscale or a VPN and list the
+        address Yagi sees from there.
+      </span>
+    </p>
   )
 }
 
@@ -159,6 +173,7 @@ export function ViewersPage() {
                   <div className="min-w-0">
                     <div className="truncate font-medium">{nameOf(v)}</div>
                     {v.plex && <PlexViewerNote plex={v.plex} />}
+                    <PublicNote v={v} />
                     <div className="mt-0.5 font-mono text-xs break-all text-muted-foreground">{v.addresses.join(', ')}</div>
                   </div>
                   <div className="-mt-1 -mr-2 flex shrink-0">
@@ -190,6 +205,7 @@ export function ViewersPage() {
                     <TableCell className="pl-4 font-medium">
                       {nameOf(v)}
                       {v.plex && <PlexViewerNote plex={v.plex} />}
+                      <PublicNote v={v} />
                     </TableCell>
                     <TableCell className="font-mono text-xs">{v.addresses.join(', ')}</TableCell>
                     <TableCell>

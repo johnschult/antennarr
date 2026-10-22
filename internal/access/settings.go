@@ -654,7 +654,7 @@ func (p parsed) warnings() []string {
 			}
 		}
 	}
-	return out
+	return append(out, p.publicWarnings()...)
 }
 
 // Validate reports the first problem with the settings, if any.

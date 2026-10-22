@@ -16,9 +16,9 @@ A viewer is not an admin: being allowed to watch doesn't let you change anything
 
 If a media server needs a tuner page that isn't on the list, Yagi logs `path not served` with the path. Please open an issue with that line.
 
-## Keep it off the open internet
+## Private networks only
 
-Use Tailscale, a VPN or a private network ([Networking](networking.md)). If you must expose the port, list only the viewer's public address in Yagi *and* in your firewall.
+Yagi serves this machine, your own network, a VPN and Tailscale, and nothing else. A connection from a public internet address is dropped as it arrives, before any HTTP is read, with one line a minute in the log (`refused a connection from a public internet address`). A viewer's or admin's list can't hold a public address either. There is no switch to change that, so a port forwarded by mistake shows scanners nothing, and sharing a tuner stays between people you trust enough to put on your network ([Networking](networking.md)). A source on a network the machine is directly connected to counts as local even when its address looks public (a LAN on global IPv6).
 Yagi speaks plain HTTP: it has no TLS of its own, so anything sent to it can be read by anyone on the path. On Tailscale or a VPN the traffic is already encrypted. The one exception is the `-tailscale` image, which can also serve the admin pages over HTTPS at its tailnet name, with a certificate from Tailscale ([Built-in Tailscale](tailscale.md#https-for-the-admin-page)); that name then appears in a public certificate log.
 
 If you put Yagi **behind a reverse proxy**, every request looks like it came from the proxy's address, so the allowlist and admin-by-address can't tell people apart. Either don't proxy the tuner side, or make sure the proxy is the only thing that can reach it and handle access there.

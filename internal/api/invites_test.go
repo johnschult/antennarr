@@ -139,13 +139,13 @@ func TestAnEnrolledViewerKeepsWhereItCameFromWhenTheOwnerEditsIt(t *testing.T) {
 	s := invitesOn()
 	_, inv := access.NewInvite("Dad", 2, nil, t0)
 	inv.ViewerName = "Dad"
-	s.Viewers = append(s.Viewers, access.Viewer{Name: "Dad", Addresses: []string{"203.0.113.50"}, Limit: 2,
+	s.Viewers = append(s.Viewers, access.Viewer{Name: "Dad", Addresses: []string{"10.8.0.50"}, Limit: 2,
 		Plex: &access.ViewerPlex{AccountID: 9, AccountName: "dad", ServerID: "mid-dad", ServerName: "Dad's"}})
 	s.Invites = []access.Invite{inv}
 	e := newEnv(t, s, true)
 
 	// The owner changes the limit and renames him; he is still the viewer his invite made.
-	code, v := e.call(t, "PUT", "/api/viewers/Dad", `{"name":"Father","addresses":["203.0.113.50"],"limit":3}`)
+	code, v := e.call(t, "PUT", "/api/viewers/Dad", `{"name":"Father","addresses":["10.8.0.50"],"limit":3}`)
 	if code != 200 {
 		t.Fatalf("edit = %d %v", code, v)
 	}
@@ -173,7 +173,7 @@ func TestRemovingAViewerKeepsInvitesThatAreNotTheirs(t *testing.T) {
 	_, unused := access.NewInvite("Nobody yet", 1, nil, t0)
 	_, other := access.NewInvite("Dad", 1, nil, t0)
 	other.ViewerName = "Dad"
-	s.Viewers = append(s.Viewers, access.Viewer{Name: "Dad", Addresses: []string{"203.0.113.50"}, Limit: 1})
+	s.Viewers = append(s.Viewers, access.Viewer{Name: "Dad", Addresses: []string{"10.8.0.50"}, Limit: 1})
 	s.Invites = []access.Invite{unused, other}
 	e := newEnv(t, s, true)
 	e.call(t, "DELETE", "/api/viewers/John", "")
