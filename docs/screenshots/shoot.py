@@ -70,7 +70,7 @@ with sync_playwright() as p:
     page = open_page(ctx, '/viewers', 'table')
     page.evaluate(SHOW_LAN_ADDRESS)
     time.sleep(0.3)
-    shot(page, 'viewers', clip={'x': 0, 'y': 0, 'width': 1280, 'height': 418})
+    shot(page, 'viewers', clip={'x': 0, 'y': 0, 'width': 1280, 'height': 700})
     ctx.close()
 
     ctx = context('dark')

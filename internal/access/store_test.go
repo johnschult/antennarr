@@ -236,8 +236,12 @@ func TestOnChangeFires(t *testing.T) {
 	if n.Load() != 3 {
 		t.Errorf("a refused update notified: %d", n.Load())
 	}
-	p.Stream(req("203.0.113.9:1")) // refused stream
-	if n.Load() != 3 {
-		t.Errorf("a refused stream notified: %d", n.Load())
+	p.Stream(req("203.0.113.9:1")) // a stranger asking for the first time: the page is told, to show them under Requests
+	if n.Load() != 4 {
+		t.Errorf("a new requester: %d changes, want 4", n.Load())
+	}
+	p.Stream(req("203.0.113.9:1")) // and the same stranger again is not news
+	if n.Load() != 4 {
+		t.Errorf("the same requester again notified: %d", n.Load())
 	}
 }

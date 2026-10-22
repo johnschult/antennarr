@@ -86,12 +86,22 @@ FIRST RUN: nobody is an admin yet. To set up, open one of these links from the d
 
 ## 4. Add a viewer
 
-A *viewer* is a person or a server you share the tuner with. Open **Viewers → Add viewer**. It is a short set of steps: who they are, how their server reaches yours, and what to do in their media server (steps 4, 5 and 6 here). Start by filling in:
+A *viewer* is a person or a server you share the tuner with. First decide **how they will reach Yagi**. Yagi serves private networks only, so it is one of these (the viewer's side is in [Networking](networking.md), and the Add viewer steps write it out with your addresses filled in):
+
+| They are… | How they reach Yagi | What you list |
+|---|---|---|
+| **On Tailscale** | They join your tailnet (or you share Yagi's node with theirs), and add Yagi in their media server at its tailnet name or `100.x` address. | Their Tailscale login or device (with Yagi's own Tailscale), or their `100.x` address. |
+| **On a VPN** (WireGuard, ZeroTier, a site-to-site VPN) | The same, over the VPN: they add the Yagi machine's address *on the VPN*. | Their address on the VPN. |
+| **On your own network** | Nothing to set up: they add the Yagi machine's LAN address. | Their LAN address. |
+
+**The easiest way is to let them ask.** Give them the address to add in their media server (the steps are in [Media servers](media-servers.md)). When they try, Yagi refuses, because they aren't a viewer yet, and they appear on **Viewers** under *Asking to use your tuner* as "pal@example.com" (their Tailscale login, when Yagi's own Tailscale is used), their device, or their address. Press **Allow**, give them a name and a tuner limit, and they're a viewer. You didn't have to find out their address, and over Tailscale they're recognized by who they are, so it keeps working when their device or address changes. You also get a notification the first time someone asks (*Settings → Notifications*). **Dismiss** hides one you don't recognize.
+
+**Or add them by hand** when you already know their address: **Viewers → Add viewer** is a short set of steps (who they are, how their server reaches yours, what to do in their media server; steps 4, 5 and 6 here). Start by filling in:
 
 <img src="screenshots/viewers.jpg" alt="The Viewers page: who can use the tuner, from which addresses, and how many tuners each gets" width="800">
 
 - **Name:** whoever it is.
-- **Addresses:** the address their media server will connect *from*, as your Yagi sees it. Single addresses (`100.64.0.7`) or ranges (`10.8.0.0/24`). On Tailscale it is the viewer machine's Tailscale address. [Networking](networking.md) explains how to find it.
+- **Addresses:** the address their media server will connect *from*, as your Yagi sees it. Single addresses (`100.64.0.7`) or ranges (`10.8.0.0/24`), or a Tailscale login (`tailscale:pal@example.com`) with Yagi's own Tailscale. A public internet address is refused: see [Networking](networking.md#not-over-the-open-internet).
 - **Tuners:** how many tuners they may use at once.
 
 Only listed viewers can use the tuner, and only loopback (this machine), the addresses under `admin` in the settings, and signed-in Plex accounts can open the admin pages.

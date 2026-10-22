@@ -100,6 +100,7 @@ Each channel has an `id` (made for you, and never changed), a `name`, and a `typ
 | `firmware` | on | A tuner has newer firmware. Once per release, kept across restarts in `<settings file name without .json>.notified.json`. It does nothing while `firmwareCheck` is off, so the page won't let you switch it on until the check is on (and the API refuses). |
 | `tuner` | on | A tuner has been unreachable for two minutes, and when it comes back. A reboot or a brief drop sends nothing. |
 | `viewer` | on | A viewer was turned away because they were at their limit or the tuners were taken. The same viewer and reason is reported at most every half hour. |
+| `request` | on | Someone who isn't a viewer asked to use a tuner for the first time, such as a friend who has just added Yagi in their media server. It names them (their Tailscale login or device, or their address); they appear on the Viewers page to be allowed. |
 | `watching` | **off** | A viewer was given a tuner: who, which channel when the request names one, and on which tuner. A viewer is reported at most once every half hour per tuner, so changing channels or a media server connecting again isn't a message each time. |
 | `unknown` | **off** | An address that isn't a viewer tried to use a tuner. A tuner port that can be reached from the internet is scanned all day, so each address is reported once a day, and at most six an hour in all. |
 

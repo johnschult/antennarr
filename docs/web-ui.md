@@ -28,6 +28,8 @@ Below the tiles are your viewers, who is watching, and a timeline of events (a s
 
 Who may use the tuner, from which addresses, and how many tuners each gets at once. **Add viewer** walks through three steps (who, how their server reaches yours, and what to do in their media server); **Connection steps** on a row reopens it. See [Getting started](getting-started.md#4-add-a-viewer).
 
+Above the viewers, *Asking to use your tuner* lists people who tried to connect and aren't viewers yet (a friend who has just added Yagi in their media server). **Allow** makes one a viewer, with a name and a limit, recognized by their Tailscale login or device when Yagi's own Tailscale knows it and by their address otherwise. **Dismiss** hides one you don't recognize. Only people on your network, a VPN or your tailnet can appear, because Yagi serves private networks only.
+
 ## Tuners
 
 <img src="screenshots/tuners.jpg" alt="A tuner's page, on its Overview: how it is now, what is on each of its tuners, a line about its firmware and its details, with Overview, Channels, Device, Firmware and Settings tabs" width="900">

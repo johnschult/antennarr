@@ -166,6 +166,9 @@ func (a *API) Handler() http.Handler {
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
 		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
+		{"requests", map[string]http.HandlerFunc{"GET": a.listRequests}},
+		{"requests/{id}", map[string]http.HandlerFunc{"DELETE": a.dismissRequest}},
+		{"requests/{id}/allow", map[string]http.HandlerFunc{"POST": a.allowRequest}},
 		{"notifications/channels", map[string]http.HandlerFunc{"POST": a.addChannel}},
 		{"notifications/channels/{id}", map[string]http.HandlerFunc{"PUT": a.replaceChannel, "DELETE": a.deleteChannel}},
 		{"notifications/test", map[string]http.HandlerFunc{"POST": a.testChannel}},
@@ -258,11 +261,13 @@ type DeviceDoc struct {
 
 // State is everything the dashboard shows.
 type State struct {
-	Time     time.Time             `json:"time"`
-	Devices  []DeviceDoc           `json:"devices"`
-	Viewers  []access.ViewerStatus `json:"viewers"`
-	Settings SettingsDoc           `json:"settings"`
-	Editable bool                  `json:"editable"` // false: started without -config
+	Time    time.Time             `json:"time"`
+	Devices []DeviceDoc           `json:"devices"`
+	Viewers []access.ViewerStatus `json:"viewers"`
+	// Requests are people who asked to use a tuner and aren't viewers yet, to be allowed.
+	Requests []RequestDoc `json:"requests"`
+	Settings SettingsDoc  `json:"settings"`
+	Editable bool         `json:"editable"` // false: started without -config
 	// Tailscale is the built-in Tailscale node: whether this build has it, and where it is.
 	Tailscale tailnet.Status `json:"tailscale"`
 	// Version is this build's version, VersionURL its page on GitHub, and DocsURL
@@ -329,9 +334,10 @@ func (a *API) state() State {
 		devices = append(devices, a.deviceDoc(d, streams))
 	}
 	return State{
-		Time:    time.Now(),
-		Devices: devices,
-		Viewers: a.Pol.ViewerStatuses(),
+		Time:     time.Now(),
+		Devices:  devices,
+		Viewers:  a.Pol.ViewerStatuses(),
+		Requests: requestDocs(a.Pol.Requests()),
 		Settings: SettingsDoc{
 			Mode: a.Pol.Mode(), SharedCap: set.SharedCap, OwnerReserve: set.OwnerReserve, Admin: nonNil(set.Admin),
 			FirmwareCheck: set.FirmwareCheckEnabled(),

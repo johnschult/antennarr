@@ -11,6 +11,11 @@ Each release's notes on GitHub are its section of this file.
 
 - **Yagi now serves private networks only.** A connection from a public internet address is dropped as it arrives, with one line a minute in the log saying so, and there is no switch to turn that off. Your own network (including a LAN on public IPv6 addresses), a VPN and Tailscale are all fine; a friend who reaches you over a forwarded port will stop working, and should join Tailscale or a VPN instead. The Viewers page marks any viewer whose list holds a public address ("Can't connect from …"), start-up warns about it, and the page and API refuse to add one, to a viewer or to the admin list. Yagi is for your family and social circle, not the public: people you trust enough to put on your network. See [Networking](https://github.com/johnschult/yagi/blob/main/docs/networking.md#not-over-the-open-internet).
 
+### Added
+
+- **Allow whoever asks.** A friend adds Yagi in their media server; Yagi refuses, because they aren't a viewer yet, and they appear on the Viewers page under *Asking to use your tuner* as their Tailscale login (when Yagi's own Tailscale is used), their device, or their address. Press **Allow**, give them a name and a tuner limit, and they're a viewer: you never have to find out their address, and over Tailscale they are recognized by who they are, so it keeps working when their device or address changes. **Dismiss** hides one you don't recognize. Yagi serves private networks only, so only people on your network, a VPN or your tailnet can appear. There is a notification the first time someone asks (*Settings → Notifications*, on by default).
+- **Getting started says how your viewers will reach Yagi** (Tailscale, a VPN or the same network) before it asks for any address, and leads with letting them ask.
+
 ### Removed
 
 - **Plex invites are gone.** The invite links added in 2026.10.15 (*Invite viewers with Plex*, the Invites list, the join page and the `enrolled` notification) were for reaching people over the public internet, which Yagi no longer serves. If you tried them, delete `invites`, `plex.enrollment` and any `plex` entry under a viewer from the settings file before starting, or Yagi will refuse the file. *Sign in with Plex* for the admin page is unchanged. Add a viewer by their address on your network, a VPN or Tailscale.

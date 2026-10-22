@@ -24,7 +24,7 @@ import (
 
 // Event is something to tell the owner.
 type Event struct {
-	// Kind is one of access.NotifyFirmware, NotifyTuner, NotifyViewer, NotifyUnknown, NotifyWatching.
+	// Kind is one of access.NotifyFirmware, NotifyTuner, NotifyViewer, NotifyUnknown, NotifyWatching, NotifyRequest.
 	Kind string
 	// Device is the tuner's name, when the event is about one.
 	Device  string
@@ -383,6 +383,18 @@ func (n *Notifier) Refused(device, title, viewer, reason string) {
 	n.Send(Event{
 		Kind: access.NotifyViewer, Device: device, Title: viewer + " was refused a tuner",
 		Message: fmt.Sprintf("%s asked for a tuner on %s and %s.", viewer, title, why),
+	})
+}
+
+// Requested is someone who isn't a viewer asking to use a tuner for the first time: a friend who has just added Yagi
+// in their media server. It is on unless the owner switched it off, and it is only said when they are first seen.
+func (n *Notifier) Requested(device, title, who string) {
+	if !n.settings().NotifyEnabled(access.NotifyRequest) || !n.allow("requested|"+who, time.Hour) {
+		return
+	}
+	n.Send(Event{
+		Kind: access.NotifyRequest, Device: device, Title: who + " asked to use a tuner",
+		Message: fmt.Sprintf("%s asked to use %s and isn't a viewer yet. Open the Viewers page to allow them.", who, title),
 	})
 }
 

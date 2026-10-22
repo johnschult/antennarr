@@ -68,7 +68,7 @@ export function makeCableDevice(over: Partial<DeviceState> = {}): DeviceState {
   })
 }
 
-export const noNotifications = (): Notifications => ({ channels: [], events: { firmware: true, tuner: true, viewer: true, unknown: false, watching: false } })
+export const noNotifications = (): Notifications => ({ channels: [], events: { firmware: true, tuner: true, viewer: true, unknown: false, watching: false, request: true } })
 
 export const phone: NotifyChannel = { id: 'c1', name: 'Phone', type: 'ntfy', url: 'https://ntfy.sh', topic: 'yagi', hasToken: true, hasUser: false }
 export const pushover: NotifyChannel = { id: 'c2', name: 'Pushover', type: 'pushover', hasToken: true, hasUser: true }
@@ -85,6 +85,7 @@ export function makeState(over: Partial<AppState> = {}): AppState {
     time: '2026-10-17T10:05:00Z',
     devices: [makeDevice()],
     viewers: [john, mom],
+    requests: [],
     settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false, https: false }, notifications: noNotifications() },
     editable: true,
     version: '2026.10.0',

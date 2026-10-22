@@ -1,4 +1,4 @@
-import type { AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, LogLevel, LogsDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
+import type { AllowInput, AppState, ChannelInput, ChannelsDoc, ChannelState, DeviceInfo, DeviceInput, HistoryDoc, LogLevel, LogsDoc, SignalTestResult, TunerChannel, FirewallInfo, FoundTuner, NetworkAddress, AuthStatus, DevicePatch, DeviceState, PlexPollStatus, NotifyChannel, Settings, SettingsPatch, UpgradeRequest, Viewer, ViewerInput } from './types'
 
 // The UI is served from / and the API lives beside it.
 export const API = `${import.meta.env.BASE_URL}api`
@@ -48,6 +48,9 @@ export const addViewer = (v: ViewerInput) => request<Viewer>('POST', '/viewers',
 export const replaceViewer = (name: string, v: ViewerInput) =>
   request<Viewer>('PUT', `/viewers/${encodeURIComponent(name)}`, v)
 export const deleteViewer = (name: string) => request<void>('DELETE', `/viewers/${encodeURIComponent(name)}`)
+/** Allow someone who asked: they become a viewer, recognized by who they are. */
+export const allowRequest = (id: string, i: AllowInput) => request<Viewer>('POST', `/requests/${encodeURIComponent(id)}/allow`, i)
+export const dismissRequest = (id: string) => request<void>('DELETE', `/requests/${encodeURIComponent(id)}`)
 export const patchSettings = (p: SettingsPatch) => request<Settings>('PATCH', '/settings', p)
 export const patchDevice = (name: string, p: DevicePatch) =>
   request<DeviceState>('PATCH', `/devices/${encodeURIComponent(name)}`, p)

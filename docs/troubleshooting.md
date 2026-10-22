@@ -84,7 +84,7 @@ From the **viewer's server** (not their TV), try `curl -i http://<address>:5004/
 | You get | It means |
 |---|---|
 | Nothing, then a timeout | The connection never arrived. A firewall, or the wrong address. See [it just hangs](#it-just-hangs-then-times-out). |
-| `403` and `X-Yagi-Reason: not-allowed` | It arrived, but the sender's address isn't a viewer. The log shows the address Yagi saw. Add that exact address under *Viewers*. After Tailscale or a VPN it is the viewer's address on that network. |
+| `403` and `X-Yagi-Reason: not-allowed` | It arrived, but the sender isn't a viewer. They are listed on the Viewers page under *Asking to use your tuner*: press **Allow**. Or add the address the log shows under *Viewers*; after Tailscale or a VPN it is the viewer's address on that network. |
 | `502 tuner unreachable` | It got through, but the tuner is offline. See [the tuner shows as offline](#the-tuner-shows-as-offline). |
 | `200` with Yagi's address in `BaseURL` | Yagi is fine. The problem is in the media server. |
 
