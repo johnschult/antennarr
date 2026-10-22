@@ -523,6 +523,10 @@ func (p *Policy) ViewerStatuses() []ViewerStatus {
 func (v Viewer) clone() Viewer {
 	out := v
 	out.Addresses = append([]string(nil), v.Addresses...)
+	if v.Plex != nil {
+		pl := *v.Plex
+		out.Plex = &pl
+	}
 	if v.Limits != nil {
 		out.Limits = make(map[string]int, len(v.Limits))
 		for k, n := range v.Limits {

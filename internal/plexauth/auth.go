@@ -151,6 +151,9 @@ func (a *Auth) clientIDFor() string {
 	return id
 }
 
+// PlexClient is a client for plex.tv with this Yagi's identity, for the invite page, which does its own sign-in with it.
+func (a *Auth) PlexClient() *Client { return a.client() }
+
 func (a *Auth) client() *Client {
 	return &Client{Base: a.cfg.Base, AuthBase: a.cfg.AuthBase, HTTP: a.cfg.HTTP, ClientID: a.clientIDFor()}
 }

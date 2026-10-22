@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/httpx"
 )
 
 // Path is where the claim page lives.
@@ -168,16 +169,10 @@ func (c *Claimer) page(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Claimer) confirm(w http.ResponseWriter, r *http.Request) {
-	// A form on another site can't know the token, but check where it came from
-	// anyway, as the admin API does. A browser sends "Origin: null" when the page
-	// has no referrer policy to speak of; it is accepted only if the browser also
-	// says the request is same-origin.
-	if origin := r.Header.Get("Origin"); origin != "" {
-		sameSite := origin == "null" && r.Header.Get("Sec-Fetch-Site") == "same-origin"
-		if u, err := url.Parse(origin); !sameSite && (err != nil || u.Host != r.Host) {
-			http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
-			return
-		}
+	// A form on another site can't know the token, but check where it came from anyway.
+	if httpx.CrossOriginForm(r) {
+		http.Error(w, "cross-origin requests are not allowed", http.StatusForbidden)
+		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 4<<10)
 	if err := r.ParseForm(); err != nil {

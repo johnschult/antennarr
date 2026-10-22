@@ -81,3 +81,30 @@ func TestGuardWrites(t *testing.T) {
 		}
 	}
 }
+
+func TestCrossOriginForm(t *testing.T) {
+	for name, c := range map[string]struct {
+		origin, fetchSite, host string
+		want                    bool
+	}{
+		"no origin (not a browser)":         {"", "", "yagi:9244", false},
+		"this very host":                    {"http://yagi:9244", "", "yagi:9244", false},
+		"another port is another site":      {"http://yagi:5004", "", "yagi:9244", true},
+		"another host":                      {"http://evil.example", "cross-site", "yagi:9244", true},
+		"null, and the browser says so":     {"null", "same-origin", "yagi:9244", false},
+		"null from somewhere else":          {"null", "cross-site", "yagi:9244", true},
+		"null with nothing to vouch for it": {"null", "", "yagi:9244", true},
+		"not an origin at all":              {"::::", "", "yagi:9244", true},
+	} {
+		r := httptest.NewRequest("POST", "http://"+c.host+"/x", nil)
+		if c.origin != "" {
+			r.Header.Set("Origin", c.origin)
+		}
+		if c.fetchSite != "" {
+			r.Header.Set("Sec-Fetch-Site", c.fetchSite)
+		}
+		if got := CrossOriginForm(r); got != c.want {
+			t.Errorf("%s: %v, want %v", name, got, c.want)
+		}
+	}
+}

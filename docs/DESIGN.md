@@ -33,7 +33,7 @@ Logo: Lucide's `antenna` icon (ISC licence) in teal on a dark tile; the SVG and 
 - **Plex (optional):**
   - Plex can't authenticate individual streams. Plex Media Server fetches tuner streams without a user token.
   - Dashboard sign-in can use the plex.tv PIN/OAuth flow.
-  - **Plex-verified viewer enrollment:** the owner sends an invite link, and the viewer signs in with Plex and picks their server. Yagi reads that server's addresses from plex.tv `resources` and allowlists them with the viewer's tuner limit, re-checking periodically.
+  - **Plex-verified viewer enrollment:** the owner sends an invite link, and the viewer signs in with Plex and picks their server. Yagi reads that server's addresses from plex.tv `resources` and allowlists them with the viewer's tuner limit. **Built (backend):** see [Invite links](#invite-links-built). There is no background re-check, because the Plex token is never kept: a viewer whose address changes opens their link again.
   - Stretch: with consent, read the viewer's PMS `/status/sessions` to show which Plex user is watching.
 - **Non-Plex viewers** use the IP or Tailscale allowlist.
 
@@ -227,7 +227,7 @@ Not built yet: filtering and exporting the activity history, Plex-verified viewe
 
 Next, roughly in this order. Each is a real piece of work, not a tweak:
 
-1. **Plex-verified viewer enrollment** (later): an invite link leads to a Plex sign-in, and the viewer's server addresses are read from plex.tv and allowlisted.
+1. **Plex-verified viewer enrollment.** The backend is built (below); the Viewers page's invite dialog and the public page's polish are next.
 2. **Tailscale, set up from the web UI.** Built: see [Built-in Tailscale](#built-in-tailscale-plan) below.
 3. **Manage tuners from the UI.** Renaming, adding, removing and changing the port are done, live. Still to do: changing a tuner's address or DeviceID.
 4. **The setup guide generator** (above): per-viewer commands for firewall, routing and the media server, with verify and rollback steps, replacing the placeholder Setup page.
@@ -279,3 +279,14 @@ An optional node inside Yagi (Tailscale's `tsnet` package), so the machine needs
 
 - Viewers add the tuner by address manually; Plex likely won't auto-discover it across networks.
 - First target: replace the existing socat relay and viewer-side DNAT for the friend's tuner. Generalize after that.
+
+## Invite links (built)
+
+A person adds themselves as a viewer: the owner makes an invite, the person signs in with Plex on its link and picks a server, and the server's public addresses become the viewer's addresses.
+
+- **Model** (`internal/access/invites.go`). `Settings.Invites` (`ID`, `TokenHash`, `Name`, `Limit`, `Limits`, `Created`, `Expires`, `ViewerName`) and `Viewer.Plex` (`AccountID`, `AccountName`, `ServerID`, `ServerName`), validated in `parse()` like everything else (the settings file rejects unknown keys, so each place that copies settings copies these). Only the SHA-256 of the token is kept. An unused invite expires (`InviteLife`, seven days); a used one lives until revoked, which is the refresh path. `PlexSettings.Enrollment` is its own switch and does nothing without `Enabled`.
+- **Admin API** (`internal/api/invites.go`): `GET`/`POST /api/invites`, `DELETE /api/invites/{id}`. The link is in the `201` reply and nowhere else. Editing a viewer keeps `Plex` and follows a rename into its invite; deleting a viewer deletes the invite it came in by, so it can't bring them back.
+- **The public page** (`internal/enroll`, mounted in `adminMux` next to `/claim`): `GET /invite/<token>`, `POST …/start`, `GET …/wait`, `POST …/confirm`. Server-rendered with no script (the wait page is a meta refresh), so the content security policy is `default-src 'none'; style-src 'unsafe-inline'; form-action 'self'`, as for `/claim`. It keeps its own sign-ins in progress and its own tickets and does not touch `plexauth`'s: an invite's PIN is unknown to `Auth`, so it can't sign in or add an admin by construction. Between sign-in and confirmation the owned servers wait under a random ticket bound to the invite; the browser sends a ticket and a server ID, never an address. The save is one `Store.Edit` that re-checks the invite, refuses an address another viewer covers (`Settings.ViewerHolding`: a plain containment check, since `parse()` only rejects an identical prefix), and refuses a name already in use or a different account on a used invite.
+- **`plexauth.Client.Resources`** asks plex.tv for the account's servers: relays, host names and junk dropped, 50 servers and 20 connections each at most, the server's own access token never read.
+- **Events.** `enrolled` is a notification kind (on by default) and a line on each tuner's timeline.
+- **Left out on purpose:** a stored Plex token, a background re-check, private addresses (a server reached over a VPN or tailnet is added by hand), and any attempt to tell which Plex user is watching, which Plex doesn't allow for tuner streams.

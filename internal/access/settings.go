@@ -53,6 +53,9 @@ type Viewer struct {
 	Limit int `json:"limit"`
 	// Limits overrides Limit for particular devices, by device name.
 	Limits map[string]int `json:"limits,omitempty"`
+	// Plex is set on a viewer who enrolled through an invite: who signed in, and which of their servers the
+	// addresses came from.
+	Plex *ViewerPlex `json:"plex,omitempty"`
 }
 
 // limitFor is the viewer's limit on the named device.
@@ -80,6 +83,9 @@ type PlexSettings struct {
 	// ClientID identifies this Yagi to plex.tv. It is generated once and
 	// kept; Plex lists the sign-ins under it in the account's authorized devices.
 	ClientID string `json:"clientId,omitempty"`
+	// Enrollment lets a person add themselves as a viewer by signing in with Plex on an invite link (see Invite).
+	// It does nothing while Enabled is off.
+	Enrollment bool `json:"enrollment,omitempty"`
 }
 
 // Settings is everything that decides access. With no viewers nobody can use
@@ -125,6 +131,9 @@ type Settings struct {
 	// AdminListen is where the admin pages are served: ":9244" (the default) or "127.0.0.1:9244". It is a port of
 	// its own, never a tuner's. The -admin-listen flag and YAGI_ADMIN_LISTEN override it, and a change needs a restart.
 	AdminListen string `json:"adminListen,omitempty"`
+	// Invites are the links sent to people so they can enroll as viewers with Plex. Only a hash of each link's
+	// token is kept.
+	Invites []Invite `json:"invites,omitempty"`
 }
 
 // DefaultAdminListen is where the admin pages are until someone says otherwise.
@@ -251,6 +260,10 @@ func (s Settings) Clone() Settings {
 	for i, v := range s.Viewers {
 		out.Viewers[i] = v
 		out.Viewers[i].Addresses = append([]string(nil), v.Addresses...)
+		if v.Plex != nil {
+			pl := *v.Plex
+			out.Viewers[i].Plex = &pl
+		}
 		if v.Limits != nil {
 			out.Viewers[i].Limits = make(map[string]int, len(v.Limits))
 			for k, n := range v.Limits {
@@ -287,6 +300,7 @@ func (s Settings) Clone() Settings {
 		out.Plex = &pl
 	}
 	out.Notifications = s.Notifications.clone()
+	out.Invites = cloneInvites(s.Invites)
 	return out
 }
 
@@ -483,6 +497,9 @@ func (s Settings) parse() (parsed, error) {
 	if err := s.Plex.validate(); err != nil {
 		return out, err
 	}
+	if err := validateInvites(s.Invites); err != nil {
+		return out, err
+	}
 	if err := s.Notifications.validate(); err != nil {
 		return out, err
 	}
@@ -554,6 +571,9 @@ func (s Settings) parse() (parsed, error) {
 		}
 		if len(v.Addresses) == 0 {
 			return out, fmt.Errorf("viewer %q has no addresses", name)
+		}
+		if err := v.Plex.validate(name); err != nil {
+			return out, err
 		}
 		pv := parsedViewer{Viewer: v}
 		pv.Name = name

@@ -15,6 +15,7 @@ const EVENTS: { id: NotifyEvent; title: string; description: string }[] = [
   { id: 'tuner', title: 'A tuner goes offline, and comes back', description: 'Only after it has been unreachable for two minutes, so a reboot or a brief drop is not a message.' },
   { id: 'viewer', title: 'A viewer is turned away', description: "A viewer asked for a tuner but was at their limit, or the viewers' shared tuners or your reserved ones were taken. The same one is reported at most every half hour." },
   { id: 'watching', title: 'A viewer starts watching', description: 'Off by default. Says who started watching which channel on which tuner. A viewer is reported at most once every half hour per tuner, so changing channels or a media server connecting again is not a message each time.' },
+  { id: 'enrolled', title: 'Someone joins with an invite', description: 'When a person signs in with Plex on an invite link and is added as a viewer, or opens it again to bring their address up to date.' },
   { id: 'unknown', title: 'An address that is not a viewer connects', description: 'Off by default: a tuner port that can be reached from the internet is scanned all day. Each address is reported once a day, and at most six an hour in all.' },
 ]
 
