@@ -9,7 +9,7 @@ Each release's notes on GitHub are its section of this file.
 
 ### Read before updating
 
-- **Yagi now serves private networks only.** A connection from a public internet address is dropped as it arrives, with one line a minute in the log saying so, and there is no switch to turn that off. Your own network (including a LAN on public IPv6 addresses), a VPN and Tailscale are all fine; a friend who reaches you over a forwarded port will stop working, and should join Tailscale or a VPN instead. The Viewers page marks any viewer whose list holds a public address ("Can't connect from …"), start-up warns about it, and the page and API refuse to add one, to a viewer or to the admin list. Sharing a tuner is for people you trust enough to put on your network. See [Networking](https://github.com/johnschult/yagi/blob/main/docs/networking.md#not-over-the-open-internet).
+- **Yagi now serves private networks only.** A connection from a public internet address is dropped as it arrives, with one line a minute in the log saying so, and there is no switch to turn that off. Your own network (including a LAN on public IPv6 addresses), a VPN and Tailscale are all fine; a friend who reaches you over a forwarded port will stop working, and should join Tailscale or a VPN instead. The Viewers page marks any viewer whose list holds a public address ("Can't connect from …"), start-up warns about it, and the page and API refuse to add one, to a viewer or to the admin list. Yagi is for your family and social circle, not the public: people you trust enough to put on your network. See [Networking](https://github.com/johnschult/yagi/blob/main/docs/networking.md#not-over-the-open-internet).
 
 ## 2026.10.15 (2026-10-22)
 
