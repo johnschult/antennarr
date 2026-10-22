@@ -57,6 +57,26 @@ jobs:
       - run: npx tsc -b
       - run: npm test
 
+  # install.sh and build.sh: shellcheck, then install.sh against a fake release (scripts/install_test.sh) on Linux and
+  # macOS, and again on Alpine, whose busybox tools are the least forgiving.
+  install-script:
+    name: Install script (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck install.sh build.sh scripts/install_test.sh
+      - run: sh scripts/install_test.sh
+      - name: The same on Alpine
+        if: runner.os == 'Linux'
+        run: docker run --rm -v "$PWD:/src:ro" alpine:3 sh -c 'apk add --no-cache curl python3 >/dev/null && sh /src/scripts/install_test.sh'
+
   # golangci-lint, with the settings in .golangci.yml. Run it locally the same way: golangci-lint run ./...
   lint:
     name: Lint
