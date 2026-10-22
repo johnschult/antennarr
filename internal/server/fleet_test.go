@@ -18,8 +18,7 @@ import (
 )
 
 // fleet is a server started for the add/remove tests, serving the admin pages
-// on a real port (not a pre-bound listener) so that handing the port from the
-// admin-only listener to a tuner is exercised for real.
+// on a real port (not a pre-bound listener).
 type fleet struct {
 	srv  *Server
 	base string // http://127.0.0.1:port
@@ -76,9 +75,6 @@ func startFleetWith(t *testing.T, s access.Settings, devices []access.Device, wi
 	f.srv = srv
 	go srv.Run(ctx)
 	f.base = "http://127.0.0.1:" + port
-	if len(devices) > 0 {
-		f.base = "http://" + devices[0].Listen
-	}
 	f.waitUp(t)
 	return f
 }
@@ -169,11 +165,12 @@ func TestStartsWithNoTunersAndServesTheAdminPages(t *testing.T) {
 	}
 }
 
-func TestAddingATunerTakesOverTheAdminPort(t *testing.T) {
+func TestAddingATunerGivesItAPortOfItsOwnAndTheAdminPortStays(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	f := startFleet(t, access.DefaultSettings(), nil, true, a)
 
-	code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box"})
+	listen := "127.0.0.1:" + freePort(t)
+	code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box", "listen": listen})
 	if code != http.StatusCreated {
 		t.Fatalf("add = %d %s\n%s", code, body, f.logs.String())
 	}
@@ -182,25 +179,11 @@ func TestAddingATunerTakesOverTheAdminPort(t *testing.T) {
 		Listen string `json:"listen"`
 	}
 	json.Unmarshal(body, &added)
-	if added.Name != "tuner" {
-		t.Errorf("name = %q, want tuner", added.Name)
-	}
-	if !strings.HasSuffix(f.base, added.Listen) {
-		t.Errorf("listen = %q, want the port the admin page is on (%s)", added.Listen, f.base)
+	if added.Name != "tuner" || added.Listen != listen {
+		t.Errorf("added = %+v, want tuner on %s", added, listen)
 	}
 
-	// The admin-only listener has let the port go, whichever system this is: binding ":port" while
-	// "127.0.0.1:port" is held fails on Linux and succeeds on macOS, and either way the tuner has to be
-	// what answers there.
-	f.srv.fleetMu.Lock()
-	holding := f.srv.bare != nil
-	f.srv.fleetMu.Unlock()
-	if holding {
-		t.Error("the admin-only listener still holds the port the tuner was added on")
-	}
-
-	// The same address now serves the tuner and still the admin pages.
-	f.waitUp(t)
+	// The admin pages are where they were, and the tuner is on its own port.
 	st := f.state(t)
 	if len(st.Devices) != 1 || st.Devices[0].Name != "tuner" {
 		t.Fatalf("state devices = %+v", st.Devices)
@@ -209,8 +192,17 @@ func TestAddingATunerTakesOverTheAdminPort(t *testing.T) {
 	if len(set.Devices) != 1 || !strings.EqualFold(set.Devices[0].ID, "10ABCC87") {
 		t.Errorf("saved devices = %+v, want one with the DeviceID learned from the tuner", set.Devices)
 	}
-	if code, _ := call(t, "GET", f.base+"/discover.json", nil); code != http.StatusForbidden && code != http.StatusOK {
-		t.Errorf("discover.json = %d: the tuner side isn't answering on the admin port", code)
+	if code, _ := call(t, "GET", "http://"+listen+"/discover.json", nil); code != http.StatusForbidden && code != http.StatusOK {
+		t.Errorf("discover.json on the tuner's port = %d", code)
+	}
+	if code, _ := call(t, "GET", "http://"+listen+"/api/state", nil); code == http.StatusOK {
+		t.Error("the tuner's port answered the admin API")
+	}
+
+	// A tuner can't be put on the admin port.
+	adminListen := strings.TrimPrefix(f.base, "http://")
+	if code, _ := call(t, "PATCH", f.base+"/api/devices/tuner", map[string]string{"listen": adminListen}); code != http.StatusConflict && code != http.StatusBadRequest {
+		t.Errorf("moving the tuner onto the admin port = %d, want a refusal", code)
 	}
 }
 
@@ -293,13 +285,14 @@ func TestTunersFromFlagsCannotBeAddedToOrRemoved(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
+	adminPort := freePort(t)
 	srv, err := New(ctx, Config{Find: noFind, Settings: s, Devices: []access.Device{dev}, ConfigPath: f.path, Poll: 50 * time.Millisecond,
-		Locate: locateFrom(a), Log: slog.New(slog.NewTextHandler(f.logs, nil))})
+		Locate: locateFrom(a), Log: slog.New(slog.NewTextHandler(f.logs, nil)), AdminListen: "127.0.0.1:" + adminPort})
 	if err != nil {
 		t.Fatal(err)
 	}
 	go srv.Run(ctx)
-	f.base = "http://" + dev.Listen
+	f.base = "http://127.0.0.1:" + adminPort
 	f.waitUp(t)
 	if code, _ := call(t, "DELETE", f.base+"/api/devices/antenna", nil); code != http.StatusConflict {
 		t.Errorf("removing a flag tuner = %d, want 409", code)
@@ -334,7 +327,7 @@ func TestRemovingATunerCutsItsStreamsAndTidiesTheSettings(t *testing.T) {
 	}
 
 	// Remove it through the page on its own port: the reply must still arrive.
-	if code, body := call(t, "DELETE", "http://"+devs[0].Listen+"/api/devices/antenna", nil); code != http.StatusNoContent {
+	if code, body := call(t, "DELETE", f.base+"/api/devices/antenna", nil); code != http.StatusNoContent {
 		t.Fatalf("remove = %d %s\n%s", code, body, f.logs.String())
 	}
 	done := make(chan struct{})
@@ -360,7 +353,6 @@ func TestRemovingATunerCutsItsStreamsAndTidiesTheSettings(t *testing.T) {
 	}
 
 	// The remaining one still works, and the removed one's port is free.
-	f.base = "http://" + devs[1].Listen
 	if n := len(f.state(t).Devices); n != 1 {
 		t.Errorf("state shows %d devices, want 1", n)
 	}
@@ -374,14 +366,14 @@ func TestRemovingATunerCutsItsStreamsAndTidiesTheSettings(t *testing.T) {
 	}
 }
 
-func TestRemovingTheLastTunerBringsTheAdminPageBack(t *testing.T) {
+func TestRemovingTheLastTunerLeavesTheAdminPageWhereItIs(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	f := startFleet(t, access.DefaultSettings(), nil, true, a)
-	if code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box"}); code != 201 {
+	if code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box", "listen": "127.0.0.1:" + freePort(t)}); code != 201 {
 		t.Fatalf("add = %d %s", code, body)
 	}
 	f.waitUp(t)
-	// The tuner is on the port the admin page was on. Take it away again.
+	// Take it away again.
 	if code, body := call(t, "DELETE", f.base+"/api/devices/tuner", nil); code != 204 {
 		t.Fatalf("remove = %d %s\n%s", code, body, f.logs.String())
 	}
@@ -427,9 +419,8 @@ func TestMovingATunerToAnotherPort(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("move = %d %s\n%s", code, body, f.logs.String())
 	}
-	newBase := "http://127.0.0.1:" + p2
-	if code, _ := call(t, "GET", newBase+"/api/state", nil); code != http.StatusOK {
-		t.Errorf("new port = %d, want the tuner and admin pages there", code)
+	if code, _ := call(t, "GET", "http://127.0.0.1:"+p2+"/discover.json", nil); code != http.StatusOK && code != http.StatusForbidden {
+		t.Errorf("new port = %d, want the tuner there", code)
 	}
 	if got := f.saved(t).Devices[0].Listen; got != "127.0.0.1:"+p2 {
 		t.Errorf("saved listen = %q", got)

@@ -3,6 +3,7 @@
 Start with the log, it usually says what is wrong. In Docker: `docker logs yagi`. Every refusal says why, with the address it came from, and a stream opening and closing is logged too. An ordinary request (the `discover.json` and `lineup.json` a media server asks for over and over) is only logged at the *Debug* level, so it doesn't bury the rest: set the level to *Debug* in *Settings → Logs* when you need to see them.
 A request that never shows up in the log (at *Debug* for an ordinary one) never arrived, which points at the network or a firewall, not at Yagi.
 
+- [A port test fails, or the page won't open](#a-port-test-fails-or-the-page-wont-open)
 - [A page or the tuner address just hangs, then times out](#it-just-hangs-then-times-out)
 - ["This address can't open the admin page"](#this-address-cant-open-the-admin-page)
 - [The tuner address shows "this address is not allowed to use this tuner"](#the-bare-address-says-this-address-is-not-allowed-to-use-this-tuner)
@@ -17,11 +18,20 @@ A request that never shows up in the log (at *Debug* for an ordinary one) never 
 - [Docker problems](#docker-problems)
 - [Asking for help](#asking-for-help)
 
+## A port test fails, or the page won't open
+
+Check the log first: when Yagi starts it prints the address of the admin page (`admin page open=…`), on `9244` unless you changed it. Then:
+
+- **Which port?** The admin page is on `9244`. A tuner's port (`5004`, …) opens only after you add that tuner, so a test of `5004` fails on a fresh install. That is normal.
+- **Is it running?** `docker ps` or `ps aux | grep yagi`. If it stopped, its last log lines say why (see [Yagi won't start](#yagi-wont-start)).
+- **Is it listening?** On the machine: `curl -i http://localhost:9244/`. If that works but another computer's browser can't connect, it is the firewall (below).
+- **Docker without `network_mode: host`** publishes nothing unless you add `-p 9244:9244 -p 5004:5004`. Use host networking.
+
 ## It just hangs, then times out
 
 Nothing came back at all, not even a refusal. The connection is being dropped before it reaches Yagi.
 
-1. **The machine's firewall** is the usual cause. Allow the viewer's address (and yours, for the admin page) to reach Yagi's port. See [Networking](networking.md#the-machines-firewall).
+1. **The machine's firewall** is the usual cause. Allow the viewer's address to reach the tuner's port, and yours to reach the admin port (`9244`). See [Networking](networking.md#the-machines-firewall).
 2. **The wrong address, or the wrong network.** Are both machines on the same Tailscale, VPN or LAN? `tailscale ping <address>` works at the network level even when a port is blocked, so use `curl -i http://<address>:5004/discover.json` to test the port itself.
 3. **Tailscale access controls** may not allow that port between those two machines.
 4. **Safari or another browser changed the address**, for example to `https://`. Yagi speaks plain `http://`. Type it in full, with `:5004`.
@@ -32,17 +42,19 @@ Check the log, with its level set to *Debug* so that ordinary requests show: if 
 
 The page loaded (it is public so you can sign in), but Yagi doesn't consider your address an admin. Once you have a viewer, only these can open the admin pages:
 
-- this machine itself (`http://localhost:5004/`, or through `ssh -L 5004:127.0.0.1:5004 yourserver`);
+- this machine itself (`http://localhost:9244/`, or through `ssh -L 9244:127.0.0.1:9244 yourserver`);
 - addresses listed under `admin` in the settings;
 - a Plex account you have added, if *Sign in with Plex* is on (the page then shows a **Sign in with Plex** button).
 
 To fix it, add your address to `admin` (the log line for your request shows the address Yagi saw), or turn on Plex sign-in from an address that is already an admin. If you have locked yourself out completely, edit the settings file on the machine, add your address to `admin`, and send the process `SIGHUP` (or restart it).
 
+If it stopped working after it had worked, your computer's address probably changed (a new DHCP lease). Reserve its address in your router so it stays the same.
+
 Your address might not be the one you expect. Behind Docker's bridge network, a reverse proxy, or after NAT, Yagi sees the gateway's address. See [Networking](networking.md#if-yagi-runs-in-docker).
 
 ## The bare address says "this address is not allowed to use this tuner"
 
-The address itself is fine, but whatever opened it (a script, a media server, `curl`) isn't one of your viewers, so it is refused. A browser at `http://host:5004/` gets the web page, where you can sign in. If a browser shows this message, it is on an older version (before 2026.10.13 the page was at `/yagi/`), or the address is not on your admin list: see above.
+The address itself is fine, but whatever opened it (a script, a media server, `curl`) isn't one of your viewers, so it is refused. A browser at the admin port, `http://host:9244/`, gets the web page, where you can sign in. (A browser at a tuner's port, `5004`, is refused: that port is only for media servers.) If a browser shows this message, it is on an older version (before 2026.10.13 the page was at `/yagi/`), or the address is not on your admin list: see above.
 
 If you open Yagi by a name like `mini.local`, your phone or laptop may connect over IPv6 using a link-local address (`fe80::…`). Yagi now treats those as ordinary addresses, so you can list `fe80::/10` under `admin` if you want the whole local network, but it is usually easier to use the machine's IPv4 address.
 
@@ -101,11 +113,13 @@ Media servers treat devices with the **same DeviceID as the same device**. If th
 
 The message says why. The common ones:
 
+- **"flag provided but not defined"**, or a message about putting a space between a flag and its value: write `-admin-listen :9244` or `-admin-listen=:9244`, not `-admin-listen:9244`.
+- **"address already in use"**: something else has that port. The message says which of Yagi's ports it was; change it (`-admin-listen`, `YAGI_ADMIN_LISTEN` or `adminListen` for the admin page, `listen` in the settings file for a tuner). On a Mac, port `5000` belongs to AirPlay, which is why Yagi doesn't use it.
+
 - **An unknown key**: the settings file is strict, so a typo is an error: `json: unknown field "viewrs"`.
 - **A bad value**: a device name with a space, a `listen` without a port, an `id` that isn't 8 hex digits, a viewer with no addresses, the same address listed for two viewers, two devices on one port.
 - **"no tuner is set up yet"** is not an error: Yagi is running with only the web page. Open it and add a tuner from the list it finds, or by address.
 - **"… can't be combined with devices declared in the settings file"**: you passed `-tuner`/`-listen`/… and also have `devices` in the file. Choose one.
-- **"address already in use"**: something else has that port. Pick another `listen`.
 
 ## I'm signed out after a restart, or the page says "Reconnecting…"
 

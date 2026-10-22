@@ -8,7 +8,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -40,7 +39,7 @@ func main() {
 	flag.StringVar(&f.streamPort, "stream-port", "5004", "tuner's streaming port")
 	flag.StringVar(&f.advertise, "advertise", "", "base URL to hand to clients (default: the host they connected with)")
 	flag.StringVar(&f.reportID, "report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
-	adminListen := flag.String("admin-listen", os.Getenv("YAGI_ADMIN_LISTEN"), "serve the admin pages on their own address, e.g. \":5000\", and only there; the tuner ports then carry nothing but the tuners (also set by YAGI_ADMIN_LISTEN)")
+	adminListen := flag.String("admin-listen", os.Getenv("YAGI_ADMIN_LISTEN"), "where the admin pages are served, on a port of their own that no tuner uses (default \":9244\"; also set by YAGI_ADMIN_LISTEN or \"adminListen\" in the settings file)")
 	allowLAN := flag.Bool("allow-lan", os.Getenv("YAGI_ALLOW_LAN") != "", "keep the LAN ports open even if \"tailnet only\" is on, to get back in if it left you locked out (also set by YAGI_ALLOW_LAN)")
 	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuners")
 	firmwareURL := flag.String("firmware-url", "", "read the firmware changelog from here instead of SiliconDust's page (for a mirror, or testing)")
@@ -52,6 +51,7 @@ func main() {
 			"Name a tuner with -tuner or -tuner-id, or declare devices under \"devices\" in the settings file.\n\n")
 		flag.PrintDefaults()
 	}
+	hintAtMistypedFlags(os.Args[1:])
 	flag.Parse()
 	if *showVersion {
 		fmt.Println("yagi", version.Get())
@@ -77,26 +77,28 @@ func main() {
 	// With no tuner given anywhere, start without one. Tuners that Yagi can see are shown on the admin page, and
 	// the person adds them: nothing is added without being asked.
 	if len(settings.Devices) == 0 && f.tuner == "" && f.id == "" {
-		log.Info("no tuner is set up yet. Open the admin page to add one; it lists the HDHomeRun tuners it can see. If yours is on another network, or Yagi is in Docker without host networking, add it by its address (or start with -tuner ADDRESS or YAGI_TUNER)", "listen", f.listen)
+		log.Info("no tuner is set up yet. Open the admin page to add one; it lists the HDHomeRun tuners it can see. A tuner's own port (5004, …) opens only once one is added. If yours is on another network, or Yagi is in Docker without host networking, add it by its address (or start with -tuner ADDRESS or YAGI_TUNER)", "listen", f.listen)
 	}
 	devices, err := devicesFor(settings, f, set)
 	if err != nil {
 		fail(err)
 	}
 
-	admin := f.listen
+	// The flag and the environment win over the settings file, which wins over the default.
+	admin := settings.AdminListen
 	if *adminListen != "" {
-		if admin, err = adminAddress(*adminListen); err != nil {
-			fail(err)
-		}
-		if _, ap, _ := net.SplitHostPort(admin); ap != "" {
-			if _, lp, _ := net.SplitHostPort(f.listen); ap == lp {
-				fail(fmt.Errorf("-admin-listen and -listen are both port %s: -listen is where the tuners start, so the admin pages need another", ap))
-			}
+		admin = *adminListen
+	}
+	if admin, err = access.ParseAdminListen(admin); err != nil {
+		fail(err)
+	}
+	for _, d := range devices {
+		if samePort(admin, d.Listen) {
+			fail(fmt.Errorf("the admin pages and tuner %q are both on port %s: tuners never share the admin port, so give one of them another (-admin-listen, or -listen / \"listen\")", d.Name, portOf(admin)))
 		}
 	}
 	srv, err := server.New(ctx, server.Config{
-		AllowLAN: *allowLAN, Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: admin, AdminSeparate: *adminListen != "", TailscaleAuthKey: os.Getenv("TS_AUTHKEY"), Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
+		AllowLAN: *allowLAN, Settings: settings, Devices: devices, ConfigPath: savePath, AdminListen: admin, TailscaleAuthKey: os.Getenv("TS_AUTHKEY"), Poll: *poll, Log: log, LogLevel: level, Logs: logs, FirmwareURL: *firmwareURL,
 	})
 	if err != nil {
 		fail(err)
@@ -109,19 +111,26 @@ func main() {
 	}
 }
 
-// adminAddress reads -admin-listen: a port (":5000" or "5000") or an address ("127.0.0.1:5000").
-func adminAddress(v string) (string, error) {
-	v = strings.TrimSpace(v)
-	if v != "" && strings.Trim(v, "0123456789") == "" {
-		v = ":" + v
+// hintAtMistypedFlags stops with a plain message for "-admin-listen:9244", which Go reports only as an
+// unknown flag: a flag and its value go apart by a space or an equals sign.
+func hintAtMistypedFlags(args []string) {
+	for _, a := range args {
+		if !strings.HasPrefix(a, "-") || strings.Contains(a, "=") {
+			continue
+		}
+		name, value, found := strings.Cut(strings.TrimLeft(a, "-"), ":")
+		if found && name != "" && flag.Lookup(name) != nil {
+			fail(fmt.Errorf("%s: put a space or an equals sign between the flag and its value, for example -%s :%s or -%s=:%s", a, name, value, name, value))
+		}
 	}
-	if _, port, err := net.SplitHostPort(v); err != nil {
-		return "", fmt.Errorf("-admin-listen %q must look like \":5000\" or \"127.0.0.1:5000\"", v)
-	} else if n, err := strconv.Atoi(port); err != nil || n < 1 || n > 65535 {
-		return "", fmt.Errorf("-admin-listen %q has a bad port", v)
-	}
-	return v, nil
 }
+
+func portOf(addr string) string {
+	_, p, _ := net.SplitHostPort(addr)
+	return p
+}
+
+func samePort(a, b string) bool { return portOf(a) != "" && portOf(a) == portOf(b) }
 
 // defaultConfigPath is where the settings live when -config isn't given: next
 // to wherever Yagi is run from. (The Docker image runs from /config.)

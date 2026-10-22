@@ -84,6 +84,6 @@ curl -i http://<yagi address>:5004/discover.json
 - `502 tuner unreachable` means it got through and the tuner is offline.
 - `200` with your tuner's name and Yagi's address means it works.
 
-## Keeping the admin pages off the tuner ports
+## The admin port and the tuner ports
 
-If viewers can reach your tuner ports, they can also reach the admin sign-in page there, which only lets an admin in but is still more than they need to see. Give the pages a port of their own with `-admin-listen` (or `YAGI_ADMIN_LISTEN`, see [Configuration](configuration.md#giving-the-admin-pages-their-own-port)), then allow your viewers to the tuner ports only and yourself to the admin port.
+The admin pages have a port of their own, `9244` unless you change it (see [Configuration](configuration.md#the-admin-port)), and no tuner is ever on it. So allow your viewers to the tuner ports (`5004`, `5005`, …) only, and yourself to the admin port.

@@ -15,14 +15,12 @@ import (
 	"github.com/johnschult/yagi/internal/claim"
 )
 
-// bareName is the key in Config.Listeners for the listener that serves the
+// adminName is the key in Config.Listeners for the listener that serves the
 // admin pages while there are no devices. It exists for tests.
-const bareName = "(admin)"
+const adminName = "(admin)"
 
-// bareListener serves just the admin pages, for when there are no tuners to
-// put them on. Without it a start with no tuner found would have nowhere to
-// add one from.
-type bareListener struct {
+// adminListener serves the admin pages, on a port of their own that no tuner uses.
+type adminListener struct {
 	srv *http.Server
 	ln  net.Listener
 }
@@ -114,7 +112,7 @@ func (s *Server) AddDevice(ctx context.Context, d access.Device) (access.Device,
 		}
 	}
 
-	ln, swapped, err := s.listen(d)
+	ln, err := s.listen(d)
 	if err != nil {
 		s.drop(dev)
 		return d, api.NewError(http.StatusConflict, fmt.Sprintf("can't listen on %s: %v", d.Listen, err))
@@ -125,9 +123,6 @@ func (s *Server) AddDevice(ctx context.Context, d access.Device) (access.Device,
 	}); err != nil {
 		ln.Close()
 		s.drop(dev)
-		if swapped {
-			s.openBare()
-		}
 		return d, err
 	}
 
@@ -188,9 +183,6 @@ func (s *Server) RemoveDevice(name string) error {
 	s.devMu.Unlock()
 	s.drop(dev)
 	s.log.Info("tuner removed", "device", name)
-	if len(s.deviceList()) == 0 {
-		s.openBare() // the admin pages were on that device's port
-	}
 	s.hub.Notify()
 	return nil
 }
@@ -319,79 +311,36 @@ func (s *Server) freeName(id string) string {
 	}
 }
 
-// nextListen picks a port for a new device. The first one takes over the port
-// the admin pages are on, so the page stays where it is; later ones go one past
-// the highest in use.
+// nextListen picks a port for a new device: 5004, or one past the highest in use, stepping over the admin
+// port, which no tuner uses.
 func (s *Server) nextListen() string {
-	if s.cfg.AdminSeparate {
-		// The admin pages keep their own port, so a tuner never takes it over: start at 5004, and go
-		// one past the highest in use, stepping over the admin port.
-		port := 5004
-		for _, d := range s.deviceList() {
-			if _, p, err := net.SplitHostPort(d.cfg.Listen); err == nil {
-				if n, err := strconv.Atoi(p); err == nil && n >= port {
-					port = n + 1
-				}
-			}
-		}
-		for samePort(s.cfg.AdminListen, ":"+strconv.Itoa(port)) {
-			port++
-		}
-		return ":" + strconv.Itoa(port)
-	}
-	if s.bare != nil {
-		if _, port, err := net.SplitHostPort(s.bare.ln.Addr().String()); err == nil {
-			return ":" + port
-		}
-	}
-	highest := 0
+	port := 5004
 	for _, d := range s.deviceList() {
-		if _, p, err := net.SplitHostPort(d.cfg.Listen); err == nil {
-			if n, err := strconv.Atoi(p); err == nil && n > highest {
-				highest = n
-			}
+		if n, err := strconv.Atoi(portOfListen(d.cfg.Listen)); err == nil && n >= port {
+			port = n + 1
 		}
 	}
-	if highest == 0 {
-		if _, p, err := net.SplitHostPort(s.cfg.AdminListen); err == nil {
-			return ":" + p
-		}
-		return ":5004"
+	for samePort(s.cfg.AdminListen, ":"+strconv.Itoa(port)) {
+		port++
 	}
-	return ":" + strconv.Itoa(highest+1)
+	return ":" + strconv.Itoa(port)
 }
 
-// listen binds a device's port. If the admin-only listener has it, that is let
-// go first: the device serves the admin pages too. swapped says that happened.
-//
-// The admin-only listener is let go before the port is tried, not after it fails: whether binding
-// ":5004" fails while "127.0.0.1:5004" is held depends on the system (it does on Linux and does not on
-// macOS), and where it doesn't, the old listener would be left serving the port, and answering what the
-// device should with a 404.
-func (s *Server) listen(d access.Device) (ln net.Listener, swapped bool, err error) {
+// listen binds a device's port. The admin pages' port is never a tuner's.
+func (s *Server) listen(d access.Device) (net.Listener, error) {
 	if ln, ok := s.cfg.Listeners[d.Name]; ok {
-		return ln, false, nil
+		return ln, nil
 	}
 	if err := s.adminPortTaken(d); err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	if !s.cfg.AdminSeparate && s.bare != nil && samePort(s.bare.ln.Addr().String(), d.Listen) {
-		s.stopBare()
-		if ln, err = net.Listen("tcp", d.Listen); err == nil {
-			return ln, true, nil
-		}
-		s.openBare()
-		return nil, false, err
-	}
-	ln, err = net.Listen("tcp", d.Listen)
-	return ln, false, err
+	return net.Listen("tcp", d.Listen)
 }
 
-// adminPortTaken says why a tuner can't use its port, when the admin pages have a port of their own and
-// it is that one. It is nil otherwise.
+// adminPortTaken says why a tuner can't use its port, when it is the admin pages'. It is nil otherwise.
 func (s *Server) adminPortTaken(d access.Device) error {
-	if s.cfg.AdminSeparate && samePort(s.cfg.AdminListen, d.Listen) {
-		return fmt.Errorf("%s is the port of the admin pages (-admin-listen): give the tuner another", d.Listen)
+	if samePort(s.cfg.AdminListen, d.Listen) {
+		return fmt.Errorf("%s is the port of the admin pages (%s): give the tuner another", d.Listen, s.cfg.AdminListen)
 	}
 	return nil
 }
@@ -413,12 +362,12 @@ func (s *Server) adminMux() http.Handler {
 	return mux
 }
 
-// startBare serves the admin pages alone on ln. The caller holds fleetMu.
-func (s *Server) startBare(ln net.Listener) {
+// startAdmin serves the admin pages on ln. The caller holds fleetMu.
+func (s *Server) startAdmin(ln net.Listener) {
 	srv := &http.Server{Handler: s.adminMux(), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 	ln = s.gate(ln)
-	s.bare = &bareListener{srv: srv, ln: ln}
-	s.log.Info("no tuners yet: serving the admin pages so one can be added", "addr", ln.Addr().String())
+	s.adminLn = &adminListener{srv: srv, ln: ln}
+	s.log.Info("serving the admin pages", "addr", ln.Addr().String())
 	go func() {
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, net.ErrClosed) {
 			select {
@@ -427,28 +376,4 @@ func (s *Server) startBare(ln net.Listener) {
 			}
 		}
 	}()
-}
-
-// stopBare lets go of the admin-only listener: no new connections now, and the
-// ones in use (the page that asked for this) are given a moment to finish.
-func (s *Server) stopBare() {
-	if s.bare == nil {
-		return
-	}
-	s.bare.ln.Close()
-	go retire(s.bare.srv)
-	s.bare = nil
-}
-
-// openBare serves the admin pages alone again, after the last device went.
-func (s *Server) openBare() {
-	if s.bare != nil {
-		return
-	}
-	ln, err := net.Listen("tcp", s.cfg.AdminListen)
-	if err != nil {
-		s.log.Error("no tuners left and the admin pages can't be served; restart Yagi", "addr", s.cfg.AdminListen, "err", err)
-		return
-	}
-	s.startBare(ln)
 }

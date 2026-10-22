@@ -129,9 +129,9 @@ func TestNoGuideIsFetchedWhileOffAndItCanBeSwitchedOn(t *testing.T) {
 		t.Errorf("a logo while off: %d", code)
 	}
 
-	req, _ := http.NewRequest("PATCH", "http://"+r.addr["antenna"]+"/api/settings", strings.NewReader(`{"guide":true}`))
+	req, _ := http.NewRequest("PATCH", "http://"+r.admin+"/api/settings", strings.NewReader(`{"guide":true}`))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Origin", "http://"+r.addr["antenna"])
+	req.Header.Set("Origin", "http://"+r.admin)
 	if resp, err := http.DefaultClient.Do(req); err != nil {
 		t.Fatal(err)
 	} else {

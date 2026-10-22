@@ -122,6 +122,29 @@ type Settings struct {
 	Notifications *Notifications `json:"notifications,omitempty"`
 	// Tailscale is the optional built-in Tailscale node, in builds that have it.
 	Tailscale *TailscaleSettings `json:"tailscale,omitempty"`
+	// AdminListen is where the admin pages are served: ":9244" (the default) or "127.0.0.1:9244". It is a port of
+	// its own, never a tuner's. The -admin-listen flag and YAGI_ADMIN_LISTEN override it, and a change needs a restart.
+	AdminListen string `json:"adminListen,omitempty"`
+}
+
+// DefaultAdminListen is where the admin pages are until someone says otherwise.
+const DefaultAdminListen = ":9244"
+
+// ParseAdminListen reads where the admin pages should be: a port (":9244" or "9244") or an address
+// ("127.0.0.1:9244"). Empty means DefaultAdminListen.
+func ParseAdminListen(v string) (string, error) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return DefaultAdminListen, nil
+	}
+	if strings.Trim(v, "0123456789") == "" {
+		v = ":" + v
+	}
+	_, port, err := net.SplitHostPort(v)
+	if err != nil || !validPort(port) {
+		return "", fmt.Errorf("admin address %q must look like \":9244\" or \"127.0.0.1:9244\"", v)
+	}
+	return v, nil
 }
 
 // TailscaleSettings is the built-in Tailscale node: whether it runs and what it is called on the tailnet.
@@ -436,6 +459,10 @@ func (s Settings) parse() (parsed, error) {
 	if s.OwnerReserve < 0 {
 		return out, errors.New("ownerReserve cannot be negative")
 	}
+	admin, err := ParseAdminListen(s.AdminListen)
+	if err != nil {
+		return out, fmt.Errorf("adminListen: %w", err)
+	}
 	if s.LogLevel != "" && !slices.Contains(LogLevels, s.LogLevel) {
 		return out, fmt.Errorf("logLevel must be one of %s", strings.Join(LogLevels, ", "))
 	}
@@ -476,6 +503,7 @@ func (s Settings) parse() (parsed, error) {
 		}
 	}
 
+	_, adminPort, _ := net.SplitHostPort(admin)
 	ports := map[string]string{}
 	lowered := map[string]bool{}
 	for _, d := range s.Devices {
@@ -488,6 +516,9 @@ func (s Settings) parse() (parsed, error) {
 		lowered[strings.ToLower(d.Name)] = true
 		out.devices[d.Name] = d
 		_, port, _ := net.SplitHostPort(d.Listen)
+		if port == adminPort {
+			return out, fmt.Errorf("device %q listens on port %s, which is the admin pages' port: give the tuner another", d.Name, port)
+		}
 		if other, taken := ports[port]; taken {
 			return out, fmt.Errorf("devices %q and %q both listen on port %s", other, d.Name, port)
 		}

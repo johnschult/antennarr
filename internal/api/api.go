@@ -71,8 +71,6 @@ type TailnetControl interface {
 type API struct {
 	// Tailnet is the built-in Tailscale node; nil means this server has none.
 	Tailnet TailnetControl
-	// AdminSeparate says the admin pages are on a port of their own, which the state tells the page.
-	AdminSeparate bool
 	// Devices is a fixed set of tuners, for when Fleet is nil.
 	Devices []Device
 	// Fleet, when set, is where the tuners come from, and what adds and removes
@@ -265,9 +263,6 @@ type State struct {
 	Viewers  []access.ViewerStatus `json:"viewers"`
 	Settings SettingsDoc           `json:"settings"`
 	Editable bool                  `json:"editable"` // false: started without -config
-	// AdminSeparate is true when the admin pages have a port of their own (-admin-listen), so moving a tuner to
-	// another port must not move the page with it.
-	AdminSeparate bool `json:"adminSeparate"`
 	// Tailscale is the built-in Tailscale node: whether this build has it, and where it is.
 	Tailscale tailnet.Status `json:"tailscale"`
 	// Version is this build's version, VersionURL its page on GitHub, and DocsURL
@@ -347,12 +342,11 @@ func (a *API) state() State {
 			Tailscale:     TailscaleDoc{Enabled: set.TailscaleEnabled(), Hostname: set.TailscaleHostname(), TailnetOnly: set.Tailscale != nil && set.Tailscale.TailnetOnly, HTTPS: set.Tailscale != nil && set.Tailscale.HTTPS},
 			Notifications: notificationsDoc(set),
 		},
-		Editable:      a.Store.Editable(),
-		AdminSeparate: a.AdminSeparate,
-		Tailscale:     a.tailscale(),
-		Version:       version.Get(),
-		VersionURL:    version.URL(version.Get()),
-		DocsURL:       version.DocsURL(version.Get()),
+		Editable:   a.Store.Editable(),
+		Tailscale:  a.tailscale(),
+		Version:    version.Get(),
+		VersionURL: version.URL(version.Get()),
+		DocsURL:    version.DocsURL(version.Get()),
 	}
 }
 

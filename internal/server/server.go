@@ -57,14 +57,9 @@ type Config struct {
 	// devices list into the settings file when someone edits a viewer.
 	Devices    []access.Device
 	ConfigPath string // where edits are saved; empty means read-only
-	// AdminListen is where the admin pages are served while there are no tuners
-	// to put them on (default ":5004"). With tuners, the admin pages are on
-	// each tuner's port instead, unless AdminSeparate is set.
+	// AdminListen is where the admin pages are served (default ":9244"): a port of their own, which no tuner
+	// can use, so the tuner ports carry nothing but what a media server asks of a tuner.
 	AdminListen string
-	// AdminSeparate gives the admin pages a port of their own, AdminListen, for good: they are served there, and
-	// only there, so the tuner ports carry nothing but what a media server asks of a tuner. No tuner can then
-	// use that port.
-	AdminSeparate bool
 	// TailscaleAuthKey signs the built-in Tailscale node in without a link (TS_AUTHKEY). It is never saved.
 	TailscaleAuthKey string
 	// TailscaleStart makes the built-in Tailscale node, for tests; nil means the real one (tailnet.NewNode), which
@@ -158,7 +153,7 @@ type Server struct {
 	fleetMu sync.Mutex
 	runCtx  context.Context // nil until Run
 	errc    chan error
-	bare    *bareListener // serves the admin pages while there are no devices
+	adminLn *adminListener // serves the admin pages
 }
 
 // deviceList is a copy of the devices now running.
@@ -185,7 +180,10 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		cfg.Locate = DefaultLocate
 	}
 	if cfg.AdminListen == "" {
-		cfg.AdminListen = ":5004"
+		cfg.AdminListen = access.DefaultAdminListen
+		if cfg.Listeners != nil { // tests hand in their own listeners and must not all fight over one real port
+			cfg.AdminListen = "127.0.0.1:0"
+		}
 	}
 
 	policy, err := access.NewPolicy(cfg.Settings, cfg.Log)
@@ -293,7 +291,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		AdminSeparate: cfg.AdminSeparate, Tailnet: tailnetControl{s}, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		Tailnet: tailnetControl{s}, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -341,30 +339,8 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 		Upstream: mon, Policy: s.policy.Device(name),
 		Advertise: d.Advertise, DeviceID: d.ReportID, Logger: log,
 	})
-	if s.cfg.AdminSeparate {
-		// The admin pages have a port of their own, so this one is only the tuner.
-		mux.Handle("/", tunerAPI)
-	} else {
-		// The admin pages are reachable on every device's port, beside the
-		// tuner's own paths (/discover.json, /lineup.json, /auto/…), which the
-		// pages never use: only the pages' own paths are sent to the admin side.
-		for _, p := range ui.Routes() {
-			mux.Handle("GET "+p, s.admin)
-		}
-		mux.Handle("/api/", s.admin)
-		mux.Handle("/streams", s.admin)
-		// Signing in has to be reachable by someone who isn't signed in yet; each
-		// endpoint checks for itself what it will allow.
-		mux.Handle("/auth/", s.plex.Handler())
-		mux.HandleFunc("GET "+legacyPrefix, redirectLegacy)
-		mux.HandleFunc("GET "+renamedPrefix, redirectRenamed)
-		mux.Handle(claim.Path, s.claim.Handler())
-		mux.Handle("/", tunerAPI)
-		// Someone who types the bare address into a browser wants the admin
-		// page, not the tuner's own front page. Everyone else (viewers, media
-		// servers) is handled as before.
-		mux.Handle("GET /{$}", s.policy.AdminHome(s.admin, tunerAPI))
-	}
+	// The admin pages have a port of their own, so a tuner's port is only the tuner.
+	mux.Handle("/", tunerAPI)
 
 	log.Debug("device built", "listen", d.Listen, "tuner", base)
 	return &device{cfg: d, mon: mon, handler: mux}, nil
@@ -397,32 +373,25 @@ func (s *Server) Run(ctx context.Context) error {
 			if ln, err = net.Listen("tcp", d.cfg.Listen); err != nil {
 				closeAll()
 				s.fleetMu.Unlock()
-				return fmt.Errorf("device %q: %w", d.cfg.Name, err)
+				return fmt.Errorf("device %q can't use %s (is another program, or another Yagi, using that port?): %w\n  change its \"listen\" in the settings file", d.cfg.Name, d.cfg.Listen, err)
 			}
 		}
 		lns[i] = ln
 	}
-	var bareLn net.Listener
-	if len(devs) == 0 || s.cfg.AdminSeparate {
-		ln, ok := s.cfg.Listeners[bareName]
-		if !ok {
-			var err error
-			if ln, err = net.Listen("tcp", s.cfg.AdminListen); err != nil {
-				s.fleetMu.Unlock()
-				return fmt.Errorf("admin pages: %w", err)
-			}
+	bareLn, ok := s.cfg.Listeners[adminName]
+	if !ok {
+		var err error
+		if bareLn, err = net.Listen("tcp", s.cfg.AdminListen); err != nil {
+			closeAll()
+			s.fleetMu.Unlock()
+			return fmt.Errorf("the admin pages can't use %s (is another program, or another Yagi, using that port?): %w\n  choose another with -admin-listen :PORT, YAGI_ADMIN_LISTEN, or \"adminListen\" in the settings file", s.cfg.AdminListen, err)
 		}
-		bareLn = ln
-		lns = append(lns, ln)
 	}
 
 	s.runCtx = ctx
 	s.errc = make(chan error, 8)
-	if bareLn != nil && s.cfg.AdminSeparate {
-		s.logClaimLinks([]net.Listener{bareLn}) // the setup link is on the admin port, not a tuner's
-	} else {
-		s.logClaimLinks(lns)
-	}
+	s.logWhereToOpen(bareLn)
+	s.logClaimLinks([]net.Listener{bareLn}) // the setup link is on the admin port, not a tuner's
 
 	s.tailnet.Reconcile()
 	go s.watchTailnet(ctx)
@@ -434,9 +403,7 @@ func (s *Server) Run(ctx context.Context) error {
 	for i, d := range devs {
 		s.start(d, lns[i])
 	}
-	if bareLn != nil {
-		s.startBare(bareLn)
-	}
+	s.startAdmin(bareLn)
 	errc := s.errc
 	s.fleetMu.Unlock()
 
@@ -454,8 +421,8 @@ func (s *Server) Run(ctx context.Context) error {
 	for _, d := range s.deviceList() {
 		servers = append(servers, d.srv)
 	}
-	if s.bare != nil {
-		servers = append(servers, s.bare.srv)
+	if s.adminLn != nil {
+		servers = append(servers, s.adminLn.srv)
 	}
 	s.fleetMu.Unlock()
 	shutdown, stop := context.WithTimeout(context.Background(), 5*time.Second)
@@ -496,6 +463,22 @@ func (s *Server) serve(d *device, ln net.Listener) {
 
 // logClaimLinks writes the first-run setup link to the log, once for each
 // address the machine can be reached at, if there is still an admin to claim.
+// logWhereToOpen says where the admin page is, in plain words, for whoever just started Yagi from a command line.
+func (s *Server) logWhereToOpen(ln net.Listener) {
+	port := portOfListen(ln.Addr().String())
+	hosts := []string{}
+	for _, a := range netinfo.Detect() {
+		hosts = append(hosts, a.IP)
+	}
+	if len(hosts) == 0 {
+		hosts = []string{"<this-machine>"}
+	}
+	for _, h := range hosts {
+		s.log.Info("admin page", "open", "http://"+net.JoinHostPort(h, port)+"/")
+	}
+	s.log.Info("if a browser on another computer can't connect, the machine's firewall is the usual cause: allow port " + port + ". See https://github.com/johnschult/yagi/blob/main/docs/troubleshooting.md")
+}
+
 func (s *Server) logClaimLinks(lns []net.Listener) {
 	tok := s.claim.Token()
 	if tok == "" || len(lns) == 0 {
@@ -512,7 +495,7 @@ func (s *Server) logClaimLinks(lns []net.Listener) {
 	if len(hosts) == 0 {
 		hosts = []string{"<this-machine>"}
 	}
-	s.log.Info("FIRST RUN: nobody is an admin yet. To set up, open one of these links from the device you want to use as the admin. It works once, and only from a private network")
+	s.log.Info("FIRST RUN: nobody is an admin yet. To set up, open one of these links from the computer you want to use as the admin. It works once, only from a private network, and only until Yagi restarts. That computer's address is then what is trusted, so if it changes (DHCP), you are locked out. Reserve its address in your router, or, if you use Plex, turn on Sign in with Plex on the Settings page")
 	for _, u := range claim.URLs(tok, port, hosts) {
 		s.log.Info("  setup link", "url", u)
 	}
