@@ -76,7 +76,7 @@ func (r *rig) upgradeState(t *testing.T) upgradeState {
 
 func (r *rig) post(t *testing.T, path, body string) (int, string) {
 	t.Helper()
-	resp, err := http.Post("http://"+r.addr["antenna"]+path, "application/json", bytes.NewBufferString(body))
+	resp, err := http.Post("http://"+r.host("antenna", path)+path, "application/json", bytes.NewBufferString(body))
 	if err != nil {
 		t.Fatal(err)
 	}

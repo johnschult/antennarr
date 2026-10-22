@@ -44,5 +44,5 @@ COPY --from=build /out/yagi /usr/local/bin/yagi
 # Run from /config, so the default settings file (yagi.json) lands in the volume
 # you mount there.
 WORKDIR /config
-EXPOSE 5004
+EXPOSE 9244 5004
 ENTRYPOINT ["/usr/local/bin/yagi"]

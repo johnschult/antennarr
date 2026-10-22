@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -146,8 +147,9 @@ func tailRig(t *testing.T, enabled bool) (*rig, *stubNode) {
 
 func TestATunersPortIsAnsweredOnTheTailnetByTheSameHandler(t *testing.T) {
 	r, node := tailRig(t, true)
-	waitFor(t, "the tailnet listener", func() bool { return node.at(":5004") != "" })
-	resp, err := http.Get("http://" + node.at(":5004") + "/api/state") // the admin pages are on the tuner's port
+	adminPort := portOfListen(r.admin)
+	waitFor(t, "the tailnet listener", func() bool { return node.at(":5004") != "" && node.at(":"+adminPort) != "" })
+	resp, err := http.Get("http://" + node.at(":"+adminPort) + "/api/state")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,8 +162,8 @@ func TestATunersPortIsAnsweredOnTheTailnetByTheSameHandler(t *testing.T) {
 		t.Errorf("on the LAN: %d", code)
 	}
 	st := tc(r).Status()
-	if len(st.Serving) != 1 || st.Serving[0] != "5004" {
-		t.Errorf("serving = %v, want [5004]", st.Serving)
+	if len(st.Serving) != 2 || !slices.Contains(st.Serving, "5004") || !slices.Contains(st.Serving, adminPort) {
+		t.Errorf("serving = %v, want [5004 %s]", st.Serving, adminPort)
 	}
 }
 
@@ -215,8 +217,9 @@ func TestAMovedPortIsAnsweredOnTheTailnetAtItsNewNumber(t *testing.T) {
 	f.srv.syncTailnet()
 	waitFor(t, "the new port", func() bool { return node.at(":"+p2) != "" })
 	st := tailnetControl{f.srv}.Status()
-	if len(st.Serving) != 1 || st.Serving[0] != p2 {
-		t.Errorf("serving = %v, want only the new port %s", st.Serving, p2)
+	adminPort := portOfListen(strings.TrimPrefix(f.base, "http://"))
+	if len(st.Serving) != 2 || !slices.Contains(st.Serving, p2) || !slices.Contains(st.Serving, adminPort) {
+		t.Errorf("serving = %v, want the admin port %s and only the new port %s", st.Serving, adminPort, p2)
 	}
 }
 
@@ -239,8 +242,9 @@ func TestARemovedTunerIsNoLongerAnsweredOnTheTailnet(t *testing.T) {
 	}
 	f.srv.syncTailnet()
 	st := tailnetControl{f.srv}.Status()
-	if len(st.Serving) != 1 || st.Serving[0] != p1 {
-		t.Errorf("serving = %v, want only %s", st.Serving, p1)
+	adminPort := portOfListen(strings.TrimPrefix(f.base, "http://"))
+	if len(st.Serving) != 2 || !slices.Contains(st.Serving, p1) || !slices.Contains(st.Serving, adminPort) {
+		t.Errorf("serving = %v, want the admin port %s and only %s", st.Serving, adminPort, p1)
 	}
 }
 

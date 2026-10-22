@@ -19,10 +19,10 @@ import (
 
 // startFirstRun runs a server from the given settings, saved to a settings file
 // when withFile is set, and returns it with its log and address.
-func startFirstRun(t *testing.T, s access.Settings, withFile bool) (*Server, *lockedBuf, string) {
+func startFirstRun(t *testing.T, s access.Settings, withFile bool) (srv *Server, logs *lockedBuf, admin, tuner string) {
 	t.Helper()
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
-	logs := &lockedBuf{}
+	logs = &lockedBuf{}
 	off := false
 	s.FirmwareCheck, s.Guide = &off, &off
 	cfg := Config{
@@ -30,7 +30,8 @@ func startFirstRun(t *testing.T, s access.Settings, withFile bool) (*Server, *lo
 		Log: slog.New(slog.NewTextHandler(logs, nil)),
 	}
 	ln := ephemeral(t)
-	cfg.Listeners = map[string]net.Listener{"antenna": ln}
+	adminLn := ephemeral(t)
+	cfg.Listeners = map[string]net.Listener{"antenna": ln, adminName: adminLn}
 	if withFile {
 		cfg.ConfigPath = filepath.Join(t.TempDir(), "yagi.json")
 		if err := access.SaveSettings(cfg.ConfigPath, s); err != nil {
@@ -49,7 +50,7 @@ func startFirstRun(t *testing.T, s access.Settings, withFile bool) (*Server, *lo
 	for !strings.Contains(logs.String(), "listening") && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
 	}
-	return srv, logs, ln.Addr().String()
+	return srv, logs, adminLn.Addr().String(), ln.Addr().String()
 }
 
 func status(t *testing.T, method, u string, body url.Values) int {
@@ -72,7 +73,7 @@ func status(t *testing.T, method, u string, body url.Values) int {
 // A new install serves nobody, says how to set it up, and the link carries the
 // token that the claim page is waiting for.
 func TestFirstRunIsClosedAndLogsASetupLink(t *testing.T) {
-	srv, logs, addr := startFirstRun(t, access.DefaultSettings(), true)
+	srv, logs, addr, tunerAddr := startFirstRun(t, access.DefaultSettings(), true)
 
 	out := logs.String()
 	if !strings.Contains(out, "FIRST RUN") {
@@ -88,7 +89,7 @@ func TestFirstRunIsClosedAndLogsASetupLink(t *testing.T) {
 	}
 
 	// Nobody can use the tuner yet, not even this machine.
-	if code := status(t, "GET", "http://"+addr+"/discover.json", nil); code != http.StatusForbidden {
+	if code := status(t, "GET", "http://"+tunerAddr+"/discover.json", nil); code != http.StatusForbidden {
 		t.Errorf("/discover.json = %d, want 403 until a viewer is added", code)
 	}
 	// The claim page is reachable here but this machine is already an admin, so
@@ -104,14 +105,14 @@ func TestFirstRunIsClosedAndLogsASetupLink(t *testing.T) {
 func TestNoSetupLinkOnceThereIsAnAdmin(t *testing.T) {
 	s := access.DefaultSettings()
 	s.Admin = []string{"100.64.0.1"}
-	srv, logs, _ := startFirstRun(t, s, true)
+	srv, logs, _, _ := startFirstRun(t, s, true)
 	if srv.claim.Token() != "" || strings.Contains(logs.String(), "FIRST RUN") {
 		t.Errorf("a claimed install offered a setup link:\n%s", logs.String())
 	}
 }
 
 func TestNoSetupLinkWhenSettingsCantBeSaved(t *testing.T) {
-	srv, logs, _ := startFirstRun(t, access.DefaultSettings(), false)
+	srv, logs, _, _ := startFirstRun(t, access.DefaultSettings(), false)
 	if srv.claim.Token() != "" || strings.Contains(logs.String(), "FIRST RUN") {
 		t.Errorf("an install with no settings file offered a setup link:\n%s", logs.String())
 	}

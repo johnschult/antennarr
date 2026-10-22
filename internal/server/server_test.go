@@ -138,6 +138,7 @@ func (l *lockedBuf) String() string { l.mu.Lock(); defer l.mu.Unlock(); return l
 type rig struct {
 	srv    *Server
 	addr   map[string]string // device name -> host:port
+	admin  string            // host:port of the admin pages, which have a port of their own
 	logs   *lockedBuf
 	cancel context.CancelFunc
 	done   chan error
@@ -189,6 +190,9 @@ func startConfigured(t *testing.T, s access.Settings, devices []access.Device, f
 		lns[d.Name] = ln
 		r.addr[d.Name] = ln.Addr().String()
 	}
+	adminLn := ephemeral(t)
+	lns[adminName] = adminLn
+	r.admin = adminLn.Addr().String()
 	ctx, cancel := context.WithCancel(context.Background())
 	r.cancel = cancel
 	t.Cleanup(cancel)
@@ -219,9 +223,19 @@ func startConfigured(t *testing.T, s access.Settings, devices []access.Device, f
 	return r
 }
 
+// host is where a path is answered: the admin pages' paths on the admin port, the rest on the device's.
+func (r *rig) host(device, path string) string {
+	for _, p := range []string{"/api/", "/streams", "/auth/", "/claim", "/antennarr", "/yagi"} {
+		if strings.HasPrefix(path, p) {
+			return r.admin
+		}
+	}
+	return r.addr[device]
+}
+
 func (r *rig) get(t *testing.T, device, path string) (int, string) {
 	t.Helper()
-	resp, err := http.Get("http://" + r.addr[device] + path)
+	resp, err := http.Get("http://" + r.host(device, path) + path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,11 +246,7 @@ func (r *rig) get(t *testing.T, device, path string) (int, string) {
 
 func (r *rig) waitOnline(t *testing.T, devices int) {
 	t.Helper()
-	var first string
-	for _, a := range r.addr {
-		first = a
-		break
-	}
+	first := r.admin
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		resp, err := http.Get("http://" + first + "/api/state")
@@ -359,22 +369,27 @@ func TestDevicesAreRatedSeparately(t *testing.T) {
 	}
 }
 
-func TestAdminPagesAreOnEveryPort(t *testing.T) {
+func TestAdminPagesAreOnTheirOwnPortAndNoTunerHasThem(t *testing.T) {
 	a, c := newFakeTuner(t, "10ABCC87", "antenna-box"), newFakeTuner(t, "1111AAA2", "cable-box")
 	r := start(t, access.DefaultSettings(), twoDevs(a, c), a, c)
 
-	for dev := range r.addr {
-		code, body := r.get(t, dev, "/api/state")
-		var st struct{ Devices []struct{ Name string } }
-		json.Unmarshal([]byte(body), &st)
-		if code != 200 || len(st.Devices) != 2 || st.Devices[0].Name != "antenna" || st.Devices[1].Name != "cable" {
-			t.Errorf("%s: %d %s", dev, code, body)
+	code, body := r.get(t, "antenna", "/api/state")
+	var st struct{ Devices []struct{ Name string } }
+	json.Unmarshal([]byte(body), &st)
+	if code != 200 || len(st.Devices) != 2 || st.Devices[0].Name != "antenna" || st.Devices[1].Name != "cable" {
+		t.Errorf("admin port: %d %s", code, body)
+	}
+	if code, _ := r.get(t, "antenna", "/streams"); code != 200 {
+		t.Errorf("admin port: /streams %d", code)
+	}
+	for dev, addr := range r.addr {
+		resp, err := http.Get("http://" + addr + "/api/state")
+		if err != nil {
+			t.Fatal(err)
 		}
-		if code, _ := r.get(t, dev, "/streams"); code != 200 {
-			t.Errorf("%s: /streams %d", dev, code)
-		}
-		if code, _ := r.get(t, dev, "/"); code != 200 && code != 503 { // 503: the UI isn't built in this checkout
-			t.Errorf("%s: UI %d", dev, code)
+		resp.Body.Close()
+		if resp.StatusCode == 200 {
+			t.Errorf("%s: the tuner's port answered the admin API", dev)
 		}
 	}
 }
@@ -385,7 +400,7 @@ func TestBareAddressGoesToTheAdminPage(t *testing.T) {
 	r := start(t, access.DefaultSettings(), devs, a)
 
 	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	resp, err := client.Get("http://" + r.addr["antenna"] + "/")
+	resp, err := client.Get("http://" + r.admin + "/")
 	if err != nil {
 		t.Fatal(err)
 	}

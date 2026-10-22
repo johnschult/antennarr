@@ -40,7 +40,7 @@ func TestTheOldYagiPrefixIsSentOn(t *testing.T) {
 		"/yagi/claim?token=abc_-": "/claim?token=abc_-",
 		"/antennarr/settings":     "/settings",
 	} {
-		resp, err := client.Get("http://" + r.addr["antenna"] + from)
+		resp, err := client.Get("http://" + r.admin + from)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -50,7 +50,7 @@ func TestTheOldYagiPrefixIsSentOn(t *testing.T) {
 		}
 	}
 	// The tuner's own paths are still the tuner's, and a page of the UI is not.
-	resp, err := client.Get("http://" + r.addr["antenna"] + "/viewers")
+	resp, err := client.Get("http://" + r.admin + "/viewers")
 	if err != nil {
 		t.Fatal(err)
 	}

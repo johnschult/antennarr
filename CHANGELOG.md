@@ -5,6 +5,17 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/yagi/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.14 (2026-10-22)
+
+### Read before updating
+
+- **The web page now has a port of its own: `9244`.** It used to share a tuner's port, so it moved when you added a tuner, and a viewer who could reach the tuner could reach the sign-in page. Now `http://<this machine>:9244/` is always the page, and no tuner is ever on that port: tuners keep `5004`, `5005`, … exactly as before, so **nothing changes for your viewers or their media servers**. What changes for you: open `:9244` instead of `:5004`, **sign in with Plex once more** (the cookie is for the page's new address), re-add the page to your Home Screen, and allow `9244` in the firewall for the computers you use as admins. Change it with `-admin-listen`, `YAGI_ADMIN_LISTEN` or `adminListen` in the settings file; see [Configuration](https://github.com/johnschult/yagi/blob/main/docs/configuration.md#the-admin-port). The `-admin-listen` option from the last release is now simply how you move it.
+
+### Added
+
+- **Plain startup messages.** Yagi now prints where the admin page is (with your machine's addresses), says that a tuner's port opens only once a tuner is added, and points to the troubleshooting page. `-admin-listen:9244` (no space) gets a message saying what to type instead of an "unknown flag", and a port that is already in use names the port and how to change it.
+- **Notices on the page that can be closed.** A warning explains that your way into the page is your computer's address, which can change, and suggests reserving it in your router (or Sign in with Plex). The note on the Viewers page about limits can be closed too. The offline and "nobody can use your tuner" notices link to troubleshooting.
+
 ## 2026.10.13 (2026-10-20)
 
 ### Read before updating
@@ -18,7 +29,7 @@ Each release's notes on GitHub are its section of this file.
 - **Only on the tailnet** (`-tailscale` image). Once Yagi's own Tailscale is connected, a switch refuses everything that comes in over the machine's network address, leaving the tailnet and the machine itself, and closes the connections already open from the LAN when it goes on. It asks first, can only be turned on while the node is connected, stays out of force while the tailnet is down so you are never locked out, and `-allow-lan` (`YAGI_ALLOW_LAN`) is the way back in. See [Only on the tailnet](https://github.com/johnschult/yagi/blob/main/docs/tailscale.md#only-on-the-tailnet).
 - **Viewers and admins can be matched by their Tailscale login or device** (`-tailscale` image). Over Yagi's own Tailscale, an entry in a viewer's addresses or in the admin addresses can be `tailscale:alice@example.com` (anyone signed in as that login, on any device) or `tailscale:laptop.tail1234.ts.net` (that device), instead of a `100.x` address that changes when a device is re-registered. The node says who is on the other end; a connection from the LAN or a header can't claim one. See [Who is on the other end](https://github.com/johnschult/yagi/blob/main/docs/tailscale.md#who-is-on-the-other-end).
 - **HTTPS for the admin page on the tailnet** (`-tailscale` image). A switch also serves the admin pages over HTTPS at the device's tailnet name (`https://yagi.tail1234.ts.net/`), with a certificate Tailscale gets for it (fetched as soon as it is switched on, so the first visit isn't slow). It needs HTTPS certificates turned on for your tailnet, and the name then appears in a public certificate log, so it is off until you turn it on. The tuner ports stay plain HTTP. See [HTTPS for the admin page](https://github.com/johnschult/yagi/blob/main/docs/tailscale.md#https-for-the-admin-page).
-- **The admin pages can have a port of their own.** Start Yagi with `-admin-listen :5000` (or set `YAGI_ADMIN_LISTEN`, which is easiest in Docker) and the web page, its API, sign-in and the first-run setup link are on that port only. The tuner ports then carry nothing but the tuners, so you can open them to your viewers and keep the admin port to yourself. Adding or removing a tuner never moves the page, and a tuner can't be given the admin port. Nothing changes unless you set it: see [Configuration](https://github.com/johnschult/yagi/blob/main/docs/configuration.md#giving-the-admin-pages-their-own-port).
+- **The admin pages can have a port of their own.** Start Yagi with `-admin-listen :9244` (or set `YAGI_ADMIN_LISTEN`, which is easiest in Docker) and the web page, its API, sign-in and the first-run setup link are on that port only. The tuner ports then carry nothing but the tuners, so you can open them to your viewers and keep the admin port to yourself. Adding or removing a tuner never moves the page, and a tuner can't be given the admin port. Nothing changes unless you set it: see [Configuration](https://github.com/johnschult/yagi/blob/main/docs/configuration.md#giving-the-admin-pages-their-own-port).
 
 ### Changed
 

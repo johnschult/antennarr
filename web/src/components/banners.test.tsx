@@ -97,3 +97,39 @@ describe('the offline banner', () => {
     expect(screen.getByRole('link', { name: 'The tuner is offline.' })).toHaveAttribute('href', '/tuners/antenna')
   })
 })
+
+describe('the notice about the address', () => {
+  const claimed = () => {
+    const s = makeState()
+    s.settings.admin = ['192.168.1.20']
+    s.settings.plex.enabled = false
+    return s
+  }
+
+  it('warns that an address can change, and points to a router reservation, Plex sign-in and the docs', () => {
+    show(claimed())
+    expect(screen.getByRole('status')).toHaveTextContent("Your way into this page is this computer's address")
+    expect(screen.getByRole('status')).toHaveTextContent('Reserve its address in your router')
+    expect(screen.getByRole('link', { name: 'turn on Sign in with Plex' })).toHaveAttribute('href', '/settings')
+    expect(screen.getByRole('link', { name: 'Troubleshooting' })).toHaveAttribute('href', expect.stringContaining('troubleshooting.md'))
+  })
+
+  it('is not shown once Plex sign-in is on, or when nobody was let in by address', () => {
+    const on = claimed()
+    on.settings.plex.enabled = true
+    show(on)
+    expect(screen.queryAllByRole('status')).toHaveLength(0)
+  })
+
+  it('can be dismissed, and this browser stays quiet about it', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    localStorage.removeItem('yagi.dismissedNotices')
+    const first = show(claimed())
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryAllByRole('status')).toHaveLength(0)
+    first.unmount()
+    show(claimed())
+    expect(screen.queryAllByRole('status')).toHaveLength(0)
+    localStorage.removeItem('yagi.dismissedNotices')
+  })
+})

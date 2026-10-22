@@ -17,7 +17,6 @@ import { StatusDot, tunerSubtitle } from '@/pages/tuners'
 import { channelIconUrl } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
 import { firmwareDate, formatMbps, timeAgo } from '@/lib/format'
-import { moveToPort } from '@/lib/navigate'
 import { settingsPath } from '@/lib/settings-tabs'
 import { isTunerTab, TUNER_TABS, tunerPath, type TunerTab } from '@/lib/tuner-tabs'
 import type { DeviceState, Slot } from '@/lib/types'
@@ -207,14 +206,13 @@ function Settings({ device, onRemove }: { device: DeviceState; onRemove: () => v
         max={65535}
         id={`setting-${device.name}-port`}
         title="Port"
-        description="Where media servers reach it. Changing it cuts running streams, and this page moves there."
+        description="Where media servers reach it. Changing it cuts running streams."
         initial={port}
         validate={validPort}
         disabled={!state.editable}
         onSave={async (text) => {
           const host = device.listen.slice(0, device.listen.lastIndexOf(':'))
           await edit.mutateAsync({ name: device.name, patch: { listen: `${host}:${Number(text)}` } })
-          if (!state.adminSeparate) moveToPort(Number(text)) // the page was served from the old port, unless it has one of its own
         }}
       />
       <Row title="Remove this tuner" description="Stops sharing it and cuts its streams. The tuner itself is untouched.">

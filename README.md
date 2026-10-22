@@ -71,10 +71,10 @@ git clone https://github.com/johnschult/yagi
 cd yagi
 (cd web && npm ci && npm run build)    # builds into internal/ui/dist
 go build -o yagi ./cmd/yagi
-./yagi                            # finds your HDHomeRun, or: ./yagi -tuner 192.168.1.50
+./yagi                            # starts the web page on :9244; add your HDHomeRun there
 ```
 
-Then open the **setup link** it writes to its log (or `http://localhost:5004/` on the machine itself) to become the admin, and add a viewer from the web page. A viewer adds the tuner to their media server as `<this machine>:5004`. [Getting started](docs/getting-started.md) walks through every step, with the settings file, Docker and updating.
+Then open the **setup link** it writes to its log (or `http://localhost:9244/` on the machine itself) to become the admin, add your tuner from the list the web page shows, and add a viewer. The web page is always on its own port, `9244`; each tuner you add gets a port of its own (`5004`, `5005`, …), and a viewer adds the tuner to their media server as `<this machine>:5004`. [Getting started](docs/getting-started.md) walks through every step, with the settings file, Docker and updating.
 
 Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with that number as well as `latest`; the app shows its version in the footer, linked to the release notes.
 

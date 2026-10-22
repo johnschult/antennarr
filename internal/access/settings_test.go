@@ -194,3 +194,26 @@ func TestTailscaleHostname(t *testing.T) {
 		t.Errorf("err=%v hostname=%q enabled=%v", err, s.TailscaleHostname(), s.TailscaleEnabled())
 	}
 }
+
+func TestAdminListen(t *testing.T) {
+	for in, want := range map[string]string{"": DefaultAdminListen, "9244": ":9244", ":9244": ":9244", " 127.0.0.1:9244 ": "127.0.0.1:9244"} {
+		if got, err := ParseAdminListen(in); err != nil || got != want {
+			t.Errorf("ParseAdminListen(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+	for _, bad := range []string{"banana", ":0", ":70000", "host"} {
+		if _, err := ParseAdminListen(bad); err == nil {
+			t.Errorf("ParseAdminListen(%q) was accepted", bad)
+		}
+	}
+	s := DefaultSettings()
+	s.AdminListen = ":5004"
+	s.Devices = []Device{{Name: "antenna", Listen: ":5004", Tuner: "1.2.3.4"}}
+	if err := s.Validate(); err == nil || !strings.Contains(err.Error(), "admin pages' port") {
+		t.Errorf("a tuner on the admin port: %v", err)
+	}
+	s.AdminListen = "banana"
+	if err := s.Validate(); err == nil || !strings.Contains(err.Error(), "adminListen") {
+		t.Errorf("a bad adminListen: %v", err)
+	}
+}

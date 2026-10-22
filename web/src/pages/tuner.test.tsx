@@ -2,15 +2,12 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { channelIconUrl } from '@/lib/api'
-import { moveToPort } from '@/lib/navigate'
 import { idleSlot, localSlot, makeDevice, makeState, remoteSlot, updateAvailable } from '@/test/fixtures'
 import { renderTunerRoutes, stubFetch } from '@/test/render'
 
-vi.mock('@/lib/navigate', () => ({ moveToPort: vi.fn() }))
 
 afterEach(() => {
   vi.unstubAllGlobals()
-  vi.mocked(moveToPort).mockClear()
 })
 
 const okState = { 'GET /state': () => ({ body: makeState() }) }
@@ -287,22 +284,6 @@ describe('the port', () => {
     await user.click(saveButton(section('Settings'))!)
     await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')).toBeDefined())
     expect(calls.find((c) => c.method === 'PATCH')).toMatchObject({ url: expect.stringContaining('/devices/antenna'), body: { listen: ':5010' } })
-    await waitFor(() => expect(moveToPort).toHaveBeenCalledWith(5010))
-  })
-
-  it('saves a new port but leaves the page where it is when the admin pages have a port of their own', async () => {
-    const { fn, calls } = stubFetch({ 'PATCH /devices/antenna': () => ({ body: {} }), ...okState })
-    vi.stubGlobal('fetch', fn)
-    const s = makeState()
-    s.adminSeparate = true
-    const user = userEvent.setup()
-    settings(s)
-    const box = screen.getByLabelText('Port')
-    await user.clear(box)
-    await user.type(box, '5010')
-    await user.click(saveButton(section('Settings'))!)
-    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ listen: ':5010' }))
-    expect(moveToPort).not.toHaveBeenCalled() // the page isn't served from the tuner's port
   })
 
   it('keeps the address part of where it listens', async () => {
@@ -334,6 +315,5 @@ describe('the port', () => {
     await user.type(box, '80')
     await user.click(saveButton(section('Settings'))!)
     expect(await within(section('Settings')).findByRole('alert')).toHaveTextContent("can't listen on :80: in use")
-    expect(moveToPort).not.toHaveBeenCalled()
   })
 })

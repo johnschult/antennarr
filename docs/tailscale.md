@@ -34,7 +34,7 @@ Once the status row says *Connected, and answering on port …*, a viewer on the
 
 - **The viewer's setup steps know about it.** In *Viewers → Connection steps* (and when adding a viewer), **Yagi's own Tailscale** is its own choice, first, with the device's tailnet name as the address to give them, and it is kept apart from **Tailscale on this machine** (the Tailscale the host runs, if it runs one): they are two devices with two addresses, and each choice shows only its own. For Yagi's own there is no firewall step, because its traffic doesn't come through the machine's network.
 - **A viewer can be matched by who they are** (see [Who is on the other end](#who-is-on-the-other-end)), or by address: their Tailscale address (`100.x.y.z`), which changes if they re-register the device.
-- **The admin page is on the tuner's port too**, and is still only for an admin: an address in *Settings → Access → Admin access → Admin addresses* (add `100.64.0.0/10` to allow your whole tailnet, but only if none of your viewers is on it), a Plex account, or a tailnet login (`tailscale:you@example.com`).
+- **The admin page is answered on the tailnet too**, on its own port (`9244` unless you changed it), and is still only for an admin: an address in *Settings → Access → Admin access → Admin addresses* (add `100.64.0.0/10` to allow your whole tailnet, but only if none of your viewers is on it), a Plex account, or a tailnet login (`tailscale:you@example.com`).
 - **The LAN ports stay open unless you close them.** Yagi still answers on the machine's own address as before. See [Only on the tailnet](#only-on-the-tailnet) to turn that off.
 - If a port is changed, or a tuner added or removed, the tailnet follows within a couple of seconds.
 

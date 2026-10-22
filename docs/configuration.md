@@ -71,6 +71,7 @@ Who you share with. **With no viewers, nobody can use the tuner**: a new install
 | `admin` | Extra addresses (single or ranges) allowed to open the admin pages. Loopback is always allowed once a viewer exists. Keep this narrow, and keep viewers' addresses out of it: a viewer inside an admin range is an admin too (Yagi logs a warning). Also takes `tailscale:` logins and devices, as for a viewer. |
 | `labels` | Display names, by device name: `{ "antenna": "Living room antenna" }`, up to 60 characters. It is for the web page only, and changes live. Media servers are always told the device (such as `HDHomeRun FLEX 4K`), so a name you give it here never reaches Plex: renaming doesn't change what Plex shows, and a media server can name its own DVR as it likes. |
 | `firmwareCheck` | Look at SiliconDust's firmware changelog every 12 hours (default `true`). |
+| `adminListen` | Where the admin pages are: `:9244` (the default, so it is not written) or `127.0.0.1:9244`. A port of its own that no tuner can use. The `-admin-listen` flag and `YAGI_ADMIN_LISTEN` win over it, and a change needs a restart. See [The admin port](#the-admin-port). |
 | `logLevel` | How much is logged, and shown on the Logs page: `debug`, `info`, `warn` or `error` (default `info`, and then it is not written). It takes effect at once, also when the file is reloaded. |
 | `history` | Keep who watched what for 30 days, for the Activity page (default `true`). Off stops recording and hides the page; what was kept stays until it is cleared (*Settings → Clear activity history*) or the history file is deleted. |
 | `guide` | Read SiliconDust's program guide so Live tiles can show the channel logo, what's on and its picture (default `true`). |
@@ -131,7 +132,7 @@ Example, with a 4-tuner device, `ownerReserve: 1` and one of *your* TVs watching
 | `-tuner HOST` | A tuner's address, to run one device without a settings file. Also read from the `YAGI_TUNER` environment variable. It is used only while the settings file has no `devices`. |
 | `-tuner-id ID` | A tuner's DeviceID to search for if its address changes. |
 | `-listen ADDR` | Where to listen (default `:5004`). |
-| `-admin-listen ADDR` | Serve the admin pages on their own port, and only there (`:5000`, or `127.0.0.1:5000`). Also read from the `YAGI_ADMIN_LISTEN` environment variable. See [Giving the admin pages their own port](#giving-the-admin-pages-their-own-port). |
+| `-admin-listen ADDR` | Where the admin pages are (default `:9244`, or `127.0.0.1:9244`). Also read from the `YAGI_ADMIN_LISTEN` environment variable, and from `adminListen` in the settings file. See [The admin port](#the-admin-port). |
 | `-stream-port PORT` | The tuner's streaming port (default `5004`). |
 | `-advertise URL` | The base URL handed to clients (default: the host they connected with). |
 | `-report-id ID` | Report this DeviceID to clients instead of the tuner's own. |
@@ -141,15 +142,21 @@ Example, with a 4-tuner device, `ownerReserve: 1` and one of *your* TVs watching
 
 `-tuner`, `-tuner-id`, `-listen`, `-stream-port`, `-advertise` and `-report-id` describe a device, so they can't be combined with `devices` in the settings file. Put those settings in the file.
 
-### Giving the admin pages their own port
+### The admin port
 
-By default the admin pages are on every tuner's port, next to the tuner itself (`http://<this machine>:5004/`). That is simplest, and the first tuner you add takes over the port the page is on.
+The admin pages (the web page, its API, sign-in and the first-run setup link) are always on a port of their own, **`9244`** unless you say otherwise. Tuners have ports of their own too (`5004`, `5005`, …) and **a tuner is never on the admin port**. That way you can open the tuner ports to your viewers and keep the admin port to your own network or Tailscale.
 
-With `-admin-listen :5000` (or `YAGI_ADMIN_LISTEN=:5000` in the environment, which is easiest in Docker) the admin pages, their API, the sign-in and the first-run setup link are on that port and **only** there. The tuner ports then answer nothing but what a media server asks of a tuner, so you can open them to your viewers and keep the admin port to your own network or Tailscale. A tuner can't be given the admin port, and adding or removing tuners never moves the page.
+To change it, the first of these that is set wins:
 
-- Each tuner still has its own port, which you can change on its page in the web UI (the *Settings* tab of the tuner's page).
-- The admin address is `http://<this machine>:5000/`.
-- `-listen` still says where the tuners start (`5004`, `5005`, …), so it can't be the same port as `-admin-listen`.
+1. `-admin-listen :9244` on the command line (a space or `=` between the flag and its value);
+2. `YAGI_ADMIN_LISTEN=:9244` in the environment, which is easiest in Docker;
+3. `"adminListen": ":9244"` in the settings file.
+
+A change takes effect when Yagi restarts. The admin address is `http://<this machine>:9244/`.
+
+- Until you add a tuner, only the admin port is open. A tuner's port exists only for a tuner, so a port test of `5004` fails on a fresh install.
+- A tuner can't be given the admin port, and the admin port can't be a port a tuner already uses: Yagi says so and stops, or refuses the change.
+- `-listen` says where a tuner given on the command line goes (default `5004`).
 
 `yagi discover [-wait 3s] [host …]` lists the HDHomeRun tuners it can find (a broadcast on your network, and a scan of the nearby subnet), one per line: DeviceID, address, number of tuners.
 Add host addresses to look at those instead.

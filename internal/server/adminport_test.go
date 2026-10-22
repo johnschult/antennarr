@@ -31,7 +31,7 @@ func startSplitFleet(t *testing.T, devices []access.Device, tuners ...*fakeTuner
 	t.Cleanup(cancel)
 	srv, err := New(ctx, Config{
 		Find: noFind, Settings: s, Devices: devices, Poll: 50 * time.Millisecond, Locate: locateFrom(tuners...),
-		Log: slog.New(slog.NewTextHandler(f.logs, nil)), AdminListen: "127.0.0.1:" + port, AdminSeparate: true, ConfigPath: f.path,
+		Log: slog.New(slog.NewTextHandler(f.logs, nil)), AdminListen: "127.0.0.1:" + port, ConfigPath: f.path,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestAdminPagesOnTheirOwnPortAreNotOnTheTunerPort(t *testing.T) {
 func TestAddingATunerWithAnAdminPortGivesItAnotherPort(t *testing.T) {
 	a := newFakeTuner(t, "10ABCC87", "antenna-box")
 	f := startSplitFleet(t, nil, a)
-	code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box"})
+	code, body := call(t, "POST", f.base+"/api/devices", map[string]string{"tuner": "antenna-box", "listen": "127.0.0.1:" + freePort(t)})
 	if code != http.StatusCreated {
 		t.Fatalf("add = %d %s\n%s", code, body, f.logs.String())
 	}
@@ -96,7 +96,7 @@ func TestAddingATunerWithAnAdminPortGivesItAnotherPort(t *testing.T) {
 		t.Errorf("the tuner took the admin port: %q", added.Listen)
 	}
 	f.srv.fleetMu.Lock()
-	still := f.srv.bare != nil
+	still := f.srv.adminLn != nil
 	f.srv.fleetMu.Unlock()
 	if !still {
 		t.Error("the admin pages let go of their port when a tuner was added")
@@ -129,7 +129,7 @@ func TestAStartWithATunerOnTheAdminPortIsRefused(t *testing.T) {
 	s.Devices = []access.Device{dev}
 	_, err := New(context.Background(), Config{
 		Find: noFind, Settings: s, Devices: []access.Device{dev}, Locate: locateFrom(a),
-		Log: slog.New(slog.NewTextHandler(&lockedBuf{}, nil)), AdminListen: "127.0.0.1:" + port, AdminSeparate: true,
+		Log: slog.New(slog.NewTextHandler(&lockedBuf{}, nil)), AdminListen: "127.0.0.1:" + port,
 	})
 	if err == nil || !strings.Contains(err.Error(), "admin") {
 		t.Errorf("err = %v, want a refusal naming the admin port", err)

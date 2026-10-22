@@ -126,7 +126,7 @@ func (st *site) do(method, path, body string, from string) (int, string, *http.R
 		req.AddCookie(st.cookie)
 	}
 	rec := httptest.NewRecorder()
-	st.srv.devices[0].handler.ServeHTTP(rec, req)
+	st.srv.adminMux().ServeHTTP(rec, req)
 	resp := rec.Result()
 	for _, c := range resp.Cookies() {
 		if c.Name == "yagi_session" && from == st.remote {
@@ -190,11 +190,8 @@ func TestSigningInWithPlexOpensTheAdminPagesFromAnyAddress(t *testing.T) {
 		t.Errorf("the page must load before signing in: %d", code)
 	}
 
-	// A browser at the bare address gets the page where it can sign in;
-	// a media server (no Accept: text/html) still just gets refused.
-	if code, _, resp := st.do("GET", "/", "", st.remote); code != 403 {
-		t.Errorf("a non-browser at the bare address: %d (resp %v)", code, resp.Header)
-	}
+	// A browser at the bare address gets the page where it can sign in. (The admin port has no tuner front
+	// page for a media server to be refused at: that is the tuner port's.)
 	if code, _ := st.browse("/"); code != 200 && code != 503 {
 		t.Errorf("a browser at the bare address should get the sign-in page: %d", code)
 	}
@@ -215,8 +212,12 @@ func TestSigningInWithPlexOpensTheAdminPagesFromAnyAddress(t *testing.T) {
 	}
 
 	// It is the admin pages that open, not the tuners: a Plex login is not a viewer.
-	if code, _ := st.here("GET", "/discover.json", ""); code != 403 {
-		t.Errorf("a signed-in admin can use the tuner as a viewer: %d", code)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/discover.json", nil)
+	req.RemoteAddr = st.remote
+	st.srv.devices[0].handler.ServeHTTP(rec, req)
+	if rec.Code != 403 {
+		t.Errorf("a signed-in admin can use the tuner as a viewer: %d", rec.Code)
 	}
 	// And the cookie is only sent to /, so the tuner endpoints never see it.
 	if st.cookie.Path != "/" {
@@ -336,7 +337,7 @@ func (st *site) browse(path string) (int, *http.Response) {
 	req.Header.Set("Accept", "text/html,application/xhtml+xml")
 	req.RemoteAddr = st.remote
 	rec := httptest.NewRecorder()
-	st.srv.devices[0].handler.ServeHTTP(rec, req)
+	st.srv.adminMux().ServeHTTP(rec, req)
 	resp := rec.Result()
 	return resp.StatusCode, resp
 }

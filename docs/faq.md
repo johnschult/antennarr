@@ -11,7 +11,7 @@
 
 The rooftop TV antenna, a boom with a row of rods across it, is a Yagi antenna. It is named for Hidetsugu Yagi, the Japanese engineer who, with his colleague Shintaro Uda at Tohoku Imperial University, developed the design in the 1920s, and Yagi's English-language publications made it known worldwide. Properly it is the Yagi–Uda antenna.
 
-Yagi the program does something similar for a tuner: it takes a signal that only reaches one place and points it at the people you choose. The name is a nod to the inventors, and the logo is the antenna.
+Yagi the program does something similar for a tuner: it takes a signal that only reaches one place and points it at the people you choose. The name is a nod to the inventors, and the logo is the antenna. And, purely by accident, the admin page's default port, 9244, spells YAGI on a phone keypad.
 
 ## How do I say it?
 

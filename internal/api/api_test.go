@@ -370,9 +370,6 @@ func TestSettingsPatchErrors(t *testing.T) {
 func TestReadOnlyWithoutConfigFile(t *testing.T) {
 	e := newEnv(t, johnAndMom, false)
 	_, v := e.call(t, "GET", "/api/state", "")
-	if obj(t, v)["adminSeparate"] != false {
-		t.Errorf("adminSeparate = %v, want false when the admin pages share the tuner ports", obj(t, v)["adminSeparate"])
-	}
 	if obj(t, v)["editable"] != false {
 		t.Error("state should say editable=false")
 	}

@@ -47,7 +47,7 @@ Unraid User Script). `./yagi -version` prints the version.
 
 ## 2. Your tuner
 
-**Usually there is little to do.** If you don't name a tuner, Yagi starts with only the web page, on port `5004`, and looks for HDHomeRuns on your network while the page is open (every few seconds, for a few minutes). Open it (step 3): each tuner it finds is listed with a name filled in, which you can change, and an **Add** button (or **Add all**). **Nothing is added until you press it**, because a tuner on a shared network may not be yours. If it stops looking before yours is on, press **Look again**. Tuners you add are saved under `devices` in the settings file; each gets the next port up from `5004`, and the first takes over `5004` so the page stays where it is. You can add more, or remove one, later on the *Tuners* page.
+**Usually there is little to do.** If you don't name a tuner, Yagi starts with only the web page, on its own port, `9244`, and looks for HDHomeRuns on your network while the page is open (every few seconds, for a few minutes). Open it (step 3): each tuner it finds is listed with a name filled in, which you can change, and an **Add** button (or **Add all**). **Nothing is added until you press it**, because a tuner on a shared network may not be yours. If it stops looking before yours is on, press **Look again**. Tuners you add are saved under `devices` in the settings file; each gets a port of its own, starting at `5004` and going up (`5005`, …). The web page stays on `9244`, and no tuner is ever on it. You can add more, or remove one, later on the *Tuners* page.
 
 Finding a tuner needs to see your network's broadcasts, so in Docker use host networking. Without it, add the tuner by its address on the same page, or set `YAGI_TUNER` (for example `YAGI_TUNER=192.168.1.50`) for an install nobody opens a page on.
 
@@ -82,16 +82,16 @@ To open it from your own computer, use the **setup link** Yagi writes to its log
 
 ```
 FIRST RUN: nobody is an admin yet. To set up, open one of these links from the device you want to use as the admin. ...
-  setup link url=http://100.64.0.5:5004/claim?token=...
-  setup link url=http://192.168.1.5:5004/claim?token=...
+  setup link url=http://100.64.0.5:9244/claim?token=...
+  setup link url=http://192.168.1.5:9244/claim?token=...
 ```
 
-(`docker logs yagi`, or wherever you run it.) Open the link that matches how you reach the machine, from the computer you want to use as your admin, and press **Make this device an admin**. Yagi saves that computer's address under `admin` in the settings file and sends you to the web page, `http://<this machine>:5004/`.
+(`docker logs yagi`, or wherever you run it.) Open the link that matches how you reach the machine, from the computer you want to use as your admin, and press **Make this device an admin**. Yagi saves that computer's address under `admin` in the settings file and sends you to the web page, `http://<this machine>:9244/`.
 
 - The link works **once**, only from a private network (your LAN, Tailscale, a VPN), and only until Yagi restarts. If you restart before using it, a new link is written to the log. Anyone who can read the log can use it, so treat the log like a password until you have.
 - Five wrong tries from one address lock that address out for ten minutes.
-- If you open the web page on the machine itself (`http://localhost:5004/`) you don't need the link: that machine is always an admin.
-- If your computer's address changes (a new DHCP lease, say), add the new one under *Settings → Access*, or turn on Sign in with Plex (see [Security](security.md)).
+- If you open the web page on the machine itself (`http://localhost:9244/`) you don't need the link: that machine is always an admin.
+- If your computer's address changes (a new DHCP lease, say), you are locked out. **Reserve its address in your router** (a DHCP reservation, usually under *LAN* or *DHCP* settings) so it stays the same. Or add the new one under *Settings → Access* from the machine Yagi runs on, or, if you use Plex, turn on Sign in with Plex (see [Security](security.md)).
 - If the settings file can't be saved there is nothing to claim into, and no link is offered: fix where the file lives (`-config`) first.
 
 ## 4. Add a viewer
@@ -107,7 +107,7 @@ A *viewer* is a person or a server you share the tuner with. Open **Viewers → 
 Only listed viewers can use the tuner, and only loopback (this machine), the addresses under `admin` in the settings, and signed-in Plex accounts can open the admin pages.
 If you lose access to the web page, you can always get back in by one of these:
 
-- **Open it from the machine Yagi runs on** (`http://localhost:5004/`), or through an SSH tunnel: `ssh -L 5004:127.0.0.1:5004 yourserver`, then browse to `http://localhost:5004/`.
+- **Open it from the machine Yagi runs on** (`http://localhost:9244/`), or through an SSH tunnel: `ssh -L 9244:127.0.0.1:9244 yourserver`, then browse to `http://localhost:9244/`.
 - **Add your own computer's address to `admin`** in the settings file, then send Yagi `SIGHUP` (or restart it).
 - **Turn on Sign in with Plex** (*Settings → Access*) while you still have access, then add your Plex account. After that you can open the page from any address that can reach the port. See [Security](security.md).
 

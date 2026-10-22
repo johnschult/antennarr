@@ -71,9 +71,9 @@ func (s *Server) tailWanted() map[string]http.Handler {
 		}
 	}
 	s.fleetMu.Lock()
-	if s.bare != nil && s.bare.srv != nil {
-		if _, port, err := net.SplitHostPort(s.bare.ln.Addr().String()); err == nil {
-			want[port] = s.bare.srv.Handler
+	if s.adminLn != nil && s.adminLn.srv != nil {
+		if _, port, err := net.SplitHostPort(s.adminLn.ln.Addr().String()); err == nil {
+			want[port] = s.adminLn.srv.Handler
 		}
 	}
 	s.fleetMu.Unlock()
