@@ -10,6 +10,7 @@ Each release's notes on GitHub are its section of this file.
 ### Added
 
 - **Yagi as a download, without Docker.** Each release now has archives of the program for Linux and macOS (`amd64` and `arm64`) attached to it on [GitHub](https://github.com/johnschult/yagi/releases), with a `checksums.txt` to check them against. Unpack one and run `yagi`; the web page is inside it. The Docker image is unchanged.
+- **An install script.** `curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.sh | sh` downloads the archive for your machine, checks it against the release's checksums before unpacking anything, and puts `yagi` in `~/.local/bin` (no root needed). `--service` also sets it up to run in the background with systemd, and `--uninstall` removes it again, leaving your settings alone. Read the script first if you like; it is plain shell. It is for Linux and macOS.
 
 ## 2026.10.16 (2026-10-22)
 
