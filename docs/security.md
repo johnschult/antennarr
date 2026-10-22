@@ -84,6 +84,27 @@ Every change, and the main branch each week, is checked in the open on GitHub:
 
 What these find is on the repository's *Security* tab.
 
+## Verifying a download
+
+Each release's container images and the archives of the program are signed by the release workflow itself, with [Sigstore](https://docs.sigstore.dev/) (keyless: there is no key of ours to steal, and the signature names the workflow, the repository and the tag that made it). Checking is optional, and needs [cosign](https://docs.sigstore.dev/cosign/):
+
+```sh
+# The archives: check the signature on checksums.txt, then the archive against it.
+V=2026.10.17
+cosign verify-blob --bundle checksums.txt.sigstore.json \
+  --certificate-identity "https://github.com/johnschult/yagi/.github/workflows/release.yml@refs/tags/v$V" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  checksums.txt
+sha256sum --check --ignore-missing checksums.txt          # shasum -a 256 -c on macOS
+
+# The image:
+cosign verify ghcr.io/johnschult/yagi:$V \
+  --certificate-identity "https://github.com/johnschult/yagi/.github/workflows/release.yml@refs/tags/v$V" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+[`install.sh`](https://github.com/johnschult/yagi/releases/latest/download/install.sh) does the first part for you if cosign is installed (and installs nothing if the signature is wrong); without it, it checks the archive against `checksums.txt` only, which catches a damaged download but not a replaced release. The archives also have GitHub build provenance, which says which commit and workflow run built each one: `gh attestation verify yagi_2026.10.17_linux_amd64.tar.gz --repo johnschult/yagi`.
+
 ## Reporting a problem
 
 If you find a security problem, please report it privately with **Report a vulnerability** on the repository's *Security* tab, not in a public issue.

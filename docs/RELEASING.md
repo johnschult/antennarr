@@ -30,7 +30,9 @@ The **Release** workflow then:
 5. creates the GitHub release: the changelog section first, then the list of merged pull requests that GitHub generates;
 6. builds the program for `linux` and `darwin` (macOS), each on `amd64` and `arm64`, with the web page and the version built in, and attaches `yagi_2026.10.0_<os>_<arch>.tar.gz` for each (the program, `LICENSE` and `README.md`) and a `checksums.txt` of their SHA-256 sums to the release, along with `install.sh`, so that `https://github.com/johnschult/yagi/releases/latest/download/install.sh` is always the script that goes with the newest release.
 
-Pull requests that change the `Dockerfile` or the workflow build the image and the archives without publishing them.
+7. signs the images (by digest) and the archives' `checksums.txt` with Sigstore, keylessly, as the workflow itself: the signature is `checksums.txt.sigstore.json` on the release, and it is checked straight away. It also records GitHub build provenance for the archives. There is no key to keep or rotate; see [Verifying a download](security.md#verifying-a-download).
+
+Pull requests that change the `Dockerfile` or the workflow build the image and the archives without publishing them, and sign and check the checksums when the pull request is from this repository, so the whole path is tried before a release.
 
 ## After a release
 
