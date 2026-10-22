@@ -170,7 +170,9 @@ EOF
 	as_root install -m 0644 "$tmp" "$UNIT"
 	rm -f "$tmp"
 	as_root systemctl daemon-reload
-	as_root systemctl enable --now "$SERVICE_NAME"
+	as_root systemctl enable "$SERVICE_NAME"
+	# restart, not just start, so that running this again to update runs the new program
+	as_root systemctl restart "$SERVICE_NAME"
 	say ""
 	say "Yagi is running as a service. Its log, which has the one-time setup link, is: journalctl -u $SERVICE_NAME"
 	say "Its settings file is $STATE_DIR/yagi.json."

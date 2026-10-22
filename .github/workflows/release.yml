@@ -200,7 +200,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$GITHUB_REF_NAME" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json install.sh
 
-  # Updates the Homebrew formula in the tap (johnschult/homebrew-yagi) to this release: the version and the SHA-256 of
+  # Updates the Homebrew formula in the tap (johnschult/homebrew-tap) to this release: the version and the SHA-256 of
   # each archive, from the checksums.txt the release just got. It needs a token that can write to that repository
   # alone, saved here as the secret HOMEBREW_TAP_TOKEN. If it fails, the release is fine; run this job again.
   homebrew:
@@ -219,14 +219,14 @@ jobs:
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           if [[ -z "$TAP_TOKEN" ]]; then
-            echo "::error::the secret HOMEBREW_TAP_TOKEN isn't set: make a fine-grained token with Contents (read and write) on johnschult/homebrew-yagi only, and save it in this repository's secrets"
+            echo "::error::the secret HOMEBREW_TAP_TOKEN isn't set: make a fine-grained token with Contents (read and write) on johnschult/homebrew-tap only, and save it in this repository's secrets"
             exit 1
           fi
           curl -fsSL -o "$RUNNER_TEMP/checksums.txt" "https://github.com/johnschult/yagi/releases/download/$TAG/checksums.txt"
           sh scripts/render_formula.sh "${TAG#v}" "$RUNNER_TEMP/checksums.txt" > "$RUNNER_TEMP/yagi.rb"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: johnschult/homebrew-yagi
+          repository: johnschult/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
       - name: Push it to the tap

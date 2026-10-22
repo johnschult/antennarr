@@ -68,6 +68,16 @@ docker pull ghcr.io/johnschult/yagi:latest
 
 Copy [docker-compose.example.yml](docker-compose.example.yml) next to your `yagi.json` and run `docker compose up -d`. It uses host networking, which Yagi needs to recognize its own streams and to offer your Tailscale and LAN addresses. Images are published for `amd64` and `arm64`.
 
+Or without Docker, on macOS or Linux:
+
+```sh
+brew install johnschult/tap/yagi && brew services start yagi
+# or, with no Homebrew:
+curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.sh | sh
+```
+
+Both install the release's own program, checked against its checksums (and, with [cosign](https://docs.sigstore.dev/cosign/), its signature), so nothing is built and Go and Node aren't needed. The script puts `yagi` in `~/.local/bin` without root; add `-s -- --service` after `sh` to run it as a systemd service (Linux). [Getting started](docs/getting-started.md#1-install) has the details, and the script is plain shell if you want to read it first.
+
 Or build it. You need Go (see `go.mod`) and Node 22.12 or newer; `./build.sh` checks for them, says what to install if one is missing, and builds the web page and the program:
 
 ```sh
