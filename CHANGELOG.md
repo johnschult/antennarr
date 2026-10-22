@@ -14,6 +14,7 @@ Each release's notes on GitHub are its section of this file.
 ### Added
 
 - **Plain startup messages.** Yagi now prints where the admin page is (with your machine's addresses), says that a tuner's port opens only once a tuner is added, and points to the troubleshooting page. `-admin-listen:9244` (no space) gets a message saying what to type instead of an "unknown flag", and a port that is already in use names the port and how to change it.
+- **A Yagi antenna, made of the letters of its name, when you start it from a terminal.** In green where the terminal can show it (`NO_COLOR` keeps the letters and drops the color), and never in a log: `docker logs`, systemd and files get nothing.
 - **Notices on the page that can be closed.** A warning explains that your way into the page is your computer's address, which can change, and suggests reserving it in your router (or Sign in with Plex). The note on the Viewers page about limits can be closed too. The offline and "nobody can use your tuner" notices link to troubleshooting.
 
 ## 2026.10.13 (2026-10-20)
