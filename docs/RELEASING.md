@@ -27,9 +27,10 @@ The **Release** workflow then:
 2. builds the image for `linux/amd64` and `linux/arm64`, with the version built in;
 3. pushes it to `ghcr.io/johnschult/yagi` as `2026.10.0` and `latest`;
 4. builds and pushes the same program with the built-in Tailscale node (`-tags tsnet`, with the Tailscale version stamped in) as `2026.10.0-tailscale` and `tailscale`;
-5. creates the GitHub release: the changelog section first, then the list of merged pull requests that GitHub generates.
+5. creates the GitHub release: the changelog section first, then the list of merged pull requests that GitHub generates;
+6. builds the program for `linux` and `darwin` (macOS), each on `amd64` and `arm64`, with the web page and the version built in, and attaches `yagi_2026.10.0_<os>_<arch>.tar.gz` for each (the program, `LICENSE` and `README.md`) and a `checksums.txt` of their SHA-256 sums to the release.
 
-Pull requests that change the `Dockerfile` or the workflow build the image without pushing it.
+Pull requests that change the `Dockerfile` or the workflow build the image and the archives without publishing them.
 
 ## After a release
 

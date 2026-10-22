@@ -5,6 +5,12 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/yagi/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.17 (2026-10-22)
+
+### Added
+
+- **Yagi as a download, without Docker.** Each release now has archives of the program for Linux and macOS (`amd64` and `arm64`) attached to it on [GitHub](https://github.com/johnschult/yagi/releases), with a `checksums.txt` to check them against. Unpack one and run `yagi`; the web page is inside it. The Docker image is unchanged.
+
 ## 2026.10.16 (2026-10-22)
 
 ### Read before updating
