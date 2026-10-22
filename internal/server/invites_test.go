@@ -149,11 +149,18 @@ func TestOnlyAnAdminMakesInvites(t *testing.T) {
 	}
 }
 
-func TestTheInvitePagesAreOffWhileSignInWithPlexIsOff(t *testing.T) {
+func TestTheInvitePagesNeedOnlyEnrollmentAndAreOffWithoutIt(t *testing.T) {
 	s, token := withInvite()
-	s.Plex.Enabled = false
+	s.Plex.Enabled = false // nobody signs in to the admin pages with Plex: invites don't care
 	st := newSite(t, s, true)
+	if code, _, _ := st.do("GET", "/invite/"+token, "", friendA); code != 200 {
+		t.Errorf("with Plex sign-in off and enrollment on = %d, want the page", code)
+	}
+
+	s, token = withInvite()
+	s.Plex.Enrollment = false
+	st = newSite(t, s, true)
 	if code, _, _ := st.do("GET", "/invite/"+token, "", friendA); code != 404 {
-		t.Errorf("with Plex off = %d, want 404", code)
+		t.Errorf("with enrollment off = %d, want 404", code)
 	}
 }

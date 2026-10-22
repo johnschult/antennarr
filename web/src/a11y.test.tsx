@@ -37,6 +37,18 @@ const states: [string, () => State][] = [
   ['newer firmware', () => makeState({ devices: [makeDevice({ firmware: updateAvailable })] })],
   ['settings that cannot be saved', () => makeState({ editable: false })],
   ['notification channels', () => withChannels(makeState(), phone, pushover, discord)],
+  ['invites: waiting, joined and expired, and a viewer who joined with Plex', () => {
+    const s = makeState()
+    s.settings.plex = { enabled: false, admins: [], enrollment: true }
+    const base = { limit: 1, created: '2026-10-22T12:00:00Z', expires: '2999-01-01T00:00:00Z', used: false, expired: false }
+    s.invites = [
+      { ...base, id: 'aaaaaaaaaaaa', name: 'Dad' },
+      { ...base, id: 'bbbbbbbbbbbb', name: 'Mom', used: true, viewer: 'Mom' },
+      { ...base, id: 'cccccccccccc', name: 'Old', expired: true },
+    ]
+    s.viewers = [...s.viewers, { ...s.viewers[1], name: 'Mom', plex: { accountId: 9, accountName: 'mom', serverId: 'mid', serverName: "Mom's Plex" } }]
+    return s
+  }],
 ]
 
 describe('axe: every page, in each state', () => {
@@ -334,6 +346,33 @@ describe('axe: dialogs', () => {
 
   it('Edit viewer', async () => {
     await open('/viewers', makeState(), 'Edit John')
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('Invite with Plex: the form, and then the link', async () => {
+    vi.stubGlobal('fetch', stubFetch({
+      'POST /invites': () => ({ status: 201, body: { id: 'aaaaaaaaaaaa', name: 'Dad', limit: 1, created: '2026-10-22T12:00:00Z', expires: '2999-01-01T00:00:00Z', used: false, expired: false, path: '/invite/TOKEN', url: 'http://localhost:9244/invite/TOKEN' } }),
+      'GET /network': () => ({ body: { addresses: [{ ip: '192.168.1.5', kind: 'lan', interface: 'en0' }] } }),
+      'GET /state': () => ({ body: makeState() }),
+    }).fn)
+    const s = makeState()
+    s.settings.plex = { enabled: false, admins: [], enrollment: true }
+    render(s, '/viewers')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /Invite with Plex/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(await check()).toHaveNoViolations()
+    await user.type(within(dialog).getByLabelText('Name'), 'Dad')
+    await user.click(within(dialog).getByRole('button', { name: /Make the link/ }))
+    await within(dialog).findByText('Send this link to Dad')
+    expect(await check()).toHaveNoViolations()
+  })
+
+  it('Revoke an invite', async () => {
+    const s = makeState()
+    s.settings.plex = { enabled: false, admins: [], enrollment: true }
+    s.invites = [{ id: 'aaaaaaaaaaaa', name: 'Dad', limit: 1, created: '2026-10-22T12:00:00Z', expires: '2999-01-01T00:00:00Z', used: false, expired: false }]
+    await open('/viewers', s, 'Revoke the invite for Dad', 'alertdialog')
     expect(await check()).toHaveNoViolations()
   })
 

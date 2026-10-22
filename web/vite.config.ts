@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config'
 // The Go server mounts the UI at / and serves the API beside it, so
 // `npm run dev` proxies the API there. Point YAGI_URL at another instance
 // to develop against it.
-const backend = process.env.YAGI_URL ?? 'http://127.0.0.1:5004'
+const backend = process.env.YAGI_URL ?? 'http://127.0.0.1:9244'
 
 export default defineConfig({
   base: '/',
@@ -19,7 +19,7 @@ export default defineConfig({
     emptyOutDir: false,
   },
   // The release notes are CHANGELOG.md at the repository root, bundled into the page (see use-whats-new.ts).
-  server: { fs: { allow: ['..'] }, proxy: { '/api': backend, '/auth': backend, '/streams': backend } },
+  server: { fs: { allow: ['..'] }, proxy: { '/api': backend, '/auth': backend, '/streams': backend, '/invite': backend } },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],

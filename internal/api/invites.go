@@ -79,7 +79,7 @@ func (a *API) addInvite(w http.ResponseWriter, r *http.Request) {
 	var inv access.Invite
 	set, err := a.Store.Edit(func(s *access.Settings) error {
 		if !s.EnrollmentEnabled() {
-			return &httpErr{http.StatusConflict, "turn on Sign in with Plex, and let people enroll themselves, first"}
+			return &httpErr{http.StatusConflict, "turn on inviting viewers with Plex first"}
 		}
 		if len(s.Invites) >= access.MaxInvites {
 			return &httpErr{http.StatusConflict, fmt.Sprintf("there are %d invites already: remove some first", access.MaxInvites)}

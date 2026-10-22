@@ -73,7 +73,7 @@ One thing to know: `discover.json` passes the tuner's own `DeviceAuth` through t
 
 ## Invite links
 
-An invite is a link the owner sends so a person can add themselves as a viewer. They open it, sign in with Plex, pick one of the Plex servers they own, and Yagi allows that server's public internet address with the tuner limit the invite carries. It is off until Sign in with Plex and *enrollment* are both on.
+An invite is a link the owner sends so a person can add themselves as a viewer. They open it, sign in with Plex, pick one of the Plex servers they own, and Yagi allows that server's public internet address with the tuner limit the invite carries. It is off until you turn on *Invite viewers with Plex* in *Settings → Plex*, which is separate from signing in to the admin pages with Plex.
 
 - **The link is a password.** It carries a random 256-bit token, shown once when the invite is made. Only a hash of it is saved, so the settings file can't be used to enroll anyone. A wrong, expired or revoked link, and a link while enrollment is off, are all the same plain `404`, and wrong links from one address are limited to five every ten minutes.
 - **It expires.** An invite nobody has used stops working after seven days. Once used it keeps working until you revoke it, because opening it again is how a person brings their address up to date when their internet address changes; the account that enrolled is the only one that can.

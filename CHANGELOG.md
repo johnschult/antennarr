@@ -5,6 +5,18 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://github.com/johnschult/yagi/blob/main/docs/RELEASING.md).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.15 (2026-10-22)
+
+### Added
+
+- **Invite a Plex viewer with a link.** Instead of collecting a viewer's addresses, you send them a link: they open it, sign in with Plex, pick one of the Plex servers they own, and Yagi allows that server's internet address with the tuner limit you set. The last page tells them what to do in Plex and that they can close the window. If their address changes they open the same link again to update it. Turn it on with **Invite viewers with Plex** in *Settings → Plex*, then use **Viewers → Invite with Plex**, which shows the link once with a Copy button. The *Invites* list under the viewers shows each one as waiting, joined or expired, and **Revoke** ends it; a viewer who joined this way has a Plex line under their name. It is off until you switch it on, and it is its own switch: it doesn't need *Sign in with Plex*. Plex doesn't authenticate tuner streams, so this shows who owns the server, not which Plex user is watching, and an address is shared by everything behind it; a server reached over a VPN or tailnet is still added by hand. Only a hash of the link is saved, the Plex sign-in is used once and not kept, and the link opens a public page on the admin port (`9244`), so see [Invite links](https://github.com/johnschult/yagi/blob/main/docs/security.md#invite-links) before you turn it on.
+- **A notification when someone joins** (`enrolled`, on by default), and a line on each tuner's timeline.
+- **Plex has its own section in *Settings → Access*,** with *Sign in with Plex* (moved from *Admin access*, unchanged) and the new *Invite viewers with Plex* side by side.
+
+### Changed
+
+- **Settings files with invites need this version or newer.** Invites and the viewers made from them add keys (`invites`, `viewers[].plex`, `plex.enrollment`) that an older Yagi refuses to start with, so remove them first if you go back.
+
 ## 2026.10.14 (2026-10-22)
 
 ### Read before updating

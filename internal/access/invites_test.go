@@ -169,22 +169,31 @@ func TestAnEnrolledViewerIsValidatedAndCopied(t *testing.T) {
 	}
 }
 
-func TestEnrollmentNeedsPlexSignInToo(t *testing.T) {
+func TestEnrollmentIsItsOwnSwitch(t *testing.T) {
 	var s Settings
 	if s.EnrollmentEnabled() {
 		t.Error("on by default")
 	}
-	s.Plex = &PlexSettings{Enrollment: true}
+	s.Plex = &PlexSettings{Enabled: true}
 	if s.EnrollmentEnabled() {
-		t.Error("on while Sign in with Plex is off")
+		t.Error("on because Plex accounts may sign in: that is a different thing")
+	}
+	s.Plex = &PlexSettings{Enrollment: true}
+	if !s.EnrollmentEnabled() {
+		t.Error("off though its own switch is on, only because nobody may sign in with Plex")
 	}
 	s.Plex.Enabled = true
 	if !s.EnrollmentEnabled() {
-		t.Error("off though both are on")
+		t.Error("off when both are on")
 	}
 	s.Plex.Enrollment = false
 	if s.EnrollmentEnabled() {
 		t.Error("on though its own switch is off")
+	}
+	// Neither switch needs the other to be valid in a settings file.
+	s.Plex = &PlexSettings{Enrollment: true}
+	if err := s.Validate(); err != nil {
+		t.Errorf("enrollment alone: %v", err)
 	}
 }
 

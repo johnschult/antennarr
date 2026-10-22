@@ -382,6 +382,13 @@ export interface ViewerInput {
   limits?: Record<string, number>
 }
 
+/** What is sent to make an invite. */
+export interface InviteInput {
+  name: string
+  limit: number
+  limits?: Record<string, number>
+}
+
 export interface SettingsPatch {
   sharedCap?: number
   ownerReserve?: number

@@ -41,8 +41,8 @@ import (
 // the normal tests: it only builds with -tags demo.
 //
 // The tuner is an HDHomeRun FLEX 4K with one stream from a viewer (Alex)
-// through Yagi and one or two local devices, plus three made-up viewers.
-// The address it listens on is written to $DEMO_DIR/addr.
+// through Yagi and one or two local devices, plus four made-up viewers (one who joined with an invite).
+// The address of the admin pages is written to $DEMO_DIR/addr.
 //
 // The channels are two with plain badges, not any network's marks, unless
 // $DEMO_LOGOS/channels.json lists others: a JSON array of {"number", "name",
@@ -446,6 +446,15 @@ func TestDemo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The admin pages have a port of their own: the usual one if it is free, so the pages show the address people
+	// will really use, and any free one if not.
+	adminLn, err := net.Listen("tcp", "127.0.0.1:9244")
+	if err != nil {
+		adminLn, err = net.Listen("tcp", "127.0.0.1:0")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
 	s := access.DefaultSettings()
 	s.OwnerReserve = 1
 	s.Admin = []string{"192.0.2.0/24"}
@@ -453,7 +462,15 @@ func TestDemo(t *testing.T) {
 		{Name: "Alex", Addresses: []string{"127.0.0.1"}, Limit: 2},
 		{Name: "Sam", Addresses: []string{"100.64.0.9"}, Limit: 1},
 		{Name: "Jordan", Addresses: []string{"10.8.0.0/24"}, Limit: 1},
+		// Someone who joined with an invite: a made-up address and server, as for every viewer here.
+		{Name: "Riley", Addresses: []string{"203.0.113.40"}, Limit: 1, Plex: &access.ViewerPlex{AccountID: 4242, AccountName: "riley", ServerID: "demo-riley-server", ServerName: "Riley's Plex"}},
 	}
+	// Inviting is on, with one invite waiting and one that was used (by Riley).
+	s.Plex = &access.PlexSettings{Enabled: true, Enrollment: true}
+	_, waiting := access.NewInvite("Morgan", 1, nil, time.Now())
+	_, used := access.NewInvite("Riley", 1, nil, time.Now().Add(-2*24*time.Hour))
+	used.ViewerName = "Riley"
+	s.Invites = []access.Invite{used, waiting}
 	s.Labels = map[string]string{"antenna": "Living room antenna"}
 	dev := access.Device{Name: "antenna", Listen: ln.Addr().String(), Tuner: "demo", ID: "10ABCC87", StreamPort: sport}
 	s.Devices = []access.Device{dev}
@@ -475,8 +492,8 @@ func TestDemo(t *testing.T) {
 		TailscaleStart: func(tailnet.Config) tailnet.Node { return demoNode{} },
 		Settings:       s, Devices: s.Devices, ConfigPath: cfgPath, Poll: time.Second, Log: demoLog, LogLevel: demoLevel, Logs: demoLogs,
 		Locate:    func(context.Context, string, string) (string, error) { return api.URL, nil },
-		Listeners: map[string]net.Listener{"antenna": ln}, GuideURL: guide.URL + "/api/xmltv", GuideIconBase: guide.URL,
-		AdminListen: "127.0.0.1:0",
+		Listeners: map[string]net.Listener{"antenna": ln, adminName: adminLn}, GuideURL: guide.URL + "/api/xmltv", GuideIconBase: guide.URL,
+		AdminListen: adminLn.Addr().String(),
 		// The demo's tuner is made up and goes quiet on purpose: don't go looking for a real one.
 		Find: func(context.Context, string, string) (discovery.Device, error) {
 			return discovery.Device{}, errors.New("demo")
@@ -519,8 +536,9 @@ func TestDemo(t *testing.T) {
 		t.Fatal(err)
 	}
 	go srv.Run(ctx)
-	base2 := "http://" + ln.Addr().String()
-	os.WriteFile(filepath.Join(dir, "addr"), []byte(base2), 0o644)
+	base2 := "http://" + ln.Addr().String() // the tuner's own port
+	// What the pages are opened at is the admin port, which is what $DEMO_DIR/addr holds.
+	os.WriteFile(filepath.Join(dir, "addr"), []byte("http://"+adminLn.Addr().String()), 0o644)
 	// Alex watches the first channel through Yagi.
 	go func() {
 		time.Sleep(time.Second)

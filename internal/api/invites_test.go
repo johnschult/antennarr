@@ -11,30 +11,33 @@ import (
 
 var t0 = time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
 
-// invitesOn is settings with Sign in with Plex and enrollment on.
+// invitesOn is settings with enrollment on, and nobody signing in with Plex: the two are independent.
 func invitesOn() access.Settings {
 	s := johnAndMom
-	s.Plex = &access.PlexSettings{Enabled: true, Enrollment: true}
+	s.Plex = &access.PlexSettings{Enrollment: true}
 	return s
 }
 
 func TestAnInviteCanOnlyBeMadeWhileEnrollmentIsOn(t *testing.T) {
 	e := newEnv(t, johnAndMom, true)
 	code, v := e.call(t, "POST", "/api/invites", `{"name":"Dad","limit":1}`)
-	if code != 409 || !strings.Contains(obj(t, v)["error"].(string), "Sign in with Plex") {
-		t.Errorf("with Plex off = %d %v", code, v)
+	if code != 409 || !strings.Contains(obj(t, v)["error"].(string), "turn on inviting viewers with Plex") {
+		t.Errorf("with it off = %d %v", code, v)
 	}
+	// Plex accounts signing in to the admin pages is another thing, and doesn't help.
 	if code, _ := e.call(t, "PATCH", "/api/settings", `{"plexEnabled":true}`); code != 200 {
 		t.Fatal(code)
 	}
 	if code, _ := e.call(t, "POST", "/api/invites", `{"name":"Dad","limit":1}`); code != 409 {
-		t.Errorf("with enrollment off = %d", code)
+		t.Errorf("with only Plex sign-in on = %d", code)
 	}
-	if code, v := e.call(t, "PATCH", "/api/settings", `{"plexEnrollment":true}`); code != 200 || obj(t, obj(t, v)["plex"])["enrollment"] != true {
+	// Enrollment is enough, with sign-in off.
+	e = newEnv(t, johnAndMom, true)
+	if code, v := e.call(t, "PATCH", "/api/settings", `{"plexEnrollment":true}`); code != 200 || obj(t, obj(t, v)["plex"])["enrollment"] != true || obj(t, obj(t, v)["plex"])["enabled"] != false {
 		t.Fatalf("turning enrollment on = %d %v", code, v)
 	}
 	if code, v := e.call(t, "POST", "/api/invites", `{"name":"Dad","limit":1}`); code != 201 {
-		t.Errorf("with both on = %d %v", code, v)
+		t.Errorf("with enrollment alone = %d %v", code, v)
 	}
 }
 
