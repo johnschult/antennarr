@@ -11,6 +11,11 @@ Each release's notes on GitHub are its section of this file.
 
 - **The web page now has a port of its own: `9244`.** It used to share a tuner's port, so it moved when you added a tuner, and a viewer who could reach the tuner could reach the sign-in page. Now `http://<this machine>:9244/` is always the page, and no tuner is ever on that port: tuners keep `5004`, `5005`, … exactly as before, so **nothing changes for your viewers or their media servers**. What changes for you: open `:9244` instead of `:5004`, **sign in with Plex once more** (the cookie is for the page's new address), re-add the page to your Home Screen, and allow `9244` in the firewall for the computers you use as admins. Change it with `-admin-listen`, `YAGI_ADMIN_LISTEN` or `adminListen` in the settings file; see [Configuration](https://github.com/johnschult/yagi/blob/main/docs/configuration.md#the-admin-port). The `-admin-listen` option from the last release is now simply how you move it.
 
+### Changed
+
+- **Five command-line flags are deprecated: `-listen`, `-tuner-id`, `-stream-port`, `-advertise` and `-report-id`.** They still work, but Yagi now logs a warning naming what to do instead, and they will be removed in a future release. Adding a tuner on the admin page learns its DeviceID and gives it a port, and the settings file holds the rest (`listen`, `streamPort`, `advertise`, `reportId`; see [Configuration](https://github.com/johnschult/yagi/blob/main/docs/configuration.md#command-line-flags)). `-tuner` and `YAGI_TUNER` stay, to start with a tuner and no settings to write.
+- **Getting started no longer has you write the tuner into the settings file.** It says: start Yagi, open the page, press **Add**. The file's format is in Configuration for anyone who prefers it.
+
 ### Added
 
 - **Plain startup messages.** Yagi now prints where the admin page is (with your machine's addresses), says that a tuner's port opens only once a tuner is added, and points to the troubleshooting page. `-admin-listen:9244` (no space) gets a message saying what to type instead of an "unknown flag", and a port that is already in use names the port and how to change it.

@@ -28,18 +28,38 @@ type deviceFlags struct {
 // flagNames lists the flags that describe a device, for spotting conflicts.
 var flagNames = []string{"listen", "tuner", "tuner-id", "stream-port", "advertise", "report-id"}
 
+// deprecatedFlags are the ones that describe a device beyond its address. The admin page adds a tuner, learns its
+// DeviceID and lets its port be changed, and the settings file holds the rest, so a flag for each is one way too
+// many. They still work for now, and say so. -tuner (and YAGI_TUNER) stay, for a start with no settings to write.
+var deprecatedFlags = []struct{ name, instead string }{
+	{"listen", `add the tuner on the admin page, or set "listen" on it in the settings file`},
+	{"tuner-id", `add the tuner on the admin page, which learns its DeviceID`},
+	{"stream-port", `set "streamPort" on the tuner in the settings file`},
+	{"advertise", `set "advertise" on the tuner in the settings file`},
+	{"report-id", `set "reportId" on the tuner in the settings file`},
+}
+
+// warnDeprecated says, once for each, which of the flags that were given are on their way out.
+func warnDeprecated(log *slog.Logger, set map[string]bool) {
+	for _, d := range deprecatedFlags {
+		if set[d.name] {
+			log.Warn("-"+d.name+" is deprecated and will be removed in a future release: "+d.instead, "flag", "-"+d.name)
+		}
+	}
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "discover" {
 		os.Exit(runDiscover(os.Args[2:]))
 	}
 
 	var f deviceFlags
-	flag.StringVar(&f.listen, "listen", ":5004", "address to listen on")
+	flag.StringVar(&f.listen, "listen", ":5004", "DEPRECATED: address to listen on; add the tuner on the admin page, or set \"listen\" in the settings file")
 	flag.StringVar(&f.tuner, "tuner", os.Getenv("YAGI_TUNER"), "tuner host or URL, e.g. 192.168.1.132 (also set by YAGI_TUNER)")
-	flag.StringVar(&f.id, "tuner-id", "", "DeviceID of the tuner to follow if its address changes (learned from -tuner if omitted)")
-	flag.StringVar(&f.streamPort, "stream-port", "5004", "tuner's streaming port")
-	flag.StringVar(&f.advertise, "advertise", "", "base URL to hand to clients (default: the host they connected with)")
-	flag.StringVar(&f.reportID, "report-id", "", "report this DeviceID to clients instead of the tuner's (8 hex digits; for testing against a tuner your media server already knows)")
+	flag.StringVar(&f.id, "tuner-id", "", "DEPRECATED: add the tuner on the admin page, which learns its DeviceID")
+	flag.StringVar(&f.streamPort, "stream-port", "5004", "DEPRECATED: set \"streamPort\" in the settings file")
+	flag.StringVar(&f.advertise, "advertise", "", "DEPRECATED: set \"advertise\" in the settings file")
+	flag.StringVar(&f.reportID, "report-id", "", "DEPRECATED: set \"reportId\" in the settings file")
 	adminListen := flag.String("admin-listen", os.Getenv("YAGI_ADMIN_LISTEN"), "where the admin pages are served, on a port of their own that no tuner uses (default \":9244\"; also set by YAGI_ADMIN_LISTEN or \"adminListen\" in the settings file)")
 	allowLAN := flag.Bool("allow-lan", os.Getenv("YAGI_ALLOW_LAN") != "", "keep the LAN ports open even if \"tailnet only\" is on, to get back in if it left you locked out (also set by YAGI_ALLOW_LAN)")
 	poll := flag.Duration("poll", 5*time.Second, "how often to check the tuners")
@@ -70,6 +90,7 @@ func main() {
 	logs := logbuf.New(2000)
 	log := slog.New(logbuf.Tee(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}), logs))
 	log.Info("starting", "version", version.Get())
+	warnDeprecated(log, set)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 

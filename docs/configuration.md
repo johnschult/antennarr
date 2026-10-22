@@ -130,17 +130,17 @@ Example, with a 4-tuner device, `ownerReserve: 1` and one of *your* TVs watching
 | `-config PATH` | The settings file, `yagi.json` in the current directory by default (`/config/yagi.json` in the Docker image). If it doesn't exist it is created with the defaults at start-up. If the default one can't be created, Yagi runs without saving; a `-config` you name that can't be created is an error. |
 | `-allow-lan` | Keep the LAN ports open even if *Only on the tailnet* is on: the way back in if it locked you out. Also set by `YAGI_ALLOW_LAN`. See [Built-in Tailscale](tailscale.md#only-on-the-tailnet). |
 | `-tuner HOST` | A tuner's address, to run one device without a settings file. Also read from the `YAGI_TUNER` environment variable. It is used only while the settings file has no `devices`. |
-| `-tuner-id ID` | A tuner's DeviceID to search for if its address changes. |
-| `-listen ADDR` | Where to listen (default `:5004`). |
+| `-tuner-id ID` | **Deprecated.** Add the tuner on the admin page, which learns its DeviceID. |
+| `-listen ADDR` | **Deprecated.** Where to listen (default `:5004`). Add the tuner on the admin page, or set `listen` in the settings file. |
 | `-admin-listen ADDR` | Where the admin pages are (default `:9244`, or `127.0.0.1:9244`). Also read from the `YAGI_ADMIN_LISTEN` environment variable, and from `adminListen` in the settings file. See [The admin port](#the-admin-port). |
-| `-stream-port PORT` | The tuner's streaming port (default `5004`). |
-| `-advertise URL` | The base URL handed to clients (default: the host they connected with). |
-| `-report-id ID` | Report this DeviceID to clients instead of the tuner's own. |
+| `-stream-port PORT` | **Deprecated.** The tuner's streaming port (default `5004`). Set `streamPort` in the settings file. |
+| `-advertise URL` | **Deprecated.** The base URL handed to clients (default: the host they connected with). Set `advertise` in the settings file. |
+| `-report-id ID` | **Deprecated.** Report this DeviceID to clients instead of the tuner's own. Set `reportId` in the settings file. |
 | `-poll DURATION` | How often to check the tuners (default `5s`). |
 | `-firmware-url URL` | Read the firmware changelog from here instead of SiliconDust's page (for a mirror, or testing). |
 | `-version` | Print the version and exit. |
 
-`-tuner`, `-tuner-id`, `-listen`, `-stream-port`, `-advertise` and `-report-id` describe a device, so they can't be combined with `devices` in the settings file. Put those settings in the file.
+`-tuner`, `-tuner-id`, `-listen`, `-stream-port`, `-advertise` and `-report-id` describe a device, so they can't be combined with `devices` in the settings file. The last five are **deprecated**: they still work, Yagi logs a warning for each one you give, and they will be removed in a future release. Add the tuner on the admin page, or put those settings in the file. `-tuner` (and `YAGI_TUNER`) stay, as the way to start with a tuner and no settings to write.
 
 ### The admin port
 

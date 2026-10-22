@@ -47,33 +47,21 @@ Unraid User Script). `./yagi -version` prints the version.
 
 ## 2. Your tuner
 
-**Usually there is little to do.** If you don't name a tuner, Yagi starts with only the web page, on its own port, `9244`, and looks for HDHomeRuns on your network while the page is open (every few seconds, for a few minutes). Open it (step 3): each tuner it finds is listed with a name filled in, which you can change, and an **Add** button (or **Add all**). **Nothing is added until you press it**, because a tuner on a shared network may not be yours. If it stops looking before yours is on, press **Look again**. Tuners you add are saved under `devices` in the settings file; each gets a port of its own, starting at `5004` and going up (`5005`, …). The web page stays on `9244`, and no tuner is ever on it. You can add more, or remove one, later on the *Tuners* page.
+**There is nothing to set up here.** Start Yagi without naming a tuner (`./yagi`, or the compose file above). It starts with only the web page, on its own port, `9244`, and looks for HDHomeRuns on your network while the page is open (every few seconds, for a few minutes). Open the page (step 3): each tuner it finds is listed with a name filled in, which you can change, and an **Add** button (or **Add all**). **Nothing is added until you press it**, because a tuner on a shared network may not be yours. If it stops looking before yours is on, press **Look again**.
 
-Finding a tuner needs to see your network's broadcasts, so in Docker use host networking. Without it, add the tuner by its address on the same page, or set `YAGI_TUNER` (for example `YAGI_TUNER=192.168.1.50`) for an install nobody opens a page on.
+Tuners you add are saved in the settings file. Each gets a port of its own, starting at `5004` and going up (`5005`, …), which is the port a viewer's media server connects to. The web page stays on `9244`, and no tuner is ever on it, so a test of port `5004` fails until you have added your first tuner. You can add more, change a tuner's port, or remove one later on the *Tuners* page.
 
-To name a tuner yourself in the settings file or on the command line, list what is on your network:
+**If your tuner isn't listed**, Yagi can't see its broadcast. That happens when the tuner is on another network or VLAN than Yagi, or when Yagi runs in Docker without host networking (which is why the compose file uses it). Add it by its address on the same page (**Add tuner**), or, for an install nobody opens a page on, set `YAGI_TUNER` (for example `YAGI_TUNER=192.168.1.50`).
+
+To see what is on your network from the command line:
 
 ```sh
 yagi discover          # in Docker: docker exec yagi yagi discover
 ```
 
-It prints one line for each HDHomeRun it finds: its DeviceID, its address and how many tuners it has, for example `10C03B06  http://192.168.1.50  4 tuners`. Then say which one to use, either with `-tuner 192.168.1.50` or in the settings file. The smallest useful file is:
+It prints one line for each HDHomeRun it finds: its DeviceID, its address and how many tuners it has, for example `10C03B06  http://192.168.1.50  4 tuners`.
 
-```json
-{
-  "devices": [
-    { "name": "antenna", "listen": ":5004", "tuner": "192.168.1.50", "id": "10C03B06" }
-  ]
-}
-```
-
-- `name` is a short key (letters, digits, `.`, `_`, `-`). It appears in URLs and settings, so pick one you won't change. You can give the tuner a friendlier display name later, in the web page.
-- `listen` is the port viewers' servers connect to. `:5004` means every address on this machine.
-- `tuner` is where the tuner is now. `id` is its DeviceID: with it, Yagi finds the tuner again if its address changes (DHCP). You can leave `id` out and Yagi learns it the first time it reaches the tuner, but then it can't search for a tuner it has never seen, so adding it now is better.
-
-If the file doesn't exist, Yagi creates it with the defaults when it starts, and saves the changes you make in the web page to it.
-You can also run one tuner straight from the command line (`yagi -tuner 192.168.1.50`); the settings file is then `yagi.json` in the directory you ran it from.
-The full list of settings is in [Configuration](configuration.md).
+The settings file is created with the defaults when Yagi starts, if it doesn't exist, and the changes you make in the web page are saved to it. If you would rather write the tuners in the file yourself, [Configuration](configuration.md) has its format.
 
 ## 3. Open the web page
 
