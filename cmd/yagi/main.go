@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/banner"
 	"github.com/johnschult/yagi/internal/discovery"
 	"github.com/johnschult/yagi/internal/logbuf"
 	"github.com/johnschult/yagi/internal/server"
@@ -63,6 +64,8 @@ func main() {
 
 	// What is logged goes to standard error as before, and the last few thousand lines are kept in memory for the
 	// Logs page. The level starts at info and follows the log level setting once the settings are read.
+	// Started by hand in a terminal, say who this is first. Never in a log: only a terminal gets it.
+	banner.Print(os.Stderr, banner.ModeFor(isTerminal(os.Stderr), os.Getenv), version.Get())
 	level := new(slog.LevelVar)
 	logs := logbuf.New(2000)
 	log := slog.New(logbuf.Tee(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}), logs))
@@ -123,6 +126,12 @@ func hintAtMistypedFlags(args []string) {
 			fail(fmt.Errorf("%s: put a space or an equals sign between the flag and its value, for example -%s :%s or -%s=:%s", a, name, value, name, value))
 		}
 	}
+}
+
+// isTerminal is whether f is a terminal rather than a file or a pipe (`docker logs` and systemd are pipes).
+func isTerminal(f *os.File) bool {
+	st, err := f.Stat()
+	return err == nil && st.Mode()&os.ModeCharDevice != 0
 }
 
 func portOf(addr string) string {
