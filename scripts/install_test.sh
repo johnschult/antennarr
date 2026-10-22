@@ -90,7 +90,7 @@ pass "installing again works"
 
 # Nothing is installed from a download that doesn't match, or that holds something unexpected.
 for rel in bad extra; do
-	rm -rf "$work/bin"
+	rm -rf "${work:?}/bin"
 	if run "$rel" >"$work/out" 2>&1; then fail "$rel: it installed a bad download"; fi
 	[ ! -e "$work/bin/yagi" ] || fail "$rel: it left a program behind"
 done
