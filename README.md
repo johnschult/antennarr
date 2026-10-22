@@ -47,13 +47,15 @@ media servers only ever talk to Yagi. It also decides who may use the tuner, and
 - **Live, and what happened.** Live tiles for each tuner (channel, logo, what's on with its picture and progress, who's watching, bitrate, signal), an Activity page of who watched what for the last 30 days, a page for each viewer, a **Logs** page, a copy-paste setup guide, light and dark themes, and a phone layout.
 - **Firmware news.** Tells you when SiliconDust releases firmware for your model, and installs it when you press Install on the tuner's Firmware tab: the latest release for that tuner only, never an older one, and never on its own.
 - **Notifications.** Optional messages to ntfy, Pushover or a webhook when there is new firmware, a tuner is offline for a couple of minutes (and when it's back), or a viewer is turned away. Each kind can be switched off, and each channel has a Test button.
-- **Invite a Plex viewer with a link.** For viewers on Plex, you don't collect their addresses: send a link, they sign in with Plex and pick their server, and Yagi allows its internet address with the limit you set. They open the same link again if their address changes. See [Invite links](docs/security.md#invite-links).
-- **Any network.** Plain LAN, Tailscale, WireGuard, ZeroTier… Yagi just listens on a port. Getting the two servers to reach each other is up to you.
+- **Any private network.** Plain LAN, Tailscale, WireGuard, ZeroTier… Yagi just listens on a port, and serves private networks only: not the public internet. Getting the two servers onto the same network is up to you.
 - **Its own Tailscale** (the `-tailscale` image). Yagi can join your tailnet as its own device, with no Tailscale on the machine: share that one device and nothing is opened on your router. Viewers and admins can be matched by Tailscale login, the LAN can be closed (*only on the tailnet*), and the admin page can be served over HTTPS. See [Built-in Tailscale](docs/tailscale.md).
+
+> [!IMPORTANT]
+> **Yagi is for your family and social circle, not for the public.** It shares your own antenna with the people in your life that you know and trust, over your own network, a VPN or Tailscale. It refuses connections from the public internet, and it is not meant for public or commercial use, or for sending a signal to people you don't know. Keep it to people you would let onto your own network, and follow the laws and terms that apply to you.
 
 > [!WARNING]
 > **Status: early.** It runs a real FLEX 4K and is tested with the Go race detector and a UI test suite, but it is young software.
-> Expect rough edges, and please read [Security](#security) (and [docs/security.md](docs/security.md)) before exposing it to anything beyond a network you trust.
+> Expect rough edges, and please read [Security](#security) (and [docs/security.md](docs/security.md)) first.
 
 ## Quick start
 
@@ -85,7 +87,7 @@ Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with
 |---|---|
 | [Getting started](docs/getting-started.md) | You are installing Yagi, or opening it for the first time |
 | [A tour of the web page](docs/web-ui.md) | You want to see what each page shows, with pictures |
-| [Networking](docs/networking.md) | You are deciding how a viewer's server will reach yours: Tailscale, a VPN, the same network, or (not recommended) the internet |
+| [Networking](docs/networking.md) | You are deciding how a viewer's server will reach yours: Tailscale, a VPN, the same network, or the same network |
 | [Built-in Tailscale](docs/tailscale.md) | You want Yagi to join your tailnet by itself, with no Tailscale on the machine |
 | [Media servers](docs/media-servers.md) | You are adding the tuner in Plex, Jellyfin or Emby |
 | [Configuration](docs/configuration.md) | You want every setting, flag and file explained, and how the limits work |
@@ -104,7 +106,7 @@ The app's **Help** link, at the bottom of its web page, opens the docs for the v
 
 - **A new install is closed.** With no viewers nobody can use the tuner, and only this machine can open the admin page, until you use the one-time setup link in the log.
 - **Viewers only get what a media server needs**; everything else the tuner serves (rescans, firmware upgrade, its own pages) answers `404`.
-- **Don't put Yagi on the open internet.** Use Tailscale, a VPN, or a private network.
+- **Private networks only.** Yagi serves your own network, a VPN and Tailscale, and drops connections from public internet addresses, so a port forwarded by mistake shows scanners nothing.
 - **Admin by address** trusts the address a request arrives from, so behind a reverse proxy every request looks like the proxy's. Signing in with a Plex account is optional.
 - **What it contacts:** only your tuners, plus, each switchable in Settings, SiliconDust's firmware changelog and program guide (and the firmware file when you press Install), plex.tv when someone signs in, and the notification service you set up. The web page itself loads nothing from outside. The full list, with what each one is sent, is in [Security](docs/security.md#what-leaves-your-network).
 

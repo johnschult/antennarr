@@ -24,14 +24,17 @@ func (s *Server) lanClosed() bool {
 // is dropped as it arrives. Connections from the LAN that are already open when the LAN closes are cut too (see
 // enforceLAN), so "only on the tailnet" holds from the moment it goes on.
 func (s *Server) gate(ln net.Listener) net.Listener {
-	return &gatedListener{Listener: ln, closed: s.lanClosed, log: s}
+	return &gatedListener{Listener: ln, closed: s.lanClosed, private: s.privateSource, log: s}
 }
 
 type gatedListener struct {
 	net.Listener
 	closed func() bool
-	log    *Server
-	lastAt atomic.Int64 // when a refusal was last logged (unix seconds), so a busy port isn't loud
+	// private says whether a source is one Yagi serves at all (see private.go): the rest are dropped.
+	private func(net.Addr) bool
+	log     *Server
+	lastAt  atomic.Int64 // when a refusal was last logged (unix seconds), so a busy port isn't loud
+	lastPub atomic.Int64 // the same for a public source
 }
 
 func (g *gatedListener) Accept() (net.Conn, error) {
@@ -42,6 +45,14 @@ func (g *gatedListener) Accept() (net.Conn, error) {
 		}
 		if isLoopback(c.RemoteAddr()) {
 			return c, nil
+		}
+		if g.private != nil && !g.private(c.RemoteAddr()) {
+			_ = c.Close()
+			now := time.Now().Unix()
+			if last := g.lastPub.Load(); now-last >= 60 && g.lastPub.CompareAndSwap(last, now) {
+				g.log.log.Info("refused a connection from a public internet address: Yagi serves private networks only (this network, a VPN, Tailscale)", "from", c.RemoteAddr().String(), "port", g.Addr().String())
+			}
+			continue
 		}
 		if !g.closed() {
 			return g.log.lan.track(c), nil // remembered, so it can be cut if the LAN closes while it is open

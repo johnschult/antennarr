@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -178,99 +177,6 @@ func (c *Client) User(ctx context.Context, token string) (User, error) {
 	return User{ID: d.ID, Name: cleanName(name)}, nil
 }
 
-// Server is a Plex Media Server the signed-in account owns or has been shared. Only what is needed to allow its
-// addresses is kept: not the server's own access token, which plex.tv also sends, and not its public address.
-type Server struct {
-	// Name is what the server is called, cleaned like a user name.
-	Name string
-	// MachineID is the server's own identifier, which does not change when its address does.
-	MachineID string
-	// Owned is whether the account owns it, rather than being shared on it.
-	Owned bool
-	// Connections are the addresses it can be reached at, without the relayed ones: a relay is Plex's address, not
-	// the server's, so allowing it would allow everyone on that relay.
-	Connections []Connection
-}
-
-// Connection is one address a server answers on.
-type Connection struct {
-	// Addr is the IP address. A connection that is a host name instead is left out, because the allowlist is of
-	// addresses.
-	Addr netip.Addr
-	Port int
-	// Local is whether plex.tv says it is a private-network address, as against one reached over the internet.
-	Local bool
-}
-
-// The most of each that is kept, so a strange answer can't make an unbounded list.
-const (
-	maxServers     = 50
-	maxConnections = 20
-)
-
-// Resources lists the servers a token's account owns or is shared. The token is sent as a header and nowhere else,
-// and not kept: the caller has it only as long as it takes to ask.
-func (c *Client) Resources(ctx context.Context, token string) ([]Server, error) {
-	var docs []struct {
-		Name             string `json:"name"`
-		ClientIdentifier string `json:"clientIdentifier"`
-		Provides         string `json:"provides"`
-		Owned            bool   `json:"owned"`
-		Connections      []struct {
-			Address string `json:"address"`
-			Port    int    `json:"port"`
-			Local   bool   `json:"local"`
-			Relay   bool   `json:"relay"`
-		} `json:"connections"`
-	}
-	status, err := c.do(ctx, http.MethodGet, "/api/v2/resources", url.Values{"includeHttps": {"1"}, "includeRelay": {"0"}}, token, &docs)
-	switch {
-	case err != nil:
-		return nil, err
-	case status == http.StatusUnauthorized:
-		return nil, ErrBadToken
-	case status != http.StatusOK:
-		return nil, fmt.Errorf("plex.tv answered %d when asked for the account's servers", status)
-	}
-	var out []Server
-	for _, d := range docs {
-		if !provides(d.Provides, "server") || d.ClientIdentifier == "" {
-			continue // a player or a phone, not a server
-		}
-		srv := Server{Name: cleanName(d.Name), MachineID: cleanName(d.ClientIdentifier), Owned: d.Owned}
-		if srv.Name == "" {
-			srv.Name = "Plex Media Server"
-		}
-		for _, cn := range d.Connections {
-			addr, err := netip.ParseAddr(strings.TrimSpace(cn.Address))
-			if cn.Relay || err != nil || cn.Port < 1 || cn.Port > 65535 {
-				continue
-			}
-			if len(srv.Connections) < maxConnections {
-				srv.Connections = append(srv.Connections, Connection{Addr: addr.Unmap(), Port: cn.Port, Local: cn.Local})
-			}
-		}
-		if len(srv.Connections) == 0 {
-			continue
-		}
-		out = append(out, srv)
-		if len(out) == maxServers {
-			break
-		}
-	}
-	return out, nil
-}
-
-// provides is whether a resource's comma-separated "provides" list has the word in it.
-func provides(list, word string) bool {
-	for _, p := range strings.Split(list, ",") {
-		if strings.TrimSpace(p) == word {
-			return true
-		}
-	}
-	return false
-}
-
 // cleanName keeps a name safe to store and show: no control characters, not
 // too long.
 func cleanName(s string) string {
@@ -289,11 +195,7 @@ func cleanName(s string) string {
 
 // AuthURL is where to send the person to sign in: Plex's own page, which
 // brings them back nowhere; Yagi finds out by asking plex.tv about the PIN.
-func (c *Client) AuthURL(p PIN) string { return c.AuthURLReturning(p, "") }
-
-// AuthURLReturning is AuthURL with an address for Plex to send the person back to once they have signed in, so a
-// page that started the sign-in needn't be left open and watched. back has to be an absolute address.
-func (c *Client) AuthURLReturning(p PIN, back string) string {
+func (c *Client) AuthURL(p PIN) string {
 	base := c.AuthBase
 	if base == "" {
 		base = DefaultAuthBase
@@ -302,8 +204,5 @@ func (c *Client) AuthURLReturning(p PIN, back string) string {
 	q.Set("clientID", c.ClientID)
 	q.Set("code", p.Code)
 	q.Set("context[device][product]", Product)
-	if back != "" {
-		q.Set("forwardUrl", back)
-	}
 	return base + "#?" + q.Encode()
 }

@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { addChannel, addDevice, addViewer, checkFirmware, createInvite, deleteInvite, deleteChannel, deleteDevice, deleteViewer, clearHistory, dismissRestart, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, restartTuner, replaceViewer, testChannel } from '@/lib/api'
+import { addChannel, addDevice, addViewer, checkFirmware, deleteChannel, deleteDevice, deleteViewer, clearHistory, dismissRestart, dismissUpgrade, getState, installFirmware, patchDevice, patchSettings, replaceChannel, restartTuner, replaceViewer, testChannel } from '@/lib/api'
 import { deviceTitle } from '@/lib/device'
-import type { AppState, ChannelInput, DeviceInput, InviteInput, UpgradeRequest, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
+import type { AppState, ChannelInput, DeviceInput, UpgradeRequest, DevicePatch, SettingsPatch, ViewerInput } from '@/lib/types'
 import { STATE_KEY } from './use-live-state'
 
 /** What a firmware check turned up across the tuners: newer firmware, none, or no clear answer. */
@@ -39,18 +39,6 @@ export function useEdits() {
     mutationFn: ({ name }: { name: string }) => deleteViewer(name),
     onSuccess: (_, { name }) => {
       toast.success(`Removed ${name}`)
-      void refresh()
-    },
-  })
-  // The link is shown by the dialog that made it, once, so no toast here: it would say less than the dialog does.
-  const inviteAdd = useMutation({
-    mutationFn: (i: InviteInput) => createInvite(i),
-    onSuccess: () => void refresh(),
-  })
-  const inviteRemove = useMutation({
-    mutationFn: ({ id }: { id: string; name: string }) => deleteInvite(id),
-    onSuccess: (_, { name }) => {
-      toast.success(`Revoked the invite for ${name}`)
       void refresh()
     },
   })
@@ -150,5 +138,5 @@ export function useEdits() {
     mutationFn: ({ device }: { device: string }) => dismissRestart(device),
     onSuccess: () => void refresh(),
   })
-  return { add, replace, remove, inviteAdd, inviteRemove, settings, device, firmware, install, dismiss, restart, dismissRestartResult, history, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
+  return { add, replace, remove, settings, device, firmware, install, dismiss, restart, dismissRestartResult, history, addTuner, removeTuner, channelAdd, channelReplace, channelRemove, channelTest }
 }

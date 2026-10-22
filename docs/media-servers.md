@@ -27,8 +27,6 @@ Live TV and DVR need **Plex Pass**.
 3. Enter `<address>:5004` and continue. Scan for channels and match the guide.
 4. If Plex already has this tuner under an older address, remove that DVR first so channels aren't doubled.
 
-If the viewer joined through an [invite link](security.md#invite-links), the page they finish on shows these same steps with this machine's address filled in.
-
 If you share a tuner with a friend, note that Plex only shares Live TV with people in your Plex Home. That is the problem Yagi solves: their Plex sees your tuner as if it were on their own network.
 
 ## Jellyfin

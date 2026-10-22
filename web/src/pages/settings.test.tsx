@@ -13,7 +13,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const state = () => {
   const s = makeState()
-  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [], enrollment: false }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false, https: false }, notifications: noNotifications() }
+  s.settings = { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: ['100.64.0.0/10'], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false, https: false }, notifications: noNotifications() }
   s.devices[0].ownerReserve = 1
   s.devices[0].sharedCap = 2
   return s
@@ -25,7 +25,7 @@ const okState = { 'GET /state': () => ({ body: makeState() }) }
 describe('SettingsPage', () => {
   it('groups settings into sections of rows, not a card each', () => {
     renderSettings(state(), 'access')
-    for (const name of ['Limits', 'Viewers', 'Admin access', 'Plex', 'Tailscale']) expect(section(name)).toBeInTheDocument()
+    for (const name of ['Limits', 'Viewers', 'Admin access', 'Tailscale']) expect(section(name)).toBeInTheDocument()
     expect(screen.queryByText(/^Save$/)).not.toBeInTheDocument() // nothing to save until something changes
     expect(document.querySelector('[data-slot="card"]')).toBeNull()
   })
@@ -342,10 +342,10 @@ describe('activity history setting', () => {
 describe('Plex sign-in settings', () => {
   const withPlex = (admins: { id: number; name: string }[] = [], enabled = true) => {
     const s = state()
-    s.settings.plex = { enabled, admins, enrollment: false }
+    s.settings.plex = { enabled, admins }
     return s
   }
-  const access = () => section('Plex')
+  const access = () => section('Admin access')
 
   it('is off by default and shows no accounts list', () => {
     renderSettings(withPlex([], false), 'access')
@@ -359,37 +359,6 @@ describe('Plex sign-in settings', () => {
     renderSettings(withPlex([], false), 'access')
     await userEvent.setup().click(within(access()).getByRole('switch', { name: 'Sign in with Plex' }))
     await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ plexEnabled: true }))
-  })
-
-  it('has the invite switch whether or not Plex sign-in is on: they are independent', () => {
-    renderSettings(withPlex([], false), 'access')
-    const sw = within(access()).getByRole('switch', { name: 'Invite viewers with Plex' })
-    expect(sw).not.toBeChecked()
-    expect(within(access()).getByRole('switch', { name: 'Sign in with Plex' })).not.toBeChecked()
-  })
-
-  it('turns inviting on without turning on Plex sign-in', async () => {
-    const { fn, calls } = stubFetch({ 'PATCH /settings': () => ({ body: {} }), ...okState })
-    vi.stubGlobal('fetch', fn)
-    renderSettings(withPlex([], false), 'access')
-    await userEvent.setup().click(within(access()).getByRole('switch', { name: 'Invite viewers with Plex' }))
-    await waitFor(() => expect(calls.find((c) => c.method === 'PATCH')?.body).toEqual({ plexEnrollment: true }))
-  })
-
-  it('shows inviting as on, and cannot be changed when settings cannot be saved', () => {
-    const s = withPlex([], false)
-    s.settings.plex.enrollment = true
-    s.editable = false
-    renderSettings(s, 'access')
-    const sw = within(access()).getByRole('switch', { name: 'Invite viewers with Plex' })
-    expect(sw).toBeChecked()
-    expect(sw).toHaveAttribute('aria-disabled', 'true')
-  })
-
-  it('is its own section, apart from the admin addresses', () => {
-    renderSettings(withPlex(), 'access')
-    expect(within(section('Admin access')).queryByRole('switch', { name: 'Sign in with Plex' })).not.toBeInTheDocument()
-    expect(within(section('Plex')).getByRole('switch', { name: 'Sign in with Plex' })).toBeInTheDocument()
   })
 
   it('lists the allowed accounts, or says there are none', () => {

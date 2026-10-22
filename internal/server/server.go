@@ -21,7 +21,6 @@ import (
 	"github.com/johnschult/yagi/internal/api"
 	"github.com/johnschult/yagi/internal/claim"
 	"github.com/johnschult/yagi/internal/discovery"
-	"github.com/johnschult/yagi/internal/enroll"
 	"github.com/johnschult/yagi/internal/firmware"
 	"github.com/johnschult/yagi/internal/guide"
 	"github.com/johnschult/yagi/internal/hdhr"
@@ -125,6 +124,7 @@ type Server struct {
 	policy       *access.Policy
 	store        *access.Store
 	hub          *live.Hub
+	nets         localNets   // the networks this machine is on, to tell a public source from one of our own
 	lan          lanConns    // connections from outside the machine, so they can be cut when the LAN closes
 	lanWasClosed atomic.Bool // the LAN was closed when enforceLAN last looked
 	firmware     *firmware.Checker
@@ -135,7 +135,6 @@ type Server struct {
 	restart      *restart.Manager
 	history      *history.Recorder
 	plex         *plexauth.Auth
-	enroll       *enroll.Enroller
 	claim        *claim.Claimer
 	tailnet      *tailnet.Manager
 	tail         tailServing  // the tailnet side of the ports
@@ -193,7 +192,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		cfg: cfg, log: cfg.Log, policy: policy, hub: live.NewHub(), announced: map[string]string{},
+		cfg: cfg, log: cfg.Log, policy: policy, hub: live.NewHub(), announced: map[string]string{}, nets: localNets{read: interfaceNets},
 		fromFlags: len(cfg.Settings.Devices) == 0 && len(cfg.Devices) > 0,
 	}
 	s.firmware = firmware.NewChecker(firmware.Config{
@@ -279,18 +278,6 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 		SessionsFile: sessionsFile(cfg.ConfigPath),
 	})
 	policy.SetSessionCheck(s.plex.IsSignedInAdmin)
-
-	// An invite link is a way to become a viewer, by signing in with Plex, using the same client for plex.tv.
-	s.enroll = enroll.New(enroll.Config{
-		Settings: policy.Settings, Store: s.store, Plex: s.plex.PlexClient, Log: cfg.Log, Enrolled: s.announceEnrolled,
-		Tuners: func() []string {
-			var ports []string
-			for _, d := range s.deviceList() {
-				ports = append(ports, portOfListen(d.cfg.Listen))
-			}
-			return ports
-		},
-	})
 
 	start := cfg.TailscaleStart
 	if start == nil {
@@ -513,19 +500,6 @@ func (s *Server) logClaimLinks(lns []net.Listener) {
 	for _, u := range claim.URLs(tok, port, hosts) {
 		s.log.Info("  setup link", "url", u)
 	}
-}
-
-// announceEnrolled records a person enrolling with an invite on every tuner's timeline and tells the owner.
-func (s *Server) announceEnrolled(ev enroll.Event) {
-	text := fmt.Sprintf("%s joined as a viewer by signing in with Plex (%s)", ev.Viewer, ev.Account)
-	if ev.Refreshed {
-		text = fmt.Sprintf("%s brought their addresses up to date with Plex", ev.Viewer)
-	}
-	for _, d := range s.deviceList() {
-		d.mon.Note("info", text)
-	}
-	s.notify.Enrolled(ev.Viewer, ev.Account, ev.Server, ev.Refreshed)
-	s.hub.Notify()
 }
 
 // announceFirmware tells the owner, once per release, when a tuner has newer

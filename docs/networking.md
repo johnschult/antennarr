@@ -1,12 +1,14 @@
 # Networking
 
-Yagi just listens on a port. How a viewer's media server reaches that port is up to you, and there are four common ways.
+**Yagi serves private networks only:** this machine, your own network, a VPN, Tailscale. A connection from a public internet address is dropped as it arrives, with one line in the log saying why, so a port forwarded by mistake shows scanners nothing. There is no switch to turn that off. Sharing a tuner is for people you trust enough to put on your network, and the way to reach someone elsewhere is a VPN or Tailscale.
+
+How a viewer's media server reaches the port is up to you, and there are three common ways.
 Adding a viewer in the web app writes out the steps for each, with your addresses filled in. For a viewer you have already added, use **Connection steps** on their row on the Viewers page.
 
 Two ideas to keep in mind:
 
 - **Viewers are identified by the address their requests come from**, as Yagi sees it. That is what you list in *Viewers*. After Tailscale or a VPN, it is the viewer's address on that network, not their home address.
-- **HDHomeRun tuners have no passwords**, and neither does Yagi's tuner side: the list of allowed addresses is the protection. Keep the port off the open internet. See [Security](security.md).
+- **HDHomeRun tuners have no passwords**, and neither does Yagi's tuner side: the list of allowed addresses is the protection, on top of the network itself being private. See [Security](security.md).
 
 ## Tailscale (recommended)
 
@@ -29,15 +31,12 @@ The same idea. Both machines join the VPN. The viewer adds the Yagi machine's ad
 
 If both servers are on one LAN, there is nothing to set up. Use the Yagi machine's LAN address, and list the viewer's LAN address.
 
-## Over the internet (not recommended)
+## Not over the open internet
 
-Anyone who can reach the port and whose address is on your list can use your tuner. A VPN or Tailscale is much safer. If you do it anyway:
+Yagi refuses connections from public internet addresses, and won't take a public address in a viewer's list or the admin list (the page and API say so). A viewer who isn't on your network, a VPN or your tailnet joins one of those: Tailscale is the easiest (see above), and the viewer's address you list is the one Yagi sees from there.
 
-- forward **only** Yagi's port on your router to the machine;
-- list only the viewer's public address under *Viewers*, and allow only that address in the machine's firewall;
-- use your public address or a dynamic DNS name, and test from *outside* your network.
-
-Their public address changes when their ISP changes it, which is a good reason not to do this.
+- **Your own network on public IPv6 addresses** is fine: a source on a network the machine is directly connected to counts as local, even when its address looks public.
+- **A reverse proxy** in front of Yagi on the same machine looks local to Yagi, so the proxy decides who gets through. Exposing Yagi that way is outside what Yagi supports.
 
 ## The machine's firewall
 

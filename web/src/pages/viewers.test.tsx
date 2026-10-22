@@ -500,3 +500,28 @@ describe('ViewersPage: the connection steps', () => {
     expect(within(dialog).queryByRole('list', { name: 'Steps' })).not.toBeInTheDocument()
   })
 })
+
+describe('Viewers with a public address', () => {
+  it('says plainly that they cannot connect, and why', () => {
+    const s = makeState({ viewers: [john, { ...mom, name: 'Dad', addresses: ['203.0.113.9', '10.8.0.6'], publicAddresses: ['203.0.113.9'] }] })
+    renderWithApp(<ViewersPage />, s)
+    const note = within(row('Dad')).getByText(/Can't connect from 203\.0\.113\.9/)
+    expect(note).toHaveTextContent('public internet address')
+    expect(note).toHaveTextContent('Tailscale or a VPN')
+    expect(within(row('John')).queryByText(/Can't connect/)).not.toBeInTheDocument()
+  })
+
+  it('says it on the phone layout too', () => {
+    mockPhone(true)
+    const s = makeState({ viewers: [{ ...mom, name: 'Dad', addresses: ['203.0.113.9'], publicAddresses: ['203.0.113.9'] }] })
+    renderWithApp(<ViewersPage />, s)
+    expect(screen.getByText(/Can't connect from 203\.0\.113\.9/)).toBeInTheDocument()
+  })
+
+  it('tells the add form that the addresses are private ones', async () => {
+    const user = userEvent.setup()
+    renderWithApp(<ViewersPage />, makeState())
+    await user.click(screen.getByRole('button', { name: /Add viewer/ }))
+    expect(await screen.findByText(/Yagi serves private networks only/)).toBeInTheDocument()
+  })
+})

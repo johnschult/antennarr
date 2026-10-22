@@ -4,6 +4,7 @@ Start with the log, it usually says what is wrong. In Docker: `docker logs yagi`
 A request that never shows up in the log (at *Debug* for an ordinary one) never arrived, which points at the network or a firewall, not at Yagi.
 
 - [A port test fails, or the page won't open](#a-port-test-fails-or-the-page-wont-open)
+- [The log says "refused a connection from a public internet address"](#refused-a-connection-from-a-public-internet-address)
 - [A page or the tuner address just hangs, then times out](#it-just-hangs-then-times-out)
 - ["This address can't open the admin page"](#this-address-cant-open-the-admin-page)
 - [The tuner address shows "this address is not allowed to use this tuner"](#the-bare-address-says-this-address-is-not-allowed-to-use-this-tuner)
@@ -26,6 +27,12 @@ Check the log first: when Yagi starts it prints the address of the admin page (`
 - **Is it running?** `docker ps` or `ps aux | grep yagi`. If it stopped, its last log lines say why (see [Yagi won't start](#yagi-wont-start)).
 - **Is it listening?** On the machine: `curl -i http://localhost:9244/`. If that works but another computer's browser can't connect, it is the firewall (below).
 - **Docker without `network_mode: host`** publishes nothing unless you add `-p 9244:9244 -p 5004:5004`. Use host networking.
+
+## "refused a connection from a public internet address"
+
+Yagi serves private networks only, so a connection from a public internet address is dropped before it gets any answer, and the other end just sees it hang. The log line names the address and the port. Usually it means someone is reaching you over the open internet (a forwarded port): put them on Tailscale or a VPN, and list the address Yagi sees from there. If it is your own network, check the address in the log: a LAN that has public IPv6 addresses on a *different* network than the machine's counts as public until the machine is on that network too. See [Networking](networking.md#not-over-the-open-internet).
+
+A viewer who lists a public address can never connect, and the Viewers page says so on their row.
 
 ## It just hangs, then times out
 
