@@ -33,7 +33,32 @@ Use **host networking** (`network_mode: host`). Yagi tells its own streams from 
 looks for the tuner with a broadcast on your network, and offers this machine's Tailscale and LAN addresses when you add a viewer. All three need to see the machine's real network, which a container on its own bridge network can't.
 (With host networking you can't also remap the port: set `listen` in the settings file instead.)
 
-### A program, without Docker
+### Homebrew (macOS and Linux)
+
+```sh
+brew install johnschult/yagi/yagi
+brew services start yagi        # keeps it running, and starts it again after a restart
+```
+
+Homebrew installs the release's own program and checks it against the checksum in the formula, so Node and Go aren't needed. The settings file is `$(brew --prefix)/var/yagi/yagi.json` and the log, which has the setup link of step 3, is `$(brew --prefix)/var/log/yagi.log`. To try it in a terminal first, run `yagi`. On Linux, `brew services` needs systemd; without it, use the install script below.
+
+### The install script (Linux and macOS)
+
+```sh
+curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.sh | sh
+```
+
+This downloads the program for your machine (`amd64` or `arm64`), checks it against the release's checksums before unpacking anything, and puts `yagi` in `~/.local/bin` (no root needed). If [cosign](https://docs.sigstore.dev/cosign/) is installed it also checks the release's signature, and installs nothing if that is wrong. It is plain shell: to read it first, download it with `curl -fsSLO https://github.com/johnschult/yagi/releases/latest/download/install.sh`, look, and run `sh install.sh`.
+
+Run `yagi` to start it. To keep it running in the background on Linux with systemd, add `--service`:
+
+```sh
+curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.sh | sh -s -- --service
+```
+
+That installs to `/usr/local/bin` (it asks for sudo), creates a `yagi` user that can't log in, keeps the settings file in `/var/lib/yagi/yagi.json`, and starts a service. Its log, with the setup link of step 3, is `journalctl -u yagi`. `sh install.sh --uninstall` removes the program and the service and leaves your settings alone; `sh install.sh -h` lists the rest, including `YAGI_VERSION` to install a particular release.
+
+### Build it yourself
 
 You need Go (see `go.mod` for the version) and Node 22.12 or newer. `./build.sh` checks that you have them (and tells you what to install if not), then builds the web page and the program, which embeds it.
 
@@ -45,6 +70,10 @@ cd yagi
 
 Run it with `./yagi -config yagi.json`. To start it on boot, use whatever your system uses (a systemd unit, launchd, an
 Unraid User Script). `./yagi -version` prints the version.
+
+### Checking a download
+
+Each release's images and archives are signed. The install script and Homebrew check the checksums for you; to check the signature by hand, see [Verifying a download](security.md#verifying-a-download).
 
 ## 2. Your tuner
 
@@ -128,6 +157,8 @@ If something doesn't work, [Troubleshooting](troubleshooting.md) covers the usua
 ## Updating
 
 - **Docker:** `docker compose pull && docker compose up -d`. If you use Watchtower or something like it, `latest` updates itself. To stay on one release, pin the tag.
+- **Homebrew:** `brew upgrade yagi`, then `brew services restart yagi` if it runs as a service.
+- **The install script:** run the same command again (with `--service` too, if that is how you installed it, which also restarts the service).
 - **From source:** pull, rebuild, restart.
 
 Releases are numbered by calendar, `YYYY.MM.PATCH` (for example `2026.10.0`). The version is at the bottom of the web page, linked to its release notes.

@@ -16,6 +16,7 @@ A request that never shows up in the log (at *Debug* for an ordinary one) never 
 - [Yagi won't start](#yagi-wont-start)
 - [I'm signed out after a restart, or the page says "Reconnecting…"](#im-signed-out-after-a-restart-or-the-page-says-reconnecting)
 - [No channel logos or "what's on"](#no-channel-logos-or-whats-on)
+- [Install problems](#install-problems)
 - [Docker problems](#docker-problems)
 - [Asking for help](#asking-for-help)
 
@@ -160,6 +161,15 @@ The message says why. The common ones:
 - It is switched on by default under *Settings → Privacy → Keep activity history*, and the *Activity* item is hidden while it is off.
 - It records what is in use as it happens, so it starts empty, and a session shorter than 15 seconds is not kept.
 - Without a settings file it is kept in memory and starts over with Yagi. Otherwise it is in `<settings file>.history.jsonl` beside it.
+
+## Install problems
+
+- **`yagi: command not found` after the install script**: it installed into `~/.local/bin`, which isn't on your `PATH`. The script printed the line to add (`export PATH="$HOME/.local/bin:$PATH"`) to `~/.profile`, `~/.zshrc` or similar; open a new terminal after.
+- **The script says the download doesn't match its checksum, or the signature isn't valid**: nothing was installed, on purpose. Run it again in case the download was cut short; if it says the same, do not use that download, and [report it](../SECURITY.md).
+- **The script says there is no download for this system**: Yagi is built for Linux and macOS, on `amd64` and `arm64`. On anything else, use Docker or build it yourself.
+- **`brew services start yagi` runs but the page doesn't open**: read the log, `$(brew --prefix)/var/log/yagi.log`, which has the setup link and says why if it couldn't start (a port already in use, for one). On Linux, `brew services` needs systemd.
+- **Where are the settings?** Homebrew: `$(brew --prefix)/var/yagi/yagi.json`. The script with `--service`: `/var/lib/yagi/yagi.json`. The script without it, or a build: `yagi.json` in the folder you started it from, unless you pass `-config`.
+- **After updating, the page still shows the old version**: a running service keeps running the old program until it restarts: `brew services restart yagi`, or `sudo systemctl restart yagi`.
 
 ## Docker problems
 
