@@ -12,7 +12,7 @@
 services:
   yagi:
     image: ghcr.io/johnschult/yagi:latest   # or pin a release, e.g. :2026.10.0
-    # With Tailscale built in (https://johnschult.github.io/yagi/tailscale/), use :tailscale (or :2026.10.13-tailscale) instead,
+    # With Tailscale built in (https://yagi.johnschult.com/tailscale/), use :tailscale (or :2026.10.13-tailscale) instead,
     # and optionally give it a key so it needs no sign-in link: environment: { TS_AUTHKEY: tskey-auth-… }
     # To build it yourself instead of pulling it:
     #   build: https://github.com/johnschult/yagi.git#main
@@ -23,7 +23,7 @@ services:
     user: "1000:1000"
     command: ["-config", "/config/yagi.json"]
     # The admin page is on port 9244 and the tuners on 5004, 5005, ... To move the admin
-    # page, uncomment this (see https://johnschult.github.io/yagi/configuration/):
+    # page, uncomment this (see https://yagi.johnschult.com/configuration/):
     # environment:
     #   YAGI_ADMIN_LISTEN: ":9244"
     volumes:

@@ -38,6 +38,7 @@ import (
 	"github.com/johnschult/yagi/internal/tunerinfo"
 	"github.com/johnschult/yagi/internal/ui"
 	"github.com/johnschult/yagi/internal/upgrade"
+	"github.com/johnschult/yagi/internal/version"
 )
 
 // Locator finds where a tuner is to start with: from its address if given,
@@ -477,7 +478,7 @@ func (s *Server) logWhereToOpen(ln net.Listener) {
 	for _, h := range hosts {
 		s.log.Info("admin page", "open", "http://"+net.JoinHostPort(h, port)+"/")
 	}
-	s.log.Info("if a browser on another computer can't connect, the machine's firewall is the usual cause: allow port " + port + ". See https://github.com/johnschult/yagi/blob/main/docs/troubleshooting.md")
+	s.log.Info("if a browser on another computer can't connect, the machine's firewall is the usual cause: allow port " + port + ". See " + version.DocsSite + "/troubleshooting/")
 }
 
 func (s *Server) logClaimLinks(lns []net.Listener) {

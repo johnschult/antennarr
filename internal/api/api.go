@@ -271,7 +271,7 @@ type State struct {
 	// Tailscale is the built-in Tailscale node: whether this build has it, and where it is.
 	Tailscale tailnet.Status `json:"tailscale"`
 	// Version is this build's version, VersionURL its page on GitHub, and DocsURL
-	// the documentation as it was at that version.
+	// the documentation site.
 	Version    string `json:"version"`
 	VersionURL string `json:"versionUrl"`
 	DocsURL    string `json:"docsUrl"`
@@ -352,7 +352,7 @@ func (a *API) state() State {
 		Tailscale:  a.tailscale(),
 		Version:    version.Get(),
 		VersionURL: version.URL(version.Get()),
-		DocsURL:    version.DocsURL(version.Get()),
+		DocsURL:    version.DocsURL(),
 	}
 }
 

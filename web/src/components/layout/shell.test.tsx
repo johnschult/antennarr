@@ -206,15 +206,10 @@ describe('Shell footer', () => {
     expect(page.lastElementChild).toBe(footer) // after the main area, so it ends up under it
   })
 
-  it('has a Help link to the documentation for this version', () => {
+  it('has a Help link to the documentation site', () => {
     mount()
     const help = screen.getByRole('link', { name: 'Help' })
-    expect(help).toHaveAttribute('href', 'https://github.com/johnschult/yagi/blob/v2026.10.0/docs/README.md')
-  })
-
-  it('points Help at the latest docs for a build from a checkout', () => {
-    mount({ version: 'dev+3553344', versionUrl: 'https://github.com/johnschult/yagi', docsUrl: 'https://github.com/johnschult/yagi/blob/main/docs/README.md' })
-    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute('href', 'https://github.com/johnschult/yagi/blob/main/docs/README.md')
+    expect(help).toHaveAttribute('href', 'https://yagi.johnschult.com/')
   })
 
   it('opens all three in a new tab, without handing the page to the other site', () => {

@@ -3,12 +3,12 @@ import { unified } from '@astrojs/markdown-remark';
 import starlight from '@astrojs/starlight';
 import rehypeDocsLinks from './plugins/rehype-docs-links.mjs';
 
-const base = '/yagi';
+const base = '';
 
-// Until the custom domain is set up the site lives at johnschult.github.io/yagi/.
-// With a domain (yagi.johnschult.com) set `site` to it and drop `base`.
+// The site is at the root of its own domain, so there is no base path. (Without a domain, on johnschult.github.io/yagi/,
+// `base` would be '/yagi'.)
 export default defineConfig({
-  site: 'https://johnschult.github.io',
+  site: 'https://yagi.johnschult.com',
   base,
   markdown: { processor: unified({ rehypePlugins: [[rehypeDocsLinks, { base }]] }) },
   integrations: [
