@@ -5,7 +5,7 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://yagi.johnschult.com/releasing/).
 Each release's notes on GitHub are its section of this file.
 
-## 2026.10.17 (2026-10-23)
+## 2026.10.18 (2026-10-23)
 
 ### Added
 
@@ -15,6 +15,12 @@ Each release's notes on GitHub are its section of this file.
 - **Install with Homebrew.** `brew install johnschult/tap/yagi` on macOS or Linux, then `brew services start yagi` to keep it running in the background (its settings are in Homebrew's `var/yagi`, and its log, with the one-time setup link, in `var/log/yagi.log`). Homebrew installs the release's own archive and checks it against the checksum in the formula, so nothing is built and Node and Go aren't needed. `brew upgrade yagi` updates it.
 - **The README and Getting started cover installing without Docker:** Homebrew, the install script (including running it as a service, updating and uninstalling) and building it yourself, with an *Install problems* section in Troubleshooting.
 - **The documentation is now a site.** The pages from `docs/` moved to a site built with Astro and Starlight (search, a sidebar, light and dark like the app), published to GitHub Pages at [yagi.johnschult.com](https://yagi.johnschult.com/). The design notes are gone; a [Roadmap](https://yagi.johnschult.com/roadmap/) page, read from the repository's issues labeled `roadmap` and grouped by milestone, replaces them, and the site is rebuilt whenever an issue changes. The site's home page is a proper landing page: the Live screenshot, what Yagi does, and install instructions for Docker, Homebrew and the install script. The pictures and the logo moved with it to `site/public/`, and the scripts that retake the screenshots and draw the wordmark to `scripts/`. The README, Contributing and the example compose file point at the site. Old `docs/…` links on GitHub, including those in earlier releases' notes, no longer open a page. The documentation is at **[yagi.johnschult.com](https://yagi.johnschult.com/)**. The web page's **Help** link and the Tailscale link in its settings open it (Help used to open the docs for the version you run; the site shows the latest release), and so does the pointer in the log when a browser can't connect.
+
+## 2026.10.17 (2026-10-23)
+
+### Changed
+
+- **This release is only the container images.** They are published and signed, but the archives of the program, the install script and the Homebrew formula could not be attached: GitHub's immutable releases don't allow files to be added after a release is made. They are in 2026.10.18, which is the same program, so Docker users have nothing to do.
 
 ## 2026.10.16 (2026-10-22)
 

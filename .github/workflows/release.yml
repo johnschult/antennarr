@@ -121,7 +121,8 @@ jobs:
         if: steps.v.outputs.release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
+        # A draft: releases here are immutable once published, so the files have to be attached first (see `binaries`).
+        run: gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
 
   # The program on its own, for people without Docker (and for the install script and the Homebrew formula): one
   # archive for each system, and a checksums.txt to check them against. Built on a pull request too, without
@@ -199,6 +200,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$GITHUB_REF_NAME" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json install.sh
+      # Publishing locks the release: its files can no longer change. If anything above fails it stays a draft.
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false
 
   # Updates the Homebrew formula in the tap (johnschult/homebrew-tap) to this release: the version and the SHA-256 of
   # each archive, from the checksums.txt the release just got. It needs a token that can write to that repository
