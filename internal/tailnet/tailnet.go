@@ -75,6 +75,9 @@ type NodeStatus struct {
 // says so, and the setting does nothing.
 var NewNode Starter
 
+// Built says whether this program has the built-in Tailscale node (it was built with -tags tsnet).
+func Built() bool { return NewNode != nil }
+
 // Config is what a node is started with.
 type Config struct {
 	Hostname string

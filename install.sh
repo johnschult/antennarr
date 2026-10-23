@@ -6,13 +6,19 @@
 #
 #   sh install.sh               installs the latest release into ~/.local/bin (no root needed)
 #   sh install.sh --service     also runs it in the background, as a systemd service (Linux; asks sudo for that)
+#   sh install.sh --tailscale   installs the build with the built-in Tailscale node (what the -tailscale Docker image has)
+#   sh install.sh --plain       installs the build without it
 #   sh install.sh --uninstall   removes the program, and the service if there is one. Your settings are left alone.
 #   sh install.sh -h            shows this
 #
 # Settings, each optional:
 #   YAGI_VERSION      a release to install instead of the latest, such as 2026.10.17
 #   YAGI_INSTALL_DIR  where to put the program (default ~/.local/bin, or /usr/local/bin with --service)
+#   YAGI_FLAVOR       tailscale or plain, the same as --tailscale and --plain
 #   YAGI_DL           where the archives are downloaded from (default: the release's page on GitHub), for a mirror or a test
+#
+# With neither --tailscale nor --plain it keeps the build that is already installed (so updating doesn't quietly drop
+# the Tailscale node), and installs the plain one if there is none.
 #
 # It reads the release's checksums.txt, checks the archive against it before unpacking anything, and unpacks only the
 # program. If cosign is installed it also checks the signature on checksums.txt, which says the release was built by
@@ -41,12 +47,16 @@ Installs Yagi from a release, with no building.
 
   sh install.sh               installs the latest release into ~/.local/bin (no root needed)
   sh install.sh --service     also runs it in the background, as a systemd service (Linux; asks sudo for that)
+  sh install.sh --tailscale   installs the build with the built-in Tailscale node (what the -tailscale Docker image has)
+  sh install.sh --plain       installs the build without it
+                              (with neither, the build already installed is kept, and a first install is plain)
   sh install.sh --uninstall   removes the program, and the service if there is one. Your settings are left alone.
   sh install.sh -h            shows this
 
 Settings, each optional:
   YAGI_VERSION      a release to install instead of the latest, such as 2026.10.17
   YAGI_INSTALL_DIR  where to put the program (default ~/.local/bin, or /usr/local/bin with --service)
+  YAGI_FLAVOR       tailscale or plain, the same as --tailscale and --plain
   YAGI_DL           where the archives are downloaded from (default: the release's page on GitHub)
 EOF
 }
@@ -119,6 +129,21 @@ as_root() {
 	else
 		fail "That needs root, and sudo isn't installed. Run this as root, or without --service."
 	fi
+}
+
+# installed_flavor DIR: prints tailscale or plain, for the program already installed (in DIR, else in the usual
+# places), or plain if there is none. The Tailscale build says so when asked for its version.
+installed_flavor() {
+	for d in "$1" "$HOME/.local/bin" /usr/local/bin; do
+		[ -x "$d/yagi" ] || continue
+		if "$d/yagi" -version 2>/dev/null | grep -qi tailscale; then
+			printf 'tailscale\n'
+		else
+			printf 'plain\n'
+		fi
+		return
+	done
+	printf 'plain\n'
 }
 
 # find_system sets os and arch, in the names the archives use.
@@ -200,6 +225,11 @@ uninstall() {
 
 main() {
 	service=0
+	flavor=${YAGI_FLAVOR:-}
+	case $flavor in
+	"" | tailscale | plain) ;;
+	*) fail "YAGI_FLAVOR is '$flavor'; it can be tailscale or plain." ;;
+	esac
 	for arg in "$@"; do
 		case $arg in
 		-h | --help)
@@ -207,6 +237,8 @@ main() {
 			exit 0
 			;;
 		--service) service=1 ;;
+		--tailscale) flavor=tailscale ;;
+		--plain) flavor=plain ;;
 		--uninstall)
 			uninstall
 			exit 0
@@ -237,17 +269,32 @@ main() {
 		dir=$HOME/.local/bin
 	fi
 
+	# Which build: what was asked for, else the one that is already installed, else the plain one.
+	kept=0
+	if [ -z "$flavor" ]; then
+		flavor=$(installed_flavor "$dir")
+		[ "$flavor" = tailscale ] && kept=1
+	fi
 	name=yagi_${version}_${os}_${arch}
+	[ "$flavor" = tailscale ] && name=${name}_tailscale
 	file=$name.tar.gz
 
 	work=$(mktemp -d)
 	trap 'rm -rf "$work"' EXIT INT TERM
 
-	say "Installing Yagi $version for $os/$arch"
+	if [ "$flavor" = tailscale ]; then
+		say "Installing Yagi $version for $os/$arch, with the built-in Tailscale node"
+		[ "$kept" -eq 0 ] || say "(That is the build you have; --plain switches back to the one without Tailscale.)"
+	else
+		say "Installing Yagi $version for $os/$arch"
+	fi
 	fetch "$base/checksums.txt" "$work/checksums.txt" || fail "Couldn't download $base/checksums.txt. Is $version a release, and is there one for it yet?"
 	verify_signature "$base" "$work" "$version"
 	want=$(awk -v f="$file" '$2 == f { print $1; exit }' "$work/checksums.txt")
-	[ -n "$want" ] || fail "Release $version has no download for $os/$arch ($file isn't in its checksums.txt)."
+	if [ -z "$want" ]; then
+		[ "$flavor" != tailscale ] || fail "Release $version has no build with Tailscale for $os/$arch ($file isn't in its checksums.txt). Releases from 2026.10.19 on have one."
+		fail "Release $version has no download for $os/$arch ($file isn't in its checksums.txt)."
+	fi
 	case $want in *[!0-9a-f]*) fail "The checksum for $file isn't a SHA-256 ($want)." ;; esac
 	[ ${#want} -eq 64 ] || fail "The checksum for $file isn't a SHA-256 ($want)."
 

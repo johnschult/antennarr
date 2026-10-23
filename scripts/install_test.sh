@@ -36,8 +36,23 @@ echo readme >"$good/$name/README.md"
 tar -C "$good" -czf "$good/$name.tar.gz" "$name"
 echo "$(sum "$good/$name.tar.gz")  $name.tar.gz" >"$good/checksums.txt"
 
+# The same release's build with the built-in Tailscale node, whose program says so when asked its version.
+mkdir -p "$good/${name}_tailscale"
+printf '#!/bin/sh\necho "%s (built-in Tailscale)"\n' "$version" >"$good/${name}_tailscale/yagi"
+chmod +x "$good/${name}_tailscale/yagi"
+echo license >"$good/${name}_tailscale/LICENSE"
+echo readme >"$good/${name}_tailscale/README.md"
+tar -C "$good" -czf "$good/${name}_tailscale.tar.gz" "${name}_tailscale"
+echo "$(sum "$good/${name}_tailscale.tar.gz")  ${name}_tailscale.tar.gz" >>"$good/checksums.txt"
+
 # What a signed release has beside them (the shim below doesn't read it, only whether it is there).
 echo "{}" >"$good/checksums.txt.sigstore.json"
+
+# A release from before there was one: only the plain archive.
+oldrel=$work/oldrel
+mkdir -p "$oldrel"
+cp "$good/$name.tar.gz" "$good/checksums.txt.sigstore.json" "$oldrel/"
+echo "$(sum "$good/$name.tar.gz")  $name.tar.gz" >"$oldrel/checksums.txt"
 
 # One whose archive was changed after its checksum was written.
 bad=$work/bad
@@ -110,6 +125,25 @@ pass "a good release installs"
 # Running it again (an update) works.
 run good >/dev/null 2>&1 || fail "installing over an existing install failed"
 pass "installing again works"
+
+# --tailscale installs the build with the built-in Tailscale node; updating without a flag keeps it; --plain switches back.
+rm -rf "${work:?}/bin"
+run good >/dev/null 2>&1
+"$work/bin/yagi" -version | grep -qi tailscale && fail "a first install with no flag wasn't the plain build"
+run good --tailscale >"$work/out" 2>&1 || { cat "$work/out" >&2; fail "--tailscale didn't install"; }
+"$work/bin/yagi" -version | grep -qi tailscale || fail "--tailscale didn't install the Tailscale build"
+grep -q "built-in Tailscale node" "$work/out" || fail "it didn't say it was installing the Tailscale build"
+run good >"$work/out" 2>&1 || fail "updating over the Tailscale build failed"
+"$work/bin/yagi" -version | grep -qi tailscale || fail "updating with no flag dropped the Tailscale build"
+grep -q "That is the build you have" "$work/out" || fail "it didn't say it was keeping the Tailscale build"
+run good --plain >/dev/null 2>&1 || fail "--plain didn't install"
+"$work/bin/yagi" -version | grep -qi tailscale && fail "--plain left the Tailscale build"
+(YAGI_FLAVOR=tailscale && export YAGI_FLAVOR && run good) >/dev/null 2>&1 || fail "YAGI_FLAVOR=tailscale didn't install"
+"$work/bin/yagi" -version | grep -qi tailscale || fail "YAGI_FLAVOR=tailscale didn't install the Tailscale build"
+if (YAGI_FLAVOR=other && export YAGI_FLAVOR && run good) >"$work/out" 2>&1; then fail "it accepted YAGI_FLAVOR=other"; fi
+if run oldrel --tailscale >"$work/out" 2>&1; then fail "it installed a Tailscale build from a release that has none"; fi
+grep -q "no build with Tailscale" "$work/out" || fail "it didn't say that release has no Tailscale build"
+pass "--tailscale installs the Tailscale build, updating keeps it, --plain switches back"
 
 # Nothing is installed from a download that doesn't match, or that holds something unexpected.
 for rel in bad extra; do

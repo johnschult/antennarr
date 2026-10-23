@@ -19,6 +19,8 @@ image: ghcr.io/johnschult/yagi:tailscale        # the latest release, with Tails
 
 `ghcr.io/johnschult/yagi:latest` and `:<version>` are the same program without it. In a build without it, **Settings → Access → Tailscale** says so and shows no switch. Building it yourself: `go build -tags tsnet ./cmd/yagi`, or `docker build --build-arg TAGS=tsnet .`
 
+Without Docker, the [install script](getting-started.md#the-install-script-linux-and-macos) installs it with `--tailscale` (from release 2026.10.19), and later updates keep it. `yagi -version` ends with "(built-in Tailscale)" for this build.
+
 ## Turning it on
 
 1. Open **Settings → Access**, find the **Tailscale** section and switch on **Join your Tailscale network**. The name on the tailnet is `yagi` unless you change it (it must be unique among your devices).

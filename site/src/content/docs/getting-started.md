@@ -62,6 +62,14 @@ curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.s
 
 That installs to `/usr/local/bin` (it asks for sudo), creates a `yagi` user that can't log in, keeps the settings file in `/var/lib/yagi/yagi.json`, and starts a service. Its log, with the setup link of step 3, is `journalctl -u yagi`. `sh install.sh --uninstall` removes the program and the service and leaves your settings alone; `sh install.sh -h` lists the rest, including `YAGI_VERSION` to install a particular release.
 
+To install the build with [Yagi's own Tailscale node](tailscale.md) (what the `-tailscale` Docker image has), add `--tailscale`:
+
+```sh
+curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.sh | sh -s -- --tailscale
+```
+
+Running the script again to update keeps the build you have, so you don't need the flag a second time; `--plain` switches back to the one without Tailscale. `yagi -version` says which one is installed.
+
 ### Build it yourself
 
 You need Go (see `go.mod` for the version) and Node 22.12 or newer. `./build.sh` checks that you have them (and tells you what to install if not), then builds the web page and the program, which embeds it.
