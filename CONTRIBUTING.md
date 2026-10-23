@@ -5,7 +5,7 @@ Thank you for wanting to help. Bug reports, ideas and pull requests are all welc
 ## Reporting a problem or asking for something
 
 [Open an issue](https://github.com/johnschult/yagi/issues). For a bug, include the version (shown at the bottom of the web page, or `yagi -version`), how you run Yagi, what you did and what you expected, and the relevant lines of its log.
-[Troubleshooting](docs/troubleshooting.md) says what else is useful. Security problems go through [SECURITY.md](SECURITY.md), not a public issue.
+[Troubleshooting](https://johnschult.github.io/yagi/troubleshooting/) says what else is useful. Security problems go through [SECURITY.md](SECURITY.md), not a public issue.
 
 ## Changing the code
 
@@ -17,7 +17,7 @@ git checkout -b my-change
 git push -u origin my-change     # then open a pull request
 ```
 
-Keep a pull request to one thing. Say what changed and why, and how you tested it. If it changes what people see or do, update the docs in `docs/` in the same pull request. Releases get their notes from [`CHANGELOG.md`](CHANGELOG.md), which is written when a release is made, not in every pull request.
+Keep a pull request to one thing. Say what changed and why, and how you tested it. If it changes what people see or do, update the docs in `site/src/content/docs/` in the same pull request. Releases get their notes from [`CHANGELOG.md`](CHANGELOG.md), which is written when a release is made, not in every pull request.
 
 ### Setting up
 
@@ -50,7 +50,7 @@ cd web && npm run dev                     # the UI with hot reload, in a second 
 | `internal/netinfo` | This machine's addresses and firewall, for the Connect page. |
 | `internal/live`, `internal/httpx`, `internal/version`, `internal/ui` | Event notifications, shared HTTP helpers, the version, the embedded web page. |
 | `web` | The web UI: React, TypeScript, Vite, Tailwind and shadcn/ui. See `web/README.md`. |
-| `docs` | The documentation, and the design notes in `docs/DESIGN.md`. |
+| `site` | The documentation site (Astro and Starlight): the pages are in `site/src/content/docs/`. |
 
 ### What a good change looks like
 
@@ -58,7 +58,7 @@ cd web && npm run dev                     # the UI with hot reload, in a second 
 - **The UI tests** use Vitest and Testing Library. The admin API's types in `web/src/lib/types.ts` must be kept in step with `internal/api/api.go`.
 - **Accessibility is checked with axe** in `web/src/a11y.test.tsx`: every page in each of its states, the phone menu, and every dialog. Add a new page or dialog there. jsdom has no layout, so color contrast and focus order still need a look in a browser.
 - **Tests don't depend on the date they run.** Use an injected clock or build times relative to now.
-- **Nothing leaves the network without a setting** that turns it off, and it is listed in [Security](docs/security.md#what-leaves-your-network).
+- **Nothing leaves the network without a setting** that turns it off, and it is listed in [Security](https://johnschult.github.io/yagi/security/#what-leaves-your-network).
 - **It fails loudly.** The settings file rejects unknown keys on purpose. Prefer a clear error to a guess.
 - **It reads like the code around it**: naming, comments, and level of detail.
 - **Look at it in a browser** if you change the UI, in both the light and dark themes and at a phone width (about 390 px).
@@ -69,7 +69,7 @@ A short summary line in the imperative ("Show the version in the footer"), then 
 
 ## Releases
 
-Releases are numbered by calendar, `YYYY.MM.PATCH`, and are made by tagging `main`. See [docs/RELEASING.md](docs/RELEASING.md).
+Releases are numbered by calendar, `YYYY.MM.PATCH`, and are made by tagging `main`. See [Releasing](https://johnschult.github.io/yagi/releasing/).
 
 ## License
 
@@ -77,4 +77,4 @@ By contributing you agree that your work is released under the [MIT License](LIC
 
 ## Retaking the README screenshots
 
-`docs/screenshots/retake.sh` regenerates every image in `docs/screenshots/`. It runs the demo harness (`internal/server/demo_test.go`, build tag `demo`), which serves the real UI against a fake HDHomeRun, a fake guide and made-up viewers, then drives Chromium with `shoot.py` (needs Python with Playwright). Nothing real appears in the images. Build the web UI first (`npm run build` in `web/`), then run the script from the repo root. The demo also has switches for trying things by hand: `DEMO_SIGNAL=1` makes the signal quality drift, `DEMO_SIGNAL=sweep` also sweeps the signal strength through every icon, `DEMO_UPDATE=1` makes the tuner a release behind so firmware *Install* can be tried, and `DEMO_LOGOS=<folder>` uses your own logos (see `retake.sh`).
+`scripts/screenshots/retake.sh` regenerates every image in `site/public/screenshots/`. It runs the demo harness (`internal/server/demo_test.go`, build tag `demo`), which serves the real UI against a fake HDHomeRun, a fake guide and made-up viewers, then drives Chromium with `shoot.py` (needs Python with Playwright). Nothing real appears in the images. Build the web UI first (`npm run build` in `web/`), then run the script from the repo root. The demo also has switches for trying things by hand: `DEMO_SIGNAL=1` makes the signal quality drift, `DEMO_SIGNAL=sweep` also sweeps the signal strength through every icon, `DEMO_UPDATE=1` makes the tuner a release behind so firmware *Install* can be tried, and `DEMO_LOGOS=<folder>` uses your own logos (see `retake.sh`).

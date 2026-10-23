@@ -1,4 +1,6 @@
-# Releasing
+---
+title: "Releasing"
+---
 
 Releases are numbered by calendar: **`YYYY.MM.PATCH`**. `2026.10.0` is the first release of
 October 2026, and `2026.10.1` a fix to it. `PATCH` counts up within a month and starts again at 0 in the next.
@@ -9,7 +11,7 @@ checkout says `dev` (with the commit, e.g. `dev+3553344`); `yagi -version` print
 
 ## To release
 
-`main` is protected, so changes arrive by pull request. First write the release's entry in [`CHANGELOG.md`](../CHANGELOG.md), in a pull request like any other change: a `## 2026.10.2 (2026-10-18)` heading, then what changed. Put anything that changes what an existing install does under *Read before updating*. Link to the docs with full `https://github.com/...` addresses, because the section is shown on a GitHub release page where relative links break. The release's notes on GitHub are that section, and a tag with no section fails before anything is published.
+`main` is protected, so changes arrive by pull request. First write the release's entry in [`CHANGELOG.md`](../CHANGELOG.md), in a pull request like any other change: a `## 2026.10.2 (2026-10-18)` heading, then what changed. Put anything that changes what an existing install does under *Read before updating*. Link to the docs with full `https://johnschult.github.io/yagi/...` addresses, because the section is shown on a GitHub release page where relative links break. The release's notes on GitHub are that section, and a tag with no section fails before anything is published.
 
 The entry is also what people see in the app: after an update, Yagi pops up the notes for the releases since the last one that browser saw (and *What's new* in the footer opens them on request). So write it for them, and keep to the format: a `## YYYY.MM.PATCH (YYYY-MM-DD)` heading, then `### Group` headings (*Read before updating* first, which is drawn as a notice) with `- ` bullets under them. Inside a bullet, `**bold**`, `*italic*`, `` `code` `` and `[links](https://…)` are drawn; anything else is shown as text. A test reads the real `CHANGELOG.md` and fails if an entry isn't in that shape. The notes are bundled into the web page when it is built (the `Dockerfile` copies the file into the web stage), so they are always the ones for the version running, and nothing is fetched from anywhere.
 

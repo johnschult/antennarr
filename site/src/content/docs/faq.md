@@ -1,4 +1,6 @@
-# Frequently asked questions
+---
+title: "Frequently asked questions"
+---
 
 - [Why is it called Yagi?](#why-is-it-called-yagi)
 - [How do I say it?](#how-do-i-say-it)

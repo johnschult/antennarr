@@ -1,4 +1,6 @@
-# Media servers
+---
+title: "Media servers"
+---
 
 Yagi looks like an ordinary HDHomeRun to a media server, at `<address>:<port>` (for example `100.109.224.87:5004`). The viewer adds it the way they would add any HDHomeRun, by entering that address.
 

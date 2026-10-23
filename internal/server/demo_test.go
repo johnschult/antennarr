@@ -37,7 +37,7 @@ import (
 )
 
 // TestDemo runs Yagi against a made-up tuner and guide until interrupted,
-// for taking the README screenshots (docs/screenshots/retake.sh). Not part of
+// for taking the README screenshots (scripts/screenshots/retake.sh). Not part of
 // the normal tests: it only builds with -tags demo.
 //
 // The tuner is an HDHomeRun FLEX 4K with one stream from a viewer (Alex)
@@ -255,7 +255,7 @@ func TestDemo(t *testing.T) {
 	}
 	logos := os.Getenv("DEMO_LOGOS")
 	if logos == "" {
-		logos = "../../docs/screenshots/demo"
+		logos = "../../scripts/screenshots/demo"
 	}
 	chs := demoChannels(logos)
 	lt := linetest.New(demoLineup(chs), 12*time.Second) // the lineup the Channels tab manages, and a scan that takes a while

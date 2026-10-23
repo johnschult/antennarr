@@ -1,6 +1,10 @@
-# Networking
+---
+title: "Networking"
+---
 
-**Yagi serves private networks only:** this machine, your own network, a VPN, Tailscale. A connection from a public internet address is dropped as it arrives, with one line in the log saying why, so a port forwarded by mistake shows scanners nothing. There is no switch to turn that off. Sharing a tuner is for people you trust enough to put on your network, and the way to reach someone elsewhere is a VPN or Tailscale.
+:::note[Private networks only]
+Yagi serves this machine, your own network, a VPN and Tailscale. A connection from a public internet address is dropped as it arrives, with one line in the log saying why, so a port forwarded by mistake shows scanners nothing. There is no switch to turn that off. Sharing a tuner is for people you trust enough to put on your network, and the way to reach someone elsewhere is a VPN or Tailscale.
+:::
 
 How a viewer's media server reaches the port is up to you, and there are three common ways.
 Adding a viewer in the web app writes out the steps for each, with your addresses filled in. For a viewer you have already added, use **Connection steps** on their row on the Viewers page.

@@ -1,16 +1,24 @@
 name: Site
 
-# Builds the site (site/) on every change to it, and publishes it to GitHub Pages from main.
+# Builds the site (site/) on every change to it, and publishes it to GitHub Pages from main. The Roadmap page is read
+# from the repository's issues when the site is built, so it is also rebuilt when an issue or milestone changes, and
+# nightly in case one was missed.
 on:
   pull_request:
     paths: ['site/**', '.github/workflows/site.yml']
   push:
     branches: [main]
     paths: ['site/**', '.github/workflows/site.yml']
+  issues:
+    types: [opened, edited, closed, reopened, deleted, labeled, unlabeled, milestoned, demilestoned]
+  milestone:
+  schedule:
+    - cron: '17 4 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
+  issues: read
 
 concurrency:
   group: pages
@@ -33,6 +41,8 @@ jobs:
           cache-dependency-path: site/package-lock.json
       - run: npm ci
       - run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         if: github.event_name != 'pull_request'
         with:

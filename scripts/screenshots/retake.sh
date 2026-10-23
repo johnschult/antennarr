@@ -2,12 +2,12 @@
 # Retakes the README screenshots from a demo with a made-up tuner, guide and
 # viewers (internal/server/demo_test.go), so no real tuner or network is needed.
 #
-#   docs/screenshots/retake.sh
+#   scripts/screenshots/retake.sh
 #
-# By default the channel logos are plain badges (docs/screenshots/demo). To show
+# By default the channel logos are plain badges (scripts/screenshots/demo). To show
 # real ones, name a tuner on your network and the channels to show:
 #
-#   TUNER=192.168.1.50 CHANNELS=2.1,5.1,11.1,46.1 docs/screenshots/retake.sh
+#   TUNER=192.168.1.50 CHANNELS=2.1,5.1,11.1,46.1 scripts/screenshots/retake.sh
 #
 # That reads the tuner's guide (fetch-logos.py: the same request Yagi makes) and
 # keeps the logos in a temporary folder that is deleted afterwards, so only the
@@ -16,7 +16,7 @@
 #
 # Or, if you already have a folder of logos with a channels.json (as fetch-logos.py writes), use it:
 #
-#   LOGOS=/path/to/logos docs/screenshots/retake.sh
+#   LOGOS=/path/to/logos scripts/screenshots/retake.sh
 #
 # Needs Go, Python 3 with Playwright and a Chromium for it
 # (pip install playwright && playwright install chromium). Run it from anywhere.
@@ -44,4 +44,4 @@ while [ ! -s "$work/addr" ]; do
   sleep 1
 done
 sleep 4 # let the first stream and the guide show up
-python3 "$here/shoot.py" "$(cat "$work/addr")" "$here"
+python3 "$here/shoot.py" "$(cat "$work/addr")" "$root/site/public/screenshots"

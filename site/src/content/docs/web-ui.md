@@ -1,4 +1,6 @@
-# A tour of the web page
+---
+title: "A tour of the web page"
+---
 
 Open it at `http://<yagi address>:9244/` (see [Getting started](getting-started.md#3-open-the-web-page)).
 It has light and dark themes, and follows your computer's unless you choose one with the buttons at the top right.

@@ -1,7 +1,12 @@
-# Troubleshooting
+---
+title: "Troubleshooting"
+---
 
-Start with the log, it usually says what is wrong. In Docker: `docker logs yagi`. Every refusal says why, with the address it came from, and a stream opening and closing is logged too. An ordinary request (the `discover.json` and `lineup.json` a media server asks for over and over) is only logged at the *Debug* level, so it doesn't bury the rest: set the level to *Debug* in *Settings → Logs* when you need to see them.
+:::tip[Start with the log]
+It usually says what is wrong. In Docker: `docker logs yagi`. Every refusal says why, with the address it came from, and streams opening and closing are logged too. The requests a media server makes over and over (`discover.json`, `lineup.json`) are only logged at the *Debug* level, so they don't bury the rest: set the level under *Settings → Logs* when you need them.
+
 A request that never shows up in the log (at *Debug* for an ordinary one) never arrived, which points at the network or a firewall, not at Yagi.
+:::
 
 - [A port test fails, or the page won't open](#a-port-test-fails-or-the-page-wont-open)
 - [The log says "refused a connection from a public internet address"](#refused-a-connection-from-a-public-internet-address)
@@ -194,4 +199,6 @@ The message says why. The common ones:
 - the relevant lines of the **log**, with any addresses you'd rather not share replaced;
 - your settings file, with addresses changed if you prefer. It has no passwords or tokens in it.
 
+:::caution[Keep these private]
 Please don't post your tuner's `DeviceAuth` or a Plex token anywhere.
+:::
