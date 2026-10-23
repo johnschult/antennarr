@@ -1,0 +1,101 @@
+---
+title: Yagi
+description: Share an HDHomeRun tuner with the Plex, Jellyfin and Emby of family and friends.
+template: splash
+hero:
+  title: Point your antenna anywhere.
+  tagline: Share an HDHomeRun tuner with the Plex, Jellyfin and Emby of family and friends, and keep track of who is using it.
+  actions:
+    - text: Get started
+      link: getting-started/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/johnschult/yagi
+      icon: github
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard, TabItem, Tabs } from '@astrojs/starlight/components';
+import Showcase from '../../components/Showcase.astro';
+
+<Showcase
+  name="live"
+  alt="The Yagi Live page: four tuners, with one being watched by a viewer and one by a local device, each with its channel, logo, what's on and how far into it, bitrate and signal, and a list of viewers"
+/>
+
+An HDHomeRun's `lineup.json` hands out the tuner's own address on your network, so a media server anywhere else can't use it without firewall tricks on both ends. Yagi sits in front of the tuner and rewrites that address, so the media servers of your family and friends only ever talk to Yagi. It also decides who may use the tuner, and how much of it.
+
+## What it does
+
+<CardGrid>
+  <Card title="Rewriting proxy" icon="random">
+    A viewer adds the tuner by `host:port` like any other HDHomeRun. No routing, no NAT rules on their side.
+  </Card>
+  <Card title="Follows the tuner" icon="magnifier">
+    Finds it by DeviceID, so a new address from your router breaks nothing. It lists the tuners it sees, but never adds one by itself.
+  </Card>
+  <Card title="Limits" icon="padlock">
+    An allowlist, tuners per viewer, a cap on everyone together, and tuners always kept free for you. Over the limit, a viewer gets the same 503 a busy tuner gives.
+  </Card>
+  <Card title="A modern page for the tuner" icon="laptop">
+    Channels, scanning, what the tuner says about itself, restarting, firmware: what you open the tuner's own page for, and more. Light and dark, and a phone layout.
+  </Card>
+  <Card title="Live, and what happened" icon="analytics">
+    Who is watching what, bitrate and signal right now, and a history of the last 30 days, with a page for each viewer and a log.
+  </Card>
+  <Card title="Allow whoever asks" icon="approve-check">
+    A friend adds Yagi in their media server and shows up on the Viewers page. Press Allow and give them a limit. You never look up an address.
+  </Card>
+  <Card title="Its own Tailscale" icon="star">
+    The `-tailscale` image joins your tailnet as its own device. Share that one device and nothing is opened on your router.
+  </Card>
+  <Card title="Tells you" icon="information">
+    Firmware news (installed only when you press Install), and optional messages to ntfy, Pushover or a webhook when a tuner goes offline or a viewer is turned away.
+  </Card>
+</CardGrid>
+
+## Install
+
+<Tabs syncKey="install">
+  <TabItem label="Docker">
+    On the machine that can reach your tuner:
+
+    ```sh
+    docker pull ghcr.io/johnschult/yagi:latest
+    ```
+
+    Then copy [`docker-compose.example.yml`](https://github.com/johnschult/yagi/blob/main/docker-compose.example.yml) next to your `yagi.json` and run `docker compose up -d`. Images are published for `amd64` and `arm64`.
+  </TabItem>
+  <TabItem label="Homebrew">
+    macOS or Linux:
+
+    ```sh
+    brew install johnschult/tap/yagi
+    brew services start yagi
+    ```
+  </TabItem>
+  <TabItem label="Install script">
+    Linux or macOS. It checks the download against the release's checksums (and its signature, if you have cosign) before it installs anything:
+
+    ```sh
+    curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.sh | sh
+    ```
+
+    It is plain shell, so read it first if you like.
+  </TabItem>
+</Tabs>
+
+Then open the setup link Yagi writes to its log to become the admin, add your tuner from the list the page shows, and add a viewer. [Getting started](getting-started/) walks through every step.
+
+:::note[For people you know and trust]
+Yagi is for sharing your own antenna with your family and social circle, on your network, a VPN or Tailscale. It refuses connections from the public internet, and it is not meant for public or commercial use.
+:::
+
+## Read more
+
+<CardGrid>
+  <LinkCard title="Getting started" description="From nothing to a viewer watching your tuner." href="getting-started/" />
+  <LinkCard title="A tour of the web page" description="What each page shows, with pictures." href="web-ui/" />
+  <LinkCard title="Security" description="Who can do what, and what Yagi sends over the internet." href="security/" />
+  <LinkCard title="Roadmap" description="What is planned." href="roadmap/" />
+</CardGrid>

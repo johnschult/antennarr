@@ -1,0 +1,46 @@
+---
+// Links in the header, beside the GitHub icon: the same on every page.
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const id = Astro.locals.starlightRoute.id;
+const home = id === '';
+// The same links on every page, so the header doesn't change as you move around; from a docs page the first two go to
+// the home page's sections.
+const links = [
+  { text: 'Features', href: `${home ? '' : `${base}/`}#what-it-does` },
+  { text: 'Install', href: `${home ? '' : `${base}/`}#install` },
+  { text: 'Docs', href: `${base}/getting-started/`, current: !home && id !== 'roadmap' },
+  { text: 'Roadmap', href: `${base}/roadmap/`, current: id === 'roadmap' },
+];
+---
+
+<nav class="site-nav" aria-label="Site">
+  {links.map((l) => <a href={l.href} aria-current={l.current ? 'page' : undefined}>{l.text}</a>)}
+</nav>
+<Default {...Astro.props}><slot /></Default>
+
+<style>
+  .site-nav {
+    display: none;
+    gap: 1.25rem;
+    margin-inline-end: 0.5rem;
+  }
+  .site-nav a {
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
+    text-decoration: none;
+  }
+  .site-nav a[aria-current='page'] {
+    color: var(--sl-color-white);
+    font-weight: 600;
+  }
+  .site-nav a:hover {
+    color: var(--sl-color-white);
+  }
+  @media (min-width: 50rem) {
+    .site-nav {
+      display: flex;
+    }
+  }
+</style>

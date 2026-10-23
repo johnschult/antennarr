@@ -14,6 +14,13 @@
 </p>
 
 <p align="center">
+  <a href="https://johnschult.github.io/yagi/"><strong>Documentation</strong></a> ·
+  <a href="https://johnschult.github.io/yagi/getting-started/">Getting started</a> ·
+  <a href="https://johnschult.github.io/yagi/roadmap/">Roadmap</a> ·
+  <a href="https://github.com/johnschult/yagi/releases/latest">Releases</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/johnschult/yagi/actions/workflows/ci.yml"><img src="https://github.com/johnschult/yagi/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   <a href="https://github.com/johnschult/yagi/releases/latest"><img src="https://img.shields.io/github/v/release/johnschult/yagi" alt="Latest release"></a>
   <a href="https://github.com/johnschult/yagi/pkgs/container/yagi"><img src="https://img.shields.io/badge/container-ghcr.io-2496ED?logo=docker&amp;logoColor=white" alt="Container image on ghcr.io"></a>

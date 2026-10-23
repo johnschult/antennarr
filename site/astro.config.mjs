@@ -24,6 +24,10 @@ export default defineConfig({
       favicon: '/favicon.svg',
       social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/johnschult/yagi' }],
       customCss: ['./src/styles/theme.css'],
+      components: {
+        Hero: './src/components/Hero.astro',
+        SocialIcons: './src/components/SocialIcons.astro',
+      },
       routeMiddleware: './src/routeData.ts',
       sidebar: [
         {
