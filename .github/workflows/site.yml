@@ -1,11 +1,11 @@
 name: Site
 
-# Builds the site (site/) on every change to it, and publishes it to GitHub Pages from main. The Roadmap page is read
+# Builds the site (site/) on every pull request (so it can be a required check, which has to report on all of them),
+# and publishes it to GitHub Pages when main changes. The Roadmap page is read
 # from the repository's issues when the site is built, so it is also rebuilt when an issue or milestone changes, and
 # nightly in case one was missed.
 on:
   pull_request:
-    paths: ['site/**', '.github/workflows/site.yml']
   push:
     branches: [main]
     paths: ['site/**', '.github/workflows/site.yml']
@@ -26,6 +26,7 @@ concurrency:
 
 jobs:
   build:
+    name: Site build
     runs-on: ubuntu-latest
     defaults:
       run:
