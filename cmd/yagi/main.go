@@ -17,6 +17,7 @@ import (
 	"github.com/johnschult/yagi/internal/discovery"
 	"github.com/johnschult/yagi/internal/logbuf"
 	"github.com/johnschult/yagi/internal/server"
+	"github.com/johnschult/yagi/internal/tailnet"
 	"github.com/johnschult/yagi/internal/version"
 )
 
@@ -75,7 +76,12 @@ func main() {
 	hintAtMistypedFlags(os.Args[1:])
 	flag.Parse()
 	if *showVersion {
-		fmt.Println("yagi", version.Get())
+		// The Tailscale build says so, which install.sh reads to keep it when it updates.
+		if tailnet.Built() {
+			fmt.Println("yagi", version.Get(), "(built-in Tailscale)")
+		} else {
+			fmt.Println("yagi", version.Get())
+		}
 		return
 	}
 
