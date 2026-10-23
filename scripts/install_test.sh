@@ -182,6 +182,11 @@ if run other >"$work/out" 2>&1; then fail "it installed a release with no downlo
 grep -q "no download for $os/$arch" "$work/out" || { cat "$work/out" >&2; fail "it didn't say there is no download for this system"; }
 pass "a release with no download for this system is refused"
 
+# A release with no checksums.txt (made before the installer, or one that doesn't exist) is explained, not just a 404.
+if run nothere >"$work/out" 2>&1; then fail "it installed from a release with no checksums.txt"; fi
+grep -q "has no checksums.txt" "$work/out" || { cat "$work/out" >&2; fail "it didn't say the release has no checksums.txt"; }
+pass "a release with no checksums.txt is explained"
+
 # A version that isn't a release number is refused before anything is downloaded.
 if YAGI_VERSION=../../evil YAGI_DL="http://127.0.0.1:$port/good" YAGI_INSTALL_DIR="$work/bin" sh "$here/install.sh" >/dev/null 2>&1; then
 	fail "it accepted a version that isn't a release number"

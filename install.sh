@@ -251,7 +251,8 @@ main() {
 
 	version=${YAGI_VERSION:-}
 	version=${version#v}
-	[ -n "$version" ] || version=$(latest_version) || exit 1
+	pinned=1
+	[ -n "$version" ] || { pinned=0; version=$(latest_version) || exit 1; }
 	printf '%s\n' "$version" | grep -Eq '^[0-9]{4}\.[0-9]{1,2}\.[0-9]+$' ||
 		fail "'$version' isn't a release number; they look like 2026.10.17."
 
@@ -288,7 +289,12 @@ main() {
 	else
 		say "Installing Yagi $version for $os/$arch"
 	fi
-	fetch "$base/checksums.txt" "$work/checksums.txt" || fail "Couldn't download $base/checksums.txt. Is $version a release, and is there one for it yet?"
+	if ! fetch "$base/checksums.txt" "$work/checksums.txt"; then
+		if [ "$pinned" -eq 0 ]; then
+			fail "The latest release ($version) has no checksums.txt ($base/checksums.txt), so it was made before this installer, or is still being published. Try again in a few minutes."
+		fi
+		fail "Release $version has no checksums.txt ($base/checksums.txt). Is it a release number that exists? Releases from 2026.10.18 on have the archives this installs."
+	fi
 	verify_signature "$base" "$work" "$version"
 	want=$(awk -v f="$file" '$2 == f { print $1; exit }' "$work/checksums.txt")
 	if [ -z "$want" ]; then

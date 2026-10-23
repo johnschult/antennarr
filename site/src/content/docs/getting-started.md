@@ -9,6 +9,13 @@ and a machine that is always on to run Yagi (a small server, a NAS, a Raspberry 
 Yagi shares your own antenna with the people in your life that you know and trust, over your own network, a VPN or Tailscale, and it refuses connections from the public internet. Keep it to people you would let onto your own network, and follow the laws and terms that apply to you.
 :::
 
+## What you need
+
+- **A machine that is always on** (a small server, a NAS, a Raspberry Pi, or a VM): Linux or macOS, on `amd64` or `arm64`, or anything that runs Docker. Yagi is one program with nothing else to install. Idle, with no tuner, it uses about 20 MB of memory, and while streaming it only copies bytes from the tuner to the viewer, so a small machine is plenty (1 vCPU and a few hundred MB of RAM).
+- **To be on the tuner's network.** Yagi finds the tuner with a UDP broadcast, which doesn't cross NAT or a different VLAN. In a VM (Proxmox, for example) that means a **bridged** network adapter on the same network as the HDHomeRun. If that isn't possible, add the tuner by its address instead.
+- **Upstream bandwidth.** Each viewer who is watching takes about one stream's bitrate from your connection (up to roughly 20 Mbps for one ATSC channel), so your upload speed limits how many can watch at once.
+- **A way for your viewers to reach it:** Tailscale, a VPN, or the same network ([Networking](networking.md)). Yagi refuses connections from public internet addresses.
+
 ## 1. Install
 
 ### Docker (recommended)
