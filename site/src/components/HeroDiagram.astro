@@ -84,8 +84,14 @@ const paths = [
     box-shadow: 0 10px 15px 0 rgb(0 0 0 / 0.3);
   }
   .node.yagi img {
-    outline: 3px solid var(--sl-color-accent);
-    outline-offset: 0;
+    /* The logo's own tile is rx 56 of 256, so the ring has the same corners. */
+    border-radius: 21.875%;
+    /* The logo's tile color behind it, so the soft edge of its corners can't let a light page show through. */
+    background: #0f1b24;
+    /* A shadow ring, not an outline: it follows the rounded corners in every browser. */
+    box-shadow:
+      0 0 0 3px var(--sl-color-accent),
+      0 10px 15px 0 rgb(0 0 0 / 0.3);
   }
   .node span {
     position: absolute;
