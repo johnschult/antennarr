@@ -5,7 +5,7 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://yagi.johnschult.com/releasing/).
 Each release's notes on GitHub are its section of this file.
 
-## 2026.10.17 (2026-10-22)
+## 2026.10.17 (2026-10-23)
 
 ### Added
 
