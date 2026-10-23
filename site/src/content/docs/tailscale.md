@@ -1,8 +1,12 @@
-# Built-in Tailscale
+---
+title: "Built-in Tailscale"
+---
 
 Yagi can join your Tailscale network by itself, as its own device, with no Tailscale installed on the machine it runs on. The idea is that you share that one device with the people who need it, and nothing is opened on your router.
 
-> **What it does.** Yagi joins your tailnet, keeps its sign-in, and **answers on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. On top of that: a switch that closes the LAN side ([Only on the tailnet](#only-on-the-tailnet)), viewers and admins matched by Tailscale login or device ([Who is on the other end](#who-is-on-the-other-end)), and the admin page over [HTTPS](#https-for-the-admin-page). It has been tried on a real tailnet with the tailnet's own devices; sharing the device with someone on *another* tailnet has not been tried here.
+:::note[What it does]
+Yagi joins your tailnet, keeps its sign-in, and **answers on it**: every port it serves (each tuner's, and the admin port when it has its own) is also served at the device's tailnet name and addresses. On top of that: a switch that closes the LAN side ([Only on the tailnet](#only-on-the-tailnet)), viewers and admins matched by Tailscale login or device ([Who is on the other end](#who-is-on-the-other-end)), and the admin page over [HTTPS](#https-for-the-admin-page). It has been tried on a real tailnet with the tailnet's own devices; sharing the device with someone on *another* tailnet has not been tried here.
+:::
 
 ## Which image
 

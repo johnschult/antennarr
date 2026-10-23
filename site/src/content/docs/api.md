@@ -1,4 +1,6 @@
-# API
+---
+title: "API"
+---
 
 Yagi has two kinds of HTTP interface:
 

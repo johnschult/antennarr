@@ -1,9 +1,13 @@
-# Getting started
+---
+title: "Getting started"
+---
 
 This takes you from nothing to a viewer watching your tuner. It assumes you have an HDHomeRun tuner on your network
 and a machine that is always on to run Yagi (a small server, a NAS, a Raspberry Pi: anything that runs Linux, macOS or Docker).
 
-**Yagi is for your family and social circle, not for the public.** It shares your own antenna with the people in your life that you know and trust, over your own network, a VPN or Tailscale, and it refuses connections from the public internet. Keep it to people you would let onto your own network, and follow the laws and terms that apply to you.
+:::note[For your family and friends, not the public]
+Yagi shares your own antenna with the people in your life that you know and trust, over your own network, a VPN or Tailscale, and it refuses connections from the public internet. Keep it to people you would let onto your own network, and follow the laws and terms that apply to you.
+:::
 
 ## 1. Install
 
@@ -77,7 +81,9 @@ Each release's images and archives are signed. The install script and Homebrew c
 
 ## 2. Your tuner
 
-**There is nothing to set up here.** Start Yagi without naming a tuner (`./yagi`, or the compose file above). It starts with only the web page, on its own port, `9244`, and looks for HDHomeRuns on your network while the page is open (every few seconds, for a few minutes). Open the page (step 3): each tuner it finds is listed with a name filled in, which you can change, and an **Add** button (or **Add all**). **Nothing is added until you press it**, because a tuner on a shared network may not be yours. If it stops looking before yours is on, press **Look again**.
+:::tip[Nothing to set up here]
+Start Yagi without naming a tuner (`./yagi`, or the compose file above). It starts with only the web page, on its own port, `9244`, and looks for HDHomeRuns on your network while the page is open (every few seconds, for a few minutes). Open the page (step 3): each tuner it finds is listed with a name filled in, which you can change, and an **Add** button (or **Add all**). **Nothing is added until you press it**, because a tuner on a shared network may not be yours. If it stops looking before yours is on, press **Look again**.
+:::
 
 Tuners you add are saved in the settings file. Each gets a port of its own, starting at `5004` and going up (`5005`, …), which is the port a viewer's media server connects to. The web page stays on `9244`, and no tuner is ever on it, so a test of port `5004` fails until you have added your first tuner. You can add more, change a tuner's port, or remove one later on the *Tuners* page.
 

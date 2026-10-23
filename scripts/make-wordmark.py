@@ -3,7 +3,7 @@
 yagi-wordmark-dark.png (white lettering, for a dark one), as the app's top bar draws them: the mark, then "Yagi" in
 Mozilla Headline Bold with its letters a little apart, lined up with the bottom of the mark's body.
 
-  python3 docs/brand/make-wordmark.py
+  python3 scripts/make-wordmark.py
 
 Needs Playwright for Python and a Chromium (pip install playwright && playwright install chromium), and
 `npm ci` in web/ so the font is on disk (@fontsource-variable/mozilla-headline). The text colors are the app's
@@ -14,8 +14,8 @@ import tempfile
 
 from playwright.sync_api import sync_playwright
 
-here = pathlib.Path(__file__).resolve().parent
-root = here.parent.parent
+root = pathlib.Path(__file__).resolve().parent.parent
+here = root / 'site/public/brand'
 font = root / 'web/node_modules/@fontsource-variable/mozilla-headline/files/mozilla-headline-latin-wght-normal.woff2'
 mark = here / 'yagi-logo.png'
 if not font.exists():

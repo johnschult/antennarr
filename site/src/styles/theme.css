@@ -54,3 +54,22 @@
 h1, h2, h3, h4 {
   letter-spacing: -0.01em;
 }
+
+/* Headings that name a product (Plex, Tailscale, Docker, ...) carry its icon, from Dashboard Icons. Heading ids are made
+   from the heading's text, so the id says which product it is. */
+.sl-markdown-content :is(h2, h3, h4):is([id*='tailscale'], [id*='plex'], [id*='jellyfin'], [id*='emby'], [id*='docker'], [id*='homebrew'])::before {
+  content: '';
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  margin-inline-end: 0.5em;
+  vertical-align: -0.15em;
+  background: var(--icon) center / contain no-repeat;
+}
+.sl-markdown-content :is(h2, h3, h4)[id*='tailscale'] { --icon: url('../assets/icons/tailscale-light.svg'); }
+:root[data-theme='light'] .sl-markdown-content :is(h2, h3, h4)[id*='tailscale'] { --icon: url('../assets/icons/tailscale.svg'); }
+.sl-markdown-content :is(h2, h3, h4)[id*='plex'] { --icon: url('../assets/icons/plex.svg'); }
+.sl-markdown-content :is(h2, h3, h4)[id*='jellyfin'] { --icon: url('../assets/icons/jellyfin.svg'); }
+.sl-markdown-content :is(h2, h3, h4)[id*='emby'] { --icon: url('../assets/icons/emby.svg'); }
+.sl-markdown-content :is(h2, h3, h4)[id*='docker'] { --icon: url('../assets/icons/docker.svg'); }
+.sl-markdown-content :is(h2, h3, h4)[id*='homebrew'] { --icon: url('../assets/icons/homebrew.svg'); }

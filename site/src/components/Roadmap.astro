@@ -1,0 +1,60 @@
+---
+import { getRoadmap, ISSUES } from '../lib/roadmap';
+
+const roadmap = await getRoadmap();
+
+// The first paragraph of the issue, as plain text.
+const blurb = (body: string | null) =>
+  (body ?? '').split(/\n\s*\n/)[0].replace(/[`*_>#]|\[([^\]]*)\]\([^)]*\)/g, '$1').trim();
+---
+
+{
+  roadmap === null ? (
+    <p>The roadmap could not be loaded just now. It is the <a href={`${ISSUES}?q=label%3Aroadmap`}>issues labeled <code>roadmap</code></a> on GitHub.</p>
+  ) : (
+    <>
+      {roadmap.sections.length === 0 && <p>Nothing is planned right now.</p>}
+      {roadmap.sections.map(({ id, heading, description, items }) => (
+        <section class="roadmap-milestone">
+          <h2 id={id}>{heading}</h2>
+          {description && <p>{description}</p>}
+          <ul>
+            {items.map((i) => (
+              <li>
+                <a href={i.html_url}><strong>{i.title}</strong></a> <small>#{i.number}</small>
+                {blurb(i.body) && <div class="roadmap-blurb">{blurb(i.body)}</div>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+      {roadmap.shipped.length > 0 && (
+        <section class="roadmap-milestone">
+          <h2 id="shipped">Recently shipped</h2>
+          <ul>
+            {roadmap.shipped.map((i) => (
+              <li>
+                <span class="roadmap-check" aria-hidden="true">✓</span> <a href={i.html_url}>{i.title}</a> <small>#{i.number}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <p>Something you would like? <a href={`${ISSUES}/new`}>Open an issue</a>.</p>
+    </>
+  )
+}
+
+<style>
+  .roadmap-blurb {
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
+  }
+  .roadmap-check {
+    color: var(--sl-color-green);
+    font-weight: 700;
+  }
+  small {
+    color: var(--sl-color-gray-3);
+  }
+</style>

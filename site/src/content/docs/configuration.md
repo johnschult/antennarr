@@ -1,6 +1,12 @@
-# Configuration
+---
+title: "Configuration"
+---
 
 Yagi is configured with a **settings file** (JSON), which you can edit by hand or change from the web page, and a few **command-line flags**.
+
+:::tip[You don't need a settings file to start]
+Start Yagi with nothing and it creates the file with the defaults, shows the tuners it finds on your network, and saves what you add and change in the web page. This page is for when you would rather write the file yourself, or want to know what each setting does.
+:::
 
 - Changes made in the web page are saved to the settings file at once, and take effect at once (except the list of devices, see below).
 - The file is read strictly: **a key it doesn't know is an error**, not silently ignored, so a typo can't quietly open access. If the file is wrong, Yagi says why and doesn't start (or, if it is already running and you reload, keeps the settings it has).

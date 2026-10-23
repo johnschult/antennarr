@@ -1,4 +1,18 @@
-# Security
+---
+title: "Security"
+---
+
+## Private networks only
+
+:::note[For people you know and trust]
+Yagi is for sharing your own antenna with your family and social circle: the people in your life that you know and trust, on your network, a VPN or Tailscale. It is not meant for public or commercial use, or for sending a signal to people you don't know, and it is built so that it can't easily be used that way.
+:::
+
+Yagi serves this machine, your own network, a VPN and Tailscale, and nothing else. A connection from a public internet address is dropped as it arrives, before any HTTP is read, with one line a minute in the log (`refused a connection from a public internet address`). A viewer's or admin's list can't hold a public address either. There is no switch to change that, so a port forwarded by mistake shows scanners nothing, and sharing a tuner stays between people you trust enough to put on your network ([Networking](networking.md)). A source on a network the machine is directly connected to counts as local even when its address looks public (a LAN on global IPv6).
+Yagi speaks plain HTTP: it has no TLS of its own, so anything sent to it can be read by anyone on the path. On Tailscale or a VPN the traffic is already encrypted. The one exception is the `-tailscale` image, which can also serve the admin pages over HTTPS at its tailnet name, with a certificate from Tailscale ([Built-in Tailscale](tailscale.md#https-for-the-admin-page)); that name then appears in a public certificate log.
+
+If you put Yagi **behind a reverse proxy**, every request looks like it came from the proxy's address, so the allowlist and admin-by-address can't tell people apart. Either don't proxy the tuner side, or make sure the proxy is the only thing that can reach it and handle access there.
+Set `X-Forwarded-Proto: https` on proxied requests so the sign-in cookie is marked `Secure`.
 
 ## What protects what
 
@@ -15,16 +29,6 @@ To let you in from another computer, Yagi writes a **one-time setup link** to it
 A viewer is not an admin: being allowed to watch doesn't let you change anything. The exception is a viewer whose address falls inside an `admin` range: they are an admin too, and Yagi logs a warning. Keep `admin` to the addresses that are really yours.
 
 If a media server needs a tuner page that isn't on the list, Yagi logs `path not served` with the path. Please open an issue with that line.
-
-## Private networks only
-
-Yagi is for sharing your own antenna with your family and social circle: the people in your life that you know and trust, on your network, a VPN or Tailscale. It is not meant for public or commercial use, or for sending a signal to people you don't know, and it is built so that it can't easily be used that way.
-
-Yagi serves this machine, your own network, a VPN and Tailscale, and nothing else. A connection from a public internet address is dropped as it arrives, before any HTTP is read, with one line a minute in the log (`refused a connection from a public internet address`). A viewer's or admin's list can't hold a public address either. There is no switch to change that, so a port forwarded by mistake shows scanners nothing, and sharing a tuner stays between people you trust enough to put on your network ([Networking](networking.md)). A source on a network the machine is directly connected to counts as local even when its address looks public (a LAN on global IPv6).
-Yagi speaks plain HTTP: it has no TLS of its own, so anything sent to it can be read by anyone on the path. On Tailscale or a VPN the traffic is already encrypted. The one exception is the `-tailscale` image, which can also serve the admin pages over HTTPS at its tailnet name, with a certificate from Tailscale ([Built-in Tailscale](tailscale.md#https-for-the-admin-page)); that name then appears in a public certificate log.
-
-If you put Yagi **behind a reverse proxy**, every request looks like it came from the proxy's address, so the allowlist and admin-by-address can't tell people apart. Either don't proxy the tuner side, or make sure the proxy is the only thing that can reach it and handle access there.
-Set `X-Forwarded-Proto: https` on proxied requests so the sign-in cookie is marked `Secure`.
 
 ## Built-in Tailscale
 
@@ -70,7 +74,9 @@ Notifications go only where you point them. If you use `ntfy.sh` (or any server 
 The tokens, user keys and webhook addresses are saved in the settings file (readable only by its owner) and are never in the admin API's output, the logs or error messages. A webhook address often has a secret in it, so the page shows only its host; the way to change it is to enter a new one.
 
 The guide key stays on the server: it isn't in the admin API's output or the logs, and error messages from fetching the guide have it stripped out.
-One thing to know: `discover.json` passes the tuner's own `DeviceAuth` through to viewers, the same as the tuner would to anyone on its network. It lets someone fetch that tuner's guide data from SiliconDust, which is low risk, but it is there.
+:::caution[One thing to know]
+`discover.json` passes the tuner's own `DeviceAuth` through to viewers, the same as the tuner would to anyone on its network. It lets someone fetch that tuner's guide data from SiliconDust, which is low risk, but it is there.
+:::
 
 ## What is checked automatically
 
