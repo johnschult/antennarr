@@ -5,6 +5,12 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://yagi.johnschult.com/releasing/).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.19 (2026-10-23)
+
+### Added
+
+- **Archives with the built-in Tailscale node.** Each release now also has `yagi_<version>_<os>_<arch>_tailscale.tar.gz` for Linux and macOS (`amd64` and `arm64`): the same program as the `-tailscale` Docker image, for installing without Docker. They are signed and checked like the others. About twice the size of the plain ones, since they carry Tailscale's code. The install script and Homebrew pick them up in the changes that follow.
+
 ## 2026.10.18 (2026-10-23)
 
 ### Added

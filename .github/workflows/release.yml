@@ -159,15 +159,25 @@ jobs:
           version=dev
           if [[ "$REF" == refs/tags/v* ]]; then version="${REF_NAME#v}"; fi
           mkdir -p dist
-          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-            os="${target%/*}"; arch="${target#*/}"
-            name="yagi_${version}_${os}_${arch}"
-            mkdir -p "build/$name"
-            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath \
-              -ldflags "-s -w -X github.com/johnschult/yagi/internal/version.Version=$version" \
-              -o "build/$name/yagi" ./cmd/yagi
-            cp LICENSE README.md "build/$name/"
-            tar -C build -czf "dist/$name.tar.gz" "$name"
+          # The plain program, and the same with the built-in Tailscale node (-tags tsnet), as the images are. The
+          # Tailscale one says which version it is, which the library otherwise reports as "-ERR-BuildInfo" in the
+          # Tailscale admin console (see the Dockerfile).
+          ts=$(go list -m -f '{{.Version}}' tailscale.com); ts=${ts#v}
+          for flavor in "" tailscale; do
+            tags=""; ldflags="-s -w -X github.com/johnschult/yagi/internal/version.Version=$version"
+            if [[ -n "$flavor" ]]; then
+              tags=tsnet
+              ldflags="$ldflags -X tailscale.com/version.shortStamp=${ts} -X tailscale.com/version.longStamp=${ts}-yagi${version}"
+            fi
+            for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+              os="${target%/*}"; arch="${target#*/}"
+              name="yagi_${version}_${os}_${arch}${flavor:+_$flavor}"
+              mkdir -p "build/$name"
+              CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -tags "$tags" -ldflags "$ldflags" \
+                -o "build/$name/yagi" ./cmd/yagi
+              cp LICENSE README.md "build/$name/"
+              tar -C build -czf "dist/$name.tar.gz" "$name"
+            done
           done
           (cd dist && sha256sum -- *.tar.gz > checksums.txt && cat checksums.txt)
       # One signature over checksums.txt covers every archive, since it lists their hashes. It is made with this
@@ -191,10 +201,18 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-checksums: dist/checksums.txt
-      - name: Check the build for this machine runs
+      - name: Check the builds for this machine run
+        env:
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          tar -xzf dist/yagi_*_linux_amd64.tar.gz -C "$RUNNER_TEMP"
-          "$RUNNER_TEMP"/yagi_*_linux_amd64/yagi -version
+          version=dev
+          if [[ "$REF" == refs/tags/v* ]]; then version="${REF_NAME#v}"; fi
+          for flavor in "" _tailscale; do
+            name="yagi_${version}_linux_amd64${flavor}"
+            tar -xzf "dist/$name.tar.gz" -C "$RUNNER_TEMP"
+            "$RUNNER_TEMP/$name/yagi" -version
+          done
       - name: Attach to the GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
