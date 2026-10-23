@@ -46,6 +46,15 @@ brew services start yagi        # keeps it running, and starts it again after a 
 
 Homebrew installs the release's own program and checks it against the checksum in the formula, so Node and Go aren't needed. The settings file is `$(brew --prefix)/var/yagi/yagi.json` and the log, which has the setup link of step 3, is `$(brew --prefix)/var/log/yagi.log`. To try it in a terminal first, run `yagi`. On Linux, `brew services` needs systemd; without it, use the install script below.
 
+For [Yagi's own Tailscale node](tailscale.md), install the other formula instead (from release 2026.10.19):
+
+```sh
+brew install johnschult/tap/yagi-tailscale
+brew services start yagi-tailscale
+```
+
+It is the same program with the Tailscale node in it, and it keeps its settings in the same place, so switching between them keeps your settings. Homebrew won't install both at once: `brew uninstall yagi` first (or the other way round).
+
 ### The install script (Linux and macOS)
 
 ```sh

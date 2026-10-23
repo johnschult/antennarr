@@ -73,15 +73,19 @@ jobs:
         if: runner.os == 'Linux'
         run: shellcheck install.sh scripts/install_test.sh scripts/render_formula.sh
       - run: sh scripts/install_test.sh
-      - name: The Homebrew formula fills in and is valid Ruby
+      - name: The Homebrew formulas fill in and are valid Ruby
         run: |
           for t in darwin_arm64 darwin_amd64 linux_arm64 linux_amd64; do
             printf '%064d  yagi_2026.10.17_%s.tar.gz\n' 7 "$t"
+            printf '%064d  yagi_2026.10.17_%s_tailscale.tar.gz\n' 8 "$t"
           done > "$RUNNER_TEMP/checksums.txt"
-          sh scripts/render_formula.sh 2026.10.17 "$RUNNER_TEMP/checksums.txt" > "$RUNNER_TEMP/yagi.rb"
-          ! grep -n '@[A-Z_]*@' "$RUNNER_TEMP/yagi.rb"
-          ruby -c "$RUNNER_TEMP/yagi.rb"
-          ! sh scripts/render_formula.sh 2026.10.17 /dev/null 2>/dev/null
+          for f in yagi yagi-tailscale; do
+            sh scripts/render_formula.sh 2026.10.17 "$RUNNER_TEMP/checksums.txt" "$f" > "$RUNNER_TEMP/$f.rb"
+            # (a bare `! cmd` doesn't stop a bash -e script, so these are ifs)
+            if grep -n '@[A-Z_]*@' "$RUNNER_TEMP/$f.rb"; then echo "$f.rb has a placeholder left"; exit 1; fi
+            ruby -c "$RUNNER_TEMP/$f.rb"
+            if sh scripts/render_formula.sh 2026.10.17 /dev/null "$f" 2>/dev/null; then echo "$f rendered with no checksums"; exit 1; fi
+          done
       - name: The same on Alpine
         if: runner.os == 'Linux'
         run: docker run --rm -v "$PWD:/src:ro" alpine:3 sh -c 'apk add --no-cache curl python3 >/dev/null && sh /src/scripts/install_test.sh'
