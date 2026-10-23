@@ -188,7 +188,8 @@ uninstall() {
 		removed=1
 	fi
 	for dir in "${YAGI_INSTALL_DIR:-}" "$HOME/.local/bin" /usr/local/bin; do
-		[ -n "$dir" ] && [ -f "$dir/yagi" ] || continue
+		[ -n "$dir" ] || continue
+		[ -f "$dir/yagi" ] || continue
 		say "Removing $dir/yagi"
 		if [ -w "$dir" ]; then rm -f "$dir/yagi"; else as_root rm -f "$dir/yagi"; fi
 		removed=1
