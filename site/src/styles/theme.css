@@ -1,0 +1,56 @@
+/* The app's theme ("ExploreMiam": indigo and emerald) and its bundled fonts, so the site looks like
+   the app and loads nothing from other sites. Values are copied from web/src/index.css. */
+@import '@fontsource-variable/open-sans';
+@import '@fontsource-variable/mozilla-headline';
+@import '@fontsource-variable/jetbrains-mono';
+
+:root {
+  --sl-font: 'Open Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --sl-font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --yagi-font-wordmark: 'Mozilla Headline Variable', ui-sans-serif, system-ui, sans-serif;
+  --sl-border-radius: 0.5rem;
+}
+
+/* Dark is the app's default look. */
+:root,
+:root[data-theme='dark'] {
+  --sl-color-bg: oklch(0.1526 0.0315 266.26);
+  --sl-color-bg-nav: oklch(0.1526 0.0315 266.26);
+  --sl-color-bg-sidebar: oklch(0.1526 0.0315 266.26);
+  --sl-color-bg-inline-code: oklch(0.2795 0.0368 260.031);
+  --sl-color-black: oklch(0.1526 0.0315 266.26);
+  --sl-color-gray-6: oklch(0.2077 0.0398 265.7549);
+  --sl-color-gray-5: oklch(0.2795 0.0368 260.031);
+  --sl-color-gray-4: oklch(0.4 0.035 258);
+  --sl-color-gray-3: oklch(0.6 0.035 257);
+  --sl-color-gray-2: oklch(0.7107 0.0351 256.7878);
+  --sl-color-gray-1: oklch(0.88 0.02 255);
+  --sl-color-white: oklch(1 0 0);
+  --sl-color-hairline: oklch(0.2795 0.0368 260.031);
+  --sl-color-accent-low: oklch(0.27 0.1 277);
+  --sl-color-accent: oklch(0.5854 0.2041 277.1173);
+  --sl-color-accent-high: oklch(0.8 0.1 277);
+}
+
+:root[data-theme='light'] {
+  --sl-color-bg: oklch(0.9842 0.0034 247.8575);
+  --sl-color-bg-nav: oklch(1 0 0);
+  --sl-color-bg-sidebar: oklch(1 0 0);
+  --sl-color-bg-inline-code: oklch(0.9683 0.0069 247.8956);
+  --sl-color-black: oklch(1 0 0);
+  --sl-color-gray-6: oklch(0.9683 0.0069 247.8956);
+  --sl-color-gray-5: oklch(0.9288 0.0126 255.5078);
+  --sl-color-gray-4: oklch(0.75 0.03 256);
+  --sl-color-gray-3: oklch(0.6 0.035 257);
+  --sl-color-gray-2: oklch(0.4455 0.0374 257.2808);
+  --sl-color-gray-1: oklch(0.3 0.04 262);
+  --sl-color-white: oklch(0.2077 0.0398 265.7549);
+  --sl-color-hairline: oklch(0.9288 0.0126 255.5078);
+  --sl-color-accent-low: oklch(0.93 0.04 277);
+  --sl-color-accent: oklch(0.5106 0.2301 276.9656);
+  --sl-color-accent-high: oklch(0.38 0.17 277);
+}
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.01em;
+}
