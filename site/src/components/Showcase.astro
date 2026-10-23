@@ -1,0 +1,24 @@
+---
+// The app's Live page, in the site's current theme (the classes are Starlight's, not the system's setting).
+const { name, alt, width = 1200 } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<figure class="showcase">
+  <img class="light:sl-hidden" src={`${base}/screenshots/${name}-dark.jpg`} alt={alt} width={width} loading="lazy" />
+  <img class="dark:sl-hidden" src={`${base}/screenshots/${name}-light.jpg`} alt={alt} width={width} loading="lazy" />
+</figure>
+
+<style>
+  .showcase {
+    margin: 2rem 0;
+  }
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px 0 rgb(0 0 0 / 0.3);
+  }
+</style>
