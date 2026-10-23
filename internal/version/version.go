@@ -48,12 +48,11 @@ func URL(v string) string {
 	return Repo
 }
 
-// DocsURL is the documentation for this version on GitHub: the pages as they
-// were at its release tag, so what you read matches what is running. A dev
-// build gets the latest pages.
-func DocsURL(v string) string {
-	if IsRelease(v) {
-		return Repo + "/blob/v" + v + "/docs/README.md"
-	}
-	return Repo + "/blob/main/docs/README.md"
+// DocsSite is the documentation site.
+const DocsSite = "https://yagi.johnschult.com"
+
+// DocsURL is where the app's Help link goes: the documentation site, which
+// shows the latest release.
+func DocsURL() string {
+	return DocsSite + "/"
 }

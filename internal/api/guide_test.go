@@ -144,7 +144,7 @@ func TestStateCarriesTheVersionAndItsGitHubPage(t *testing.T) {
 	if code != 200 || ver == "" || !strings.HasPrefix(url, "https://github.com/johnschult/yagi") {
 		t.Fatalf("version=%q url=%q (%d)", ver, url, code)
 	}
-	if !strings.HasPrefix(docs, "https://github.com/johnschult/yagi/blob/") || !strings.HasSuffix(docs, "/docs/README.md") {
+	if docs != "https://yagi.johnschult.com/" {
 		t.Errorf("docsUrl = %q", docs)
 	}
 }

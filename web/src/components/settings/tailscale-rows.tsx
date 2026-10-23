@@ -11,7 +11,7 @@ import { EditRow } from './edit-row'
 import { Row } from './section'
 import { SwitchRow } from './switch-row'
 
-const DOCS = 'https://github.com/johnschult/yagi/blob/main/docs/tailscale.md'
+const DOCS = 'https://yagi.johnschult.com/tailscale/'
 
 /** The Tailscale part of the Access section: join your tailnet from inside Yagi, with no Tailscale on the machine. */
 export function TailscaleRows() {

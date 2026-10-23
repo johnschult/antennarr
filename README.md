@@ -14,9 +14,9 @@
 </p>
 
 <p align="center">
-  <a href="https://johnschult.github.io/yagi/"><strong>Documentation</strong></a> ·
-  <a href="https://johnschult.github.io/yagi/getting-started/">Getting started</a> ·
-  <a href="https://johnschult.github.io/yagi/roadmap/">Roadmap</a> ·
+  <a href="https://yagi.johnschult.com/"><strong>Documentation</strong></a> ·
+  <a href="https://yagi.johnschult.com/getting-started/">Getting started</a> ·
+  <a href="https://yagi.johnschult.com/roadmap/">Roadmap</a> ·
   <a href="https://github.com/johnschult/yagi/releases/latest">Releases</a>
 </p>
 
@@ -38,7 +38,7 @@
   </picture>
 </p>
 
-<p align="center"><sub>More pictures are in <a href="https://johnschult.github.io/yagi/web-ui/">a tour of the web page</a>.</sub></p>
+<p align="center"><sub>More pictures are in <a href="https://yagi.johnschult.com/web-ui/">a tour of the web page</a>.</sub></p>
 
 An HDHomeRun's `lineup.json` hands out the tuner's own LAN address, so a media server on another network can't use it
 without firewall tricks on both ends. Yagi sits in front of the tuner and rewrites that address, so remote
@@ -56,14 +56,14 @@ media servers only ever talk to Yagi. It also decides who may use the tuner, and
 - **Notifications.** Optional messages to ntfy, Pushover or a webhook when there is new firmware, a tuner is offline for a couple of minutes (and when it's back), or a viewer is turned away. Each kind can be switched off, and each channel has a Test button.
 - **Allow whoever asks.** A friend adds Yagi in their media server, and they appear on the Viewers page as "pal@example.com" (their Tailscale login) or their address. You press **Allow**, name them and set their limit: you never have to find out their address, and over Tailscale they are recognized by who they are.
 - **Any private network.** Plain LAN, Tailscale, WireGuard, ZeroTier… Yagi just listens on a port, and serves private networks only: not the public internet. Getting the two servers onto the same network is up to you.
-- **Its own Tailscale** (the `-tailscale` image). Yagi can join your tailnet as its own device, with no Tailscale on the machine: share that one device and nothing is opened on your router. Viewers and admins can be matched by Tailscale login, the LAN can be closed (*only on the tailnet*), and the admin page can be served over HTTPS. See [Built-in Tailscale](https://johnschult.github.io/yagi/tailscale/).
+- **Its own Tailscale** (the `-tailscale` image). Yagi can join your tailnet as its own device, with no Tailscale on the machine: share that one device and nothing is opened on your router. Viewers and admins can be matched by Tailscale login, the LAN can be closed (*only on the tailnet*), and the admin page can be served over HTTPS. See [Built-in Tailscale](https://yagi.johnschult.com/tailscale/).
 
 > [!IMPORTANT]
 > **Yagi is for your family and social circle, not for the public.** It shares your own antenna with the people in your life that you know and trust, over your own network, a VPN or Tailscale. It refuses connections from the public internet, and it is not meant for public or commercial use, or for sending a signal to people you don't know. Keep it to people you would let onto your own network, and follow the laws and terms that apply to you.
 
 > [!WARNING]
 > **Status: early.** It runs a real FLEX 4K and is tested with the Go race detector and a UI test suite, but it is young software.
-> Expect rough edges, and please read [Security](#security) (and [the Security page](https://johnschult.github.io/yagi/security/)) first.
+> Expect rough edges, and please read [Security](#security) (and [the Security page](https://yagi.johnschult.com/security/)) first.
 
 ## Quick start
 
@@ -83,7 +83,7 @@ brew install johnschult/tap/yagi && brew services start yagi
 curl -fsSL https://github.com/johnschult/yagi/releases/latest/download/install.sh | sh
 ```
 
-Both install the release's own program, checked against its checksums (and, with [cosign](https://docs.sigstore.dev/cosign/), its signature), so nothing is built and Go and Node aren't needed. The script puts `yagi` in `~/.local/bin` without root; add `-s -- --service` after `sh` to run it as a systemd service (Linux). [Getting started](https://johnschult.github.io/yagi/getting-started/#1-install) has the details, and the script is plain shell if you want to read it first.
+Both install the release's own program, checked against its checksums (and, with [cosign](https://docs.sigstore.dev/cosign/), its signature), so nothing is built and Go and Node aren't needed. The script puts `yagi` in `~/.local/bin` without root; add `-s -- --service` after `sh` to run it as a systemd service (Linux). [Getting started](https://yagi.johnschult.com/getting-started/#1-install) has the details, and the script is plain shell if you want to read it first.
 
 Or build it. You need Go (see `go.mod`) and Node 22.12 or newer; `./build.sh` checks for them, says what to install if one is missing, and builds the web page and the program:
 
@@ -94,7 +94,7 @@ cd yagi
 ./yagi                            # starts the web page on :9244; add your HDHomeRun there
 ```
 
-Then open the **setup link** it writes to its log (or `http://localhost:9244/` on the machine itself) to become the admin, add your tuner from the list the web page shows, and add a viewer. The web page is always on its own port, `9244`; each tuner you add gets a port of its own (`5004`, `5005`, …), and a viewer adds the tuner to their media server as `<this machine>:5004`. [Getting started](https://johnschult.github.io/yagi/getting-started/) walks through every step, with the settings file, Docker and updating.
+Then open the **setup link** it writes to its log (or `http://localhost:9244/` on the machine itself) to become the admin, add your tuner from the list the web page shows, and add a viewer. The web page is always on its own port, `9244`; each tuner you add gets a port of its own (`5004`, `5005`, …), and a viewer adds the tuner to their media server as `<this machine>:5004`. [Getting started](https://yagi.johnschult.com/getting-started/) walks through every step, with the settings file, Docker and updating.
 
 Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with that number as well as `latest`; the app shows its version in the footer, linked to the release notes.
 
@@ -102,30 +102,30 @@ Releases are numbered by calendar, `YYYY.MM.PATCH`, and the image is tagged with
 
 | Page | Read it when |
 |---|---|
-| [Getting started](https://johnschult.github.io/yagi/getting-started/) | You are installing Yagi, or opening it for the first time |
-| [A tour of the web page](https://johnschult.github.io/yagi/web-ui/) | You want to see what each page shows, with pictures |
-| [Networking](https://johnschult.github.io/yagi/networking/) | You are deciding how a viewer's server will reach yours: Tailscale, a VPN, the same network, or the same network |
-| [Built-in Tailscale](https://johnschult.github.io/yagi/tailscale/) | You want Yagi to join your tailnet by itself, with no Tailscale on the machine |
-| [Media servers](https://johnschult.github.io/yagi/media-servers/) | You are adding the tuner in Plex, Jellyfin or Emby |
-| [Configuration](https://johnschult.github.io/yagi/configuration/) | You want every setting, flag and file explained, and how the limits work |
-| [Security](https://johnschult.github.io/yagi/security/) | You want to know who can do what, and what Yagi sends over the internet |
-| [Troubleshooting](https://johnschult.github.io/yagi/troubleshooting/) | Something doesn't work: a page that won't load, a tuner that is offline, a viewer that is refused |
-| [Frequently asked questions](https://johnschult.github.io/yagi/faq/) | You wonder why it is called Yagi, or what changed from Antennarr |
-| [API](https://johnschult.github.io/yagi/api/) | You want to script against Yagi, or look at what the web page talks to |
-| [Roadmap](https://johnschult.github.io/yagi/roadmap/) | You want to know what is planned |
-| [Releasing](https://johnschult.github.io/yagi/releasing/) and [Contributing](CONTRIBUTING.md) | You are making a release, or sending a change |
+| [Getting started](https://yagi.johnschult.com/getting-started/) | You are installing Yagi, or opening it for the first time |
+| [A tour of the web page](https://yagi.johnschult.com/web-ui/) | You want to see what each page shows, with pictures |
+| [Networking](https://yagi.johnschult.com/networking/) | You are deciding how a viewer's server will reach yours: Tailscale, a VPN, the same network, or the same network |
+| [Built-in Tailscale](https://yagi.johnschult.com/tailscale/) | You want Yagi to join your tailnet by itself, with no Tailscale on the machine |
+| [Media servers](https://yagi.johnschult.com/media-servers/) | You are adding the tuner in Plex, Jellyfin or Emby |
+| [Configuration](https://yagi.johnschult.com/configuration/) | You want every setting, flag and file explained, and how the limits work |
+| [Security](https://yagi.johnschult.com/security/) | You want to know who can do what, and what Yagi sends over the internet |
+| [Troubleshooting](https://yagi.johnschult.com/troubleshooting/) | Something doesn't work: a page that won't load, a tuner that is offline, a viewer that is refused |
+| [Frequently asked questions](https://yagi.johnschult.com/faq/) | You wonder why it is called Yagi, or what changed from Antennarr |
+| [API](https://yagi.johnschult.com/api/) | You want to script against Yagi, or look at what the web page talks to |
+| [Roadmap](https://yagi.johnschult.com/roadmap/) | You want to know what is planned |
+| [Releasing](https://yagi.johnschult.com/releasing/) and [Contributing](CONTRIBUTING.md) | You are making a release, or sending a change |
 
 The app's **Help** link, at the bottom of its web page, opens the documentation site.
 
 ## Security
 
-**HDHomeRun tuners have no authentication, and neither do their streams.** Yagi's protection is the address a request comes from, so please keep these in mind (the details are in [Security](https://johnschult.github.io/yagi/security/)):
+**HDHomeRun tuners have no authentication, and neither do their streams.** Yagi's protection is the address a request comes from, so please keep these in mind (the details are in [Security](https://yagi.johnschult.com/security/)):
 
 - **A new install is closed.** With no viewers nobody can use the tuner, and only this machine can open the admin page, until you use the one-time setup link in the log.
 - **Viewers only get what a media server needs**; everything else the tuner serves (rescans, firmware upgrade, its own pages) answers `404`.
 - **Private networks only.** Yagi serves your own network, a VPN and Tailscale, and drops connections from public internet addresses, so a port forwarded by mistake shows scanners nothing.
 - **Admin by address** trusts the address a request arrives from, so behind a reverse proxy every request looks like the proxy's. Signing in with a Plex account is optional.
-- **What it contacts:** only your tuners, plus, each switchable in Settings, SiliconDust's firmware changelog and program guide (and the firmware file when you press Install), plex.tv when someone signs in, and the notification service you set up. The web page itself loads nothing from outside. The full list, with what each one is sent, is in [Security](https://johnschult.github.io/yagi/security/#what-leaves-your-network).
+- **What it contacts:** only your tuners, plus, each switchable in Settings, SiliconDust's firmware changelog and program guide (and the firmware file when you press Install), plex.tv when someone signs in, and the notification service you set up. The web page itself loads nothing from outside. The full list, with what each one is sent, is in [Security](https://yagi.johnschult.com/security/#what-leaves-your-network).
 
 ## Development
 
@@ -138,7 +138,7 @@ Everything is in the standard library on the Go side (no third-party Go dependen
 
 ## Roadmap
 
-What is planned is on the [Roadmap](https://johnschult.github.io/yagi/roadmap/). Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+What is planned is on the [Roadmap](https://yagi.johnschult.com/roadmap/). Contributions and bug reports are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
