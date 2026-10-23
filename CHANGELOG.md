@@ -9,7 +9,7 @@ Each release's notes on GitHub are its section of this file.
 
 ### Added
 
-- **Archives with the built-in Tailscale node.** Each release now also has `yagi_<version>_<os>_<arch>_tailscale.tar.gz` for Linux and macOS (`amd64` and `arm64`): the same program as the `-tailscale` Docker image, for installing without Docker. They are signed and checked like the others. About twice the size of the plain ones, since they carry Tailscale's code. `install.sh --tailscale` installs the Tailscale one (and Homebrew will follow). Running the script again to update keeps whichever build you have, and `--plain` switches back, so an update never quietly drops the Tailscale node. `yagi -version` now says "(built-in Tailscale)" for that build.
+- **Archives with the built-in Tailscale node.** Each release now also has `yagi_<version>_<os>_<arch>_tailscale.tar.gz` for Linux and macOS (`amd64` and `arm64`): the same program as the `-tailscale` Docker image, for installing without Docker. They are signed and checked like the others. About twice the size of the plain ones, since they carry Tailscale's code. `install.sh --tailscale` installs the Tailscale one, and `brew install johnschult/tap/yagi-tailscale` does with Homebrew (it conflicts with `yagi`, and keeps its settings in the same place). Running the script again to update keeps whichever build you have, and `--plain` switches back, so an update never quietly drops the Tailscale node. `yagi -version` now says "(built-in Tailscale)" for that build.
 
 ## 2026.10.18 (2026-10-23)
 

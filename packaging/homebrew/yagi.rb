@@ -29,6 +29,9 @@ class Yagi < Formula
     end
   end
 
+  # Both install a program called yagi. They keep their settings in the same place, so switching keeps them.
+  conflicts_with "yagi-tailscale", because: "both install a program called yagi"
+
   def install
     bin.install "yagi"
   end

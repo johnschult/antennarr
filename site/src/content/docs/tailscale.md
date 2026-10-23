@@ -19,7 +19,7 @@ image: ghcr.io/johnschult/yagi:tailscale        # the latest release, with Tails
 
 `ghcr.io/johnschult/yagi:latest` and `:<version>` are the same program without it. In a build without it, **Settings → Access → Tailscale** says so and shows no switch. Building it yourself: `go build -tags tsnet ./cmd/yagi`, or `docker build --build-arg TAGS=tsnet .`
 
-Without Docker, the [install script](getting-started.md#the-install-script-linux-and-macos) installs it with `--tailscale` (from release 2026.10.19), and later updates keep it. `yagi -version` ends with "(built-in Tailscale)" for this build.
+Without Docker, `brew install johnschult/tap/yagi-tailscale` installs it with Homebrew, and the [install script](getting-started.md#the-install-script-linux-and-macos) does with `--tailscale` (both from release 2026.10.19); later updates keep it. `yagi -version` ends with "(built-in Tailscale)" for this build.
 
 ## Turning it on
 

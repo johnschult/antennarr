@@ -248,7 +248,9 @@ jobs:
             exit 1
           fi
           curl -fsSL -o "$RUNNER_TEMP/checksums.txt" "https://github.com/johnschult/yagi/releases/download/$TAG/checksums.txt"
-          sh scripts/render_formula.sh "${TAG#v}" "$RUNNER_TEMP/checksums.txt" > "$RUNNER_TEMP/yagi.rb"
+          for f in yagi yagi-tailscale; do
+            sh scripts/render_formula.sh "${TAG#v}" "$RUNNER_TEMP/checksums.txt" "$f" > "$RUNNER_TEMP/$f.rb"
+          done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: johnschult/homebrew-tap
@@ -260,13 +262,13 @@ jobs:
         run: |
           cd tap
           mkdir -p Formula
-          cp "$RUNNER_TEMP/yagi.rb" Formula/yagi.rb
+          cp "$RUNNER_TEMP/yagi.rb" "$RUNNER_TEMP/yagi-tailscale.rb" Formula/
           if [[ -z "$(git status --porcelain)" ]]; then
             echo "The tap already has ${TAG#v}"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/yagi.rb
+          git add Formula/yagi.rb Formula/yagi-tailscale.rb
           git commit -m "yagi ${TAG#v}"
           git push
