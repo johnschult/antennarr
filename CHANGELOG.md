@@ -5,6 +5,12 @@
 What changed in each release, newest first. Releases are numbered `YYYY.MM.PATCH`; see [Releasing](https://yagi.johnschult.com/releasing/).
 Each release's notes on GitHub are its section of this file.
 
+## 2026.10.20 (2026-10-23)
+
+### Added
+
+- **The log says when the tuner turns a stream away, and when it has no channels.** When Plex says "channel not available", the tuner's answer used to go straight to Plex and the log looked the same as for a stream that worked. Now a `tuner refused stream` line has the status the tuner sent (such as 503) and the reason it gives in its own `X-HDHomeRun-Error` header, if any. A `tuner has no channels` line appears when the tuner answers a lineup request with an empty list, which is what an empty guide in Plex looks like from here; it is written at most once a minute, however often Plex asks. Nothing is written for streams and lineups that work, so the log doesn't grow.
+
 ## 2026.10.19 (2026-10-23)
 
 ### Added

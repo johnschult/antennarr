@@ -13,6 +13,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -45,6 +46,10 @@ type Proxy struct {
 	api    *httputil.ReverseProxy
 	stream *httputil.ReverseProxy
 	log    *slog.Logger
+
+	// emptyLineupLogged is when "tuner has no channels" was last logged (Unix nanoseconds). Plex asks for the
+	// lineup often, and a tuner that stays empty would otherwise fill the log with the same line.
+	emptyLineupLogged atomic.Int64
 }
 
 func New(cfg Config) *Proxy {
@@ -69,7 +74,26 @@ func New(cfg Config) *Proxy {
 	p.up = cfg.Upstream
 	p.api = p.reverse(func() *url.URL { a, _ := p.up.Targets(); return a }, transport)
 	p.stream = p.reverse(func() *url.URL { _, s := p.up.Targets(); return s }, transport)
+	p.stream.ModifyResponse = p.logTunerRefusal
 	return p
+}
+
+// logTunerRefusal says so when the tuner turns a stream request away (all its
+// tuners busy, no signal lock, ...). The answer goes on to the viewer as it is,
+// so without this the log shows the same as for a stream that worked.
+func (p *Proxy) logTunerRefusal(resp *http.Response) error {
+	if resp.StatusCode == http.StatusOK {
+		return nil
+	}
+	attrs := []any{"path", resp.Request.URL.Path, "status", resp.Status}
+	// The tuner explains itself in a header of its own (X-HDHomeRun-Error); log whatever it sends.
+	for k, v := range resp.Header {
+		if strings.HasPrefix(k, "X-Hdhomerun") {
+			attrs = append(attrs, strings.ToLower(k), strings.Join(v, ", "))
+		}
+	}
+	p.log.Warn("tuner refused stream", attrs...)
+	return nil
 }
 
 // Upstream says where the tuner is right now; it can change while we run.
@@ -316,6 +340,14 @@ func (p *Proxy) lineup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "tuner unreachable", http.StatusBadGateway)
 		return
 	}
+	if len(channels) == 0 {
+		// Plex then shows an empty guide, and the log would show an ordinary request.
+		now := time.Now().UnixNano()
+		if last := p.emptyLineupLogged.Load(); now-last >= int64(time.Minute) && p.emptyLineupLogged.CompareAndSwap(last, now) {
+			p.log.Warn("tuner has no channels", "client", r.RemoteAddr)
+		}
+	}
+	p.log.Debug("lineup", "channels", len(channels), "client", r.RemoteAddr)
 	base := p.base(r)
 	for _, ch := range channels {
 		raw, ok := ch["URL"].(string)
