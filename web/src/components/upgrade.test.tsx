@@ -179,7 +179,7 @@ describe('a tuner that is updating', () => {
 
   it('is still an outage when the tuner is offline and not updating', () => {
     renderWithApp(<App />, makeState({ devices: [makeDevice({ tuner: { ...makeDevice().tuner, online: false } })] }), { route: '/' })
-    expect(screen.getByText(/The tuner is offline/)).toBeInTheDocument()
+    expect(screen.getByText(/The tuner isn't answering/)).toBeInTheDocument()
     expect(screen.queryByText('Updating firmware…')).not.toBeInTheDocument()
   })
 })

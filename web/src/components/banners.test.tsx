@@ -29,8 +29,64 @@ describe('Banners', () => {
     const s = makeState()
     s.devices[0].tuner.online = false
     show(s)
-    expect(screen.getByRole('status')).toHaveTextContent('The tuner is offline')
-    expect(screen.getByRole('status')).toHaveTextContent('10ABCC87')
+    expect(screen.getByRole('status')).toHaveTextContent("The tuner isn't answering at 192.168.1.132")
+    expect(screen.getByRole('status')).toHaveTextContent('Yagi will keep looking')
+  })
+
+  it('says what Yagi did to find the tuner once it has looked and found nothing', () => {
+    const s = makeState()
+    s.devices[0].tuner.online = false
+    show(s)
+    expect(screen.getByRole('status')).not.toHaveTextContent('searched the network')
+    s.devices[0].tuner.search = { at: s.time, found: false }
+    show(s)
+    expect(screen.getAllByRole('status')[1]).toHaveTextContent('searched the network for it and found nothing. Is it powered on and on the same network?')
+  })
+
+  it('links to the docs site, not the old docs folder', () => {
+    const s = makeState()
+    s.devices[0].tuner.online = false
+    show(s)
+    expect(screen.getByRole('link', { name: 'Troubleshooting' })).toHaveAttribute('href', 'https://yagi.johnschult.com/troubleshooting/#the-tuner-shows-as-offline')
+  })
+
+  it('says when the tuner turned a stream away, in the words of a media server, for a while', () => {
+    const s = makeState()
+    const at = new Date(new Date(s.time).getTime() - 3 * 60 * 1000).toISOString()
+    s.devices[0].tuner.problems = [{ kind: 'refused', time: at, last: at, text: 'The tuner turned a stream away: 503 Service Unavailable (it said: 805 - Tuner in use)' }]
+    show(s)
+    const note = screen.getByRole('status')
+    expect(note).toHaveTextContent('The tuner turned a stream away: 503 Service Unavailable (it said: 805 - Tuner in use).')
+    expect(note).toHaveTextContent('"channel not available"')
+    expect(note).toHaveTextContent('3m ago')
+  })
+
+  it('stops showing a refused stream after fifteen minutes', () => {
+    const s = makeState()
+    const old = new Date(new Date(s.time).getTime() - 16 * 60 * 1000).toISOString()
+    s.devices[0].tuner.problems = [
+      { kind: 'refused', time: old, last: old, text: 'The tuner turned a stream away: 503' },
+      { kind: 'denied', time: old, last: old, text: 'John was refused a tuner: all shared tuners are in use' },
+    ]
+    show(s)
+    expect(screen.queryAllByRole('status')).toHaveLength(0)
+  })
+
+  it("says when Yagi turned a viewer's stream away", () => {
+    const s = makeState()
+    s.devices[0].tuner.problems = [{ kind: 'denied', time: s.time, last: s.time, text: 'John was refused a tuner: the remaining tuners are reserved for the owner' }]
+    show(s)
+    expect(screen.getByRole('status')).toHaveTextContent('John was refused a tuner: the remaining tuners are reserved for the owner.')
+    expect(screen.getByRole('link', { name: 'Troubleshooting' })).toHaveAttribute('href', 'https://yagi.johnschult.com/troubleshooting/#a-503-when-watching')
+  })
+
+  it('keeps saying the channel list is empty until it is not, however long ago it was', () => {
+    const s = makeState()
+    const old = new Date(new Date(s.time).getTime() - 3 * 60 * 60 * 1000).toISOString()
+    s.devices[0].tuner.problems = [{ kind: 'no-channels', time: old, last: old, text: "The tuner answered a media server's request for its channels with an empty list" }]
+    show(s)
+    expect(screen.getByRole('status')).toHaveTextContent('empty list')
+    expect(screen.getByRole('status')).toHaveTextContent('guide in a media server looks empty')
   })
 
   it("explains why changes can't be saved when there is no settings file", () => {
@@ -94,7 +150,7 @@ describe('the offline banner', () => {
         <Banners state={state} />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('link', { name: 'The tuner is offline.' })).toHaveAttribute('href', '/tuners/antenna')
+    expect(screen.getByRole('link', { name: /The tuner isn't answering at/ })).toHaveAttribute('href', '/tuners/antenna')
   })
 })
 
@@ -111,7 +167,7 @@ describe('the notice about the address', () => {
     expect(screen.getByRole('status')).toHaveTextContent("Your way into this page is this computer's address")
     expect(screen.getByRole('status')).toHaveTextContent('Reserve its address in your router')
     expect(screen.getByRole('link', { name: 'turn on Sign in with Plex' })).toHaveAttribute('href', '/settings')
-    expect(screen.getByRole('link', { name: 'Troubleshooting' })).toHaveAttribute('href', expect.stringContaining('troubleshooting.md'))
+    expect(screen.getByRole('link', { name: 'Troubleshooting' })).toHaveAttribute('href', 'https://yagi.johnschult.com/troubleshooting/#this-address-cant-open-the-admin-page')
   })
 
   it('is not shown once Plex sign-in is on, or when nobody was let in by address', () => {
@@ -133,3 +189,43 @@ describe('the notice about the address', () => {
     localStorage.removeItem('yagi.dismissedNotices')
   })
 })
+
+describe('dismissing a problem', () => {
+  const trouble = (time: string, last: string) => {
+    const s = makeState()
+    s.devices[0].tuner.problems = [{ kind: 'denied', time, last, text: 'John was refused a tuner: the remaining tuners are held for your own devices' }]
+    return s
+  }
+
+  it('hides that episode, even as the media server retries, and shows the next one', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event')
+    localStorage.removeItem('yagi.dismissedNotices')
+    const start = new Date(makeState().time).getTime()
+    const at = (secs: number) => new Date(start + secs * 1000).toISOString()
+
+    const first = show(trouble(at(-60), at(-60)))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryAllByRole('status')).toHaveLength(0)
+    first.unmount()
+
+    // It happened again a few seconds later: still the same episode, so it stays hidden.
+    const retry = show(trouble(at(-60), at(-5)))
+    expect(screen.queryAllByRole('status')).toHaveLength(0)
+    retry.unmount()
+
+    // Another episode, later, with a different start: shown again.
+    show(trouble(at(-20), at(-20)))
+    expect(screen.getByRole('status')).toHaveTextContent('John was refused a tuner')
+    localStorage.removeItem('yagi.dismissedNotices')
+  })
+
+  it('goes by when it last happened, not when it started, for how long it is shown', () => {
+    const s = makeState()
+    const now = new Date(s.time).getTime()
+    // Started an hour ago but happened again two minutes ago: still going on.
+    s.devices[0].tuner.problems = [{ kind: 'refused', time: new Date(now - 3600_000).toISOString(), last: new Date(now - 120_000).toISOString(), text: 'The tuner turned a stream away: 503' }]
+    show(s)
+    expect(screen.getByRole('status')).toHaveTextContent('2m ago')
+  })
+})
+

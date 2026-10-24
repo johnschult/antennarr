@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -282,5 +283,55 @@ func TestEmptyLineupIsLogged(t *testing.T) {
 	srv.Close()
 	if n := strings.Count(out.String(), "tuner has no channels"); n != 1 {
 		t.Errorf("an empty lineup was logged %d times for 5 requests, want once:\n%s", n, out.String())
+	}
+}
+
+type recorder struct {
+	mu       sync.Mutex
+	refused  [][2]string
+	channels []int
+}
+
+func (r *recorder) StreamRefused(status, reason string) {
+	r.mu.Lock()
+	r.refused = append(r.refused, [2]string{status, reason})
+	r.mu.Unlock()
+}
+
+func (r *recorder) Lineup(n int) {
+	r.mu.Lock()
+	r.channels = append(r.channels, n)
+	r.mu.Unlock()
+}
+
+func TestObserverHearsARefusedStreamAndTheLineupSize(t *testing.T) {
+	f := newFakeTuner(t)
+	f.stream.Close()
+	f.stream = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-HDHomeRun-Error", "805 - Tuner in use")
+		http.Error(w, "All tuners in use", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(f.stream.Close)
+	api, _ := url.Parse(f.api.URL)
+	stream, _ := url.Parse(f.stream.URL)
+	rec := &recorder{}
+	srv := httptest.NewServer(New(Config{API: api, Stream: stream, Observer: rec}))
+	defer srv.Close()
+
+	var v any
+	getJSON(t, srv.URL+"/lineup.json", &v)
+	resp, err := http.Get(srv.URL + "/auto/v5.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	rec.mu.Lock()
+	defer rec.mu.Unlock()
+	if len(rec.channels) != 1 || rec.channels[0] != 1 {
+		t.Errorf("lineup sizes = %v, want [1]", rec.channels)
+	}
+	if len(rec.refused) != 1 || rec.refused[0] != [2]string{"503 Service Unavailable", "805 - Tuner in use"} {
+		t.Errorf("refusals = %q", rec.refused)
 	}
 }

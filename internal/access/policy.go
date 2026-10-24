@@ -499,10 +499,31 @@ func (p *Policy) note(device, viewer, reason, text string) {
 	}
 	events := p.events
 	p.mu.Unlock()
-	notes.Note("warn", fmt.Sprintf("%s was refused a tuner%s: %s", viewer, where, text))
+	msg := fmt.Sprintf("%s was refused a tuner%s: %s", viewer, where, text)
+	notes.Note("warn", msg)
+	if r, ok := notes.(interface{ StreamDenied(text string) }); ok {
+		r.StreamDenied(ownerDeniedText(viewer, where, reason, text)) // so the page can say so while it is recent
+	}
 	if events != nil {
 		events.Refused(device, title, viewer, reason)
 	}
+}
+
+// ownerDeniedText says why a viewer was turned away in words for the owner. The text sent to the viewer says "your
+// tuners", which is not what the owner means by it.
+func ownerDeniedText(viewer, where, reason, text string) string {
+	head := fmt.Sprintf("%s was refused a tuner%s: ", viewer, where)
+	switch reason {
+	case ReasonViewerLimit:
+		return head + "they are already using all the tuners they are allowed"
+	case ReasonSharedCap:
+		return head + "the viewers together are using all the tuners they are allowed"
+	case ReasonOwnerReserve:
+		return head + "the remaining tuners are held for your own devices"
+	case ReasonOffline:
+		return head + "the tuner is offline"
+	}
+	return head + text
 }
 
 // channelFromPath pulls "5.1" out of /auto/v5.1 or /tuner0/v5.1. Streams

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -814,5 +815,52 @@ func TestOpenChannelsListsTheChannelOfEachStreamOnTheDevice(t *testing.T) {
 	rel()
 	if got := p.OpenChannels(testDevice); len(got) != 0 {
 		t.Errorf("after it ended: %v", got)
+	}
+}
+
+// problemNotes is a Notifier that also keeps the latest refusal as a problem, as the tuner monitor does.
+type problemNotes struct {
+	fakeNotes
+	denied []string
+}
+
+func (n *problemNotes) StreamDenied(text string) { n.denied = append(n.denied, text) }
+
+func TestARefusalIsPassedToANotifierThatKeepsProblems(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	n := &problemNotes{}
+	p, err := NewPolicy(twoViewers, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.AddDevice(testDevice, mon, n)
+	pd := p.Device(testDevice)
+
+	mom := req("10.8.0.5:1")
+	for i := 0; i < 5; i++ { // her limit is used up
+		if _, err := pd.Stream(mom); err != nil {
+			break
+		}
+	}
+	if len(n.denied) != 1 || !strings.Contains(n.denied[0], "was refused a tuner: they are already using all the tuners they are allowed") {
+		t.Errorf("the notifier was told %q, want one refusal in words for the owner", n.denied)
+	}
+}
+
+func TestRefusalsAreExplainedToTheOwnerNotInTheViewersWords(t *testing.T) {
+	for _, c := range []struct{ reason, want string }{
+		{ReasonViewerLimit, "John was refused a tuner: they are already using all the tuners they are allowed"},
+		{ReasonSharedCap, "John was refused a tuner: the viewers together are using all the tuners they are allowed"},
+		{ReasonOwnerReserve, "John was refused a tuner: the remaining tuners are held for your own devices"},
+		{ReasonOffline, "John was refused a tuner: the tuner is offline"},
+		{"something-new", "John was refused a tuner: the text sent to them"},
+	} {
+		if got := ownerDeniedText("John", "", c.reason, "the text sent to them"); got != c.want {
+			t.Errorf("%s: %q, want %q", c.reason, got, c.want)
+		}
+	}
+	if got := ownerDeniedText("John", " on Cable", ReasonOffline, ""); got != "John was refused a tuner on Cable: the tuner is offline" {
+		t.Errorf("with several tuners: %q", got)
 	}
 }

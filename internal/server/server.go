@@ -341,7 +341,7 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 	mux := http.NewServeMux()
 	tunerAPI := proxy.New(proxy.Config{
 		Upstream: mon, Policy: s.policy.Device(name),
-		Advertise: d.Advertise, DeviceID: d.ReportID, Logger: log,
+		Advertise: d.Advertise, DeviceID: d.ReportID, Observer: mon, Logger: log,
 	})
 	// The admin pages have a port of their own, so a tuner's port is only the tuner.
 	mux.Handle("/", tunerAPI)

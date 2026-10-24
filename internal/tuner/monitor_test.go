@@ -762,3 +762,131 @@ func TestPollMarksOnlyYagisOwnStreamsAsViaProxy(t *testing.T) {
 		t.Errorf("with a stream open in Yagi on 5.1: in use %d, via Yagi %d; want 1, 1", total, via)
 	}
 }
+
+func TestSearchResultIsKeptWhileTheTunerIsMissingAndClearedWhenItIsBack(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	m := monitorFor(f.URL, "10ABCC87", neverFind)
+	m.Poll(context.Background())
+	if m.Snapshot().Search != nil {
+		t.Fatal("a search is shown for a tuner that answers")
+	}
+	f.Close()
+	m.Poll(context.Background())
+	m.Poll(context.Background()) // the threshold: search, and find nothing
+	s := m.Snapshot().Search
+	if s == nil || s.Found || s.At.IsZero() {
+		t.Fatalf("Search = %+v, want a search that found nothing", s)
+	}
+	back := newHDHR("10ABCC87")
+	defer back.Close()
+	m.cfg.Find = func(_ context.Context, id, _ string) (discovery.Device, error) {
+		return discovery.Device{ID: id, BaseURL: back.URL}, nil
+	}
+	m.mu.Lock()
+	m.lastSearch = time.Time{} // don't wait out the rate limit
+	m.mu.Unlock()
+	m.Poll(context.Background())
+	if st := m.Snapshot(); !st.Online || st.Search != nil {
+		t.Errorf("online=%v Search=%+v, want it online and the search forgotten", st.Online, st.Search)
+	}
+}
+
+func TestARefusedStreamIsKeptAsAProblemAndNotedOncePerMinute(t *testing.T) {
+	m := monitorFor("http://127.0.0.1:1", "10ABCC87", neverFind)
+	changed := 0
+	m.cfg.OnChange = func() { changed++ }
+	for i := 0; i < 3; i++ {
+		m.StreamRefused("503 Service Unavailable", "805 - Tuner in use")
+	}
+	s := m.Snapshot()
+	if len(s.Problems) != 1 || s.Problems[0].Kind != ProblemRefused || !strings.Contains(s.Problems[0].Text, "503 Service Unavailable") || !strings.Contains(s.Problems[0].Text, "805 - Tuner in use") {
+		t.Fatalf("Problems = %+v", s.Problems)
+	}
+	warns := 0
+	for _, e := range s.Events {
+		if e.Kind == "warn" {
+			warns++
+		}
+	}
+	if warns != 1 {
+		t.Errorf("%d warn events for 3 refusals in a row, want 1: %+v", warns, s.Events)
+	}
+	if changed != 3 {
+		t.Errorf("the page was told %d times, want 3", changed)
+	}
+}
+
+func TestAnEmptyLineupIsAProblemUntilTheTunerHasChannelsAgain(t *testing.T) {
+	m := monitorFor("http://127.0.0.1:1", "10ABCC87", neverFind)
+	changed := 0
+	m.cfg.OnChange = func() { changed++ }
+	m.Lineup(40) // the usual case says nothing
+	if len(m.Snapshot().Problems) != 0 || changed != 0 {
+		t.Fatalf("a normal lineup was reported: %+v, told %d times", m.Snapshot().Problems, changed)
+	}
+	m.Lineup(0)
+	if p := m.Snapshot().Problems; len(p) != 1 || p[0].Kind != ProblemNoChannels {
+		t.Fatalf("Problems = %+v after an empty lineup", p)
+	}
+	m.Lineup(40)
+	s := m.Snapshot()
+	if len(s.Problems) != 0 {
+		t.Errorf("the problem stayed after the channels came back: %+v", s.Problems)
+	}
+	if last := s.Events[len(s.Events)-1]; last.Kind != "ok" || !strings.Contains(last.Text, "channels again") {
+		t.Errorf("last event = %+v, want a note that the channels are back", last)
+	}
+}
+
+func TestAStreamYagiTurnedAwayIsKeptAsAProblem(t *testing.T) {
+	m := monitorFor("http://127.0.0.1:1", "10ABCC87", neverFind)
+	m.StreamDenied("John was refused a tuner: the remaining tuners are reserved for the owner")
+	m.StreamDenied("Ann was refused a tuner: all shared tuners are in use")
+	p := m.Snapshot().Problems
+	if len(p) != 1 || p[0].Kind != ProblemDenied || !strings.Contains(p[0].Text, "Ann was refused") {
+		t.Errorf("Problems = %+v, want only the latest refusal", p)
+	}
+	if len(m.Snapshot().Events) != 0 {
+		t.Errorf("an event was added as well, but the policy adds its own: %+v", m.Snapshot().Events)
+	}
+}
+
+func TestRetriesAreOneEpisodeUntilTheTroubleHasBeenQuietForAWhile(t *testing.T) {
+	m := monitorFor("http://127.0.0.1:1", "10ABCC87", neverFind)
+	m.StreamRefused("503 Service Unavailable", "")
+	first := m.Snapshot().Problems[0]
+	time.Sleep(5 * time.Millisecond)
+	m.StreamRefused("503 Service Unavailable", "") // the media server tries again
+	again := m.Snapshot().Problems[0]
+	if !again.Time.Equal(first.Time) || !again.Last.After(first.Last) {
+		t.Errorf("a retry: started %v then %v, last %v then %v; want the same start and a later last", first.Time, again.Time, first.Last, again.Last)
+	}
+
+	// Quiet for longer than an episode lasts: the next one is a new one.
+	m.mu.Lock()
+	m.st.Problems[0].Last = time.Now().Add(-problemEpisode - time.Minute)
+	m.mu.Unlock()
+	m.StreamRefused("503 Service Unavailable", "")
+	if next := m.Snapshot().Problems[0]; !next.Time.After(first.Time) {
+		t.Errorf("after a quiet spell the start is still %v, want a new episode", next.Time)
+	}
+}
+
+func TestAnEmptyLineupIsOneEpisodeUntilChannelsReturn(t *testing.T) {
+	m := monitorFor("http://127.0.0.1:1", "10ABCC87", neverFind)
+	m.Lineup(0)
+	first := m.Snapshot().Problems[0]
+	m.mu.Lock()
+	m.st.Problems[0].Last = time.Now().Add(-3 * time.Hour) // however long ago, until it is cleared
+	m.mu.Unlock()
+	m.Lineup(0)
+	if got := m.Snapshot().Problems[0]; !got.Time.Equal(first.Time) {
+		t.Errorf("an empty lineup, still empty hours later, started a new episode: %v then %v", first.Time, got.Time)
+	}
+	m.Lineup(40)
+	time.Sleep(5 * time.Millisecond)
+	m.Lineup(0)
+	if got := m.Snapshot().Problems[0]; !got.Time.After(first.Time) {
+		t.Errorf("empty again after channels came back should be a new episode, got start %v", got.Time)
+	}
+}
