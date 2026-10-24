@@ -100,7 +100,10 @@ type Config struct {
 	// OnTransition, if set, is called when the tuner is first seen online and each
 	// time it goes offline or comes back, with the lock released. It must not block.
 	OnTransition func(online bool)
-	Logger       *slog.Logger
+	// OnMoved, if set, is called once the tuner has been found at a new address and has answered there, with
+	// the address it was at and the one it is at now, and the lock released. It is how the new address gets saved.
+	OnMoved func(from, to string)
+	Logger  *slog.Logger
 }
 
 // Monitor polls the tuner and tracks where it lives.
@@ -114,6 +117,7 @@ type Monitor struct {
 	mu         sync.RWMutex
 	st         State
 	fails      int
+	seen       bool // the tuner has answered at least once since this Monitor started
 	lastSearch time.Time
 	// updatingSince is when SetUpdating(true) was called.
 	updatingSince   time.Time
@@ -364,6 +368,7 @@ func (m *Monitor) check(ctx context.Context, base string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	wasOnline := m.st.Online
+	m.seen = true
 	m.st.FriendlyName, m.st.Model, m.st.TunerCount = d.FriendlyName, d.ModelNumber, d.TunerCount
 	m.st.Firmware = Firmware{Name: d.FirmwareName, Version: d.FirmwareVersion, UpgradeAvailable: d.UpgradeAvailable}
 	m.deviceAuth = d.DeviceAuth
@@ -405,7 +410,9 @@ func (m *Monitor) fail(ctx context.Context, err error) {
 	m.fails++
 	fails := m.fails
 	id, last := m.st.ID, m.st.BaseURL
-	if fails < m.cfg.Failures {
+	// A tuner that has never answered since Yagi started, and has a DeviceID to look for, is searched for at once:
+	// the address that was saved is most likely out of date, and waiting through the failures only keeps it offline.
+	if fails < m.cfg.Failures && (m.seen || id == "") {
 		m.mu.Unlock()
 		m.log.Debug("tuner check failed", "n", fails, "err", err)
 		return
@@ -454,6 +461,11 @@ func (m *Monitor) fail(ctx context.Context, err error) {
 	m.mu.Unlock()
 	m.log.Info("tuner moved", "from", last, "to", dev.BaseURL, "id", id)
 	m.Poll(ctx) // confirm right away instead of waiting a full interval
+	if m.cfg.OnMoved != nil {
+		if st := m.Snapshot(); st.Online && st.BaseURL == dev.BaseURL {
+			m.cfg.OnMoved(last, dev.BaseURL)
+		}
+	}
 }
 
 // announce tells OnTransition, if there is one, that the tuner went offline or came online.

@@ -11,6 +11,10 @@ Each release's notes on GitHub are its section of this file.
 
 - **The log says when the tuner turns a stream away, and when it has no channels.** When Plex says "channel not available", the tuner's answer used to go straight to Plex and the log looked the same as for a stream that worked. Now a `tuner refused stream` line has the status the tuner sent (such as 503) and the reason it gives in its own `X-HDHomeRun-Error` header, if any. A `tuner has no channels` line appears when the tuner answers a lineup request with an empty list, which is what an empty guide in Plex looks like from here; it is written at most once a minute, however often Plex asks. Nothing is written for streams and lineups that work, so the log doesn't grow.
 
+### Fixed
+
+- **A tuner that moved to a new address is saved there.** Yagi has always found a tuner again by its DeviceID when its address changed (a new DHCP lease, say), but it only remembered the new address until the next restart, so every start began at the old one and showed the tuner offline until it was found again. It now saves the new address to the settings file once the tuner has answered there (the log says `saved the tuner's new address`), and a tuner it hasn't reached yet since starting is searched for straight away, not after a few failed checks. Nothing is saved for a tuner given only on the command line, since there is no settings file to keep it in.
+
 ## 2026.10.19 (2026-10-23)
 
 ### Added
