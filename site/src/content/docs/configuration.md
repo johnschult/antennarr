@@ -50,7 +50,7 @@ The tuners to front. Each looks like its own HDHomeRun to media servers, on its 
 |---|---|
 | `name` | A stable key: 1–40 letters, digits, `.`, `_` or `-`. It is used in settings, limits and URLs, so don't change it. |
 | `listen` | Where media servers reach this device: `:5004` (every address) or `127.0.0.1:5004`. Each device needs its own port. |
-| `tuner` | The tuner's address, as a host or URL (`192.168.1.50`). Where to look first. |
+| `tuner` | The tuner's address, as a host or URL (`192.168.1.50`). Where to look first. When Yagi finds the tuner somewhere else (by its `id`), it saves the new address here, so the next start looks in the right place. |
 | `id` | The tuner's DeviceID: exactly 8 hex digits. With it, Yagi finds the tuner again if its address changes. If you leave it out, it is learned from the tuner the first time Yagi reaches it. You need `tuner`, `id`, or both. |
 | `streamPort` | The tuner's streaming port. Default `5004`. |
 | `advertise` | The base URL handed to media servers, for example `http://yagi.example.com:5004`. By default it is whatever host the client used to connect, which is right in almost every case. |

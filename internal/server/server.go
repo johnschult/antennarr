@@ -330,6 +330,7 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 		Name: d.Name, BaseURL: base, ID: d.ID, StreamPort: d.StreamPort,
 		Interval: s.cfg.Poll, Find: s.cfg.Find, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() },
 		OnTransition: func(online bool) { s.notify.TunerState(d.Name, s.title(d.Name), online) },
+		OnMoved:      func(_, to string) { s.saveTunerAddress(d.Name, to) },
 		Logger:       log,
 	})
 	s.policy.AddDevice(d.Name, mon, mon)
@@ -346,6 +347,50 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 
 	log.Debug("device built", "listen", d.Listen, "tuner", base)
 	return &device{cfg: d, mon: mon, handler: mux}, nil
+}
+
+// errAddressUnchanged stops an edit that has nothing to save.
+var errAddressUnchanged = errors.New("address already saved")
+
+// saveTunerAddress keeps the address a tuner was found at, so that the next start looks there first instead of
+// at an address it left. A tuner given on the command line has no settings file to keep it in.
+func (s *Server) saveTunerAddress(name, base string) {
+	addr := tunerAddress(base)
+	log := s.log.With("device", name)
+	_, err := s.store.Edit(func(set *access.Settings) error {
+		for i := range set.Devices {
+			if set.Devices[i].Name == name && set.Devices[i].Tuner != addr {
+				set.Devices[i].Tuner = addr
+				return nil
+			}
+		}
+		return errAddressUnchanged
+	})
+	switch {
+	case err == nil:
+		log.Info("saved the tuner's new address", "tuner", addr)
+		s.devMu.Lock()
+		for _, d := range s.devices {
+			if d.cfg.Name == name {
+				d.cfg.Tuner = addr
+			}
+		}
+		s.devMu.Unlock()
+		s.hub.Notify()
+	case errors.Is(err, errAddressUnchanged), errors.Is(err, access.ErrNoFile):
+		// Nothing saved is out of date, or there is no settings file to keep it in.
+	default:
+		log.Warn("couldn't save the tuner's new address", "tuner", addr, "err", err)
+	}
+}
+
+// tunerAddress is a base URL as it is written in the settings: the host (and port), without "http://".
+func tunerAddress(base string) string {
+	u, err := url.Parse(base)
+	if err != nil || u.Host == "" || u.Scheme != "http" || (u.Path != "" && u.Path != "/") {
+		return base
+	}
+	return u.Host
 }
 
 // Policy is the access policy, for reloading settings.

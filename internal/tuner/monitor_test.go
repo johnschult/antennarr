@@ -214,6 +214,60 @@ func TestFollowsTunerToNewAddress(t *testing.T) {
 	}
 }
 
+func TestOnMovedIsCalledOnceTheTunerAnswersAtTheNewAddress(t *testing.T) {
+	old, moved := newHDHR("10ABCC87"), newHDHR("10ABCC87")
+	defer moved.Close()
+	find := func(_ context.Context, id, _ string) (discovery.Device, error) {
+		return discovery.Device{ID: id, BaseURL: moved.URL}, nil
+	}
+	m := monitorFor(old.URL, "10ABCC87", find)
+	var from, to []string
+	m.cfg.OnMoved = func(f, t string) { from, to = append(from, f), append(to, t) }
+	m.Poll(context.Background())
+	old.Close()
+	m.Poll(context.Background())
+	m.Poll(context.Background())
+
+	if len(to) != 1 || from[0] != old.URL || to[0] != moved.URL {
+		t.Errorf("OnMoved called with from=%v to=%v, want once, %s to %s", from, to, old.URL, moved.URL)
+	}
+}
+
+func TestOnMovedIsNotCalledIfNothingAnswersAtTheNewAddress(t *testing.T) {
+	old, dead := newHDHR("10ABCC87"), newHDHR("10ABCC87")
+	dead.Close() // found by the search, but gone again, or not answering
+	find := func(_ context.Context, id, _ string) (discovery.Device, error) {
+		return discovery.Device{ID: id, BaseURL: dead.URL}, nil
+	}
+	m := monitorFor(old.URL, "10ABCC87", find)
+	called := false
+	m.cfg.OnMoved = func(string, string) { called = true }
+	m.Poll(context.Background())
+	old.Close()
+	m.Poll(context.Background())
+	m.Poll(context.Background())
+	if called {
+		t.Error("an address the tuner didn't answer at was reported as its new one")
+	}
+}
+
+func TestATunerNotSeenYetIsSearchedForAtOnce(t *testing.T) {
+	// The saved address is out of date at start-up: there is nothing to wait for.
+	old, moved := newHDHR("10ABCC87"), newHDHR("10ABCC87")
+	defer moved.Close()
+	old.Close()
+	var calls atomic.Int32
+	find := func(_ context.Context, id, _ string) (discovery.Device, error) {
+		calls.Add(1)
+		return discovery.Device{ID: id, BaseURL: moved.URL}, nil
+	}
+	m := monitorFor(old.URL, "10ABCC87", find) // two failures are normally needed
+	m.Poll(context.Background())               // one poll: the very first
+	if s := m.Snapshot(); s.BaseURL != moved.URL || !s.Online || calls.Load() != 1 {
+		t.Errorf("BaseURL=%s online=%v searches=%d, want %s online after one search", s.BaseURL, s.Online, calls.Load(), moved.URL)
+	}
+}
+
 func TestSearchIsRateLimited(t *testing.T) {
 	f := newHDHR("10ABCC87")
 	m := monitorFor(f.URL, "10ABCC87", nil)

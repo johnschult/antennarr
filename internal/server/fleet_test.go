@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/discovery"
 )
 
 // fleet is a server started for the add/remove tests, serving the admin pages
@@ -478,5 +479,63 @@ func TestMovingATunerOntoAnotherTunersPortIsRefused(t *testing.T) {
 	}
 	if code, _ := call(t, "PATCH", f.base+"/api/devices/antenna", map[string]string{"listen": "banana"}); code != http.StatusBadRequest {
 		t.Errorf("nonsense = %d, want 400", code)
+	}
+}
+
+func TestATunerThatMovedHasItsNewAddressSaved(t *testing.T) {
+	old := newFakeTuner(t, "10C03B06", "old-box")
+	moved := newFakeTuner(t, "10C03B06", "new-box")
+	devs := []access.Device{{Name: "flex", Listen: "127.0.0.1:" + freePort(t), Tuner: "old-box", ID: "10C03B06", StreamPort: moved.streamPort}}
+	f := startFleetWith(t, access.DefaultSettings(), devs, true, func(c *Config) {
+		c.Find = func(context.Context, string, string) (discovery.Device, error) {
+			return discovery.Device{ID: "10C03B06", BaseURL: moved.api.URL}, nil
+		}
+	}, old, moved)
+	waitOnline(t, f, 1)
+
+	old.setDown(true) // its address changed
+
+	want := strings.TrimPrefix(moved.api.URL, "http://")
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		set, _, err := access.LoadSettings(f.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(set.Devices) == 1 && set.Devices[0].Tuner == want {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the settings still have tuner %q, want %q\n%s", set.Devices[0].Tuner, want, f.logs.String())
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if !strings.Contains(f.logs.String(), "saved the tuner's new address") {
+		t.Errorf("the log doesn't say the address was saved:\n%s", f.logs.String())
+	}
+}
+
+func TestATunerThatMovedIsFollowedEvenWithNoSettingsFile(t *testing.T) {
+	old := newFakeTuner(t, "10C03B06", "old-box")
+	moved := newFakeTuner(t, "10C03B06", "new-box")
+	devs := []access.Device{{Name: "flex", Listen: "127.0.0.1:" + freePort(t), Tuner: "old-box", ID: "10C03B06", StreamPort: moved.streamPort}}
+	f := startFleetWith(t, access.DefaultSettings(), devs, false, func(c *Config) {
+		c.Find = func(context.Context, string, string) (discovery.Device, error) {
+			return discovery.Device{ID: "10C03B06", BaseURL: moved.api.URL}, nil
+		}
+	}, old, moved)
+	waitOnline(t, f, 1)
+	old.setDown(true)
+
+	deadline := time.Now().Add(5 * time.Second)
+	for !strings.Contains(f.logs.String(), "tuner moved") {
+		if time.Now().After(deadline) {
+			t.Fatalf("the tuner was never followed\n%s", f.logs.String())
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if strings.Contains(f.logs.String(), "saved the tuner's new address") || strings.Contains(f.logs.String(), "couldn't save") {
+		t.Errorf("with no settings file there is nothing to save, but:\n%s", f.logs.String())
 	}
 }
