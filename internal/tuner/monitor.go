@@ -94,6 +94,12 @@ type Config struct {
 	Failures   int           // consecutive failures before searching, default 3
 	Find       Finder        // default: UDP discovery, then a /24 HTTP scan
 	LocalIPs   func() []string
+	// Streams, if set, lists the channel of every stream Yagi has open on this tuner (empty when the path
+	// named none). The tuner only says who is streaming by address, which is the same for Yagi and for a media
+	// server on the same machine, and not what Yagi sees when it runs in a container with its own addresses.
+	// With Streams, a slot is Yagi's when Yagi has a stream open on that channel; without it, when the address
+	// is this host's. It is called without the Monitor's lock held, and must not call back into it.
+	Streams func() []string
 	// OnChange, if set, is called after every poll and every Note, so a UI can
 	// refresh. It must not block.
 	OnChange func()
@@ -357,6 +363,10 @@ func (m *Monitor) check(ctx context.Context, base string) error {
 	for _, ip := range m.cfg.LocalIPs() {
 		local[ip] = true
 	}
+	var streams []string
+	if m.cfg.Streams != nil {
+		streams = m.cfg.Streams() // before the lock: it asks the access policy, which asks us for snapshots
+	}
 
 	// Registered before the lock's own defer, so it runs after the lock is released.
 	cameOnline := false
@@ -375,6 +385,9 @@ func (m *Monitor) check(ctx context.Context, base string) error {
 	m.st.LastSeen = time.Now()
 	if statusErr == nil {
 		m.st.Slots = slotsFrom(raw, local)
+		if m.cfg.Streams != nil {
+			claimStreams(m.st.Slots, streams)
+		}
 	}
 	if !wasOnline {
 		m.st.Online, m.st.Since = true, time.Now()
@@ -403,6 +416,48 @@ func slotsFrom(raw []statusEntry, local map[string]bool) []Slot {
 		out = append(out, s)
 	}
 	return out
+}
+
+// claimStreams decides which in-use slots are Yagi's own, from the streams Yagi has open, and not from the
+// address the tuner reports: a media server on the same machine as Yagi streams from the same address, and Yagi
+// in a container streams from an address it doesn't know. A slot is Yagi's when Yagi has a stream open on its
+// channel, one stream to one slot; the rest are the owner's own devices. Slots whose address is this host's
+// (ViaProxy as slotsFrom set it) are claimed first, so a media server on another machine is never mistaken
+// for Yagi's stream on the same channel. A stream whose path named no channel claims a slot at this host's address.
+func claimStreams(slots []Slot, channels []string) {
+	open := map[string]int{}
+	unnamed := 0
+	for _, c := range channels {
+		if c == "" {
+			unnamed++
+		} else {
+			open[c]++
+		}
+	}
+	atHost := make([]bool, len(slots))
+	claimed := make([]bool, len(slots))
+	for i := range slots {
+		atHost[i] = slots[i].ViaProxy
+		slots[i].ViaProxy = false
+	}
+	claim := func(i int) {
+		slots[i].ViaProxy, claimed[i] = true, true
+	}
+	for _, onlyHost := range []bool{true, false} {
+		for i := range slots {
+			if !slots[i].InUse || claimed[i] || slots[i].Channel == "" || open[slots[i].Channel] == 0 || (onlyHost && !atHost[i]) {
+				continue
+			}
+			open[slots[i].Channel]--
+			claim(i)
+		}
+	}
+	for i := range slots {
+		if unnamed > 0 && slots[i].InUse && !claimed[i] && atHost[i] {
+			unnamed--
+			claim(i)
+		}
+	}
 }
 
 func (m *Monitor) fail(ctx context.Context, err error) {

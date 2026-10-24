@@ -706,3 +706,59 @@ func TestTheRestartingFlagCannotStickForever(t *testing.T) {
 		t.Errorf("restarting=%v events=%+v: a stale flag should not hide an outage", s.Restarting, s.Events)
 	}
 }
+
+func TestClaimStreamsDecidesFromYagisOwnStreams(t *testing.T) {
+	// A slot is {Channel, ViaProxy as the address check set it (the address is this host's)}.
+	type sl struct {
+		ch   string
+		host bool
+	}
+	cases := []struct {
+		name    string
+		slots   []sl
+		streams []string
+		want    []bool
+	}{
+		{"Yagi's own stream, from this host", []sl{{"5.1", true}}, []string{"5.1"}, []bool{true}},
+		{"a media server on the same machine, straight from the tuner", []sl{{"5.1", true}}, nil, []bool{false}},
+		{"Yagi in a container: the tuner sees an address Yagi doesn't know", []sl{{"5.1", false}}, []string{"5.1"}, []bool{true}},
+		{"a media server on another machine, straight from the tuner", []sl{{"5.1", false}}, nil, []bool{false}},
+		{"Yagi's stream and another machine's on one channel", []sl{{"5.1", false}, {"5.1", true}}, []string{"5.1"}, []bool{false, true}},
+		{"Yagi's stream and the same machine's on one channel: one of them is Yagi's", []sl{{"5.1", true}, {"5.1", true}}, []string{"5.1"}, []bool{true, false}},
+		{"two Yagi streams, two channels", []sl{{"5.1", true}, {"2.1", true}}, []string{"2.1", "5.1"}, []bool{true, true}},
+		{"a stream whose path named no channel takes a slot from this host", []sl{{"5.1", true}, {"2.1", false}}, []string{""}, []bool{true, false}},
+		{"a stream not yet tuned has no channel, so it isn't claimed by a named one", []sl{{"", true}}, []string{"5.1"}, []bool{false}},
+	}
+	for _, c := range cases {
+		slots := make([]Slot, len(c.slots))
+		for i, x := range c.slots {
+			slots[i] = Slot{InUse: true, Channel: x.ch, ViaProxy: x.host}
+		}
+		claimStreams(slots, c.streams)
+		for i, w := range c.want {
+			if slots[i].ViaProxy != w {
+				t.Errorf("%s: slot %d ViaProxy = %v, want %v", c.name, i, slots[i].ViaProxy, w)
+			}
+		}
+	}
+}
+
+func TestPollMarksOnlyYagisOwnStreamsAsViaProxy(t *testing.T) {
+	f := newHDHR("10ABCC87")
+	defer f.Close()
+	// Someone is watching 5.1 from this machine's own address: Yagi's stream or a media server next to it.
+	f.setStatus(`[{"Resource":"tuner0","VctNumber":"5.1","VctName":"WFRV","TargetIP":"192.168.1.20"},{"Resource":"tuner1"}]`)
+	open := []string{}
+	m := monitorFor(f.URL, "10ABCC87", neverFind)
+	m.cfg.Streams = func() []string { return open }
+
+	m.Poll(context.Background())
+	if total, via := m.Snapshot().InUse(); total != 1 || via != 0 {
+		t.Errorf("with no stream open in Yagi: in use %d, via Yagi %d; want 1, 0", total, via)
+	}
+	open = []string{"5.1"}
+	m.Poll(context.Background())
+	if total, via := m.Snapshot().InUse(); total != 1 || via != 1 {
+		t.Errorf("with a stream open in Yagi on 5.1: in use %d, via Yagi %d; want 1, 1", total, via)
+	}
+}

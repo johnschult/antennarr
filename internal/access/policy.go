@@ -232,6 +232,19 @@ func (p *Policy) Update(s Settings) error {
 	return nil
 }
 
+// OpenChannels lists the channel of each stream open on a device ("" when the path named none).
+func (p *Policy) OpenChannels(device string) []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var out []string
+	for _, a := range p.active {
+		if a.Device == device {
+			out = append(out, a.Channel)
+		}
+	}
+	return out
+}
+
 // Settings returns a copy of the current settings.
 func (p *Policy) Settings() Settings {
 	p.mu.Lock()

@@ -792,3 +792,27 @@ func TestTheLogLevelSettingIsToldNowAndOnEveryChange(t *testing.T) {
 		t.Errorf("told about settings that were refused: %v", got)
 	}
 }
+
+func TestOpenChannelsListsTheChannelOfEachStreamOnTheDevice(t *testing.T) {
+	mon := &fakeMon{}
+	mon.set(true, 4)
+	p, _ := newPolicy(t, twoViewers, mon)
+
+	if got := p.OpenChannels(testDevice); len(got) != 0 {
+		t.Fatalf("with nothing open: %v", got)
+	}
+	rel, err := p.Stream(req("10.8.0.5:1")) // /auto/v5.1
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := p.OpenChannels(testDevice); len(got) != 1 || got[0] != "5.1" {
+		t.Errorf("with a stream on 5.1 open: %v", got)
+	}
+	if got := p.OpenChannels("another-device"); len(got) != 0 {
+		t.Errorf("another device's streams: %v", got)
+	}
+	rel()
+	if got := p.OpenChannels(testDevice); len(got) != 0 {
+		t.Errorf("after it ended: %v", got)
+	}
+}
