@@ -15,6 +15,8 @@ Each release's notes on GitHub are its section of this file.
 
 - **Check now, on a tuner's Device tab.** Asks the tuner a few questions and says what it finds in plain words: does it answer, is it the tuner Yagi follows (not another one that took its address), does it have channels, is a tuner free and who is using the others, and are its own error counters above zero. If the tuner doesn't answer, the rest say they were not checked. The tuner's raw debug text (`/sys/debug` and each tuner's) is there to open. It only reads, and only when you press the button.
 
+- **A banner when the page loses Yagi.** When a page can't reach Yagi itself (not the tuner), it now says so at the top of every page, after a few seconds: what it shows may be out of date, changes can't be saved, and why that happens (Yagi restarting or updating, or this computer or phone losing the network). It tries again by itself and the banner goes away when Yagi answers.
+
 ### Fixed
 
 - **A tuner that moved to a new address is saved there.** Yagi has always found a tuner again by its DeviceID when its address changed (a new DHCP lease, say), but it only remembered the new address until the next restart, so every start began at the old one and showed the tuner offline until it was found again. It now saves the new address to the settings file once the tuner has answered there (the log says `saved the tuner's new address`), and a tuner it hasn't reached yet since starting is searched for straight away, not after a few failed checks. Nothing is saved for a tuner given only on the command line, since there is no settings file to keep it in.

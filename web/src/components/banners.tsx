@@ -1,6 +1,7 @@
 import { AlertTriangle, Ban, ListX, WifiOff, X } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
+import { useApp } from '@/hooks/app-context'
 import { tunerPath } from '@/lib/tuner-tabs'
 import { deviceTitle } from '@/lib/device'
 import type { AppState, ProblemKind } from '@/lib/types'
@@ -178,5 +179,31 @@ export function Banners({ state }: { state: AppState }) {
         </Banner>
       )}
     </>
+  )
+}
+
+/** How long the page can be without Yagi before it says so. A reconnect that takes a moment isn't worth a banner. */
+const LOST_FOR = 3000
+
+/**
+ * Said at the top of every page when the page has lost touch with Yagi itself (not the tuner): what is shown may be
+ * out of date, nothing can be changed, and the page is trying again by itself.
+ */
+export function ConnectionBanner() {
+  const { connected } = useApp()
+  const [lost, setLost] = useState(false)
+  useEffect(() => {
+    if (connected) {
+      setLost(false)
+      return
+    }
+    const t = setTimeout(() => setLost(true), LOST_FOR)
+    return () => clearTimeout(t)
+  }, [connected])
+  if (!lost) return null
+  return (
+    <Banner tone="red" icon={<WifiOff className="size-4" />} help="troubleshooting.md#im-signed-out-after-a-restart-or-the-page-says-reconnecting">
+      <strong>This page can't reach Yagi.</strong> What it shows may be out of date, and changes can't be saved until Yagi is back. That happens while Yagi restarts or updates, or when this computer or phone has lost the network or Yagi's address. The page keeps trying by itself and catches up when it can.
+    </Banner>
   )
 }
