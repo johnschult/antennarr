@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Info, Loader2, Trash2, X } from 'lucide-react'
+import { Download, Info, Loader2, Stethoscope, Trash2, X } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -9,7 +9,8 @@ import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useApp } from '@/hooks/app-context'
 import { useEdits } from '@/hooks/mutations'
-import { clearLogs, getLogs } from '@/lib/api'
+import { STATE_KEY } from '@/hooks/use-live-state'
+import { clearLogs, getLogs, setDiagnostics } from '@/lib/api'
 import { clock, LEVEL_LOOK, LEVELS, lineText } from '@/lib/logs'
 import type { LogEntry, LogLevel } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -49,6 +50,66 @@ function Line({ e }: { e: LogEntry }) {
         ))}
       </span>
     </li>
+  )
+}
+
+/** How long diagnostics mode stays on, in minutes. */
+const DIAG_FOR = [
+  { minutes: 15, label: '15 minutes' },
+  { minutes: 60, label: '1 hour' },
+  { minutes: 240, label: '4 hours' },
+  { minutes: 1440, label: '24 hours' },
+]
+
+/**
+ * Diagnostics mode: off until asked for, and it turns itself off. While it is on Yagi writes down how every request
+ * went and checks the tuner the moment it fails one, which is how to catch "channel not available" when it only
+ * happens now and then.
+ */
+function DiagnosticsCard({ editable }: { editable: boolean }) {
+  const { state } = useApp()
+  const qc = useQueryClient()
+  const [minutes, setMinutes] = useState(60)
+  const diag = state.diagnostics
+  const on = diag?.on === true
+  const change = useMutation({
+    mutationFn: (p: { on: boolean }) => setDiagnostics(p.on, p.on ? minutes : undefined),
+    onSuccess: (d) => {
+      toast.success(d.on ? 'Diagnostics mode is on' : 'Diagnostics mode is off')
+      void qc.invalidateQueries({ queryKey: STATE_KEY })
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't change diagnostics mode"),
+  })
+  if (!diag) return null // an older server has none
+  return (
+    <section aria-label="Diagnostics mode" className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border border-border bg-card/70 px-4 py-3.5">
+      <Stethoscope aria-hidden className={cn('size-5 shrink-0', on ? 'text-sky-600 dark:text-sky-400' : 'text-muted-foreground')} />
+      <div className="min-w-0 flex-1 basis-72">
+        <h2 className="text-sm font-semibold">Diagnostics mode {on ? 'is on' : 'is off'}</h2>
+        <p className="text-xs text-muted-foreground">
+          {on && diag.until
+            ? `Every request is being written down, and the tuner is checked the moment it fails one. It turns itself off at ${clock(diag.until)}. Turn it on, wait for the trouble, then look here.`
+            : 'For trouble that only happens now and then. While it is on, Yagi writes down how every request went (how long, what the tuner answered, how the stream ended) and checks the tuner the moment it fails one. It turns itself off.'}
+        </p>
+      </div>
+      {editable && (
+        <div className="flex items-center gap-2">
+          {!on && (
+            <Select aria-label="Keep it on for" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} className="h-8 w-32">
+              {DIAG_FOR.map((d) => (
+                <option key={d.minutes} value={d.minutes}>
+                  {d.label}
+                </option>
+              ))}
+            </Select>
+          )}
+          <Button size="sm" variant={on ? 'outline' : 'default'} disabled={change.isPending} onClick={() => change.mutate({ on: !on })}>
+            {change.isPending && <Loader2 data-icon="inline-start" className="animate-spin" />}
+            {on ? 'Turn off' : 'Turn on'}
+          </Button>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -146,6 +207,8 @@ export function LogsPanel() {
           </Select>
         </div>
       </div>
+
+      <DiagnosticsCard editable={editable} />
 
       <div role="note" data-testid="requests-note" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm">
         <Info aria-hidden className="size-4 shrink-0 text-muted-foreground" />

@@ -88,6 +88,7 @@ export function makeState(over: Partial<AppState> = {}): AppState {
     requests: [],
     settings: { mode: 'enforced', sharedCap: 0, ownerReserve: 1, admin: [], firmwareCheck: true, guide: true, history: true, logLevel: 'info', plex: { enabled: false, admins: [] }, tailscale: { enabled: false, hostname: 'yagi', tailnetOnly: false, https: false }, notifications: noNotifications() },
     editable: true,
+    diagnostics: { on: false },
     version: '2026.10.0',
     versionUrl: 'https://github.com/johnschult/yagi/releases/tag/v2026.10.0',
     docsUrl: 'https://yagi.johnschult.com/',

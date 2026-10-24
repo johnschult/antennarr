@@ -20,6 +20,7 @@ import (
 	"github.com/johnschult/yagi/internal/access"
 	"github.com/johnschult/yagi/internal/api"
 	"github.com/johnschult/yagi/internal/claim"
+	"github.com/johnschult/yagi/internal/diag"
 	"github.com/johnschult/yagi/internal/discovery"
 	"github.com/johnschult/yagi/internal/firmware"
 	"github.com/johnschult/yagi/internal/guide"
@@ -135,6 +136,7 @@ type Server struct {
 	upgrade      *upgrade.Manager
 	tunerinfo    *tunerinfo.Reader
 	tunercheck   *tunercheck.Checker
+	diag         *diag.Mode
 	restart      *restart.Manager
 	history      *history.Recorder
 	plex         *plexauth.Auth
@@ -247,6 +249,14 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	}
 	s.tunerinfo = &tunerinfo.Reader{Dial: dial}
 	s.tunercheck = &tunercheck.Checker{Dial: dial}
+	s.diag = &diag.Mode{OnChange: func(on bool) {
+		if on {
+			cfg.Log.Info("diagnostics mode is on: each request is recorded, and the tuner is checked when it fails one", "until", s.diag.Until().Format(time.RFC3339))
+		} else {
+			cfg.Log.Info("diagnostics mode is off")
+		}
+		s.hub.Notify()
+	}}
 	rcfg := restart.Config{Dial: dial, OnChange: s.hub.Notify, Log: cfg.Log}
 	if cfg.RestartConfig != nil {
 		cfg.RestartConfig(&rcfg)
@@ -296,7 +306,7 @@ func New(ctx context.Context, cfg Config) (*Server, error) {
 	admin := http.NewServeMux()
 	admin.Handle("/streams", policy.AdminOnly(policy.ActiveHandler()))
 	admin.Handle(api.Prefix, policy.AdminOnly((&api.API{
-		Tailnet: tailnetControl{s}, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Check: s.tunercheck, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
+		Tailnet: tailnetControl{s}, Logs: cfg.Logs, Fleet: s, Firmware: s.firmware, Guide: s.guide, Notify: s.notify, Upgrade: s.upgrade, Device: s.tunerinfo, Check: s.tunercheck, Diag: s.diag, Restart: s.restart, History: s.history, Lineup: &lineup.Client{}, Control: dial, Pol: policy, Store: s.store, Hub: s.hub, Log: cfg.Log,
 	}).Handler()))
 	// The page itself is just static files with no data in them. It has to load
 	// for someone who is not yet signed in, or there would be nowhere to sign in;
@@ -344,7 +354,7 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 	mux := http.NewServeMux()
 	tunerAPI := proxy.New(proxy.Config{
 		Upstream: mon, Policy: s.policy.Device(name),
-		Advertise: d.Advertise, DeviceID: d.ReportID, Observer: mon, Logger: log,
+		Advertise: d.Advertise, DeviceID: d.ReportID, Observer: mon, Diag: s.diag, OnTrouble: s.checkOnTrouble(name, mon), Logger: log,
 	})
 	// The admin pages have a port of their own, so a tuner's port is only the tuner.
 	mux.Handle("/", tunerAPI)
@@ -709,4 +719,39 @@ func sessionsFile(configPath string) string {
 		return ""
 	}
 	return strings.TrimSuffix(configPath, filepath.Ext(configPath)) + ".sessions.json"
+}
+
+// troubleCheckEvery is the least time between the checks a failing tuner gets in diagnostics mode. A media server
+// retries every few seconds, and a check that is already written down says it.
+const troubleCheckEvery = 30 * time.Second
+
+// checkOnTrouble is what runs when a tuner fails a request in diagnostics mode: it checks the tuner at that
+// moment, in the background, and writes down what it found. The answer a few minutes later, when someone looks, is
+// often not the answer that was true when it failed.
+func (s *Server) checkOnTrouble(name string, mon *tuner.Monitor) func(string) {
+	var last atomic.Int64
+	return func(what string) {
+		now := time.Now().UnixNano()
+		if prev := last.Load(); now-prev < int64(troubleCheckEvery) || !last.CompareAndSwap(prev, now) {
+			return
+		}
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			st := mon.Snapshot()
+			target := tunercheck.Target{BaseURL: st.BaseURL, ID: st.ID}
+			for _, sl := range st.Slots {
+				target.Slots = append(target.Slots, tunercheck.Slot{InUse: sl.InUse, ViaProxy: sl.ViaProxy})
+			}
+			rep := s.tunercheck.Run(ctx, target)
+			attrs := []any{"device", name, "because", what}
+			for _, step := range rep.Steps {
+				attrs = append(attrs, step.ID, string(step.Status)+": "+step.Detail)
+			}
+			for _, d := range rep.Debug {
+				attrs = append(attrs, "tuner says "+strings.ToLower(d.Name), strings.Join(d.Lines, " | "))
+			}
+			s.log.Info("diagnostics: checked the tuner", attrs...)
+		}()
+	}
 }

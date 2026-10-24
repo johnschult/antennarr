@@ -331,6 +331,8 @@ export interface AppState {
   requests: AccessRequest[]
   settings: Settings
   editable: boolean
+  /** Whether diagnostics mode is on, and until when it turns itself off. Absent from an older server. */
+  diagnostics?: { on: boolean; until?: string }
   /** The built-in Tailscale node. Absent from an older server. */
   tailscale?: TailscaleStatus
   /** This build's version ("2026.10.0", or "dev") and its page on GitHub. */
