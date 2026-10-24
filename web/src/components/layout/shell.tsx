@@ -1,6 +1,6 @@
 import { History, Radio, RadioReceiver, SlidersHorizontal, Users, type LucideIcon } from 'lucide-react'
 import { Link, NavLink, Outlet } from 'react-router'
-import { Banners } from '@/components/banners'
+import { Banners, ConnectionBanner } from '@/components/banners'
 import { WhatsNewDialog } from '@/components/whats-new-dialog'
 import { Logo } from '@/components/logo'
 import { GithubIcon } from '@/components/github-icon'
@@ -157,6 +157,7 @@ export function Shell() {
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-8 sm:px-6">
+        <ConnectionBanner />
         <Banners state={state} />
         <Outlet />
       </main>
