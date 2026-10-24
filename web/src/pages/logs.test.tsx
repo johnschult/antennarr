@@ -178,3 +178,31 @@ describe('lineText', () => {
     expect(lineText(line(1, 'warn', 'hello', [{ key: 'a', value: 'b' }, { key: 'err', value: 'a "b" c' }]))).toBe(`${at(1)} WARN  hello a=b err="a \\"b\\" c"`)
   })
 })
+
+describe('diagnostics mode', () => {
+  it('is off, says what it does, and turns on for the time picked', async () => {
+    const calls = show(doc(), makeState(), { 'PUT /diagnostics': () => ({ body: { on: true, until: at(0) } }) })
+    const card = screen.getByRole('region', { name: 'Diagnostics mode' })
+    expect(within(card).getByText('Diagnostics mode is off')).toBeInTheDocument()
+    await userEvent.selectOptions(within(card).getByLabelText('Keep it on for'), '240')
+    await userEvent.click(within(card).getByRole('button', { name: 'Turn on' }))
+    await waitFor(() => expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ on: true, minutes: 240 }))
+  })
+
+  it('says when it turns itself off, and turns off when asked', async () => {
+    const calls = show(doc(), makeState({ diagnostics: { on: true, until: at(0) } }), { 'PUT /diagnostics': () => ({ body: { on: false } }) })
+    const card = screen.getByRole('region', { name: 'Diagnostics mode' })
+    expect(within(card).getByText('Diagnostics mode is on')).toBeInTheDocument()
+    expect(within(card).getByText(/turns itself off at/)).toBeInTheDocument()
+    expect(within(card).queryByLabelText('Keep it on for')).not.toBeInTheDocument()
+    await userEvent.click(within(card).getByRole('button', { name: 'Turn off' }))
+    await waitFor(() => expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ on: false }))
+  })
+
+  it('has no switch when the settings can not be changed', () => {
+    const s = makeState()
+    s.editable = false
+    show(doc(), s)
+    expect(within(screen.getByRole('region', { name: 'Diagnostics mode' })).queryByRole('button')).not.toBeInTheDocument()
+  })
+})

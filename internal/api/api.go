@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/johnschult/yagi/internal/access"
+	"github.com/johnschult/yagi/internal/diag"
 	"github.com/johnschult/yagi/internal/discovery"
 	"github.com/johnschult/yagi/internal/firmware"
 	"github.com/johnschult/yagi/internal/guide"
@@ -114,6 +115,8 @@ type API struct {
 	testing    sync.Map // device name -> a signal test is running on it
 	// History is who watched what, for the Activity page; nil means there is none.
 	History *history.Recorder
+	// Diag is diagnostics mode; nil means there is none.
+	Diag *diag.Mode
 	// Check walks a tuner's side of a failed stream, for the Check now button; nil means it can't.
 	Check *tunercheck.Checker
 	// Device reads what a tuner says about itself, for the Device panel; nil means it can't.
@@ -167,6 +170,7 @@ func (a *API) Handler() http.Handler {
 		{"logs", map[string]http.HandlerFunc{"GET": a.getLogs, "DELETE": a.clearLogs}},
 		{"devices/{name}/restart", map[string]http.HandlerFunc{"POST": a.restartTuner, "DELETE": a.dismissRestart}},
 		{"devices/{name}/info", map[string]http.HandlerFunc{"GET": a.deviceInfo}},
+		{"diagnostics", map[string]http.HandlerFunc{"GET": a.getDiagnostics, "PUT": a.putDiagnostics}},
 		{"devices/{name}/check", map[string]http.HandlerFunc{"POST": a.checkTuner}},
 		{"devices/{name}/firmware/upgrade", map[string]http.HandlerFunc{"POST": a.installFirmware, "DELETE": a.dismissUpgrade}},
 		{"plex/admins/{id}", map[string]http.HandlerFunc{"DELETE": a.removePlexAdmin}},
@@ -272,6 +276,8 @@ type State struct {
 	Requests []RequestDoc `json:"requests"`
 	Settings SettingsDoc  `json:"settings"`
 	Editable bool         `json:"editable"` // false: started without -config
+	// Diagnostics says whether diagnostics mode is on, and until when.
+	Diagnostics DiagnosticsDoc `json:"diagnostics"`
 	// Tailscale is the built-in Tailscale node: whether this build has it, and where it is.
 	Tailscale tailnet.Status `json:"tailscale"`
 	// Version is this build's version, VersionURL its page on GitHub, and DocsURL
@@ -352,11 +358,12 @@ func (a *API) state() State {
 			Tailscale:     TailscaleDoc{Enabled: set.TailscaleEnabled(), Hostname: set.TailscaleHostname(), TailnetOnly: set.Tailscale != nil && set.Tailscale.TailnetOnly, HTTPS: set.Tailscale != nil && set.Tailscale.HTTPS},
 			Notifications: notificationsDoc(set),
 		},
-		Editable:   a.Store.Editable(),
-		Tailscale:  a.tailscale(),
-		Version:    version.Get(),
-		VersionURL: version.URL(version.Get()),
-		DocsURL:    version.DocsURL(),
+		Editable:    a.Store.Editable(),
+		Diagnostics: a.diagnostics(),
+		Tailscale:   a.tailscale(),
+		Version:     version.Get(),
+		VersionURL:  version.URL(version.Get()),
+		DocsURL:     version.DocsURL(),
 	}
 }
 

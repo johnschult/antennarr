@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/johnschult/yagi/internal/diag"
 )
 
 // Config describes the tuner behind the proxy.
@@ -38,7 +40,12 @@ type Config struct {
 	// Observer, if set, is told what the tuner answered to a stream or lineup request, so the owner can be shown
 	// the trouble a media server ran into. Its methods must not block.
 	Observer Observer
-	Logger   *slog.Logger
+	// Diag, if set and on, makes the proxy write down each request with how it went (see package diag).
+	Diag *diag.Mode
+	// OnTrouble, if set, is called while diagnostics mode is on when the tuner fails a request: what failed, in
+	// words. It is how the tuner gets checked at the moment of a failure. It must not block.
+	OnTrouble func(what string)
+	Logger    *slog.Logger
 }
 
 // Observer hears what the tuner answers to the requests Yagi passes on.
@@ -105,6 +112,7 @@ func (p *Proxy) logTunerRefusal(resp *http.Response) error {
 		}
 	}
 	p.log.Warn("tuner refused stream", attrs...)
+	p.trouble("the tuner refused a stream (" + resp.Status + ")")
 	if p.cfg.Observer != nil {
 		p.cfg.Observer.StreamRefused(resp.Status, strings.Join(resp.Header.Values("X-HDHomeRun-Error"), ", "))
 	}
@@ -176,6 +184,23 @@ func (p *Proxy) deny(w http.ResponseWriter, err error) {
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if p.cfg.Diag.Active() {
+		rec := &requestNotes{ResponseWriter: w}
+		start := time.Now()
+		defer func() { p.recordRequest(r, rec, start) }()
+		w = rec
+	}
+	p.serve(w, r)
+}
+
+// trouble tells whoever wants to know that the tuner failed a request, when diagnostics mode is on.
+func (p *Proxy) trouble(what string) {
+	if p.cfg.OnTrouble != nil && p.cfg.Diag.Active() {
+		p.cfg.OnTrouble(what)
+	}
+}
+
+func (p *Proxy) serve(w http.ResponseWriter, r *http.Request) {
 	if !isStream(r.URL.Path) {
 		// Media servers ask for discover.json and lineup.json over and over; that is detail for debugging, not news.
 		// What matters is logged above debug: a stream opening and closing, and anything refused.
@@ -352,6 +377,7 @@ func (p *Proxy) lineup(w http.ResponseWriter, r *http.Request) {
 	var channels []map[string]any
 	if err := p.fetchJSON(r, "/lineup.json", &channels); err != nil {
 		p.log.Warn("lineup failed", "err", err)
+		p.trouble("the tuner didn't give its channel list")
 		http.Error(w, "tuner unreachable", http.StatusBadGateway)
 		return
 	}
@@ -360,6 +386,7 @@ func (p *Proxy) lineup(w http.ResponseWriter, r *http.Request) {
 		now := time.Now().UnixNano()
 		if last := p.emptyLineupLogged.Load(); now-last >= int64(time.Minute) && p.emptyLineupLogged.CompareAndSwap(last, now) {
 			p.log.Warn("tuner has no channels", "client", r.RemoteAddr)
+			p.trouble("the tuner has no channels")
 		}
 	}
 	p.log.Debug("lineup", "channels", len(channels), "client", r.RemoteAddr)
@@ -390,4 +417,76 @@ func rebase(raw, base string) string {
 	}
 	u.Scheme, u.Host = b.Scheme, b.Host
 	return u.String()
+}
+
+// requestNotes notes what is written to a viewer: the status, how many bytes, and when the first of them went out.
+// It passes flushes through, which a stream depends on, and says what it wraps so http.ResponseController can
+// reach it.
+type requestNotes struct {
+	http.ResponseWriter
+	status int
+	bytes  int64
+	first  time.Time
+}
+
+func (r *requestNotes) WriteHeader(code int) {
+	if r.status == 0 {
+		r.status = code
+	}
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *requestNotes) Write(b []byte) (int, error) {
+	if r.status == 0 {
+		r.status = http.StatusOK
+	}
+	if r.first.IsZero() && len(b) > 0 {
+		r.first = time.Now()
+	}
+	n, err := r.ResponseWriter.Write(b)
+	r.bytes += int64(n)
+	return n, err
+}
+
+func (r *requestNotes) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (r *requestNotes) Unwrap() http.ResponseWriter { return r.ResponseWriter }
+
+// shortStream is how little a stream that "worked" can have run for before it counts as one that didn't: a tuner
+// that opens a stream and drops it at once looks like a success in the log.
+const shortStream = 3 * time.Second
+
+// recordRequest writes the one line diagnostics mode keeps for a request. A stream has two: it is written when it
+// ends, with how long it ran and who ended it.
+func (p *Proxy) recordRequest(r *http.Request, rec *requestNotes, start time.Time) {
+	status := rec.status
+	if status == 0 {
+		status = http.StatusOK // a stream the viewer dropped before anything was written
+	}
+	attrs := []any{"method", r.Method, "path", r.URL.Path, "client", r.RemoteAddr, "status", status, "bytes", rec.bytes, "took", time.Since(start).Round(time.Millisecond)}
+	if ua := r.UserAgent(); ua != "" {
+		attrs = append(attrs, "ua", ua)
+	}
+	if !isStream(r.URL.Path) {
+		p.log.Info("diagnostics: request", attrs...)
+		return
+	}
+	if !rec.first.IsZero() {
+		attrs = append(attrs, "waited", rec.first.Sub(start).Round(time.Millisecond))
+	}
+	if status == http.StatusOK { // an answer that wasn't a stream has nothing to say about how one ended
+		ended := "the tuner stopped sending"
+		if r.Context().Err() != nil {
+			ended = "the viewer left"
+		}
+		attrs = append(attrs, "ended", ended)
+	}
+	p.log.Info("diagnostics: stream", attrs...)
+	if status == http.StatusOK && time.Since(start) < shortStream && r.Context().Err() == nil {
+		p.trouble("a stream ended almost as soon as it began")
+	}
 }
