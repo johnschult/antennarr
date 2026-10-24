@@ -78,7 +78,7 @@ Yagi checks the tuner every 5 seconds. After 3 failures in a row it shows it off
 - **Is the tuner on?** Power, the Ethernet cable (an extender or switch can fail), and the router. Can you reach `http://<tuner address>/discover.json` from the Yagi machine?
 - **Is it listed at all?** The *Tuners* page lists the tuners being shared . Press *Add tuner* to search the network again or add one by its address. In Docker, searching needs host networking.
 - **Did its address change?** If you gave the tuner's `id` in the settings (or Yagi has reached it before), it finds the new address by itself, usually within a minute, and the Live page's timeline records "Tuner moved … (found by DeviceID …)". If you didn't, run `yagi discover` and put the address and `id` in the settings.
-- **A restart starts at the address in the settings file** and then searches, so it can take half a minute to come back. Put the tuner's current address in `tuner`, and reserve it in your router, to avoid the wait.
+- **A restart starts at the address in the settings file.** When Yagi finds the tuner somewhere else it saves the new address there (the log says *saved the tuner's new address*), so the next start looks in the right place. A tuner it hasn't reached since starting is searched for straight away, which can still take up to half a minute. Reserve its address in your router to avoid moving at all.
 - **Restarting or updating is not an outage.** While Yagi restarts a tuner or installs firmware on it, the page says *Restarting…* or *Updating firmware…*, and no offline message is sent. If it stays that way for more than a few minutes, check the tuner's power and cable: the result on the tuner's *Firmware* or *Device* tab says what Yagi saw.
 - **A broadcast can't cross networks.** If the tuner is on a different subnet or VLAN from Yagi, the search can't find it. Give its address in `tuner`.
 - **In Docker**, the search needs host networking.
@@ -106,6 +106,20 @@ A `503` is Yagi deliberately saying "no tuner for you right now", the same answe
 | `shared-cap` | All viewers together are using the shared cap. | Raise *Max tuners for viewers* in *Settings → Access → Limits*. |
 | `owner-reserve` | The tuners left are being held for your own devices. | Lower *Tuners reserved for you*. Remember the reserve is **in addition to** what your own TVs are using right now. |
 | `tuner-offline` | The tuner is offline. | See above. |
+
+## A media server says the channel isn't available, or the guide is empty
+
+Plex says "channel not available" when it asked for a stream and didn't get video, and shows an empty guide when it didn't get the list of channels. It doesn't say why. When Yagi can see the reason, it says so at the top of every page, and records it on the Live page's timeline. A notice goes away by itself after fifteen minutes without the trouble happening again (an empty channel list stays until the tuner has its channels again), and the ✕ hides it for as long as the same trouble goes on. It comes back if it happens again later.
+
+| What the page says | What happened | What to do |
+|---|---|---|
+| **The tuner isn't answering at …** | Yagi can't reach the tuner. | See [the tuner shows as offline](#the-tuner-shows-as-offline). |
+| **The tuner turned a stream away: 503 …** | The tuner itself refused, which is what a busy tuner does: every one of its tuners was in use, by a viewer, a recording or something outside Yagi. Anything in brackets (*it said: …*) is the tuner's own reason. | Look at the Live page to see what is using the tuners. |
+| **… was refused a tuner: …** | Yagi turned a viewer away by its own rules: their limit, the shared cap, or the tuners held for you. | See [a 503 when watching](#a-503-when-watching). |
+| **The tuner answered a media server's request for its channels with an empty list** | The tuner had no channels to give. That can happen during a rescan, or just after the tuner restarts, and it clears by itself when it has them again. | Wait a minute or two. If it stays, open the tuner's own page and check that it has scanned for channels. |
+| Nothing | Yagi saw no trouble. The problem is on the media server's side, or in reaching Yagi. | Check the media server's own log, and try `curl -i http://<address>:5004/lineup.json` from the media server. |
+
+Yagi only sees what happens between the media server and the tuner. It can't see Plex's own guide data or its settings.
 
 ## Plex shows the tuner twice, or with the wrong channels
 

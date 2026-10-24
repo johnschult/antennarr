@@ -14,6 +14,64 @@ function named() {
 }
 
 describe('LivePage', () => {
+  it('says everything is working, and where the tuner is, when nothing is wrong', () => {
+    renderWithApp(<LivePage />, makeState())
+    expect(screen.getByText('Everything is working.')).toBeInTheDocument()
+    expect(screen.getByText(/The tuner is at 192\.168\.1\.132\./)).toBeInTheDocument()
+  })
+
+  it('says all of them are working when there are several tuners', () => {
+    renderWithApp(<LivePage />, makeTwoDeviceState())
+    expect(screen.getByText('All 2 tuners are working.')).toBeInTheDocument()
+  })
+
+  it('does not say it is working when a tuner is offline or has no channels', () => {
+    const off = makeState()
+    off.devices[0].tuner.online = false
+    renderWithApp(<LivePage />, off)
+    expect(screen.queryByText(/working\./)).not.toBeInTheDocument()
+
+    const empty = makeState()
+    empty.devices[0].tuner.problems = [{ kind: 'no-channels', time: empty.time, last: empty.time, text: 'empty' }]
+    renderWithApp(<LivePage />, empty)
+    expect(screen.queryByText(/working\./)).not.toBeInTheDocument()
+  })
+
+  it('still says it is working when a viewer was turned away or the tuners were busy, which is Yagi doing its job', () => {
+    const s = makeState()
+    s.devices[0].tuner.problems = [
+      { kind: 'denied', time: s.time, last: s.time, text: 'John was refused a tuner: they are already using all the tuners they are allowed' },
+      { kind: 'refused', time: s.time, last: s.time, text: 'The tuner turned a stream away: 503' },
+    ]
+    renderWithApp(<LivePage />, s)
+    expect(screen.getByText('Everything is working.')).toBeInTheDocument()
+  })
+
+  it('says it is working again once a refusal was a while ago', () => {
+    const s = makeState()
+    const old = new Date(new Date(s.time).getTime() - 20 * 60 * 1000).toISOString()
+    s.devices[0].tuner.problems = [{ kind: 'refused', time: old, last: old, text: 'The tuner turned a stream away: 503' }]
+    renderWithApp(<LivePage />, s)
+    expect(screen.getByText('Everything is working.')).toBeInTheDocument()
+  })
+
+  it('says all of them are working when there are several tuners', () => {
+    renderWithApp(<LivePage />, makeTwoDeviceState())
+    expect(screen.getByText('All 2 tuners are working.')).toBeInTheDocument()
+  })
+
+  it('does not say it is working when a tuner is offline or a media server ran into trouble', () => {
+    const off = makeState()
+    off.devices[0].tuner.online = false
+    renderWithApp(<LivePage />, off)
+    expect(screen.queryByText(/working\./)).not.toBeInTheDocument()
+
+    const trouble = makeState()
+    trouble.devices[0].tuner.problems = [{ kind: 'no-channels', time: trouble.time, last: trouble.time, text: 'empty' }]
+    renderWithApp(<LivePage />, trouble)
+    expect(screen.queryByText(/working\./)).not.toBeInTheDocument()
+  })
+
   it('summarizes what is on air', () => {
     renderWithApp(<LivePage />, makeState())
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('2 of 4 tuners live')

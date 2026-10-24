@@ -1,4 +1,4 @@
-import { Clock, RadioReceiver, Users } from 'lucide-react'
+import { CircleCheck, Clock, RadioReceiver, Users } from 'lucide-react'
 import { Link } from 'react-router'
 import { FirmwareBadge } from '@/components/firmware'
 import { tunerPath } from '@/lib/tuner-tabs'
@@ -9,6 +9,7 @@ import { useApp } from '@/hooks/app-context'
 import { channelIconUrl, programPosterUrl } from '@/lib/api'
 import { deviceModel, deviceTitle } from '@/lib/device'
 import { formatMbps, timeAgo } from '@/lib/format'
+import { recentProblems } from '@/lib/problems'
 import { buildTiles, limitFor } from '@/lib/slots'
 import type { DeviceState, EventKind, TunerEvent, Viewer } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,12 @@ export function LivePage() {
     formatMbps(totalBps),
   ]
 
+  // Nothing wrong anywhere: the tuners answer and have their channels. Worth saying, so that someone who only looks
+  // when something seems broken can see that it isn't Yagi. A viewer turned away at their limit, or every tuner busy,
+  // is Yagi doing its job and is told separately at the top of the page; it is not a fault.
+  const working = devices.length > 0 && devices.every((d) => d.tuner.online && !d.tuner.updating && !d.tuner.restarting) && recentProblems(state).every(({ p }) => p.kind !== 'no-channels')
+  const where = devices.length === 1 ? ` The tuner is at ${devices[0].tuner.baseURL.replace(/^https?:\/\//, '').replace(/\/$/, '')}.` : ''
+
   // Events from every device, newest first, tagged with where they happened.
   const events: (TunerEvent & { device: string })[] = devices
     .flatMap((d) => d.tuner.events.map((e) => ({ ...e, device: deviceTitle(d) })))
@@ -51,6 +58,15 @@ export function LivePage() {
             {devices.length === 0 ? 'No tuners yet' : `${sum(devices, (d) => d.summary.inUse)} of ${sum(devices, (d) => d.summary.total)} tuners live`}
           </h1>
           {devices.length > 0 && <p className="mt-1 text-muted-foreground">{parts.join(' · ')}</p>}
+          {working && (
+            <p className="mt-2 flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+              <CircleCheck aria-hidden className="size-4 shrink-0" />
+              <span>
+                <strong className="font-medium">{several ? `All ${devices.length} tuners are working.` : 'Everything is working.'}</strong>
+                {where}
+              </span>
+            </p>
+          )}
         </div>
       </div>
 

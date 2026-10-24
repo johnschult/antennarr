@@ -54,6 +54,24 @@ export interface FirmwareStatus {
   error?: string
 }
 
+/** The last time Yagi went looking for a tuner that wasn't answering. */
+export interface TunerSearch {
+  at: string
+  found: boolean
+}
+
+export type ProblemKind = 'refused' | 'no-channels' | 'denied'
+
+/** Trouble a media server ran into, which it only shows as "channel not available" or an empty guide. The latest of each kind. */
+export interface TunerProblem {
+  kind: ProblemKind
+  /** When this episode of it started. It stays the same while the trouble goes on (a media server retries every few seconds). */
+  time: string
+  /** The latest time it happened. */
+  last: string
+  text: string
+}
+
 export interface TunerState {
   name?: string
   online: boolean
@@ -67,6 +85,9 @@ export interface TunerState {
   lastSeen: string
   since: string
   events: TunerEvent[]
+  /** Set while the tuner isn't answering and Yagi has gone looking for it. */
+  search?: TunerSearch
+  problems?: TunerProblem[]
   /** Yagi is installing firmware: the tuner is expected to go away and come back, so it is not offline. */
   updating: boolean
   /** Yagi is restarting the tuner for someone: it will go away and come back, so it is not offline. */

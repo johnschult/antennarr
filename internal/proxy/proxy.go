@@ -35,7 +35,19 @@ type Config struct {
 	// useful when a media server already knows the real tuner (e.g. testing
 	// against your own), since it dedupes devices by ID.
 	DeviceID string
+	// Observer, if set, is told what the tuner answered to a stream or lineup request, so the owner can be shown
+	// the trouble a media server ran into. Its methods must not block.
+	Observer Observer
 	Logger   *slog.Logger
+}
+
+// Observer hears what the tuner answers to the requests Yagi passes on.
+type Observer interface {
+	// StreamRefused is called when the tuner answers a stream request with something other than 200: the status
+	// line and, if the tuner gave one, its reason (its X-HDHomeRun-Error header).
+	StreamRefused(status, reason string)
+	// Lineup is called with the number of channels the tuner returned.
+	Lineup(channels int)
 }
 
 // Proxy is an http.Handler.
@@ -93,6 +105,9 @@ func (p *Proxy) logTunerRefusal(resp *http.Response) error {
 		}
 	}
 	p.log.Warn("tuner refused stream", attrs...)
+	if p.cfg.Observer != nil {
+		p.cfg.Observer.StreamRefused(resp.Status, strings.Join(resp.Header.Values("X-HDHomeRun-Error"), ", "))
+	}
 	return nil
 }
 
@@ -348,6 +363,9 @@ func (p *Proxy) lineup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	p.log.Debug("lineup", "channels", len(channels), "client", r.RemoteAddr)
+	if p.cfg.Observer != nil {
+		p.cfg.Observer.Lineup(len(channels))
+	}
 	base := p.base(r)
 	for _, ch := range channels {
 		raw, ok := ch["URL"].(string)
