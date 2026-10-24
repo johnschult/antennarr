@@ -331,6 +331,7 @@ func (s *Server) build(ctx context.Context, d access.Device) (*device, error) {
 		Interval: s.cfg.Poll, Find: s.cfg.Find, OnChange: func() { s.hub.Notify(); s.announceFirmware(); s.guide.Kick() },
 		OnTransition: func(online bool) { s.notify.TunerState(d.Name, s.title(d.Name), online) },
 		OnMoved:      func(_, to string) { s.saveTunerAddress(d.Name, to) },
+		Streams:      func() []string { return s.policy.OpenChannels(d.Name) },
 		Logger:       log,
 	})
 	s.policy.AddDevice(d.Name, mon, mon)
