@@ -208,3 +208,79 @@ func TestRoutineRequestsAreLoggedAtDebugNotInfo(t *testing.T) {
 		t.Errorf("debug should show both requests:\n%s", got)
 	}
 }
+
+func TestTunerRefusingAStreamIsLoggedAndPassedOn(t *testing.T) {
+	f := newFakeTuner(t)
+	f.stream.Close()
+	f.stream = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-HDHomeRun-Error", "805 - Tuner in use")
+		http.Error(w, "All tuners in use", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(f.stream.Close)
+	api, _ := url.Parse(f.api.URL)
+	stream, _ := url.Parse(f.stream.URL)
+	var out strings.Builder
+	srv := httptest.NewServer(New(Config{API: api, Stream: stream, Logger: slog.New(slog.NewTextHandler(&out, nil))}))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/auto/v5.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, the tuner's answer should reach the viewer as it is", resp.StatusCode)
+	}
+	srv.Close() // waits for the handler, which logs "stream closed" after the answer is sent
+	got := out.String()
+	for _, want := range []string{"msg=\"tuner refused stream\"", "status=\"503 Service Unavailable\"", "x-hdhomerun-error=\"805 - Tuner in use\""} {
+		if !strings.Contains(got, want) {
+			t.Errorf("log lacks %s:\n%s", want, got)
+		}
+	}
+}
+
+func TestStreamThatWorksIsNotLoggedAsRefused(t *testing.T) {
+	f := newFakeTuner(t)
+	api, _ := url.Parse(f.api.URL)
+	stream, _ := url.Parse(f.stream.URL)
+	var out strings.Builder
+	srv := httptest.NewServer(New(Config{API: api, Stream: stream, Logger: slog.New(slog.NewTextHandler(&out, nil))}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/auto/v5.1", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	resp.Body.Close()
+	srv.Close() // waits for the handler, which is still logging "stream closed"
+	if strings.Contains(out.String(), "refused") {
+		t.Errorf("a stream that worked was logged as refused:\n%s", out.String())
+	}
+}
+
+func TestEmptyLineupIsLogged(t *testing.T) {
+	f := newFakeTuner(t)
+	f.api.Close()
+	f.api = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, `[]`)
+	}))
+	t.Cleanup(f.api.Close)
+	api, _ := url.Parse(f.api.URL)
+	stream, _ := url.Parse(f.stream.URL)
+	var out strings.Builder
+	srv := httptest.NewServer(New(Config{API: api, Stream: stream, Logger: slog.New(slog.NewTextHandler(&out, nil))}))
+	defer srv.Close()
+
+	var v any
+	for i := 0; i < 5; i++ { // Plex asks over and over
+		getJSON(t, srv.URL+"/lineup.json", &v)
+	}
+	srv.Close()
+	if n := strings.Count(out.String(), "tuner has no channels"); n != 1 {
+		t.Errorf("an empty lineup was logged %d times for 5 requests, want once:\n%s", n, out.String())
+	}
+}
